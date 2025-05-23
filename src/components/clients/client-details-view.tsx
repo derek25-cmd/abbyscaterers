@@ -5,7 +5,7 @@ import type { Client } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building } from "lucide-react"; // Added Building for Primary Location
+import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface ClientDetailsViewProps {
@@ -14,19 +14,30 @@ interface ClientDetailsViewProps {
 
 export function ClientDetailsView({ client }: ClientDetailsViewProps) {
   
-  const DetailItem = ({ icon: Icon, label, value, isLink = false, hrefPrefix = "" }: { icon: React.ElementType, label: string, value?: string | React.ReactNode, isLink?: boolean, hrefPrefix?: string }) => (
-    <div className="flex items-start space-x-3">
-      <Icon className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
-      <div>
+  const DetailItem = ({ icon: Icon, label, value, isLink = false, hrefPrefix = "" }: { icon: React.ElementType, label: string, value?: string | React.ReactNode, isLink?: boolean, hrefPrefix?: string }) => {
+    const hasValue = value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== "");
+
+    return (
+    <div className="flex items-center space-x-3 py-2"> {/* items-center for vertical alignment, py-2 for row separation */}
+      <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+      <div className="flex-grow text-center"> {/* text-center applied to this div will center its inline/inline-block children's text */}
         <p className="text-sm font-medium text-foreground">{label}</p>
-        {isLink && typeof value === 'string' ? (
-          <a href={`${hrefPrefix}${value}`} className="text-sm text-accent hover:underline">{value || "N/A"}</a>
+        {!hasValue ? (
+          <p className="text-sm text-muted-foreground">N/A</p>
+        ) : isLink && typeof value === 'string' ? (
+          <a href={`${hrefPrefix}${value}`} className="text-sm text-accent hover:underline">
+            {value}
+          </a>
         ) : (
-          typeof value === 'string' ? <p className="text-sm text-muted-foreground">{value || "N/A"}</p> : value
+          // Ensure ReactNodes (like formatted dates) are also centered
+          <div className="text-sm text-muted-foreground">
+            {typeof value === 'string' ? <p>{value}</p> : value}
+          </div>
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <Card className="shadow-lg">
@@ -58,17 +69,17 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
           <DetailItem 
             icon={CalendarDays} 
             label="Last Contacted" 
-            value={format(parseISO(client.lastContacted), "MMMM d, yyyy")} 
+            value={client.lastContacted ? format(parseISO(client.lastContacted), "MMMM d, yyyy") : "N/A"} 
           />
            <DetailItem 
             icon={CalendarDays} 
             label="Client Since" 
-            value={format(parseISO(client.createdAt), "MMMM d, yyyy")} 
+            value={client.createdAt ? format(parseISO(client.createdAt), "MMMM d, yyyy") : "N/A"} 
           />
           <DetailItem 
             icon={CalendarDays} 
             label="Profile Last Updated" 
-            value={format(parseISO(client.updatedAt), "MMMM d, yyyy 'at' h:mm a")} 
+            value={client.updatedAt ? format(parseISO(client.updatedAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
           />
         </div>
       </CardContent>
