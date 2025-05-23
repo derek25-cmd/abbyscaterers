@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building, Fingerprint } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils"; // Added missing import
 
 interface ClientDetailsViewProps {
   client: Client;
