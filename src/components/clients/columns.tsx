@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye, Building } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Building, Fingerprint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +19,20 @@ import { format, parseISO } from "date-fns";
 export const getColumns = (
   onDelete: (clientId: string) => void
 ): ColumnDef<Client>[] => [
+  {
+    accessorKey: "id",
+    header: ({ column }) => {
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Client ID
+        </Button>
+      );
+    },
+    cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
+  },
   {
     accessorKey: "companyName",
     header: ({ column }) => {

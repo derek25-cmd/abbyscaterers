@@ -5,7 +5,7 @@ import type { Client } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building } from "lucide-react";
+import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building, Fingerprint } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface ClientDetailsViewProps {
@@ -14,22 +14,22 @@ interface ClientDetailsViewProps {
 
 export function ClientDetailsView({ client }: ClientDetailsViewProps) {
   
-  const DetailItem = ({ icon: Icon, label, value, isLink = false, hrefPrefix = "" }: { icon: React.ElementType, label: string, value?: string | React.ReactNode, isLink?: boolean, hrefPrefix?: string }) => {
+  const DetailItem = ({ icon: Icon, label, value, isLink = false, hrefPrefix = "", className = "" }: { icon: React.ElementType, label: string, value?: string | React.ReactNode, isLink?: boolean, hrefPrefix?: string, className?: string }) => {
     const hasValue = value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== "");
 
     return (
-    <div className="flex items-center space-x-3 py-3"> {/* items-center for vertical alignment, py-3 for row separation */}
+    <div className={cn("flex items-center space-x-3 py-3", className)}> 
       <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-      <div className="flex-grow"> {/* Container for label and value */}
-        <p className="text-sm font-medium text-foreground text-center">{label}</p> {/* Label text centered */}
+      <div className="flex-grow"> 
+        <p className="text-sm font-medium text-foreground text-center">{label}</p>
         {!hasValue ? (
-          <p className="text-sm text-muted-foreground text-center">N/A</p> /* N/A text centered */
+          <p className="text-sm text-muted-foreground text-center">N/A</p> 
         ) : isLink && typeof value === 'string' ? (
-          <a href={`${hrefPrefix}${value}`} className="block text-sm text-accent hover:underline text-center"> {/* Link text centered, made block */}
+          <a href={`${hrefPrefix}${value}`} className="block text-sm text-accent hover:underline text-center">
             {value}
           </a>
         ) : (
-          <div className="text-sm text-muted-foreground text-center"> {/* Value text centered */}
+          <div className="text-sm text-muted-foreground text-center break-words"> 
             {value}
           </div>
         )}
@@ -54,9 +54,11 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+        
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground flex items-center"><Users className="mr-2 h-5 w-5 text-primary" />Contact Information</h3>
+           <h3 className="text-lg font-semibold text-foreground flex items-center"><Users className="mr-2 h-5 w-5 text-primary" />Contact Information</h3>
           <div className="divide-y divide-border">
+            <DetailItem icon={Fingerprint} label="Client ID" value={client.id} className="md:col-span-2"/>
             <DetailItem icon={Mail} label="Company Email" value={client.companyEmail} isLink hrefPrefix="mailto:" />
             <DetailItem icon={Phone} label="Phone Number" value={client.phoneNumber} isLink hrefPrefix="tel:" />
             <DetailItem icon={MapPin} label="Address 1" value={client.address1} />
@@ -94,4 +96,3 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
     </Card>
   );
 }
-

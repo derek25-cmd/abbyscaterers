@@ -16,14 +16,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // Keep for potential multi-line fields like address
+import { Textarea } from "@/components/ui/textarea"; 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clientSchema, type ClientFormData } from "@/lib/schemas";
 import type { Client } from "@/types";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Info } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import React, { useState, useEffect } from "react";
@@ -112,6 +112,24 @@ export function ClientForm({ client }: ClientFormProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {client && (
+              <FormField
+                control={form.control}
+                name="id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Client ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} disabled className="bg-muted/50" />
+                    </FormControl>
+                    <FormDescription className="flex items-center gap-1">
+                      <Info className="h-3 w-3" /> This is the unique identifier for the client and cannot be changed.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
