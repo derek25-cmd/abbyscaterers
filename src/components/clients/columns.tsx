@@ -1,8 +1,9 @@
+
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,38 +14,45 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Client } from "@/types";
-import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 
 export const getColumns = (
   onDelete: (clientId: string) => void
 ): ColumnDef<Client>[] => [
   {
-    accessorKey: "fullName",
+    accessorKey: "companyName",
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Full Name
+          Company Name
         </Button>
       );
     },
-    cell: ({ row }) => <div className="font-medium">{row.getValue("fullName")}</div>,
+    cell: ({ row }) => <div className="font-medium">{row.getValue("companyName")}</div>,
   },
   {
-    accessorKey: "email",
-    header: "Email",
+    accessorKey: "companyEmail",
+    header: "Company Email",
   },
   {
-    accessorKey: "phone",
-    header: "Phone",
+    accessorKey: "phoneNumber",
+    header: "Phone Number",
   },
   {
-    accessorKey: "company",
-    header: "Company",
-    cell: ({ row }) => row.getValue("company") || <span className="text-muted-foreground">N/A</span>,
+    accessorKey: "primaryLocation",
+    header: "Primary Location",
+    cell: ({ row }) => {
+        const location = row.getValue("primaryLocation");
+        return location ? (
+            <div className="flex items-center">
+                <Building className="mr-2 h-4 w-4 text-muted-foreground" />
+                {location as string}
+            </div>
+        ) : <span className="text-muted-foreground">N/A</span>;
+    }
   },
   {
     accessorKey: "lastContacted",
@@ -63,15 +71,6 @@ export const getColumns = (
       return <div className="whitespace-nowrap">{format(date, "PP")}</div>; // e.g., Sep 21, 2023
     },
     sortingFn: 'datetime',
-  },
-  {
-    accessorKey: "updatedAt",
-    header: "Last Updated",
-     cell: ({ row }) => {
-      const date = parseISO(row.getValue("updatedAt"));
-      return <div className="whitespace-nowrap">{format(date, "PPp")}</div>; // e.g., Sep 21, 2023, 4:30 PM
-    },
-    enableSorting: false,
   },
   {
     id: "actions",

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ClientForm } from "@/components/clients/client-form";
@@ -5,7 +6,7 @@ import { useClientStorage } from "@/hooks/use-client-storage";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Client } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton"; // Assuming Skeleton component exists
+import { Skeleton } from "@/components/ui/skeleton"; 
 
 export default function EditClientPage() {
   const params = useParams();
@@ -19,7 +20,7 @@ export default function EditClientPage() {
 
   useEffect(() => {
     if (clientId) {
-      if (!storageLoading) { // Wait for initial storage load
+      if (!storageLoading) { 
         const fetchedClient = getClientById(clientId);
         if (fetchedClient) {
           setClient(fetchedClient);
@@ -31,7 +32,6 @@ export default function EditClientPage() {
     } else {
       setError("Invalid client ID.");
       setIsLoading(false);
-      // Optionally redirect if no ID: router.replace("/clients");
     }
   }, [clientId, getClientById, storageLoading, router]);
 
@@ -53,7 +53,6 @@ export default function EditClientPage() {
   }
 
   if (!client) {
-    // Should be covered by error state, but as a fallback
     return <div className="text-center py-10">Client data could not be loaded.</div>;
   }
 

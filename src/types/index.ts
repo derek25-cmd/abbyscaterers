@@ -7,14 +7,12 @@ export interface DietaryClassification {
 
 export interface Client {
   id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  company?: string;
-  address: string;
-  eventPreferences: string;
-  dietaryRestrictionsRaw: string;
-  dietaryClassifications?: DietaryClassification[];
+  companyName: string;
+  companyEmail: string;
+  phoneNumber: string;
+  address1: string;
+  address2?: string;
+  primaryLocation: string;
   lastContacted: string; // ISO date string
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string

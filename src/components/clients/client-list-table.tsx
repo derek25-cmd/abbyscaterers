@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -37,25 +38,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 export function ClientListTable() {
-  const { clients, isLoading, deleteClient: deleteClientFromStore, refreshClients } = useClientStorage();
+  const { clients, isLoading, deleteClient: deleteClientFromStore } = useClientStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    // This ensures that if clients are modified elsewhere (e.g. another tab, though unlikely for localStorage),
-    // or if we want to programmatically refresh, the table updates.
-    // For typical SPA usage with this hook, direct state updates should be enough.
-    // refreshClients(); // Potentially remove if causing too many re-renders and not needed.
-  }, []);
-
 
   const handleDeleteRequest = (clientId: string) => {
     setClientToDelete(clientId);
@@ -73,7 +65,7 @@ export function ClientListTable() {
     }
   };
   
-  const columns = React.useMemo(() => getColumns(handleDeleteRequest), [handleDeleteRequest]);
+  const columns = React.useMemo(() => getColumns(handleDeleteRequest), [handleDeleteRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const table = useReactTable({
     data: clients,
@@ -99,19 +91,18 @@ export function ClientListTable() {
 
   const exportData = () => {
     const csvRows = [];
-    const headers = ["ID", "Full Name", "Email", "Phone", "Company", "Address", "Event Preferences", "Dietary Restrictions", "Last Contacted", "Created At", "Updated At"];
+    const headers = ["ID", "Company Name", "Company Email", "Phone Number", "Address 1", "Address 2", "Primary Location", "Last Contacted", "Created At", "Updated At"];
     csvRows.push(headers.join(','));
 
     clients.forEach(client => {
       const row = [
         client.id,
-        `"${client.fullName.replace(/"/g, '""')}"`,
-        client.email,
-        client.phone,
-        `"${client.company?.replace(/"/g, '""') || ''}"`,
-        `"${client.address.replace(/"/g, '""')}"`,
-        `"${client.eventPreferences.replace(/"/g, '""')}"`,
-        `"${client.dietaryRestrictionsRaw.replace(/"/g, '""')}"`,
+        `"${client.companyName.replace(/"/g, '""')}"`,
+        client.companyEmail,
+        client.phoneNumber,
+        `"${client.address1.replace(/"/g, '""')}"`,
+        `"${client.address2?.replace(/"/g, '""') || ''}"`,
+        `"${client.primaryLocation.replace(/"/g, '""')}"`,
         client.lastContacted,
         client.createdAt,
         client.updatedAt
@@ -146,10 +137,10 @@ export function ClientListTable() {
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filter clients by name..."
-          value={(table.getColumn("fullName")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter by company name..."
+          value={(table.getColumn("companyName")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("fullName")?.setFilterValue(event.target.value)
+            table.getColumn("companyName")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
