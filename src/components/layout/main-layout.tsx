@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, Settings, Building, UtensilsCross } from "lucide-react";
+import { Users, UtensilsCrossed } from "lucide-react"; // Corrected icon name, removed unused Home, Settings, Building
 import {
   SidebarProvider,
   Sidebar,
@@ -15,7 +16,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"; // Assuming sidebar is correctly exported from ui
+} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -64,17 +65,19 @@ function UserProfile() {
   );
 }
 
-export function MainLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+// Inner component to use the sidebar context
+function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
   const { open } = useSidebar();
 
   return (
-    <SidebarProvider defaultOpen>
+    <>
       <Sidebar className="border-r" collapsible="icon">
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center gap-2">
-             <UtensilsCross className={`h-8 w-8 text-primary transition-all ${open ? "" : "mx-auto"}`} />
-            <span className={`font-semibold text-lg ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-300`}>CaterSmart</span>
+            <UtensilsCrossed className={`h-8 w-8 text-primary transition-all ${open ? "" : "mx-auto"}`} />
+            <span className={`font-semibold text-lg ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-300`}>
+              CaterSmart
+            </span>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2">
@@ -84,8 +87,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 <Link href={item.href} legacyBehavior passHref>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname.startsWith(item.href)}
-                    tooltip={{ children: item.label, side: "right", className:"bg-popover text-popover-foreground" }}
+                    isActive={currentPathname.startsWith(item.href)}
+                    tooltip={{ children: item.label, side: "right", className: "bg-popover text-popover-foreground" }}
                   >
                     <a>
                       <item.icon />
@@ -113,6 +116,18 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </SidebarInset>
+    </>
+  );
+}
+
+export function MainLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname(); // Get pathname here
+
+  return (
+    <SidebarProvider defaultOpen> {/* SidebarProvider wraps the content that uses the hook */}
+      <LayoutContentWrapper currentPathname={pathname}> {/* Pass children and pathname */}
+        {children}
+      </LayoutContentWrapper>
     </SidebarProvider>
   );
 }
