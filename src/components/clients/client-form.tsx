@@ -46,6 +46,7 @@ export function ClientForm({ client }: ClientFormProps) {
           lastContacted: client.lastContacted ? client.lastContacted : new Date().toISOString(),
         }
       : {
+          id: "", // Client ID is now user-inputted
           companyName: "",
           companyEmail: "",
           phoneNumber: "",
@@ -57,17 +58,14 @@ export function ClientForm({ client }: ClientFormProps) {
   });
   
   useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (form.formState.isDirty && !isSubmitting) {
-        // Basic auto-save prompt logic
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [form.formState.isDirty, isSubmitting]);
+    // When editing, reset form with client data if client prop changes
+    if (client) {
+      form.reset({
+        ...client,
+        lastContacted: client.lastContacted ? client.lastContacted : new Date().toISOString(),
+      });
+    }
+  }, [client, form]);
 
 
   async function onSubmit(data: ClientFormData) {
@@ -79,23 +77,24 @@ export function ClientForm({ client }: ClientFormProps) {
       };
 
       if (client) {
-        // Update existing client
-        const updated = updateClient(client.id, payload);
+        // Update existing client, client.id is the original ID for lookup
+        const updated = updateClient(client.id, payload); 
         if (updated) {
-          toast({ title: "Client Updated", description: `${updated.companyName} has been updated.` });
-          router.push(`/clients/${client.id}`);
+          toast({ title: "Client Updated", description: `${updated.companyName} (ID: ${updated.id}) has been updated.` });
+          router.push(`/clients/${updated.id}`); // Navigate to new ID if it changed
         } else {
+          // updateClient might return undefined if client not found, though less likely here
           toast({ variant: "destructive", title: "Error", description: "Failed to update client." });
         }
       } else {
         // Add new client
-        const newClientData = addClient(payload as Omit<Client, "id" | "createdAt" | "updatedAt">);
-        toast({ title: "Client Added", description: `${newClientData.companyName} has been added.` });
+        const newClientData = addClient(payload);
+        toast({ title: "Client Added", description: `${newClientData.companyName} (ID: ${newClientData.id}) has been added.` });
         router.push("/clients");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Submission error:", error);
-      toast({ variant: "destructive", title: "Submission Error", description: "An unexpected error occurred." });
+      toast({ variant: "destructive", title: "Submission Error", description: error.message || "An unexpected error occurred." });
     } finally {
       setIsSubmitting(false);
     }
@@ -112,24 +111,22 @@ export function ClientForm({ client }: ClientFormProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {client && (
-              <FormField
-                control={form.control}
-                name="id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client ID</FormLabel>
-                    <FormControl>
-                      <Input {...field} disabled className="bg-muted/50" />
-                    </FormControl>
-                    <FormDescription className="flex items-center gap-1">
-                      <Info className="h-3 w-3" /> This is the unique identifier for the client and cannot be changed.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Client ID</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. CUST-001" {...field} />
+                  </FormControl>
+                  <FormDescription className="flex items-center gap-1">
+                    <Info className="h-3 w-3" /> Enter a unique identifier for this client.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}

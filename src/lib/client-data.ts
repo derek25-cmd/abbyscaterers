@@ -2,6 +2,7 @@
 "use client"; // Ensure this module is treated as client-side
 
 import type { Client } from "@/types";
+import type { ClientFormData } from "@/lib/schemas";
 
 const CLIENTS_STORAGE_KEY = "caterSmartClients";
 
@@ -25,12 +26,26 @@ export function getClientById(id: string): Client | undefined {
   return clients.find(client => client.id === id);
 }
 
-export function addClient(client: Omit<Client, "id" | "createdAt" | "updatedAt">): Client {
+export function addClient(clientData: ClientFormData): Client {
   const clients = getClientsFromStorage();
   const now = new Date().toISOString();
+
+  if (clients.some(c => c.id === clientData.id)) {
+    // Handle ID collision for new clients.
+    // This ideally should be a validation error shown in the form.
+    // For now, we'll throw an error which the form's submit handler can catch.
+    throw new Error(`Client ID "${clientData.id}" already exists.`);
+  }
+
   const newClient: Client = {
-    ...client,
-    id: crypto.randomUUID(),
+    id: clientData.id, // ID from form data
+    companyName: clientData.companyName,
+    companyEmail: clientData.companyEmail,
+    phoneNumber: clientData.phoneNumber,
+    address1: clientData.address1,
+    address2: clientData.address2 || "", // Ensure address2 is string or empty string
+    primaryLocation: clientData.primaryLocation,
+    lastContacted: clientData.lastContacted,
     createdAt: now,
     updatedAt: now,
   };
@@ -39,14 +54,21 @@ export function addClient(client: Omit<Client, "id" | "createdAt" | "updatedAt">
   return newClient;
 }
 
-export function updateClient(id: string, updates: Partial<Omit<Client, "id" | "createdAt">>): Client | undefined {
+export function updateClient(originalId: string, updates: ClientFormData): Client | undefined {
   let clients = getClientsFromStorage();
-  const clientIndex = clients.findIndex(client => client.id === id);
+  const clientIndex = clients.findIndex(client => client.id === originalId);
   if (clientIndex === -1) return undefined;
 
-  const updatedClient = {
-    ...clients[clientIndex],
-    ...updates,
+  // If the ID is being changed, check for collision with other existing clients
+  if (updates.id && updates.id !== originalId && clients.some(c => c.id === updates.id)) {
+    // ID collision with another existing client
+    throw new Error(`Cannot update Client ID to "${updates.id}" as it already exists for another client.`);
+  }
+  
+  const updatedClient: Client = {
+    ...clients[clientIndex], // old data
+    ...updates,             // new data from form, including potentially a new ID
+    id: updates.id,         // Use new ID from form
     updatedAt: new Date().toISOString(),
   };
   clients[clientIndex] = updatedClient;
