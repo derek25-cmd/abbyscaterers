@@ -18,20 +18,19 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
     const hasValue = value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== "");
 
     return (
-    <div className="flex items-center space-x-3 py-2"> {/* items-center for vertical alignment, py-2 for row separation */}
+    <div className="flex items-center space-x-3 py-3"> {/* items-center for vertical alignment, py-3 for row separation */}
       <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-      <div className="flex-grow text-center"> {/* text-center applied to this div will center its inline/inline-block children's text */}
-        <p className="text-sm font-medium text-foreground">{label}</p>
+      <div className="flex-grow"> {/* Container for label and value */}
+        <p className="text-sm font-medium text-foreground text-center">{label}</p> {/* Label text centered */}
         {!hasValue ? (
-          <p className="text-sm text-muted-foreground">N/A</p>
+          <p className="text-sm text-muted-foreground text-center">N/A</p> /* N/A text centered */
         ) : isLink && typeof value === 'string' ? (
-          <a href={`${hrefPrefix}${value}`} className="text-sm text-accent hover:underline">
+          <a href={`${hrefPrefix}${value}`} className="block text-sm text-accent hover:underline text-center"> {/* Link text centered, made block */}
             {value}
           </a>
         ) : (
-          // Ensure ReactNodes (like formatted dates) are also centered
-          <div className="text-sm text-muted-foreground">
-            {typeof value === 'string' ? <p>{value}</p> : value}
+          <div className="text-sm text-muted-foreground text-center"> {/* Value text centered */}
+            {value}
           </div>
         )}
       </div>
@@ -57,30 +56,34 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
       <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-foreground flex items-center"><Users className="mr-2 h-5 w-5 text-primary" />Contact Information</h3>
-          <DetailItem icon={Mail} label="Company Email" value={client.companyEmail} isLink hrefPrefix="mailto:" />
-          <DetailItem icon={Phone} label="Phone Number" value={client.phoneNumber} isLink hrefPrefix="tel:" />
-          <DetailItem icon={MapPin} label="Address 1" value={client.address1} />
-          {client.address2 && <DetailItem icon={MapPin} label="Address 2" value={client.address2} />}
-           <DetailItem icon={Building} label="Primary Location" value={client.primaryLocation} />
+          <div className="divide-y divide-border">
+            <DetailItem icon={Mail} label="Company Email" value={client.companyEmail} isLink hrefPrefix="mailto:" />
+            <DetailItem icon={Phone} label="Phone Number" value={client.phoneNumber} isLink hrefPrefix="tel:" />
+            <DetailItem icon={MapPin} label="Address 1" value={client.address1} />
+            {client.address2 && <DetailItem icon={MapPin} label="Address 2" value={client.address2} />}
+            <DetailItem icon={Building} label="Primary Location" value={client.primaryLocation} />
+          </div>
         </div>
         
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-foreground flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" />Activity</h3>
-          <DetailItem 
-            icon={CalendarDays} 
-            label="Last Contacted" 
-            value={client.lastContacted ? format(parseISO(client.lastContacted), "MMMM d, yyyy") : "N/A"} 
-          />
-           <DetailItem 
-            icon={CalendarDays} 
-            label="Client Since" 
-            value={client.createdAt ? format(parseISO(client.createdAt), "MMMM d, yyyy") : "N/A"} 
-          />
-          <DetailItem 
-            icon={CalendarDays} 
-            label="Profile Last Updated" 
-            value={client.updatedAt ? format(parseISO(client.updatedAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
-          />
+          <div className="divide-y divide-border">
+            <DetailItem 
+              icon={CalendarDays} 
+              label="Last Contacted" 
+              value={client.lastContacted ? format(parseISO(client.lastContacted), "MMMM d, yyyy") : "N/A"} 
+            />
+            <DetailItem 
+              icon={CalendarDays} 
+              label="Client Since" 
+              value={client.createdAt ? format(parseISO(client.createdAt), "MMMM d, yyyy") : "N/A"} 
+            />
+            <DetailItem 
+              icon={CalendarDays} 
+              label="Profile Last Updated" 
+              value={client.updatedAt ? format(parseISO(client.updatedAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
+            />
+          </div>
         </div>
       </CardContent>
       <CardFooter className="border-t pt-6 flex justify-end">
@@ -91,3 +94,4 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
     </Card>
   );
 }
+
