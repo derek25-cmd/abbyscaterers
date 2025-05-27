@@ -34,3 +34,26 @@ export interface Equipment {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+
+export const ITEM_CLASSIFICATIONS = [
+  "Herbes & Spices",
+  "Fruits",
+  "Vegetables",
+  "Starch",
+  "Protein",
+  "Ingredient",
+  "Cereal",
+] as const;
+
+export type ItemClassification = (typeof ITEM_CLASSIFICATIONS)[number];
+
+export interface Ingredient {
+  id: string; // Internally used unique ID, typically itemNumber
+  itemNumber: string; // User-facing "No."
+  itemDescription: string;
+  itemClassification: ItemClassification;
+  unitOfMeasure: string;
+  unitPrice: number;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}

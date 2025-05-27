@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { ITEM_CLASSIFICATIONS } from "@/types";
 
 // This schema can remain if other parts of the app use it,
 // but it's no longer directly part of the Client schema.
@@ -42,3 +43,18 @@ export const equipmentSchema = z.object({
 });
 
 export type EquipmentFormData = z.infer<typeof equipmentSchema>;
+
+export const ingredientSchema = z.object({
+  id: z.string().optional(), // Will be set to itemNumber on creation/update
+  itemNumber: z.string().min(1, { message: "Item No. is required." }),
+  itemDescription: z.string().min(2, { message: "Item description must be at least 2 characters." }),
+  itemClassification: z.enum(ITEM_CLASSIFICATIONS, {
+    errorMap: () => ({ message: "Please select a valid item classification." }),
+  }),
+  unitOfMeasure: z.string().min(1, { message: "Unit of measure is required." }),
+  unitPrice: z.coerce.number().positive({ message: "Unit price must be a positive number." }),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+export type IngredientFormData = z.infer<typeof ingredientSchema>;
