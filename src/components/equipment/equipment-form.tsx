@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { equipmentSchema, type EquipmentFormData } from "@/lib/schemas";
 import type { Equipment } from "@/types";
@@ -203,10 +203,18 @@ export function EquipmentForm({ equipment }: EquipmentFormProps) {
                 name="equipmentSource"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Equipment Source (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Purchased New, Leased" {...field} />
-                    </FormControl>
+                    <FormLabel>Equipment Source</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select equipment source" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="OWNED">OWNED</SelectItem>
+                        <SelectItem value="RENTED">RENTED</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -231,10 +239,19 @@ export function EquipmentForm({ equipment }: EquipmentFormProps) {
                 name="commitment"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Commitment (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Owned, Leased until 2025" {...field} />
-                    </FormControl>
+                    <FormLabel>Commitment</FormLabel>
+                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select commitment status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="STORED">STORED</SelectItem>
+                        <SelectItem value="IN USE">IN USE</SelectItem>
+                        <SelectItem value="STORED/IN USE">STORED/IN USE</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
