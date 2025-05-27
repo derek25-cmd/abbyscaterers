@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building, Fingerprint } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { cn } from "@/lib/utils"; // Added missing import
+import { cn } from "@/lib/utils";
 
 interface ClientDetailsViewProps {
   client: Client;
@@ -19,18 +19,18 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
     const hasValue = value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== "");
 
     return (
-    <div className={cn("flex items-center space-x-3 py-3", className)}> 
-      <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+    <div className={cn("flex items-start space-x-3 py-3", className)}> {/* Changed to items-start */}
+      <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /> {/* Added mt-1 */}
       <div className="flex-grow"> 
-        <p className="text-sm font-medium text-foreground text-center">{label}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p> {/* Removed text-center */}
         {!hasValue ? (
-          <p className="text-sm text-muted-foreground text-center">N/A</p> 
+          <p className="text-sm text-muted-foreground">N/A</p> {/* Removed text-center */}
         ) : isLink && typeof value === 'string' ? (
-          <a href={`${hrefPrefix}${value}`} className="block text-sm text-accent hover:underline text-center">
+          <a href={`${hrefPrefix}${value}`} className="block text-sm text-accent hover:underline"> {/* Removed text-center */}
             {value}
           </a>
         ) : (
-          <div className="text-sm text-muted-foreground text-center break-words"> 
+          <div className="text-sm text-muted-foreground break-words"> {/* Removed text-center */}
             {value}
           </div>
         )}
