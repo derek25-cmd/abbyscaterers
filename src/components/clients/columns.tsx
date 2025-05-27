@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye, Building, Fingerprint } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Client } from "@/types";
-import { format, parseISO } from "date-fns";
 
 export const getColumns = (
   onDelete: (clientId: string) => void
@@ -46,45 +45,6 @@ export const getColumns = (
       );
     },
     cell: ({ row }) => <div className="font-medium">{row.getValue("companyName")}</div>,
-  },
-  {
-    accessorKey: "companyEmail",
-    header: "Company Email",
-  },
-  {
-    accessorKey: "phoneNumber",
-    header: "Phone Number",
-  },
-  {
-    accessorKey: "primaryLocation",
-    header: "Primary Location",
-    cell: ({ row }) => {
-        const location = row.getValue("primaryLocation");
-        return location ? (
-            <div className="flex items-center">
-                <Building className="mr-2 h-4 w-4 text-muted-foreground" />
-                {location as string}
-            </div>
-        ) : <span className="text-muted-foreground">N/A</span>;
-    }
-  },
-  {
-    accessorKey: "lastContacted",
-    header: ({ column }) => {
-       return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Last Contacted
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const date = parseISO(row.getValue("lastContacted"));
-      return <div className="whitespace-nowrap">{format(date, "PP")}</div>; // e.g., Sep 21, 2023
-    },
-    sortingFn: 'datetime',
   },
   {
     id: "actions",
@@ -123,3 +83,4 @@ export const getColumns = (
     },
   },
 ];
+
