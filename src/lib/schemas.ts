@@ -23,3 +23,22 @@ export const clientSchema = z.object({
 });
 
 export type ClientFormData = z.infer<typeof clientSchema>;
+
+export const equipmentSchema = z.object({
+  id: z.string().optional(), // Will be set to equipmentNumber on creation/update
+  equipmentNumber: z.string().min(1, { message: "Equipment No. is required." }),
+  equipmentName: z.string().min(2, { message: "Equipment name must be at least 2 characters." }),
+  oem: z.string().optional(),
+  model: z.string().optional(),
+  powerRating: z.string().optional(),
+  quantity: z.coerce.number().int().positive({ message: "Quantity must be a positive number." }),
+  yearOfManufacture: z.string().optional(), // Or z.coerce.number().int().min(1900).max(new Date().getFullYear()) if numeric
+  equipmentSource: z.string().optional(),
+  capacity: z.string().optional(),
+  commitment: z.string().optional(),
+  registrationNumber: z.string().optional(),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+export type EquipmentFormData = z.infer<typeof equipmentSchema>;

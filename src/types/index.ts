@@ -17,3 +17,20 @@ export interface Client {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+
+export interface Equipment {
+  id: string; // Internally used unique ID, typically equipmentNumber
+  equipmentNumber: string; // User-facing "No."
+  equipmentName: string;
+  oem?: string;
+  model?: string;
+  powerRating?: string;
+  quantity: number;
+  yearOfManufacture?: string;
+  equipmentSource?: string;
+  capacity?: string;
+  commitment?: string;
+  registrationNumber?: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}

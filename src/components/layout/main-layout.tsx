@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UtensilsCrossed } from "lucide-react"; // Corrected icon name, removed unused Home, Settings, Building
+import { Users, UtensilsCrossed, ChefHat } from "lucide-react"; 
 import {
   SidebarProvider,
   Sidebar,
@@ -30,9 +30,7 @@ import {
 
 const navItems = [
   { href: "/clients", label: "Clients", icon: Users },
-  // Add more navigation items here if needed
-  // { href: "/dashboard", label: "Dashboard", icon: Home },
-  // { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/equipment", label: "Equipment", icon: ChefHat },
 ];
 
 function UserProfile() {
