@@ -7,26 +7,15 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Client } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton"; 
-import { getAllClients } from "@/lib/client-data"; 
+// Removed: import { getAllClients } from "@/lib/client-data"; 
 
 export async function generateStaticParams() {
-  if (typeof window === 'undefined') {
-    // At build time, window and localStorage are not available.
-    // Return an empty array or a predefined list of common paths if necessary.
-    // For localStorage-dependent data, returning empty is often the simplest.
-    return [];
-  }
-  // This part will run client-side or in environments where window is defined
-  try {
-      const clients = getAllClients();
-      return clients.map((client) => ({
-          id: client.id,
-      }));
-  } catch (e) {
-      // In case getAllClients throws (e.g., if localStorage is unexpectedly unavailable)
-      console.error("Error in generateStaticParams for client edit:", e);
-      return [];
-  }
+  // For `output: 'export'`, if dynamic paths depend on client-side data (localStorage),
+  // we cannot know them at build time. Return an empty array.
+  // Next.js will not pre-render any specific [id] pages based on this,
+  // and they will be client-side rendered or handled as 404s if not found
+  // when navigated to on the client.
+  return [];
 }
 
 
