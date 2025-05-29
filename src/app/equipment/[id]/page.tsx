@@ -9,24 +9,22 @@ import type { Equipment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ChefHat } from "lucide-react";
-import { getAllEquipment } from "@/lib/equipment-data"; // Added for generateStaticParams
+// import { ChefHat } from "lucide-react"; // ChefHat not used directly on this page, can be removed if not needed
+import { getAllEquipment } from "@/lib/equipment-data"; 
 
 export async function generateStaticParams() {
   if (typeof window === 'undefined') {
-     try {
-        const equipmentList = getAllEquipment();
-        return equipmentList.map((equipment) => ({
-            id: equipment.equipmentNumber,
-        }));
-    } catch (e) {
-        return [];
-    }
+     return [];
   }
-  const equipmentList = getAllEquipment();
-  return equipmentList.map((equipment) => ({
-    id: equipment.equipmentNumber,
-  }));
+  try {
+    const equipmentList = getAllEquipment();
+    return equipmentList.map((equipment) => ({
+        id: equipment.equipmentNumber,
+    }));
+  } catch (e) {
+    console.error("Error in generateStaticParams for equipment detail:", e);
+    return [];
+  }
 }
 
 export default function EquipmentDetailPage() {
@@ -42,7 +40,7 @@ export default function EquipmentDetailPage() {
   useEffect(() => {
     if (equipmentId) {
        if (!storageLoading) {
-        const fetchedEquipment = getEquipmentById(equipmentId); // equipmentId is actually equipmentNumber
+        const fetchedEquipment = getEquipmentById(equipmentId); 
         if (fetchedEquipment) {
           setEquipment(fetchedEquipment);
         } else {
@@ -61,13 +59,13 @@ export default function EquipmentDetailPage() {
       <div className="max-w-4xl mx-auto space-y-6 p-4">
         <div className="flex justify-between items-center">
           <Skeleton className="h-10 w-1/2" />
-          <Skeleton className="h-10 w-32" /> {/* Adjusted for "Edit Equipment" button */}
+          <Skeleton className="h-10 w-32" /> 
         </div>
-        <Skeleton className="h-8 w-1/3 mb-2" /> {/* For subtitle like Equipment No */}
+        <Skeleton className="h-8 w-1/3 mb-2" /> 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-          <Skeleton className="h-48 w-full" /> {/* Placeholder for a section */}
-          <Skeleton className="h-48 w-full" /> {/* Placeholder for another section */}
-          <Skeleton className="h-40 w-full md:col-span-2" /> {/* Placeholder for a wider section */}
+          <Skeleton className="h-48 w-full" /> 
+          <Skeleton className="h-48 w-full" /> 
+          <Skeleton className="h-40 w-full md:col-span-2" /> 
         </div>
       </div>
     );

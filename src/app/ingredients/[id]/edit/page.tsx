@@ -8,23 +8,21 @@ import { useEffect, useState } from "react";
 import type { Ingredient } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { Edit3, PackagePlus } from "lucide-react";
-import { getAllIngredients } from "@/lib/ingredient-data"; // Added for generateStaticParams
+import { getAllIngredients } from "@/lib/ingredient-data"; 
 
 export async function generateStaticParams() {
   if (typeof window === 'undefined') {
-    try {
-        const ingredients = getAllIngredients();
-        return ingredients.map((ingredient) => ({
-            id: ingredient.itemNumber, // The route uses [id], so map itemNumber to id
-        }));
-    } catch (e) {
-        return [];
-    }
+    return [];
   }
-  const ingredients = getAllIngredients();
-  return ingredients.map((ingredient) => ({
-    id: ingredient.itemNumber,
-  }));
+  try {
+    const ingredients = getAllIngredients();
+    return ingredients.map((ingredient) => ({
+        id: ingredient.itemNumber, 
+    }));
+  } catch (e) {
+    console.error("Error in generateStaticParams for ingredient edit:", e);
+    return [];
+  }
 }
 
 export default function EditIngredientPage() {
@@ -35,12 +33,12 @@ export default function EditIngredientPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const ingredientId = typeof params.id === 'string' ? params.id : undefined; // itemNumber is used as ID in URL
+  const ingredientId = typeof params.id === 'string' ? params.id : undefined; 
 
   useEffect(() => {
     if (ingredientId) {
       if (!storageLoading) { 
-        const fetchedIngredient = getIngredientById(ingredientId); // ingredientId is actually itemNumber
+        const fetchedIngredient = getIngredientById(ingredientId); 
         if (fetchedIngredient) {
           setIngredient(fetchedIngredient);
         } else {
@@ -59,7 +57,7 @@ export default function EditIngredientPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-10 w-1/3" />
         <Skeleton className="h-12 w-1/4 mb-6" />
-        <Skeleton className="h-[600px] w-full" /> {/* Approx height for form card */}
+        <Skeleton className="h-[600px] w-full" /> 
         <div className="flex justify-end gap-4">
             <Skeleton className="h-10 w-24" />
             <Skeleton className="h-10 w-24" />

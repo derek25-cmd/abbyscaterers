@@ -9,23 +9,21 @@ import type { Client } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getAllClients } from "@/lib/client-data"; // Added for generateStaticParams
+import { getAllClients } from "@/lib/client-data"; 
 
 export async function generateStaticParams() {
   if (typeof window === 'undefined') {
-    try {
-        const clients = getAllClients();
-        return clients.map((client) => ({
-            id: client.id,
-        }));
-    } catch (e) {
-        return [];
-    }
+    return [];
   }
-  const clients = getAllClients();
-  return clients.map((client) => ({
-    id: client.id,
-  }));
+  try {
+    const clients = getAllClients();
+    return clients.map((client) => ({
+      id: client.id,
+    }));
+  } catch (e) {
+    console.error("Error in generateStaticParams for client detail:", e);
+    return [];
+  }
 }
 
 export default function ClientDetailPage() {

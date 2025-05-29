@@ -8,23 +8,21 @@ import { useEffect, useState } from "react";
 import type { Equipment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { ChefHat, Edit } from "lucide-react";
-import { getAllEquipment } from "@/lib/equipment-data"; // Added for generateStaticParams
+import { getAllEquipment } from "@/lib/equipment-data"; 
 
 export async function generateStaticParams() {
   if (typeof window === 'undefined') {
-    try {
-        const equipmentList = getAllEquipment();
-        return equipmentList.map((equipment) => ({
-            id: equipment.equipmentNumber, // The route uses [id], so we map equipmentNumber to id
-        }));
-    } catch (e) {
-        return [];
-    }
+    return [];
   }
-  const equipmentList = getAllEquipment();
-  return equipmentList.map((equipment) => ({
-    id: equipment.equipmentNumber,
-  }));
+  try {
+    const equipmentList = getAllEquipment();
+    return equipmentList.map((equipment) => ({
+        id: equipment.equipmentNumber, 
+    }));
+  } catch (e) {
+    console.error("Error in generateStaticParams for equipment edit:", e);
+    return [];
+  }
 }
 
 export default function EditEquipmentPage() {
@@ -40,7 +38,7 @@ export default function EditEquipmentPage() {
   useEffect(() => {
     if (equipmentId) {
       if (!storageLoading) { 
-        const fetchedEquipment = getEquipmentById(equipmentId); // equipmentId is actually equipmentNumber
+        const fetchedEquipment = getEquipmentById(equipmentId); 
         if (fetchedEquipment) {
           setEquipment(fetchedEquipment);
         } else {
@@ -59,7 +57,7 @@ export default function EditEquipmentPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-10 w-1/3" />
         <Skeleton className="h-12 w-1/4 mb-6" />
-        <Skeleton className="h-[700px] w-full" /> {/* Approx height for form card */}
+        <Skeleton className="h-[700px] w-full" /> 
         <div className="flex justify-end gap-4">
             <Skeleton className="h-10 w-24" />
             <Skeleton className="h-10 w-24" />

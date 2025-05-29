@@ -9,23 +9,21 @@ import type { Ingredient } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getAllIngredients } from "@/lib/ingredient-data"; // Added for generateStaticParams
+import { getAllIngredients } from "@/lib/ingredient-data"; 
 
 export async function generateStaticParams() {
   if (typeof window === 'undefined') {
-    try {
-        const ingredients = getAllIngredients();
-        return ingredients.map((ingredient) => ({
-            id: ingredient.itemNumber,
-        }));
-    } catch (e) {
-        return [];
-    }
+    return [];
   }
-  const ingredients = getAllIngredients();
-  return ingredients.map((ingredient) => ({
-    id: ingredient.itemNumber,
-  }));
+  try {
+    const ingredients = getAllIngredients();
+    return ingredients.map((ingredient) => ({
+        id: ingredient.itemNumber,
+    }));
+  } catch (e) {
+    console.error("Error in generateStaticParams for ingredient detail:", e);
+    return [];
+  }
 }
 
 export default function IngredientDetailPage() {
@@ -36,12 +34,12 @@ export default function IngredientDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const ingredientId = typeof params.id === 'string' ? params.id : undefined; // itemNumber is used as ID in URL
+  const ingredientId = typeof params.id === 'string' ? params.id : undefined; 
 
   useEffect(() => {
     if (ingredientId) {
        if (!storageLoading) {
-        const fetchedIngredient = getIngredientById(ingredientId); // ingredientId is actually itemNumber
+        const fetchedIngredient = getIngredientById(ingredientId); 
         if (fetchedIngredient) {
           setIngredient(fetchedIngredient);
         } else {
