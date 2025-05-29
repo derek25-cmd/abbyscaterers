@@ -10,6 +10,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ChefHat } from "lucide-react";
+import { getAllEquipment } from "@/lib/equipment-data"; // Added for generateStaticParams
+
+export async function generateStaticParams() {
+  if (typeof window === 'undefined') {
+     try {
+        const equipmentList = getAllEquipment();
+        return equipmentList.map((equipment) => ({
+            id: equipment.equipmentNumber,
+        }));
+    } catch (e) {
+        return [];
+    }
+  }
+  const equipmentList = getAllEquipment();
+  return equipmentList.map((equipment) => ({
+    id: equipment.equipmentNumber,
+  }));
+}
 
 export default function EquipmentDetailPage() {
   const params = useParams();
@@ -24,7 +42,7 @@ export default function EquipmentDetailPage() {
   useEffect(() => {
     if (equipmentId) {
        if (!storageLoading) {
-        const fetchedEquipment = getEquipmentById(equipmentId);
+        const fetchedEquipment = getEquipmentById(equipmentId); // equipmentId is actually equipmentNumber
         if (fetchedEquipment) {
           setEquipment(fetchedEquipment);
         } else {

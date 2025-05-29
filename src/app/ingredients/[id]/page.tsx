@@ -9,6 +9,24 @@ import type { Ingredient } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { getAllIngredients } from "@/lib/ingredient-data"; // Added for generateStaticParams
+
+export async function generateStaticParams() {
+  if (typeof window === 'undefined') {
+    try {
+        const ingredients = getAllIngredients();
+        return ingredients.map((ingredient) => ({
+            id: ingredient.itemNumber,
+        }));
+    } catch (e) {
+        return [];
+    }
+  }
+  const ingredients = getAllIngredients();
+  return ingredients.map((ingredient) => ({
+    id: ingredient.itemNumber,
+  }));
+}
 
 export default function IngredientDetailPage() {
   const params = useParams();
@@ -23,7 +41,7 @@ export default function IngredientDetailPage() {
   useEffect(() => {
     if (ingredientId) {
        if (!storageLoading) {
-        const fetchedIngredient = getIngredientById(ingredientId);
+        const fetchedIngredient = getIngredientById(ingredientId); // ingredientId is actually itemNumber
         if (fetchedIngredient) {
           setIngredient(fetchedIngredient);
         } else {

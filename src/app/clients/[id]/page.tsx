@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ClientDetailsView } from "@/components/clients/client-details-view";
@@ -8,6 +9,24 @@ import type { Client } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { getAllClients } from "@/lib/client-data"; // Added for generateStaticParams
+
+export async function generateStaticParams() {
+  if (typeof window === 'undefined') {
+    try {
+        const clients = getAllClients();
+        return clients.map((client) => ({
+            id: client.id,
+        }));
+    } catch (e) {
+        return [];
+    }
+  }
+  const clients = getAllClients();
+  return clients.map((client) => ({
+    id: client.id,
+  }));
+}
 
 export default function ClientDetailPage() {
   const params = useParams();

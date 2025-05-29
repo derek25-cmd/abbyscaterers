@@ -7,6 +7,30 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Client } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton"; 
+import { getAllClients } from "@/lib/client-data"; // Added for generateStaticParams
+
+export async function generateStaticParams() {
+  if (typeof window === 'undefined') {
+    // During build time, window is not available.
+    // If client-data relies on localStorage directly, it might return empty or throw.
+    // Returning an empty array means no paths are pre-rendered.
+    // Client-side navigation will still work if data exists when app runs.
+    try {
+        const clients = getAllClients();
+        return clients.map((client) => ({
+            id: client.id,
+        }));
+    } catch (e) {
+        // In case getAllClients throws if localStorage is not available
+        return [];
+    }
+  }
+  const clients = getAllClients();
+  return clients.map((client) => ({
+    id: client.id,
+  }));
+}
+
 
 export default function EditClientPage() {
   const params = useParams();

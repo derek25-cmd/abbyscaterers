@@ -8,6 +8,24 @@ import { useEffect, useState } from "react";
 import type { Equipment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton"; 
 import { ChefHat, Edit } from "lucide-react";
+import { getAllEquipment } from "@/lib/equipment-data"; // Added for generateStaticParams
+
+export async function generateStaticParams() {
+  if (typeof window === 'undefined') {
+    try {
+        const equipmentList = getAllEquipment();
+        return equipmentList.map((equipment) => ({
+            id: equipment.equipmentNumber, // The route uses [id], so we map equipmentNumber to id
+        }));
+    } catch (e) {
+        return [];
+    }
+  }
+  const equipmentList = getAllEquipment();
+  return equipmentList.map((equipment) => ({
+    id: equipment.equipmentNumber,
+  }));
+}
 
 export default function EditEquipmentPage() {
   const params = useParams();
@@ -22,7 +40,7 @@ export default function EditEquipmentPage() {
   useEffect(() => {
     if (equipmentId) {
       if (!storageLoading) { 
-        const fetchedEquipment = getEquipmentById(equipmentId);
+        const fetchedEquipment = getEquipmentById(equipmentId); // equipmentId is actually equipmentNumber
         if (fetchedEquipment) {
           setEquipment(fetchedEquipment);
         } else {
