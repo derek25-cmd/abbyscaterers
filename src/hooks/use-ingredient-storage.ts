@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Ingredient, IngredientFormData } from "@/types";
+import type { Ingredient } from "@/types";
+import type { IngredientFormData } from "@/lib/schemas"; // Corrected import path
 import { 
   getAllIngredients as getAllIngredientsFromStorage,
   getIngredientById as getIngredientByIdFromStorage,
@@ -68,3 +69,4 @@ export function useIngredientStorage() {
     refreshIngredients 
   };
 }
+

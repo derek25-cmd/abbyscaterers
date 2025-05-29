@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Equipment, EquipmentFormData } from "@/types"; // EquipmentFormData might not be needed here directly
+import type { Equipment } from "@/types";
+import type { EquipmentFormData } from "@/lib/schemas"; // Corrected import path
 import { 
   getAllEquipment as getAllEquipmentFromStorage,
   getEquipmentById as getEquipmentByIdFromStorage,
@@ -68,3 +69,4 @@ export function useEquipmentStorage() {
     refreshEquipment 
   };
 }
+
