@@ -1,6 +1,6 @@
 import { IngredientEditPageComponent } from './ingredient-edit-page-component';
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
   return [];
 }
 

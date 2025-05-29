@@ -1,6 +1,6 @@
 import { IngredientDetailsPageComponent } from './ingredient-details-page-component';
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
   return [];
 }
 

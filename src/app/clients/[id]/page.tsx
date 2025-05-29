@@ -1,6 +1,6 @@
 import { ClientDetailsPageComponent } from './client-details-page-component';
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
   return [];
 }
 
