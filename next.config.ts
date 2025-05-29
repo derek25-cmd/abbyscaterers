@@ -1,13 +1,14 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
   output: 'export', // Added for static HTML export
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // Changed to false
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false, // Changed to false
   },
   images: {
     remotePatterns: [

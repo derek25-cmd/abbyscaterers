@@ -9,12 +9,24 @@ const EQUIPMENT_STORAGE_KEY = "caterSmartEquipment";
 function getEquipmentFromStorage(): Equipment[] {
   if (typeof window === "undefined") return [];
   const data = localStorage.getItem(EQUIPMENT_STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Error parsing equipment from localStorage:", error);
+      return [];
+    }
+  }
+  return [];
 }
 
 function saveEquipmentToStorage(equipment: Equipment[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(EQUIPMENT_STORAGE_KEY, JSON.stringify(equipment));
+  try {
+    localStorage.setItem(EQUIPMENT_STORAGE_KEY, JSON.stringify(equipment));
+  } catch (error) {
+    console.error("Error saving equipment to localStorage:", error);
+  }
 }
 
 export function getAllEquipment(): Equipment[] {
@@ -23,7 +35,6 @@ export function getAllEquipment(): Equipment[] {
 
 export function getEquipmentById(id: string): Equipment | undefined {
   const allEquipment = getEquipmentFromStorage();
-  // Match by equipmentNumber as that's the user-facing ID for routing and uniqueness
   return allEquipment.find(eq => eq.equipmentNumber === id);
 }
 
@@ -37,8 +48,8 @@ export function addEquipment(equipmentData: EquipmentFormData): Equipment {
 
   const newEquipment: Equipment = {
     ...equipmentData,
-    id: equipmentData.equipmentNumber, // Use equipmentNumber as the internal ID for consistency
-    quantity: Number(equipmentData.quantity), // Ensure quantity is a number
+    id: equipmentData.equipmentNumber,
+    quantity: Number(equipmentData.quantity),
     createdAt: now,
     updatedAt: now,
   };
@@ -52,7 +63,6 @@ export function updateEquipment(originalEquipmentNumber: string, updates: Equipm
   const equipmentIndex = allEquipment.findIndex(eq => eq.equipmentNumber === originalEquipmentNumber);
   if (equipmentIndex === -1) return undefined;
 
-  // If the equipmentNumber is being changed, check for collision
   if (updates.equipmentNumber && updates.equipmentNumber !== originalEquipmentNumber && allEquipment.some(eq => eq.equipmentNumber === updates.equipmentNumber)) {
     throw new Error(`Cannot update Equipment No. to "${updates.equipmentNumber}" as it already exists for other equipment.`);
   }
@@ -60,8 +70,8 @@ export function updateEquipment(originalEquipmentNumber: string, updates: Equipm
   const updatedEquipment: Equipment = {
     ...allEquipment[equipmentIndex],
     ...updates,
-    id: updates.equipmentNumber, // Update internal ID to match new equipmentNumber
-    quantity: Number(updates.quantity), // Ensure quantity is a number
+    id: updates.equipmentNumber,
+    quantity: Number(updates.quantity),
     updatedAt: new Date().toISOString(),
   };
   allEquipment[equipmentIndex] = updatedEquipment;

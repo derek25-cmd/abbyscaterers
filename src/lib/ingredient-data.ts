@@ -9,12 +9,24 @@ const INGREDIENTS_STORAGE_KEY = "caterSmartIngredients";
 function getIngredientsFromStorage(): Ingredient[] {
   if (typeof window === "undefined") return [];
   const data = localStorage.getItem(INGREDIENTS_STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Error parsing ingredients from localStorage:", error);
+      return [];
+    }
+  }
+  return [];
 }
 
 function saveIngredientsToStorage(ingredients: Ingredient[]): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(INGREDIENTS_STORAGE_KEY, JSON.stringify(ingredients));
+  try {
+    localStorage.setItem(INGREDIENTS_STORAGE_KEY, JSON.stringify(ingredients));
+  } catch (error) {
+    console.error("Error saving ingredients to localStorage:", error);
+  }
 }
 
 export function getAllIngredients(): Ingredient[] {
@@ -36,7 +48,7 @@ export function addIngredient(ingredientData: IngredientFormData): Ingredient {
 
   const newIngredient: Ingredient = {
     ...ingredientData,
-    id: ingredientData.itemNumber, // Use itemNumber as the internal ID
+    id: ingredientData.itemNumber,
     unitPrice: Number(ingredientData.unitPrice),
     createdAt: now,
     updatedAt: now,
@@ -58,7 +70,7 @@ export function updateIngredient(originalItemNumber: string, updates: Ingredient
   const updatedIngredient: Ingredient = {
     ...allIngredients[ingredientIndex],
     ...updates,
-    id: updates.itemNumber, // Update internal ID to match new itemNumber
+    id: updates.itemNumber,
     unitPrice: Number(updates.unitPrice),
     updatedAt: new Date().toISOString(),
   };
