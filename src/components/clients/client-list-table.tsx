@@ -25,7 +25,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Download } from "lucide-react";
 import Link from "next/link";
-import type { Client } from "@/types";
 import { getColumns } from "./columns";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -49,11 +48,11 @@ export function ClientListTable() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
 
-  const handleDeleteRequest = (clientId: string) => {
+  const handleDeleteRequest = React.useCallback((clientId: string) => {
     setClientToDelete(clientId);
-  };
+  }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = React.useCallback(() => {
     if (clientToDelete) {
       const success = deleteClientFromStore(clientToDelete);
       if (success) {
@@ -63,9 +62,9 @@ export function ClientListTable() {
       }
       setClientToDelete(null);
     }
-  };
+  }, [clientToDelete, deleteClientFromStore, toast]);
   
-  const columns = React.useMemo(() => getColumns(handleDeleteRequest), [handleDeleteRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const columns = React.useMemo(() => getColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
     data: clients,

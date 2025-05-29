@@ -59,7 +59,7 @@ export function addEquipment(equipmentData: EquipmentFormData): Equipment {
 }
 
 export function updateEquipment(originalEquipmentNumber: string, updates: EquipmentFormData): Equipment | undefined {
-  let allEquipment = getEquipmentFromStorage();
+  const allEquipment = getEquipmentFromStorage();
   const equipmentIndex = allEquipment.findIndex(eq => eq.equipmentNumber === originalEquipmentNumber);
   if (equipmentIndex === -1) return undefined;
 
@@ -74,17 +74,19 @@ export function updateEquipment(originalEquipmentNumber: string, updates: Equipm
     quantity: Number(updates.quantity),
     updatedAt: new Date().toISOString(),
   };
-  allEquipment[equipmentIndex] = updatedEquipment;
-  saveEquipmentToStorage(allEquipment);
+  
+  const updatedAllEquipment = [...allEquipment];
+  updatedAllEquipment[equipmentIndex] = updatedEquipment;
+  saveEquipmentToStorage(updatedAllEquipment);
   return updatedEquipment;
 }
 
 export function deleteEquipment(equipmentNumber: string): boolean {
-  let allEquipment = getEquipmentFromStorage();
+  const allEquipment = getEquipmentFromStorage();
   const initialLength = allEquipment.length;
-  allEquipment = allEquipment.filter(eq => eq.equipmentNumber !== equipmentNumber);
-  if (allEquipment.length < initialLength) {
-    saveEquipmentToStorage(allEquipment);
+  const updatedAllEquipment = allEquipment.filter(eq => eq.equipmentNumber !== equipmentNumber);
+  if (updatedAllEquipment.length < initialLength) {
+    saveEquipmentToStorage(updatedAllEquipment);
     return true;
   }
   return false;

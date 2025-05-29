@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye, Building } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -83,4 +83,3 @@ export const getColumns = (
     },
   },
 ];
-

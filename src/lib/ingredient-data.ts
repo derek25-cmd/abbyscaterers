@@ -59,7 +59,7 @@ export function addIngredient(ingredientData: IngredientFormData): Ingredient {
 }
 
 export function updateIngredient(originalItemNumber: string, updates: IngredientFormData): Ingredient | undefined {
-  let allIngredients = getIngredientsFromStorage();
+  const allIngredients = getIngredientsFromStorage();
   const ingredientIndex = allIngredients.findIndex(ing => ing.itemNumber === originalItemNumber);
   if (ingredientIndex === -1) return undefined;
 
@@ -74,17 +74,19 @@ export function updateIngredient(originalItemNumber: string, updates: Ingredient
     unitPrice: Number(updates.unitPrice),
     updatedAt: new Date().toISOString(),
   };
-  allIngredients[ingredientIndex] = updatedIngredient;
-  saveIngredientsToStorage(allIngredients);
+
+  const updatedAllIngredients = [...allIngredients];
+  updatedAllIngredients[ingredientIndex] = updatedIngredient;
+  saveIngredientsToStorage(updatedAllIngredients);
   return updatedIngredient;
 }
 
 export function deleteIngredient(itemNumber: string): boolean {
-  let allIngredients = getIngredientsFromStorage();
+  const allIngredients = getIngredientsFromStorage();
   const initialLength = allIngredients.length;
-  allIngredients = allIngredients.filter(ing => ing.itemNumber !== itemNumber);
-  if (allIngredients.length < initialLength) {
-    saveIngredientsToStorage(allIngredients);
+  const updatedAllIngredients = allIngredients.filter(ing => ing.itemNumber !== itemNumber);
+  if (updatedAllIngredients.length < initialLength) {
+    saveIngredientsToStorage(updatedAllIngredients);
     return true;
   }
   return false;

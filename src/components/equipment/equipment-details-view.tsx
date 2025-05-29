@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Edit, Package, Tag, Zap, Hash, CalendarClock, Archive, Layers, ShieldCheck, Info } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface EquipmentDetailsViewProps {
@@ -33,6 +33,12 @@ export function EquipmentDetailsView({ equipment }: EquipmentDetailsViewProps) {
       </div>
     </div>
     );
+  };
+
+  const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy 'at' h:mm a") => {
+    if (!dateString) return "N/A";
+    const parsedDate = parseISO(dateString);
+    return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
   };
 
   return (
@@ -92,14 +98,14 @@ export function EquipmentDetailsView({ equipment }: EquipmentDetailsViewProps) {
                     <DetailItem 
                       icon={CalendarClock} 
                       label="Created At" 
-                      value={equipment.createdAt ? format(parseISO(equipment.createdAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
+                      value={formatDateSafe(equipment.createdAt)} 
                     />
                 </div>
                 <div className="divide-y divide-border">
                     <DetailItem 
                       icon={CalendarClock} 
                       label="Last Updated" 
-                      value={equipment.updatedAt ? format(parseISO(equipment.updatedAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
+                      value={formatDateSafe(equipment.updatedAt)} 
                     />
                 </div>
             </div>

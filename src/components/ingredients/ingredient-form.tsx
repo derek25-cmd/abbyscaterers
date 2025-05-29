@@ -75,9 +75,13 @@ export function IngredientForm({ ingredient }: IngredientFormProps) {
         toast({ title: "Ingredient Added", description: `${newIngredientData.itemDescription} (No: ${newIngredientData.itemNumber}) has been added.` });
         router.push("/ingredients");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
-      toast({ variant: "destructive", title: "Submission Error", description: error.message || "An unexpected error occurred." });
+      let errorMessage = "An unexpected error occurred.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast({ variant: "destructive", title: "Submission Error", description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }

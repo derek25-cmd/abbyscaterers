@@ -5,8 +5,8 @@ import type { Ingredient } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Edit, PackagePlus, Tag, Hash, CalendarClock, Info, DollarSign, ListChecks, Scale } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Edit, PackagePlus, Tag, CalendarClock, Info, DollarSign, ListChecks, Scale } from "lucide-react";
+import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -34,6 +34,12 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
       </div>
     </div>
     );
+  };
+
+  const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy 'at' h:mm a") => {
+    if (!dateString) return "N/A";
+    const parsedDate = parseISO(dateString);
+    return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
   };
 
   const formattedUnitPrice = new Intl.NumberFormat("en-US", {
@@ -86,14 +92,14 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
                     <DetailItem 
                       icon={CalendarClock} 
                       label="Created At" 
-                      value={ingredient.createdAt ? format(parseISO(ingredient.createdAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
+                      value={formatDateSafe(ingredient.createdAt)} 
                     />
                 </div>
                 <div className="divide-y divide-border">
                     <DetailItem 
                       icon={CalendarClock} 
                       label="Last Updated" 
-                      value={ingredient.updatedAt ? format(parseISO(ingredient.updatedAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
+                      value={formatDateSafe(ingredient.updatedAt)} 
                     />
                 </div>
             </div>

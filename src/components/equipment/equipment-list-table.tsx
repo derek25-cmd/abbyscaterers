@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -47,11 +48,11 @@ export function EquipmentListTable() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
-  const handleDeleteRequest = (equipmentNumber: string) => {
+  const handleDeleteRequest = React.useCallback((equipmentNumber: string) => {
     setItemToDelete(equipmentNumber);
-  };
+  }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = React.useCallback(() => {
     if (itemToDelete) {
       const success = deleteEquipmentFromStore(itemToDelete);
       if (success) {
@@ -61,9 +62,9 @@ export function EquipmentListTable() {
       }
       setItemToDelete(null);
     }
-  };
+  }, [itemToDelete, deleteEquipmentFromStore, toast]);
   
-  const columns = React.useMemo(() => getEquipmentColumns(handleDeleteRequest), [handleDeleteRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const columns = React.useMemo(() => getEquipmentColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
     data: equipmentList,

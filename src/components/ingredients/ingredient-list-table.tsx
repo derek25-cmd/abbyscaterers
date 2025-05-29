@@ -48,11 +48,11 @@ export function IngredientListTable() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
-  const handleDeleteRequest = (itemNumber: string) => {
+  const handleDeleteRequest = React.useCallback((itemNumber: string) => {
     setItemToDelete(itemNumber);
-  };
+  }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = React.useCallback(() => {
     if (itemToDelete) {
       const success = deleteIngredientFromStore(itemToDelete);
       if (success) {
@@ -62,9 +62,9 @@ export function IngredientListTable() {
       }
       setItemToDelete(null);
     }
-  };
+  }, [itemToDelete, deleteIngredientFromStore, toast]);
   
-  const columns = React.useMemo(() => getIngredientColumns(handleDeleteRequest), [handleDeleteRequest]); // eslint-disable-line react-hooks/exhaustive-deps
+  const columns = React.useMemo(() => getIngredientColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
     data: ingredients,

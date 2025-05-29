@@ -64,7 +64,7 @@ export function addClient(clientData: ClientFormData): Client {
 }
 
 export function updateClient(originalId: string, updates: ClientFormData): Client | undefined {
-  let clients = getClientsFromStorage();
+  const clients = getClientsFromStorage();
   const clientIndex = clients.findIndex(client => client.id === originalId);
   if (clientIndex === -1) return undefined;
 
@@ -78,17 +78,19 @@ export function updateClient(originalId: string, updates: ClientFormData): Clien
     id: updates.id,
     updatedAt: new Date().toISOString(),
   };
-  clients[clientIndex] = updatedClient;
-  saveClientsToStorage(clients);
+  
+  const updatedClients = [...clients];
+  updatedClients[clientIndex] = updatedClient;
+  saveClientsToStorage(updatedClients);
   return updatedClient;
 }
 
 export function deleteClient(id: string): boolean {
-  let clients = getClientsFromStorage();
+  const clients = getClientsFromStorage();
   const initialLength = clients.length;
-  clients = clients.filter(client => client.id !== id);
-  if (clients.length < initialLength) {
-    saveClientsToStorage(clients);
+  const updatedClients = clients.filter(client => client.id !== id);
+  if (updatedClients.length < initialLength) {
+    saveClientsToStorage(updatedClients);
     return true;
   }
   return false;

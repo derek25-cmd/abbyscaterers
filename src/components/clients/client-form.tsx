@@ -16,7 +16,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clientSchema, type ClientFormData } from "@/lib/schemas";
@@ -24,7 +23,7 @@ import type { Client } from "@/types";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon, Loader2, Info } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import React, { useState, useEffect } from "react";
 
@@ -92,9 +91,13 @@ export function ClientForm({ client }: ClientFormProps) {
         toast({ title: "Client Added", description: `${newClientData.companyName} (ID: ${newClientData.id}) has been added.` });
         router.push("/clients");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
-      toast({ variant: "destructive", title: "Submission Error", description: error.message || "An unexpected error occurred." });
+      let errorMessage = "An unexpected error occurred.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast({ variant: "destructive", title: "Submission Error", description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -210,46 +213,50 @@ export function ClientForm({ client }: ClientFormProps) {
              <FormField
                 control={form.control}
                 name="lastContacted"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Last Contacted</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(parseISO(field.value), "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value ? parseISO(field.value) : undefined}
-                          onSelect={(date) => field.onChange(date?.toISOString())}
-                          disabled={(date) =>
-                            date > new Date() || date < new Date("1900-01-01")
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription>
-                      The date this client was last contacted.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const dateValue = field.value ? parseISO(field.value) : undefined;
+                  const isDateValid = dateValue && isValid(dateValue);
+                  return (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Last Contacted</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {isDateValid && dateValue ? (
+                                format(dateValue, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={isDateValid ? dateValue : undefined}
+                            onSelect={(date) => field.onChange(date?.toISOString())}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        The date this client was last contacted.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
           </CardContent>
         </Card>

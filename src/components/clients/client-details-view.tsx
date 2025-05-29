@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building, Fingerprint } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface ClientDetailsViewProps {
@@ -37,6 +37,12 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
       </div>
     </div>
     );
+  };
+
+  const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy") => {
+    if (!dateString) return "N/A";
+    const parsedDate = parseISO(dateString);
+    return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
   };
 
   return (
@@ -74,17 +80,17 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
             <DetailItem 
               icon={CalendarDays} 
               label="Last Contacted" 
-              value={client.lastContacted ? format(parseISO(client.lastContacted), "MMMM d, yyyy") : "N/A"} 
+              value={formatDateSafe(client.lastContacted)} 
             />
             <DetailItem 
               icon={CalendarDays} 
               label="Client Since" 
-              value={client.createdAt ? format(parseISO(client.createdAt), "MMMM d, yyyy") : "N/A"} 
+              value={formatDateSafe(client.createdAt)} 
             />
             <DetailItem 
               icon={CalendarDays} 
               label="Profile Last Updated" 
-              value={client.updatedAt ? format(parseISO(client.updatedAt), "MMMM d, yyyy 'at' h:mm a") : "N/A"} 
+              value={formatDateSafe(client.updatedAt, "MMMM d, yyyy 'at' h:mm a")} 
             />
           </div>
         </div>
