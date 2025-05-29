@@ -8,7 +8,14 @@ const EQUIPMENT_STORAGE_KEY = "caterSmartEquipment";
 
 function getEquipmentFromStorage(): Equipment[] {
   if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(EQUIPMENT_STORAGE_KEY);
+  let data = null;
+  try {
+    data = localStorage.getItem(EQUIPMENT_STORAGE_KEY);
+  } catch (error) {
+    console.error("Error reading equipment from localStorage:", error);
+    return [];
+  }
+
   if (data) {
     try {
       return JSON.parse(data);
@@ -48,7 +55,7 @@ export function addEquipment(equipmentData: EquipmentFormData): Equipment {
 
   const newEquipment: Equipment = {
     ...equipmentData,
-    id: equipmentData.equipmentNumber,
+    id: equipmentData.equipmentNumber, 
     quantity: Number(equipmentData.quantity),
     createdAt: now,
     updatedAt: now,
@@ -70,7 +77,8 @@ export function updateEquipment(originalEquipmentNumber: string, updates: Equipm
   const updatedEquipment: Equipment = {
     ...allEquipment[equipmentIndex],
     ...updates,
-    id: updates.equipmentNumber,
+    id: updates.equipmentNumber, // Ensure the id is updated if equipmentNumber changes
+    equipmentNumber: updates.equipmentNumber,
     quantity: Number(updates.quantity),
     updatedAt: new Date().toISOString(),
   };
@@ -82,11 +90,11 @@ export function updateEquipment(originalEquipmentNumber: string, updates: Equipm
 }
 
 export function deleteEquipment(equipmentNumber: string): boolean {
-  const allEquipment = getEquipmentFromStorage();
+  let allEquipment = getEquipmentFromStorage();
   const initialLength = allEquipment.length;
-  const updatedAllEquipment = allEquipment.filter(eq => eq.equipmentNumber !== equipmentNumber);
-  if (updatedAllEquipment.length < initialLength) {
-    saveEquipmentToStorage(updatedAllEquipment);
+  allEquipment = allEquipment.filter(eq => eq.equipmentNumber !== equipmentNumber);
+  if (allEquipment.length < initialLength) {
+    saveEquipmentToStorage(allEquipment);
     return true;
   }
   return false;

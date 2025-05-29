@@ -8,7 +8,13 @@ const INGREDIENTS_STORAGE_KEY = "caterSmartIngredients";
 
 function getIngredientsFromStorage(): Ingredient[] {
   if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(INGREDIENTS_STORAGE_KEY);
+  let data = null;
+  try {
+    data = localStorage.getItem(INGREDIENTS_STORAGE_KEY);
+  } catch (error) {
+    console.error("Error reading ingredients from localStorage:", error);
+    return [];
+  }
   if (data) {
     try {
       return JSON.parse(data);
@@ -70,7 +76,8 @@ export function updateIngredient(originalItemNumber: string, updates: Ingredient
   const updatedIngredient: Ingredient = {
     ...allIngredients[ingredientIndex],
     ...updates,
-    id: updates.itemNumber,
+    id: updates.itemNumber, // Ensure id is updated if itemNumber changes
+    itemNumber: updates.itemNumber,
     unitPrice: Number(updates.unitPrice),
     updatedAt: new Date().toISOString(),
   };
@@ -82,11 +89,11 @@ export function updateIngredient(originalItemNumber: string, updates: Ingredient
 }
 
 export function deleteIngredient(itemNumber: string): boolean {
-  const allIngredients = getIngredientsFromStorage();
+  let allIngredients = getIngredientsFromStorage();
   const initialLength = allIngredients.length;
-  const updatedAllIngredients = allIngredients.filter(ing => ing.itemNumber !== itemNumber);
-  if (updatedAllIngredients.length < initialLength) {
-    saveIngredientsToStorage(updatedAllIngredients);
+  allIngredients = allIngredients.filter(ing => ing.itemNumber !== itemNumber);
+  if (allIngredients.length < initialLength) {
+    saveIngredientsToStorage(allIngredients);
     return true;
   }
   return false;

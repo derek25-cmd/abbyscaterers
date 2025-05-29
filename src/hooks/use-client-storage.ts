@@ -1,7 +1,9 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Client } from '@/types';
+import type { ClientFormData } from '@/lib/schemas'; // Import ClientFormData
 import { 
   getAllClients as getAllClientsFromStorage,
   getClientById as getClientByIdFromStorage,
@@ -28,17 +30,23 @@ export function useClientStorage() {
     }
   }, []);
 
-  const addClient = useCallback((clientData: Omit<Client, "id" | "createdAt" | "updatedAt">) => {
+  const addClient = useCallback((clientData: ClientFormData) => { // Changed type here
     const newClient = addClientToStorage(clientData);
     setClients(prevClients => [...prevClients, newClient]);
     return newClient;
   }, []);
 
-  const updateClient = useCallback((id: string, updates: Partial<Omit<Client, "id" | "createdAt">>) => {
+  const updateClient = useCallback((id: string, updates: ClientFormData) => { // Ensure updates is ClientFormData
     const updatedClient = updateClientInStorage(id, updates);
     if (updatedClient) {
       setClients(prevClients => 
-        prevClients.map(c => c.id === id ? updatedClient : c)
+        // If ID can change, we need to handle replacing the old ID with the new one
+        // or simply refresh all clients to get the latest state.
+        // For simplicity, if ID changed, the list might briefly show both old & new ID
+        // until next full refresh, or we find by original ID for update, then filter by new ID.
+        // The current updateClientInStorage handles ID changes.
+        prevClients.map(c => c.id === (updatedClient.id === id ? id : updatedClient.id) ? updatedClient : c)
+                   .filter((c, index, self) => index === self.findIndex(t => t.id === c.id)) // Ensure unique IDs
       );
     }
     return updatedClient;
@@ -71,3 +79,4 @@ export function useClientStorage() {
     refreshClients 
   };
 }
+

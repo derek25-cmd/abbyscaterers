@@ -8,7 +8,14 @@ const CLIENTS_STORAGE_KEY = "caterSmartClients";
 
 function getClientsFromStorage(): Client[] {
   if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(CLIENTS_STORAGE_KEY);
+  let data = null;
+  try {
+    data = localStorage.getItem(CLIENTS_STORAGE_KEY);
+  } catch (error) {
+    console.error("Error reading clients from localStorage:", error);
+    return []; // Return empty array on read error
+  }
+
   if (data) {
     try {
       return JSON.parse(data);
@@ -75,7 +82,7 @@ export function updateClient(originalId: string, updates: ClientFormData): Clien
   const updatedClient: Client = {
     ...clients[clientIndex],
     ...updates,
-    id: updates.id,
+    id: updates.id, // Ensure the ID is updated from the form data
     updatedAt: new Date().toISOString(),
   };
   
@@ -86,11 +93,11 @@ export function updateClient(originalId: string, updates: ClientFormData): Clien
 }
 
 export function deleteClient(id: string): boolean {
-  const clients = getClientsFromStorage();
+  let clients = getClientsFromStorage();
   const initialLength = clients.length;
-  const updatedClients = clients.filter(client => client.id !== id);
-  if (updatedClients.length < initialLength) {
-    saveClientsToStorage(updatedClients);
+  clients = clients.filter(client => client.id !== id);
+  if (clients.length < initialLength) {
+    saveClientsToStorage(clients);
     return true;
   }
   return false;
