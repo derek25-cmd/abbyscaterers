@@ -1,6 +1,6 @@
 import { EquipmentDetailsPageComponent } from './equipment-details-page-component';
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   return [];
 }
 
