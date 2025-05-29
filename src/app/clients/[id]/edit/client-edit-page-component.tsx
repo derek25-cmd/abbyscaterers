@@ -33,7 +33,7 @@ export function ClientEditPageComponent() {
       setError("Invalid client ID.");
       setIsLoading(false);
     }
-  }, [clientId, getClientById, storageLoading, router]); // Added router to dependencies
+  }, [clientId, getClientById, storageLoading, router]);
 
   if (isLoading || storageLoading) {
     return (
