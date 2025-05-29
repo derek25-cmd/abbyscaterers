@@ -2,6 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'export', // Added for static HTML export
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -17,6 +18,9 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    // If you use next/image for local images and export statically,
+    // you might need to unoptimize them for Electron.
+    // unoptimized: true, 
   },
 };
 
