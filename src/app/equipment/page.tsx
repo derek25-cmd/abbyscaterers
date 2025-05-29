@@ -1,5 +1,6 @@
 
-import { EquipmentListTable } from "@/components/equipment/equipment-list-table";
+import { EquipmentListTable } from '@/components/equipment/equipment-list-table';
+
 import { ChefHat } from "lucide-react";
 
 export default function EquipmentPage() {

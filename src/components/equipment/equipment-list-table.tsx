@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -38,7 +37,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Equipment } from "@/types";
 
 export function EquipmentListTable() {
   const { equipmentList, isLoading, deleteEquipment: deleteEquipmentFromStore } = useEquipmentStorage();
