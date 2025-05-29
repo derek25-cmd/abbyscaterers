@@ -34,7 +34,7 @@ export function IngredientEditPageComponent() {
       setError("Invalid ingredient ID.");
       setIsLoading(false);
     }
-  }, [ingredientId, getIngredientById, storageLoading, router]);
+  }, [ingredientId, getIngredientById, storageLoading, router]); // Added router
 
   if (isLoading || storageLoading) {
     return (

@@ -35,7 +35,7 @@ export function EquipmentDetailsPageComponent() {
       setError("Invalid equipment ID provided.");
       setIsLoading(false);
     }
-  }, [equipmentId, getEquipmentById, storageLoading, router]);
+  }, [equipmentId, getEquipmentById, storageLoading, router]); // Added router
 
   if (isLoading || storageLoading) {
     return (

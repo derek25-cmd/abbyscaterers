@@ -35,7 +35,7 @@ export function ClientDetailsPageComponent() {
       setError("Invalid client ID provided.");
       setIsLoading(false);
     }
-  }, [clientId, getClientById, storageLoading, router]);
+  }, [clientId, getClientById, storageLoading, router]); // Added router to dependencies
 
   if (isLoading || storageLoading) {
     return (

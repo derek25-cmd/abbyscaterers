@@ -35,7 +35,7 @@ export function IngredientDetailsPageComponent() {
       setError("Invalid ingredient ID provided.");
       setIsLoading(false);
     }
-  }, [ingredientId, getIngredientById, storageLoading, router]);
+  }, [ingredientId, getIngredientById, storageLoading, router]); // Added router
 
   if (isLoading || storageLoading) {
     return (
