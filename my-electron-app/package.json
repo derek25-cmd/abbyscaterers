@@ -5,7 +5,7 @@
   "scripts": {
   "start": "electron .",
   "test": "echo \"Error: no test specified\" && exit 1",
-  "package": "electron-packager . --overwrite --asar=true --platform=darwin --arch=x64 --icon=assets/icons/mac/icon.icns --prune=true --out=release-builds",
+  "package": "electron-packager . --overwrite --asar=true --platform=darwin --arch=x64 --prune=true --out=release-builds",
   "dist": "./node_modules/.bin/electron-builder"
 },
 "build": {
@@ -20,16 +20,9 @@
     "preload.js",
     "../out/**/*"
   ],
-  "mac": {
-    "icon": "assets/icons/mac/icon.icns"
-  },
-  "win": {
-    "icon": "assets/icons/win/icon.ico"
-  },
-  "linux": {
-    "icon": "assets/icons/png/512x512.png"
-  }
-
+  "mac": {},
+  "win": {},
+  "linux": {}
 },
   "keywords": [],
   "author": "",
