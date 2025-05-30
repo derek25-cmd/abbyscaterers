@@ -1,4 +1,6 @@
 
+export const dynamic = 'force-dynamic';
+
 import { ClientEditPageComponent } from './client-edit-page-component';
 
 export async function generateStaticParams() {
