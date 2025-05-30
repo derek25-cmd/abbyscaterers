@@ -3,7 +3,7 @@
 
 import { IngredientForm } from "@/components/ingredients/ingredient-form";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation"; // Removed useRouter
 import { useEffect, useState } from "react";
 import type { Ingredient } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton"; 
@@ -11,7 +11,7 @@ import { Edit3, PackagePlus } from "lucide-react";
 
 export function IngredientEditPageComponent() {
   const params = useParams();
-  const router = useRouter();
+  // const router = useRouter(); // Not used
   const { getIngredientById, isLoading: storageLoading } = useIngredientStorage();
   const [ingredient, setIngredient] = useState<Ingredient | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,19 +22,25 @@ export function IngredientEditPageComponent() {
   useEffect(() => {
     if (ingredientId) {
       if (!storageLoading) { 
-        const fetchedIngredient = getIngredientById(ingredientId); 
-        if (fetchedIngredient) {
-          setIngredient(fetchedIngredient);
-        } else {
-          setError("Ingredient not found.");
+        try {
+          const fetchedIngredient = getIngredientById(ingredientId); 
+          if (fetchedIngredient) {
+            setIngredient(fetchedIngredient);
+          } else {
+            setError("Ingredient not found.");
+          }
+        } catch (e) {
+          console.error("Error fetching ingredient for edit:", e);
+          setError("An unexpected error occurred while loading ingredient data for editing.");
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     } else {
       setError("Invalid ingredient ID.");
       setIsLoading(false);
     }
-  }, [ingredientId, getIngredientById, storageLoading, router]); // Added router
+  }, [ingredientId, getIngredientById, storageLoading]);
 
   if (isLoading || storageLoading) {
     return (

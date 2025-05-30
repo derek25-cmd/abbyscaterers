@@ -3,7 +3,7 @@
 
 import { IngredientDetailsView } from "@/components/ingredients/ingredient-details-view";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation"; // Removed useRouter
 import { useEffect, useState } from "react";
 import type { Ingredient } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import Link from "next/link";
 
 export function IngredientDetailsPageComponent() {
   const params = useParams();
-  const router = useRouter();
+  // const router = useRouter(); // Not used
   const { getIngredientById, isLoading: storageLoading } = useIngredientStorage();
   const [ingredient, setIngredient] = useState<Ingredient | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,19 +23,25 @@ export function IngredientDetailsPageComponent() {
   useEffect(() => {
     if (ingredientId) {
        if (!storageLoading) {
-        const fetchedIngredient = getIngredientById(ingredientId); 
-        if (fetchedIngredient) {
-          setIngredient(fetchedIngredient);
-        } else {
-          setError("Ingredient not found. The item may have been deleted or the ID is incorrect.");
+        try {
+          const fetchedIngredient = getIngredientById(ingredientId); 
+          if (fetchedIngredient) {
+            setIngredient(fetchedIngredient);
+          } else {
+            setError("Ingredient not found. The item may have been deleted or the ID is incorrect.");
+          }
+        } catch (e) {
+          console.error("Error fetching ingredient details:", e);
+          setError("An unexpected error occurred while loading ingredient data.");
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     } else {
       setError("Invalid ingredient ID provided.");
       setIsLoading(false);
     }
-  }, [ingredientId, getIngredientById, storageLoading, router]); // Added router
+  }, [ingredientId, getIngredientById, storageLoading]);
 
   if (isLoading || storageLoading) {
     return (

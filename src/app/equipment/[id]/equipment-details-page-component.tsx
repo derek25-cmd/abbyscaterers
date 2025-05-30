@@ -3,7 +3,7 @@
 
 import { EquipmentDetailsView } from "@/components/equipment/equipment-details-view";
 import { useEquipmentStorage } from "@/hooks/use-equipment-storage";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation"; // Removed useRouter
 import { useEffect, useState } from "react";
 import type { Equipment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import Link from "next/link";
 
 export function EquipmentDetailsPageComponent() {
   const params = useParams();
-  const router = useRouter();
+  // const router = useRouter(); // Not used
   const { getEquipmentById, isLoading: storageLoading } = useEquipmentStorage();
   const [equipment, setEquipment] = useState<Equipment | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,19 +23,25 @@ export function EquipmentDetailsPageComponent() {
   useEffect(() => {
     if (equipmentId) {
        if (!storageLoading) {
-        const fetchedEquipment = getEquipmentById(equipmentId); 
-        if (fetchedEquipment) {
-          setEquipment(fetchedEquipment);
-        } else {
-          setError("Equipment not found. The item may have been deleted or the ID is incorrect.");
+        try {
+          const fetchedEquipment = getEquipmentById(equipmentId); 
+          if (fetchedEquipment) {
+            setEquipment(fetchedEquipment);
+          } else {
+            setError("Equipment not found. The item may have been deleted or the ID is incorrect.");
+          }
+        } catch (e) {
+          console.error("Error fetching equipment details:", e);
+          setError("An unexpected error occurred while loading equipment data.");
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     } else {
       setError("Invalid equipment ID provided.");
       setIsLoading(false);
     }
-  }, [equipmentId, getEquipmentById, storageLoading, router]); // Added router
+  }, [equipmentId, getEquipmentById, storageLoading]);
 
   if (isLoading || storageLoading) {
     return (

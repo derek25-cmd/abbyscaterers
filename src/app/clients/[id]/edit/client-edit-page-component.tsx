@@ -1,16 +1,16 @@
 
 "use client";
 
-import { ClientForm } from "@/components/clients/client-form";
-import { useClientStorage } from "@/hooks/use-client-storage";
-import { useParams, useRouter } from "next/navigation";
+import { ClientForm } from '@/components/clients/client-form';
+import { useClientStorage } from '@/hooks/use-client-storage';
+import { useParams } from "next/navigation"; // Removed useRouter
 import { useEffect, useState } from "react";
-import type { Client } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton"; 
+import type { Client } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton'; 
 
 export function ClientEditPageComponent() {
   const params = useParams();
-  const router = useRouter();
+  // const router = useRouter(); // Not used
   const { getClientById, isLoading: storageLoading } = useClientStorage();
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,19 +21,25 @@ export function ClientEditPageComponent() {
   useEffect(() => {
     if (clientId) {
       if (!storageLoading) { 
-        const fetchedClient = getClientById(clientId);
-        if (fetchedClient) {
-          setClient(fetchedClient);
-        } else {
-          setError("Client not found.");
+        try {
+          const fetchedClient = getClientById(clientId);
+          if (fetchedClient) {
+            setClient(fetchedClient);
+          } else {
+            setError("Client not found.");
+          }
+        } catch (e) {
+          console.error("Error fetching client for edit:", e);
+          setError("An unexpected error occurred while loading client data for editing.");
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     } else {
       setError("Invalid client ID.");
       setIsLoading(false);
     }
-  }, [clientId, getClientById, storageLoading, router]);
+  }, [clientId, getClientById, storageLoading]);
 
   if (isLoading || storageLoading) {
     return (

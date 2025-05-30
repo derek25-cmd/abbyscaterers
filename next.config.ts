@@ -1,9 +1,9 @@
-
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  output: 'export', // Added for static HTML export
+  // Removed output: 'export' to allow server-side rendering and fix build error
+  // output: 'export', // Added for static HTML export
   typescript: {
     ignoreBuildErrors: false, // Changed to false
   },

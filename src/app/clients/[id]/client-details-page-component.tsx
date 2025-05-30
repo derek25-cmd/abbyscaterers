@@ -1,18 +1,18 @@
 
 "use client";
 
-import { ClientDetailsView } from "@/components/clients/client-details-view";
-import { useClientStorage } from "@/hooks/use-client-storage";
-import { useParams, useRouter } from "next/navigation";
+import { ClientDetailsView } from '../../../components/clients/client-details-view';
+import { useClientStorage } from '../../../hooks/use-client-storage';
+import { useParams } from "next/navigation"; // Removed useRouter as it's not used in this component
 import { useEffect, useState } from "react";
-import type { Client } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import type { Client } from '../../../types';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { Button } from '../../../components/ui/button';
 import Link from "next/link";
 
 export function ClientDetailsPageComponent() {
   const params = useParams();
-  const router = useRouter();
+  // const router = useRouter(); // Not used
   const { getClientById, isLoading: storageLoading } = useClientStorage();
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,19 +23,25 @@ export function ClientDetailsPageComponent() {
   useEffect(() => {
     if (clientId) {
        if (!storageLoading) {
-        const fetchedClient = getClientById(clientId);
-        if (fetchedClient) {
-          setClient(fetchedClient);
-        } else {
-          setError("Client not found. The client may have been deleted or the ID is incorrect.");
+        try {
+          const fetchedClient = getClientById(clientId);
+          if (fetchedClient) {
+            setClient(fetchedClient);
+          } else {
+            setError("Client not found. The client may have been deleted or the ID is incorrect.");
+          }
+        } catch (e) {
+          console.error("Error fetching client details:", e);
+          setError("An unexpected error occurred while loading client data.");
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     } else {
       setError("Invalid client ID provided.");
       setIsLoading(false);
     }
-  }, [clientId, getClientById, storageLoading, router]); // Added router to dependencies
+  }, [clientId, getClientById, storageLoading]);
 
   if (isLoading || storageLoading) {
     return (

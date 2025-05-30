@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -13,7 +12,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Input } from "@/components/ui/input";
+import { Input } from '../ui/input';
 import {
   Table,
   TableBody,
@@ -21,13 +20,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+} from '../ui/table';
+import { Button } from '../ui/button';
 import { PlusCircle, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getEquipmentColumns } from "./columns"; 
-import { useEquipmentStorage } from "@/hooks/use-equipment-storage";
-import { useToast } from "@/hooks/use-toast";
+import { useEquipmentStorage } from '../../hooks/use-equipment-storage';
+import { useToast } from '../../hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +36,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '../ui/alert-dialog';
 
 export function EquipmentListTable() {
   const { equipmentList, isLoading, deleteEquipment: deleteEquipmentFromStore } = useEquipmentStorage();
@@ -89,7 +88,7 @@ export function EquipmentListTable() {
   });
 
   const exportData = () => {
-    const csvRows = [];
+    const csvRows: string[] = [];
     const headers = [
       "EquipmentNo", "EquipmentName", "OEM", "Model", "PowerRating", "Quantity", 
       "YearOfManufacture", "EquipmentSource", "Capacity", "Commitment", 
@@ -97,21 +96,21 @@ export function EquipmentListTable() {
     ];
     csvRows.push(headers.join(','));
 
-    equipmentList.forEach(item => {
+    equipmentList.forEach((item: Record<string, unknown>) => {
       const row = [
-        item.equipmentNumber,
-        `"${item.equipmentName.replace(/"/g, '""')}"`,
-        `"${item.oem?.replace(/"/g, '""') || ''}"`,
-        `"${item.model?.replace(/"/g, '""') || ''}"`,
-        `"${item.powerRating?.replace(/"/g, '""') || ''}"`,
-        item.quantity,
-        `"${item.yearOfManufacture?.replace(/"/g, '""') || ''}"`,
-        `"${item.equipmentSource?.replace(/"/g, '""') || ''}"`,
-        `"${item.capacity?.replace(/"/g, '""') || ''}"`,
-        `"${item.commitment?.replace(/"/g, '""') || ''}"`,
-        `"${item.registrationNumber?.replace(/"/g, '""') || ''}"`,
-        item.createdAt,
-        item.updatedAt
+        item.equipmentNumber as string,
+        `"${(item.equipmentName as string).replace(/"/g, '""')}"`,
+        `"${(item.oem as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.model as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.powerRating as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        item.quantity as number,
+        `"${(item.yearOfManufacture as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.equipmentSource as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.capacity as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.commitment as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.registrationNumber as string | undefined)?.replace(/"/g, '""') || ''}"`,
+        item.createdAt as string,
+        item.updatedAt as string
       ];
       csvRows.push(row.join(','));
     });
@@ -141,14 +140,14 @@ export function EquipmentListTable() {
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Input
-          placeholder="Filter by equipment name..."
-          value={(table.getColumn("equipmentName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("equipmentName")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+          <Input
+            placeholder="Filter by equipment name..."
+            value={(table.getColumn("equipmentName")?.getFilterValue() as string) ?? ""}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              table.getColumn("equipmentName")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />
@@ -230,7 +229,7 @@ export function EquipmentListTable() {
           Next
         </Button>
       </div>
-      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open: boolean) => !open && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

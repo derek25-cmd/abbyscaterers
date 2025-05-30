@@ -8,8 +8,8 @@
  * - ClassifyDietaryRestrictionsOutput - The return type for the classifyDietaryRestrictions function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '../genkit';
+import { z } from 'genkit';
 
 const ClassifyDietaryRestrictionsInputSchema = z.object({
   dietaryRestrictions: z
