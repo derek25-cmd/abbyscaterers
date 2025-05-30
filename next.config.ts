@@ -1,14 +1,12 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  // Removed output: 'export' to allow server-side rendering and fix build error
-  // output: 'export', // Added for static HTML export
+  output: 'export', // Ensure this is active for static export
   typescript: {
-    ignoreBuildErrors: false, // Changed to false
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: false, // Changed to false
+    ignoreDuringBuilds: false,
   },
   images: {
     remotePatterns: [
@@ -19,9 +17,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    // If you use next/image for local images and export statically,
-    // you might need to unoptimize them for Electron.
-    // unoptimized: true, 
+    unoptimized: true, // Recommended for Electron static exports
   },
 };
 

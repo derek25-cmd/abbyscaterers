@@ -1,15 +1,16 @@
+
 "use client";
 
-import { ClientForm } from 'components/clients/client-form';
-import { useClientStorage } from 'hooks/use-client-storage';
-import { useParams } from "next/navigation"; // Removed useRouter
+import { ClientForm } from '@/components/clients/client-form';
+import { useClientStorage } from '@/hooks/use-client-storage';
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Client } from 'types';
-import { Skeleton } from 'components/ui/skeleton';
+import type { Client } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function ClientEditPageComponent() {
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
-  // const router = useRouter(); // Not used
   const { getClientById, isLoading: storageLoading } = useClientStorage();
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -18,6 +19,12 @@ export function ClientEditPageComponent() {
   const clientId = typeof params.id === 'string' ? params.id : undefined;
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if(!isMounted) return;
+
     if (clientId) {
       if (!storageLoading) { 
         try {
@@ -27,9 +34,12 @@ export function ClientEditPageComponent() {
           } else {
             setError("Client not found.");
           }
-        } catch (e) {
+        } catch (e: unknown) {
           console.error("Error fetching client for edit:", e);
           setError("An unexpected error occurred while loading client data for editing.");
+          if (e instanceof Error) {
+            setError(`An unexpected error occurred: ${e.message}`);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -38,9 +48,9 @@ export function ClientEditPageComponent() {
       setError("Invalid client ID.");
       setIsLoading(false);
     }
-  }, [clientId, getClientById, storageLoading]);
+  }, [clientId, getClientById, storageLoading, params, isMounted]);
 
-  if (isLoading || storageLoading) {
+  if (!isMounted || isLoading || storageLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         <Skeleton className="h-10 w-1/3" />

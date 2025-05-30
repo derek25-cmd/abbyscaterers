@@ -3,7 +3,7 @@
 
 import { ClientDetailsView } from '../../../components/clients/client-details-view';
 import { useClientStorage } from '../../../hooks/use-client-storage';
-import { useParams } from "next/navigation"; // Removed useRouter as it's not used in this component
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Client } from '../../../types';
 import { Skeleton } from '../../../components/ui/skeleton';
@@ -11,8 +11,8 @@ import { Button } from '../../../components/ui/button';
 import Link from "next/link";
 
 export function ClientDetailsPageComponent() {
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
-  // const router = useRouter(); // Not used
   const { getClientById, isLoading: storageLoading } = useClientStorage();
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +21,12 @@ export function ClientDetailsPageComponent() {
   const clientId = typeof params.id === 'string' ? params.id : undefined;
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     if (clientId) {
        if (!storageLoading) {
         try {
@@ -41,9 +47,9 @@ export function ClientDetailsPageComponent() {
       setError("Invalid client ID provided.");
       setIsLoading(false);
     }
-  }, [clientId, getClientById, storageLoading]);
+  }, [clientId, getClientById, storageLoading, isMounted]);
 
-  if (isLoading || storageLoading) {
+  if (!isMounted || isLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 p-4">
         <div className="flex justify-between items-center">

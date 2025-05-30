@@ -1,16 +1,16 @@
+
 "use client";
 
-import { EquipmentForm } from 'components/equipment/equipment-form';
-import { useEquipmentStorage } from 'hooks/use-equipment-storage';
-import { useParams } from "next/navigation"; // Removed useRouter
+import { EquipmentForm } from '@/components/equipment/equipment-form';
+import { useEquipmentStorage } from '@/hooks/use-equipment-storage';
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Equipment } from 'types';
-import { Skeleton } from 'components/ui/skeleton';
+import type { Equipment } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ChefHat, Edit } from "lucide-react";
 
 export function EquipmentEditPageComponent() {
   const params = useParams();
-  // const router = useRouter(); // Not used
   const { getEquipmentById, isLoading: storageLoading } = useEquipmentStorage();
   const [equipment, setEquipment] = useState<Equipment | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,9 +28,12 @@ export function EquipmentEditPageComponent() {
           } else {
             setError("Equipment not found.");
           }
-        } catch (e) {
+        } catch (e: unknown) {
           console.error("Error fetching equipment for edit:", e);
           setError("An unexpected error occurred while loading equipment data for editing.");
+          if (e instanceof Error) {
+            setError(`An unexpected error occurred: ${e.message}`);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -39,7 +42,7 @@ export function EquipmentEditPageComponent() {
       setError("Invalid equipment ID.");
       setIsLoading(false);
     }
-  }, [equipmentId, getEquipmentById, storageLoading]);
+  }, [equipmentId, getEquipmentById, storageLoading, params]); // Added params to dependency array
 
   if (isLoading || storageLoading) {
     return (
