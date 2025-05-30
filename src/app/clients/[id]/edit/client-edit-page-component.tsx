@@ -15,7 +15,7 @@ export function ClientEditPageComponent() {
   const params = useParams();
   const { getClientById, isLoading: storageLoading } = useClientStorage();
   const [client, setClient] = useState<Client | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true); // Renamed from isLoading
   const [error, setError] = useState<string | null>(null);
 
   const clientId = typeof params.id === 'string' ? params.id : undefined;
@@ -25,37 +25,47 @@ export function ClientEditPageComponent() {
   }, []);
 
   useEffect(() => {
-    if(!isMounted || !clientId) {
-      if (!clientId && isMounted) {
-          setError("Invalid client ID provided.");
-          setIsLoading(false);
-      }
+    if (!isMounted) {
       return;
     }
 
-    if (!storageLoading) { 
-      setIsLoading(true); // Set loading true before fetching
-      try {
-        const fetchedClient = getClientById(clientId);
-        if (fetchedClient) {
-          setClient(fetchedClient);
-        } else {
-          setError("Client not found.");
-        }
-      } catch (e: unknown) {
-        console.error("Error fetching client for edit:", e);
-        let message = "An unexpected error occurred while loading client data for editing.";
-        if (e instanceof Error) {
-          message = `An unexpected error occurred: ${e.message}`;
-        }
-        setError(message);
-      } finally {
-        setIsLoading(false);
+    if (!clientId) {
+      setError("Invalid client ID provided.");
+      setClient(undefined);
+      setComponentLoading(false);
+      return;
+    }
+
+    if (storageLoading) {
+      setComponentLoading(true);
+      return;
+    }
+    
+    setComponentLoading(true);
+    setError(null);
+
+    try {
+      const fetchedClient = getClientById(clientId);
+      if (fetchedClient) {
+        setClient(fetchedClient);
+      } else {
+        setClient(undefined);
+        setError("Client not found. Cannot edit a non-existent client.");
       }
+    } catch (e: unknown) {
+      console.error("Error fetching client for edit:", e);
+      setClient(undefined);
+      let message = "An unexpected error occurred while loading client data for editing.";
+      if (e instanceof Error) {
+        message = `An unexpected error occurred: ${e.message}`;
+      }
+      setError(message);
+    } finally {
+      setComponentLoading(false);
     }
   }, [clientId, getClientById, storageLoading, isMounted]);
 
-  if (!isMounted || isLoading || storageLoading) {
+  if (!isMounted || componentLoading || storageLoading) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         <Skeleton className="h-10 w-1/3" />
@@ -80,11 +90,11 @@ export function ClientEditPageComponent() {
     );
   }
 
-  if (!client) {
+  if (!client || !client.id) { // Added check for client.id
     return (
       <div className="text-center py-10 max-w-xl mx-auto">
-        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Client Data Not Available</h2>
-        <p className="text-muted-foreground mb-6">Could not load client data for editing. The client might have been deleted.</p>
+        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Client Data Not Available for Editing</h2>
+        <p className="text-muted-foreground mb-6">Could not load client data for editing. The client might have been deleted or the ID is incorrect.</p>
         <Button asChild>
           <Link href="/clients">Go to Client List</Link>
         </Button>

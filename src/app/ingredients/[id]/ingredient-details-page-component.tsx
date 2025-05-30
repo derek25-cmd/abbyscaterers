@@ -15,7 +15,7 @@ export function IngredientDetailsPageComponent() {
   const params = useParams();
   const { getIngredientById, isLoading: storageLoading } = useIngredientStorage();
   const [ingredient, setIngredient] = useState<Ingredient | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true); // Renamed from isLoading
   const [error, setError] = useState<string | null>(null);
 
   const ingredientId = typeof params.id === 'string' ? params.id : undefined; 
@@ -25,33 +25,42 @@ export function IngredientDetailsPageComponent() {
   }, []);
 
   useEffect(() => {
-    if (!isMounted || !ingredientId) {
-      if (!ingredientId && isMounted) {
-        setError("Invalid ingredient ID provided.");
-        setIsLoading(false);
-      }
+    if (!isMounted) {
+      return;
+    }
+
+    if (!ingredientId) {
+      setError("Invalid ingredient ID provided.");
+      setIngredient(undefined);
+      setComponentLoading(false);
       return;
     }
     
-    if (!storageLoading) {
-      setIsLoading(true);
-      try {
-        const fetchedIngredient = getIngredientById(ingredientId); 
-        if (fetchedIngredient) {
-          setIngredient(fetchedIngredient);
-        } else {
-          setError("Ingredient not found. The item may have been deleted or the ID is incorrect.");
-        }
-      } catch (e) {
-        console.error("Error fetching ingredient details:", e);
-        setError("An unexpected error occurred while loading ingredient data.");
-      } finally {
-        setIsLoading(false);
+    if (storageLoading) {
+      setComponentLoading(true);
+      return;
+    }
+
+    setComponentLoading(true);
+    setError(null);
+    try {
+      const fetchedIngredient = getIngredientById(ingredientId); 
+      if (fetchedIngredient) {
+        setIngredient(fetchedIngredient);
+      } else {
+        setIngredient(undefined);
+        setError("Ingredient not found. The item may have been deleted or the ID is incorrect.");
       }
+    } catch (e) {
+      console.error("Error fetching ingredient details:", e);
+      setIngredient(undefined);
+      setError("An unexpected error occurred while loading ingredient data.");
+    } finally {
+      setComponentLoading(false);
     }
   }, [ingredientId, getIngredientById, storageLoading, isMounted]);
 
-  if (!isMounted || isLoading || storageLoading) {
+  if (!isMounted || componentLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 p-4">
         <div className="flex justify-between items-center">
@@ -80,11 +89,11 @@ export function IngredientDetailsPageComponent() {
     );
   }
   
-  if (!ingredient) {
+  if (!ingredient || !ingredient.itemNumber) { // Added check for ingredient.itemNumber
      return (
       <div className="text-center py-10 max-w-xl mx-auto">
         <h2 className="text-2xl font-semibold text-destructive mb-4">Ingredient Not Found</h2>
-        <p className="text-muted-foreground mb-6">The requested ingredient could not be found. It might have been deleted.</p>
+        <p className="text-muted-foreground mb-6">The requested ingredient could not be found. It might have been deleted or the ID is incorrect.</p>
         <Button asChild>
           <Link href="/ingredients">Go to Ingredient List</Link>
         </Button>

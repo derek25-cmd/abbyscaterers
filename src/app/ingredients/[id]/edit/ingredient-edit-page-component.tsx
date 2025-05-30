@@ -16,7 +16,7 @@ export function IngredientEditPageComponent() {
   const params = useParams();
   const { getIngredientById, isLoading: storageLoading } = useIngredientStorage();
   const [ingredient, setIngredient] = useState<Ingredient | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true); // Renamed from isLoading
   const [error, setError] = useState<string | null>(null);
 
   const ingredientId = typeof params.id === 'string' ? params.id : undefined; 
@@ -26,37 +26,46 @@ export function IngredientEditPageComponent() {
   }, []);
 
   useEffect(() => {
-    if (!isMounted || !ingredientId) {
-      if (!ingredientId && isMounted) {
-        setError("Invalid ingredient ID provided.");
-        setIsLoading(false);
-      }
+    if (!isMounted) {
       return;
     }
     
-    if (!storageLoading) { 
-      setIsLoading(true);
-      try {
-        const fetchedIngredient = getIngredientById(ingredientId); 
-        if (fetchedIngredient) {
-          setIngredient(fetchedIngredient);
-        } else {
-          setError("Ingredient not found.");
-        }
-      } catch (e: unknown) {
-        console.error("Error fetching ingredient for edit:", e);
-        let message = "An unexpected error occurred while loading ingredient data for editing.";
-        if (e instanceof Error) {
-          message = `An unexpected error occurred: ${e.message}`;
-        }
-        setError(message);
-      } finally {
-        setIsLoading(false);
+    if (!ingredientId) {
+      setError("Invalid ingredient ID provided.");
+      setIngredient(undefined);
+      setComponentLoading(false);
+      return;
+    }
+    
+    if (storageLoading) { 
+      setComponentLoading(true);
+      return;
+    }
+
+    setComponentLoading(true);
+    setError(null);
+    try {
+      const fetchedIngredient = getIngredientById(ingredientId); 
+      if (fetchedIngredient) {
+        setIngredient(fetchedIngredient);
+      } else {
+        setIngredient(undefined);
+        setError("Ingredient not found. Cannot edit a non-existent item.");
       }
+    } catch (e: unknown) {
+      console.error("Error fetching ingredient for edit:", e);
+      setIngredient(undefined);
+      let message = "An unexpected error occurred while loading ingredient data for editing.";
+      if (e instanceof Error) {
+        message = `An unexpected error occurred: ${e.message}`;
+      }
+      setError(message);
+    } finally {
+      setComponentLoading(false);
     }
   }, [ingredientId, getIngredientById, storageLoading, isMounted]);
 
-  if (!isMounted || isLoading || storageLoading) {
+  if (!isMounted || componentLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-10 w-1/3" />
@@ -82,11 +91,11 @@ export function IngredientEditPageComponent() {
     );
   }
 
-  if (!ingredient) {
+  if (!ingredient || !ingredient.itemNumber) { // Added check for ingredient.itemNumber
     return (
       <div className="text-center py-10 max-w-xl mx-auto">
-        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Ingredient Data Not Available</h2>
-        <p className="text-muted-foreground mb-6">Could not load ingredient data for editing. The item might have been deleted.</p>
+        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Ingredient Data Not Available for Editing</h2>
+        <p className="text-muted-foreground mb-6">Could not load ingredient data for editing. The item might have been deleted or the ID is incorrect.</p>
         <Button asChild>
           <Link href="/ingredients">Go to Ingredient List</Link>
         </Button>

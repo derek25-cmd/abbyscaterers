@@ -15,7 +15,7 @@ export function EquipmentDetailsPageComponent() {
   const params = useParams();
   const { getEquipmentById, isLoading: storageLoading } = useEquipmentStorage();
   const [equipment, setEquipment] = useState<Equipment | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true); // Renamed from isLoading
   const [error, setError] = useState<string | null>(null);
 
   const equipmentId = typeof params.id === 'string' ? params.id : undefined;
@@ -25,33 +25,42 @@ export function EquipmentDetailsPageComponent() {
   }, []);
 
   useEffect(() => {
-    if (!isMounted || !equipmentId) {
-       if (!equipmentId && isMounted) {
-        setError("Invalid equipment ID provided.");
-        setIsLoading(false);
-      }
+    if (!isMounted) {
       return;
     }
+
+    if (!equipmentId) {
+       setError("Invalid equipment ID provided.");
+       setEquipment(undefined);
+       setComponentLoading(false);
+       return;
+    }
     
-    if (!storageLoading) {
-      setIsLoading(true);
-      try {
-        const fetchedEquipment = getEquipmentById(equipmentId); 
-        if (fetchedEquipment) {
-          setEquipment(fetchedEquipment);
-        } else {
-          setError("Equipment not found. The item may have been deleted or the ID is incorrect.");
-        }
-      } catch (e) {
-        console.error("Error fetching equipment details:", e);
-        setError("An unexpected error occurred while loading equipment data.");
-      } finally {
-        setIsLoading(false);
+    if (storageLoading) {
+      setComponentLoading(true);
+      return;
+    }
+
+    setComponentLoading(true);
+    setError(null);
+    try {
+      const fetchedEquipment = getEquipmentById(equipmentId); 
+      if (fetchedEquipment) {
+        setEquipment(fetchedEquipment);
+      } else {
+        setEquipment(undefined);
+        setError("Equipment not found. The item may have been deleted or the ID is incorrect.");
       }
+    } catch (e) {
+      console.error("Error fetching equipment details:", e);
+      setEquipment(undefined);
+      setError("An unexpected error occurred while loading equipment data.");
+    } finally {
+      setComponentLoading(false);
     }
   }, [equipmentId, getEquipmentById, storageLoading, isMounted]);
 
-  if (!isMounted || isLoading || storageLoading) {
+  if (!isMounted || componentLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 p-4">
         <div className="flex justify-between items-center">
@@ -80,11 +89,11 @@ export function EquipmentDetailsPageComponent() {
     );
   }
   
-  if (!equipment) {
+  if (!equipment || !equipment.equipmentNumber) { // Added check for equipment.equipmentNumber
      return (
       <div className="text-center py-10 max-w-xl mx-auto">
         <h2 className="text-2xl font-semibold text-destructive mb-4">Equipment Not Found</h2>
-        <p className="text-muted-foreground mb-6">The requested equipment could not be found. It might have been deleted.</p>
+        <p className="text-muted-foreground mb-6">The requested equipment could not be found. It might have been deleted or the ID is incorrect.</p>
         <Button asChild>
           <Link href="/equipment">Go to Equipment List</Link>
         </Button>

@@ -102,15 +102,15 @@ export function EquipmentListTable() {
       const row = [
         item.equipmentNumber,
         `"${item.equipmentName.replace(/"/g, '""')}"`,
-        `"${(item.oem)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.model)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.powerRating)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.oem ?? '').replace(/"/g, '""')}"`,
+        `"${(item.model ?? '').replace(/"/g, '""')}"`,
+        `"${(item.powerRating ?? '').replace(/"/g, '""')}"`,
         item.quantity,
-        `"${(item.yearOfManufacture)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.equipmentSource)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.capacity)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.commitment)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.registrationNumber)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.yearOfManufacture ?? '').replace(/"/g, '""')}"`,
+        `"${(item.equipmentSource ?? '').replace(/"/g, '""')}"`,
+        `"${(item.capacity ?? '').replace(/"/g, '""')}"`,
+        `"${(item.commitment ?? '').replace(/"/g, '""')}"`,
+        `"${(item.registrationNumber ?? '').replace(/"/g, '""')}"`,
         item.createdAt,
         item.updatedAt
       ];
