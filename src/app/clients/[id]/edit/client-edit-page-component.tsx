@@ -1,12 +1,11 @@
-
 "use client";
 
-import { ClientForm } from '@/components/clients/client-form';
-import { useClientStorage } from '@/hooks/use-client-storage';
+import { ClientForm } from 'components/clients/client-form';
+import { useClientStorage } from 'hooks/use-client-storage';
 import { useParams } from "next/navigation"; // Removed useRouter
 import { useEffect, useState } from "react";
-import type { Client } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton'; 
+import type { Client } from 'types';
+import { Skeleton } from 'components/ui/skeleton';
 
 export function ClientEditPageComponent() {
   const params = useParams();

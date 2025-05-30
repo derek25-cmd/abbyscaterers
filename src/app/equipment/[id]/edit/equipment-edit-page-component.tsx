@@ -1,12 +1,11 @@
-
 "use client";
 
-import { EquipmentForm } from "@/components/equipment/equipment-form";
-import { useEquipmentStorage } from "@/hooks/use-equipment-storage";
+import { EquipmentForm } from 'components/equipment/equipment-form';
+import { useEquipmentStorage } from 'hooks/use-equipment-storage';
 import { useParams } from "next/navigation"; // Removed useRouter
 import { useEffect, useState } from "react";
-import type { Equipment } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton"; 
+import type { Equipment } from 'types';
+import { Skeleton } from 'components/ui/skeleton';
 import { ChefHat, Edit } from "lucide-react";
 
 export function EquipmentEditPageComponent() {
