@@ -1,9 +1,9 @@
 
 "use client";
 
-import { EquipmentDetailsView } from "@/components/equipment/equipment-details-view";
+import { EquipmentDetailsView } from "../../../components/equipment/equipment-details-view";
 import { useEquipmentStorage } from "@/hooks/use-equipment-storage";
-import { useParams } from "next/navigation"; // Removed useRouter
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Equipment } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,6 @@ import Link from "next/link";
 
 export function EquipmentDetailsPageComponent() {
   const params = useParams();
-  // const router = useRouter(); // Not used
   const { getEquipmentById, isLoading: storageLoading } = useEquipmentStorage();
   const [equipment, setEquipment] = useState<Equipment | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
