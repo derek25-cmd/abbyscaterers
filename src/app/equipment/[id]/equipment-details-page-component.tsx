@@ -1,7 +1,7 @@
 
 "use client";
 
-import { EquipmentDetailsView } from "../../../components/equipment/equipment-details-view";
+import { EquipmentDetailsView } from "@/components/equipment/equipment-details-view";
 import { useEquipmentStorage } from "@/hooks/use-equipment-storage";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export function EquipmentDetailsPageComponent() {
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
   const { getEquipmentById, isLoading: storageLoading } = useEquipmentStorage();
   const [equipment, setEquipment] = useState<Equipment | undefined>(undefined);
@@ -20,29 +21,37 @@ export function EquipmentDetailsPageComponent() {
   const equipmentId = typeof params.id === 'string' ? params.id : undefined;
 
   useEffect(() => {
-    if (equipmentId) {
-       if (!storageLoading) {
-        try {
-          const fetchedEquipment = getEquipmentById(equipmentId); 
-          if (fetchedEquipment) {
-            setEquipment(fetchedEquipment);
-          } else {
-            setError("Equipment not found. The item may have been deleted or the ID is incorrect.");
-          }
-        } catch (e) {
-          console.error("Error fetching equipment details:", e);
-          setError("An unexpected error occurred while loading equipment data.");
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    } else {
-      setError("Invalid equipment ID provided.");
-      setIsLoading(false);
-    }
-  }, [equipmentId, getEquipmentById, storageLoading]);
+    setIsMounted(true);
+  }, []);
 
-  if (isLoading || storageLoading) {
+  useEffect(() => {
+    if (!isMounted || !equipmentId) {
+       if (!equipmentId && isMounted) {
+        setError("Invalid equipment ID provided.");
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    if (!storageLoading) {
+      setIsLoading(true);
+      try {
+        const fetchedEquipment = getEquipmentById(equipmentId); 
+        if (fetchedEquipment) {
+          setEquipment(fetchedEquipment);
+        } else {
+          setError("Equipment not found. The item may have been deleted or the ID is incorrect.");
+        }
+      } catch (e) {
+        console.error("Error fetching equipment details:", e);
+        setError("An unexpected error occurred while loading equipment data.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [equipmentId, getEquipmentById, storageLoading, isMounted]);
+
+  if (!isMounted || isLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 p-4">
         <div className="flex justify-between items-center">

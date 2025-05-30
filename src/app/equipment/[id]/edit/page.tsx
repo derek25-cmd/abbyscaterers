@@ -1,3 +1,4 @@
+
 import { EquipmentEditPageComponent } from './equipment-edit-page-component';
 
 export async function generateStaticParams() {

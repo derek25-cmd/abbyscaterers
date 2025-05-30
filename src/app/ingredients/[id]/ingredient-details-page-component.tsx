@@ -3,7 +3,7 @@
 
 import { IngredientDetailsView } from "@/components/ingredients/ingredient-details-view";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
-import { useParams } from "next/navigation"; // Removed useRouter
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Ingredient } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export function IngredientDetailsPageComponent() {
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
-  // const router = useRouter(); // Not used
   const { getIngredientById, isLoading: storageLoading } = useIngredientStorage();
   const [ingredient, setIngredient] = useState<Ingredient | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,29 +21,37 @@ export function IngredientDetailsPageComponent() {
   const ingredientId = typeof params.id === 'string' ? params.id : undefined; 
 
   useEffect(() => {
-    if (ingredientId) {
-       if (!storageLoading) {
-        try {
-          const fetchedIngredient = getIngredientById(ingredientId); 
-          if (fetchedIngredient) {
-            setIngredient(fetchedIngredient);
-          } else {
-            setError("Ingredient not found. The item may have been deleted or the ID is incorrect.");
-          }
-        } catch (e) {
-          console.error("Error fetching ingredient details:", e);
-          setError("An unexpected error occurred while loading ingredient data.");
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    } else {
-      setError("Invalid ingredient ID provided.");
-      setIsLoading(false);
-    }
-  }, [ingredientId, getIngredientById, storageLoading]);
+    setIsMounted(true);
+  }, []);
 
-  if (isLoading || storageLoading) {
+  useEffect(() => {
+    if (!isMounted || !ingredientId) {
+      if (!ingredientId && isMounted) {
+        setError("Invalid ingredient ID provided.");
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    if (!storageLoading) {
+      setIsLoading(true);
+      try {
+        const fetchedIngredient = getIngredientById(ingredientId); 
+        if (fetchedIngredient) {
+          setIngredient(fetchedIngredient);
+        } else {
+          setError("Ingredient not found. The item may have been deleted or the ID is incorrect.");
+        }
+      } catch (e) {
+        console.error("Error fetching ingredient details:", e);
+        setError("An unexpected error occurred while loading ingredient data.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [ingredientId, getIngredientById, storageLoading, isMounted]);
+
+  if (!isMounted || isLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 p-4">
         <div className="flex justify-between items-center">

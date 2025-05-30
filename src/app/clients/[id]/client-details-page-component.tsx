@@ -1,13 +1,13 @@
 
 "use client";
 
-import { ClientDetailsView } from '../../../components/clients/client-details-view';
-import { useClientStorage } from '../../../hooks/use-client-storage';
+import { ClientDetailsView } from '@/components/clients/client-details-view';
+import { useClientStorage } from '@/hooks/use-client-storage';
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Client } from '../../../types';
-import { Skeleton } from '../../../components/ui/skeleton';
-import { Button } from '../../../components/ui/button';
+import type { Client } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import Link from "next/link";
 
 export function ClientDetailsPageComponent() {
@@ -25,27 +25,29 @@ export function ClientDetailsPageComponent() {
   }, []);
 
   useEffect(() => {
-    if (!isMounted) return;
-
-    if (clientId) {
-       if (!storageLoading) {
-        try {
-          const fetchedClient = getClientById(clientId);
-          if (fetchedClient) {
-            setClient(fetchedClient);
-          } else {
-            setError("Client not found. The client may have been deleted or the ID is incorrect.");
-          }
-        } catch (e) {
-          console.error("Error fetching client details:", e);
-          setError("An unexpected error occurred while loading client data.");
-        } finally {
-          setIsLoading(false);
-        }
+    if (!isMounted || !clientId) {
+      if (!clientId && isMounted) {
+        setError("Invalid client ID provided.");
+        setIsLoading(false);
       }
-    } else {
-      setError("Invalid client ID provided.");
-      setIsLoading(false);
+      return;
+    }
+
+    if (!storageLoading) {
+      setIsLoading(true); // Set loading true before fetching
+      try {
+        const fetchedClient = getClientById(clientId);
+        if (fetchedClient) {
+          setClient(fetchedClient);
+        } else {
+          setError("Client not found. The client may have been deleted or the ID is incorrect.");
+        }
+      } catch (e) {
+        console.error("Error fetching client details:", e);
+        setError("An unexpected error occurred while loading client data.");
+      } finally {
+        setIsLoading(false);
+      }
     }
   }, [clientId, getClientById, storageLoading, isMounted]);
 

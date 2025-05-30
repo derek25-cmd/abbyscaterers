@@ -1,3 +1,4 @@
+
 import { EquipmentDetailsPageComponent } from './equipment-details-page-component';
 
 export async function generateStaticParams() {

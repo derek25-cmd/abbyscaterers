@@ -8,8 +8,11 @@ import { useEffect, useState } from "react";
 import type { Equipment } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChefHat, Edit } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import Link from "next/link";
 
 export function EquipmentEditPageComponent() {
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
   const { getEquipmentById, isLoading: storageLoading } = useEquipmentStorage();
   const [equipment, setEquipment] = useState<Equipment | undefined>(undefined);
@@ -19,32 +22,41 @@ export function EquipmentEditPageComponent() {
   const equipmentId = typeof params.id === 'string' ? params.id : undefined;
 
   useEffect(() => {
-    if (equipmentId) {
-      if (!storageLoading) { 
-        try {
-          const fetchedEquipment = getEquipmentById(equipmentId); 
-          if (fetchedEquipment) {
-            setEquipment(fetchedEquipment);
-          } else {
-            setError("Equipment not found.");
-          }
-        } catch (e: unknown) {
-          console.error("Error fetching equipment for edit:", e);
-          setError("An unexpected error occurred while loading equipment data for editing.");
-          if (e instanceof Error) {
-            setError(`An unexpected error occurred: ${e.message}`);
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    } else {
-      setError("Invalid equipment ID.");
-      setIsLoading(false);
-    }
-  }, [equipmentId, getEquipmentById, storageLoading, params]); // Added params to dependency array
+    setIsMounted(true);
+  }, []);
 
-  if (isLoading || storageLoading) {
+  useEffect(() => {
+    if (!isMounted || !equipmentId) {
+      if (!equipmentId && isMounted) {
+        setError("Invalid equipment ID provided.");
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    if (!storageLoading) { 
+      setIsLoading(true);
+      try {
+        const fetchedEquipment = getEquipmentById(equipmentId); 
+        if (fetchedEquipment) {
+          setEquipment(fetchedEquipment);
+        } else {
+          setError("Equipment not found.");
+        }
+      } catch (e: unknown) {
+        console.error("Error fetching equipment for edit:", e);
+        let message = "An unexpected error occurred while loading equipment data for editing.";
+        if (e instanceof Error) {
+          message = `An unexpected error occurred: ${e.message}`;
+        }
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [equipmentId, getEquipmentById, storageLoading, isMounted]); 
+
+  if (!isMounted || isLoading || storageLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-10 w-1/3" />
@@ -59,11 +71,27 @@ export function EquipmentEditPageComponent() {
   }
 
   if (error) {
-    return <div className="text-destructive text-center py-10">{error}</div>;
+    return (
+      <div className="text-center py-10 max-w-xl mx-auto">
+        <h2 className="text-2xl font-semibold text-destructive mb-4">Error Loading Equipment for Editing</h2>
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <Button asChild>
+          <Link href="/equipment">Go to Equipment List</Link>
+        </Button>
+      </div>
+    );
   }
 
   if (!equipment) {
-    return <div className="text-center py-10">Equipment data could not be loaded.</div>;
+    return (
+      <div className="text-center py-10 max-w-xl mx-auto">
+        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Equipment Data Not Available</h2>
+        <p className="text-muted-foreground mb-6">Could not load equipment data for editing. The item might have been deleted.</p>
+        <Button asChild>
+          <Link href="/equipment">Go to Equipment List</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (

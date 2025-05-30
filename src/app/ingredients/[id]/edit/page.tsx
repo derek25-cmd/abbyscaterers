@@ -1,3 +1,4 @@
+
 import { IngredientEditPageComponent } from './ingredient-edit-page-component';
 
 export async function generateStaticParams() {
