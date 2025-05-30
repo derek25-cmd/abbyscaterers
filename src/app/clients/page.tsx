@@ -1,4 +1,4 @@
-import { ClientListTable } from 'components/clients/client-list-table';
+import { ClientListTable } from '@/components/clients/client-list-table';
 
 export default function ClientsPage() {
   return (
