@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -12,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Input } from '../ui/input';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -20,13 +21,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../ui/table';
-import { Button } from '../ui/button';
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { PlusCircle, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getEquipmentColumns } from "./columns"; 
-import { useEquipmentStorage } from '../../hooks/use-equipment-storage';
-import { useToast } from '../../hooks/use-toast';
+import { useEquipmentStorage } from '@/hooks/use-equipment-storage';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../ui/alert-dialog';
+} from '@/components/ui/alert-dialog';
+import type { Equipment } from "@/types";
 
 export function EquipmentListTable() {
   const { equipmentList, isLoading, deleteEquipment: deleteEquipmentFromStore } = useEquipmentStorage();
@@ -96,21 +98,21 @@ export function EquipmentListTable() {
     ];
     csvRows.push(headers.join(','));
 
-    equipmentList.forEach((item: Record<string, unknown>) => {
+    equipmentList.forEach((item: Equipment) => {
       const row = [
-        item.equipmentNumber as string,
-        `"${(item.equipmentName as string).replace(/"/g, '""')}"`,
-        `"${(item.oem as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.model as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.powerRating as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        item.quantity as number,
-        `"${(item.yearOfManufacture as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.equipmentSource as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.capacity as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.commitment as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        `"${(item.registrationNumber as string | undefined)?.replace(/"/g, '""') || ''}"`,
-        item.createdAt as string,
-        item.updatedAt as string
+        item.equipmentNumber,
+        `"${item.equipmentName.replace(/"/g, '""')}"`,
+        `"${(item.oem)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.model)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.powerRating)?.replace(/"/g, '""') || ''}"`,
+        item.quantity,
+        `"${(item.yearOfManufacture)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.equipmentSource)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.capacity)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.commitment)?.replace(/"/g, '""') || ''}"`,
+        `"${(item.registrationNumber)?.replace(/"/g, '""') || ''}"`,
+        item.createdAt,
+        item.updatedAt
       ];
       csvRows.push(row.join(','));
     });
