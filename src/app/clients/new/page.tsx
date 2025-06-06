@@ -1,3 +1,5 @@
+"use client"; // Make this page a Client Component
+
 import { ClientForm } from '@/components/clients/client-form';
 
 export default function NewClientPage() {

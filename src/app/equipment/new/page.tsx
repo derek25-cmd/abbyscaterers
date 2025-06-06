@@ -1,3 +1,4 @@
+"use client"; // Make this page a Client Component
 
 import { EquipmentForm } from "@/components/equipment/equipment-form";
 import { ChefHat } from "lucide-react";

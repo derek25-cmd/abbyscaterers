@@ -1,3 +1,4 @@
+"use client"; // Make this page a Client Component
 
 import { IngredientForm } from "@/components/ingredients/ingredient-form";
 import { PackagePlus } from "lucide-react";

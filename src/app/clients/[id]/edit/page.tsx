@@ -1,5 +1,5 @@
 
-export const dynamic = 'force-dynamic';
+// export const dynamic = 'force-dynamic'; // Removed for output: 'export' compatibility
 
 import { ClientEditPageComponent } from './client-edit-page-component';
 

@@ -1,8 +1,7 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  // Removed output: 'export' to allow dynamic rendering for dynamic routes
-  // output: 'export', // Ensure this is active for static export
+  output: 'export', // Ensure this is active for static export
   typescript: {
     ignoreBuildErrors: false,
   },
