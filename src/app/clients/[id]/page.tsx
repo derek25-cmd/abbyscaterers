@@ -1,4 +1,3 @@
-"use client";
 
 import { ClientDetailsPageComponent } from './client-details-page-component';
 

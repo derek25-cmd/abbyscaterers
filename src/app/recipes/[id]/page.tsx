@@ -1,4 +1,3 @@
-"use client";
 
 import { RecipeDetailsPageComponent } from './recipe-details-page-component';
 
