@@ -535,38 +535,36 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement, // The ref can be HTMLButtonElement or HTMLAnchorElement if Link uses it
-  React.ComponentProps<"button"> & { // Base props can be button or anchor
-    asChild?: boolean; // How SidebarMenuButton itself behaves
+  HTMLButtonElement,
+  React.ComponentProps<"button"> & {
+    asChild?: boolean; 
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-    children?: React.ReactNode; // Ensure children is part of the props
+    children?: React.ReactNode;
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
     {
-      asChild: selfAsChild = false, // This is the asChild prop for SidebarMenuButton itself
+      asChild: selfAsChild = false, 
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
       className,
-      children, // Destructure children
-      ...props // These are any *other* props, including those from <Link asChild>
+      children,
+      ...allReceivedProps 
     },
     ref
   ) => {
     const { isMobile, state } = useSidebar();
+    const [mounted, setMounted] = React.useState(false);
 
-    // If the parent (e.g. Link) passes `asChild={true}`, then `props.asChild` will be true.
-    // In this case, SidebarMenuButton must render as a Slot.
-    // Otherwise, it uses its own `selfAsChild` prop to determine if it renders as Slot or button.
-    const renderAsSlot = props.asChild || selfAsChild;
-    const Comp = renderAsSlot ? Slot : "button";
+    React.useEffect(() => {
+      setMounted(true);
+    }, []);
 
-    // Destructure `asChild` from `props` so it's not inadvertently spread
-    // onto the underlying DOM element if `Comp` is "button".
-    const { asChild: _forwardedAsChild, ...restProps } = props;
+    const Comp = selfAsChild ? Slot : "button"; 
+    const { asChild: _forwardedAsChildFromParent, ...renderProps } = allReceivedProps;
 
     const buttonElement = (
       <Comp
@@ -575,27 +573,33 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...restProps} // Use restProps here
+        {...renderProps} 
       >
-        {children} {/* Render children explicitly */}
+        {children} 
       </Comp>
     );
 
-    if (!tooltip) {
-      return buttonElement;
-    }
+    const showTooltipContent = mounted && tooltip;
 
+    if (!tooltip) {
+        return buttonElement;
+    }
+    
+    // Always render Tooltip and TooltipTrigger to maintain DOM structure consistency
+    // Defer rendering of TooltipContent or control its visibility to avoid mismatch
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           {buttonElement}
         </TooltipTrigger>
-        <TooltipContent
-          side="right"
-          align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
-        />
+        {showTooltipContent && (
+          <TooltipContent
+            side="right"
+            align="center"
+            hidden={(state !== "collapsed" || isMobile)}
+            {...(typeof tooltip === 'string' ? { children: tooltip } : tooltip)}
+          />
+        )}
       </Tooltip>
     );
   }
