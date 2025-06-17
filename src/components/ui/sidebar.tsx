@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -534,52 +535,61 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<"button"> & {
-    asChild?: boolean
-    isActive?: boolean
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>
+  HTMLButtonElement, // The ref can be HTMLButtonElement or HTMLAnchorElement if Link uses it
+  React.ComponentProps<"button"> & { // Base props can be button or anchor
+    asChild?: boolean; // How SidebarMenuButton itself behaves
+    isActive?: boolean;
+    tooltip?: string | React.ComponentProps<typeof TooltipContent>;
+    children?: React.ReactNode; // Ensure children is part of the props
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
     {
-      asChild = false,
+      asChild: selfAsChild = false, // This is the asChild prop for SidebarMenuButton itself
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
       className,
-      ...props
+      children, // Destructure children
+      ...props // These are any *other* props, including those from <Link asChild>
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button"
-    const { isMobile, state } = useSidebar()
+    const { isMobile, state } = useSidebar();
 
-    const button = (
+    // If the parent (e.g. Link) passes `asChild={true}`, then `props.asChild` will be true.
+    // In this case, SidebarMenuButton must render as a Slot.
+    // Otherwise, it uses its own `selfAsChild` prop to determine if it renders as Slot or button.
+    const renderAsSlot = props.asChild || selfAsChild;
+    const Comp = renderAsSlot ? Slot : "button";
+
+    // Destructure `asChild` from `props` so it's not inadvertently spread
+    // onto the underlying DOM element if `Comp` is "button".
+    const { asChild: _forwardedAsChild, ...restProps } = props;
+
+    const buttonElement = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...props}
-      />
-    )
+        {...restProps} // Use restProps here
+      >
+        {children} {/* Render children explicitly */}
+      </Comp>
+    );
 
     if (!tooltip) {
-      return button
-    }
-
-    if (typeof tooltip === "string") {
-      tooltip = {
-        children: tooltip,
-      }
+      return buttonElement;
     }
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          {buttonElement}
+        </TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
@@ -587,9 +597,9 @@ const SidebarMenuButton = React.forwardRef<
           {...tooltip}
         />
       </Tooltip>
-    )
+    );
   }
-)
+);
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 const SidebarMenuAction = React.forwardRef<
