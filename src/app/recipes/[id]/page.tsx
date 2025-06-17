@@ -10,6 +10,6 @@ export function generateStaticParams() {
   return [];
 }
 
-export default function RecipeDetailPage() {
+export default function RecipeDetailPage({ params }: { params: { id: string } }) {
   return <RecipeDetailsPageComponent />;
 }

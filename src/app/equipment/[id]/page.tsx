@@ -10,6 +10,6 @@ export function generateStaticParams() {
   return [];
 }
 
-export default function EquipmentDetailPage() {
+export default function EquipmentDetailPage({ params }: { params: { id: string } }) {
   return <EquipmentDetailsPageComponent />;
 }
