@@ -1,9 +1,7 @@
 
-// export const dynamic = 'force-dynamic'; // Removed for output: 'export' compatibility
-
 import { ClientEditPageComponent } from './client-edit-page-component';
 
-export async function generateStaticParams() {
+export function generateStaticParams() {
   // For 'output: export', if params are determined client-side (e.g., from localStorage),
   // Next.js expects this function. Returning an empty array indicates
   // that no paths are pre-rendered at build time for this dynamic segment.
