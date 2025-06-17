@@ -1,3 +1,4 @@
+"use client";
 
 import { EquipmentDetailsPageComponent } from './equipment-details-page-component';
 
