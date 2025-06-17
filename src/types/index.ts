@@ -57,3 +57,17 @@ export interface Ingredient {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+
+export interface RecipeIngredientItem {
+  ingredientId: string; // References Ingredient.itemNumber
+  measurement: string;
+}
+
+export interface Recipe {
+  id: string; // Will be the recipeNumber
+  recipeNumber: string; // User-facing unique ID
+  recipeName: string; // "Food created"
+  ingredients: RecipeIngredientItem[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}

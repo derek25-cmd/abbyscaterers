@@ -58,3 +58,21 @@ export const ingredientSchema = z.object({
 });
 
 export type IngredientFormData = z.infer<typeof ingredientSchema>;
+
+export const recipeIngredientItemSchema = z.object({
+  ingredientId: z.string().min(1, "Ingredient selection is required."),
+  measurement: z.string().min(1, "Measurement is required."),
+});
+
+export type RecipeIngredientItemFormData = z.infer<typeof recipeIngredientItemSchema>;
+
+export const recipeSchema = z.object({
+  id: z.string().optional(), // Will be set to recipeNumber on creation/update
+  recipeNumber: z.string().min(1, { message: "Recipe No. is required." }),
+  recipeName: z.string().min(2, { message: "Recipe name must be at least 2 characters." }),
+  ingredients: z.array(recipeIngredientItemSchema).min(1, { message: "At least one ingredient is required." }),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+export type RecipeFormData = z.infer<typeof recipeSchema>;
