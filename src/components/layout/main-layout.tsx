@@ -86,14 +86,11 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
               <SidebarMenuItem key={item.href}>
                 <Link href={item.href} asChild>
                   <SidebarMenuButton
-                    asChild
                     isActive={currentPathname.startsWith(item.href)}
                     tooltip={{ children: item.label, side: "right", className: "bg-popover text-popover-foreground" }}
                   >
-                    <a>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </a>
+                    <item.icon />
+                    <span>{item.label}</span>
                   </SidebarMenuButton>
                 </Link>
               </SidebarMenuItem>
