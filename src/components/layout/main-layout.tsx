@@ -84,7 +84,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
+                <Link href={item.href} asChild>
                   <SidebarMenuButton
                     asChild
                     isActive={currentPathname.startsWith(item.href)}
