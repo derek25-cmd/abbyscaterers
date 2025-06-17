@@ -1,7 +1,8 @@
 
 import { ClientDetailsPageComponent } from './client-details-page-component';
 
-export const dynamicParams = false; // Required for 'output: export' when generateStaticParams returns []
+export const dynamic = 'error'; // Explicitly error for ungenerated dynamic segments
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
   // For 'output: export', dynamic routes are handled client-side.
