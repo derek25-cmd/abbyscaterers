@@ -1,8 +1,6 @@
 
 import { ClientEditPageComponent } from './client-edit-page-component';
 
-export const dynamic = 'force-static';
-
 export async function generateStaticParams() {
   // For 'output: export', dynamic routes are handled client-side.
   // Returning an empty array indicates no paths are pre-rendered at build time.
@@ -10,6 +8,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function EditClientPage() {
+export default function EditClientPage({ params }: { params: { id: string } }) {
   return <ClientEditPageComponent />;
 }
