@@ -40,7 +40,7 @@ export const getRecipeColumns = (
     accessorKey: "ingredients",
     header: "No. of Ingredients",
     cell: ({ row }) => {
-      const ingredients = row.getValue("ingredients") as any[];
+      const ingredients = row.getValue("ingredients") as unknown[];
       return <div className="text-center">{ingredients.length}</div>;
     }
   },

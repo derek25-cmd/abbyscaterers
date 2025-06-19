@@ -84,15 +84,15 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
           <SidebarMenu>
             {navItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} asChild>
-                  <SidebarMenuButton
-                    isActive={currentPathname.startsWith(item.href)}
-                    tooltip={{ children: item.label, side: "right", className: "bg-popover text-popover-foreground" }}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </Link>
+              <Link href={item.href}>
+                <SidebarMenuButton
+                  isActive={currentPathname.startsWith(item.href)}
+                  tooltip={{ children: item.label, side: "right", className: "bg-popover text-popover-foreground" }}
+                >
+                  <item.icon />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </Link>
               </SidebarMenuItem>
             ))}
           </SidebarMenu>

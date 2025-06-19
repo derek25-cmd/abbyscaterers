@@ -1,15 +1,13 @@
-
 "use client";
-
-import type { Recipe, Ingredient } from "@/types";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import type { Recipe } from "../../types";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
 import Link from "next/link";
-import { Edit, ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, SquarePen } from "lucide-react";
+import { ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, SquarePen } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-import { cn } from "@/lib/utils";
-import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "../../lib/utils";
+import { useIngredientStorage } from "../../hooks/use-ingredient-storage";
+import { Skeleton } from "../ui/skeleton";
 
 interface RecipeDetailsViewProps {
   recipe: Recipe;

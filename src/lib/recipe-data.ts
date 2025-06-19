@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Recipe, RecipeIngredientItem } from "@/types";
+import type { Recipe} from "@/types";
 import type { RecipeFormData } from "@/lib/schemas";
 
 const RECIPES_STORAGE_KEY = "caterSmartRecipes";

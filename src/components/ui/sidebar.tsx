@@ -547,8 +547,7 @@ const SidebarMenuButton = React.forwardRef<
   React.ComponentPropsWithoutRef<"button"> & { // Base on button props for clarity
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-    // No 'asChild' prop for SidebarMenuButton itself in this context,
-    // as its role is determined by being a child of `Link asChild`.
+    asChild?: boolean;
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
