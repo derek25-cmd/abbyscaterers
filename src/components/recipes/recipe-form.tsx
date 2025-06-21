@@ -140,8 +140,8 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="space-y-4 p-4 mb-4 border rounded-md relative">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div key={item.id} className="mb-4 border rounded-md relative">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
