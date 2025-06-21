@@ -46,6 +46,8 @@
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.3.2",
     "genkit": "^1.8.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
     "lucide-react": "^0.475.0",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",

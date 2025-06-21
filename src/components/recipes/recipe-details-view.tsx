@@ -1,13 +1,19 @@
+
 "use client";
+import React, { useState } from "react";
 import type { Recipe } from "../../types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, SquarePen } from "lucide-react";
+import { ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, SquarePen, Loader2 } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "../../lib/utils";
 import { useIngredientStorage } from "../../hooks/use-ingredient-storage";
 import { Skeleton } from "../ui/skeleton";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface RecipeDetailsViewProps {
   recipe: Recipe;
@@ -15,6 +21,9 @@ interface RecipeDetailsViewProps {
 
 export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
   const { getIngredientById, isLoading: ingredientsLoading } = useIngredientStorage();
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
   const DetailItem = ({ icon: Icon, label, value, className = "" }: { icon: React.ElementType, label: string, value?: string | number | React.ReactNode, className?: string }) => {
     const hasValue = value !== undefined && value !== null && (typeof value !== 'string' || value.trim() !== "") && (typeof value !== 'number' || !isNaN(value) );
@@ -48,15 +57,67 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
     return ingredient ? ingredient.itemDescription : "Unknown Ingredient";
   };
   
-  const handlePdfExport = () => {
-    // Placeholder for PDF export functionality
-    // In a real app, you would use a library like jsPDF or a backend service.
-    alert("PDF export functionality to be implemented. This would typically involve using a library like jsPDF or calling a backend service to generate the PDF.");
+  const handlePdfExport = async () => {
+    if (!printRef.current) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2, // Increase scale for better resolution
+        useCORS: true,
+        backgroundColor: null // Use transparent background
+      });
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+      
+      pdf.save(`${recipe.recipeName.replace(/ /g, '_')}_recipe.pdf`);
+      toast({ title: "Export Successful", description: "Recipe exported to PDF." });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-
   return (
-    <Card className="shadow-lg">
+    <>
+      <div className="flex justify-end gap-2 mb-4">
+            <Button variant="outline" onClick={handlePdfExport} disabled={isExporting}>
+              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+               {isExporting ? 'Exporting...' : 'Export as PDF'}
+            </Button>
+            <Link href={`/recipes/${recipe.recipeNumber}/edit`} passHref>
+              <Button variant="outline">
+                <SquarePen className="mr-2 h-4 w-4" /> Edit Recipe
+              </Button>
+            </Link>
+      </div>
+
+    <Card className="shadow-lg" ref={printRef}>
       <CardHeader className="border-b">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -66,16 +127,6 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
             <CardDescription className="text-md text-accent">
               Recipe No: {recipe.recipeNumber}
             </CardDescription>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handlePdfExport}>
-              <FileText className="mr-2 h-4 w-4" /> Export as PDF
-            </Button>
-            <Link href={`/recipes/${recipe.recipeNumber}/edit`} passHref>
-              <Button variant="outline">
-                <SquarePen className="mr-2 h-4 w-4" /> Edit Recipe
-              </Button>
-            </Link>
           </div>
         </div>
       </CardHeader>
@@ -137,5 +188,6 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
           </Link>
       </CardFooter>
     </Card>
+    </>
   );
 }
