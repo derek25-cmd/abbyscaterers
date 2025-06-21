@@ -9,7 +9,8 @@ import {
   getIngredientById as getIngredientByIdFromStorage,
   addIngredient as addIngredientToStorage,
   updateIngredient as updateIngredientInStorage,
-  deleteIngredient as deleteIngredientFromStorage 
+  deleteIngredient as deleteIngredientFromStorage,
+  addMultipleIngredients as addMultipleIngredientsToStorage
 } from '@/lib/ingredient-data';
 
 export function useIngredientStorage() {
@@ -33,6 +34,12 @@ export function useIngredientStorage() {
     const newIngredient = addIngredientToStorage(ingredientData);
     setIngredients(prevIngredients => [...prevIngredients, newIngredient]);
     return newIngredient;
+  }, []);
+
+  const addBulkIngredients = useCallback((ingredientDataList: IngredientFormData[]) => {
+    const newItems = addMultipleIngredientsToStorage(ingredientDataList);
+    setIngredients(prev => [...prev, ...newItems]);
+    return newItems;
   }, []);
 
   const updateIngredient = useCallback((originalId: string, updates: IngredientFormData) => {
@@ -62,11 +69,11 @@ export function useIngredientStorage() {
   return { 
     ingredients, 
     isLoading, 
-    addIngredient, 
+    addIngredient,
+    addBulkIngredients, 
     updateIngredient, 
     deleteIngredient, 
     getIngredientById,
     refreshIngredients 
   };
 }
-

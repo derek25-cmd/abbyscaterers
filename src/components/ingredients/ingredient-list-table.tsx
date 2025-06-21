@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Download, Loader2 } from "lucide-react";
+import { PlusCircle, Download, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { getIngredientColumns } from "./columns"; 
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
@@ -38,15 +38,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ingredientSchema, type IngredientFormData } from "@/lib/schemas";
 
 export function IngredientListTable() {
-  const { ingredients, isLoading, deleteIngredient: deleteIngredientFromStore } = useIngredientStorage();
+  const { ingredients, isLoading, deleteIngredient: deleteIngredientFromStore, addBulkIngredients } = useIngredientStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleDeleteRequest = React.useCallback((itemNumber: string) => {
     setItemToDelete(itemNumber);
@@ -89,23 +91,18 @@ export function IngredientListTable() {
   });
 
   const exportData = () => {
-    const csvRows = [];
     const headers = [
-      "ItemNo", "ItemDescription", "ItemClassification", "UnitOfMeasure", "UnitPrice", 
-      "CreatedAt", "UpdatedAt"
+      "itemNumber", "itemDescription", "itemClassification", "unitOfMeasure", "unitPrice", 
+      "createdAt", "updatedAt"
     ];
-    csvRows.push(headers.join(','));
+    const csvRows = [headers.join(',')];
 
     ingredients.forEach(item => {
-      const row = [
-        item.itemNumber,
-        `"${item.itemDescription.replace(/"/g, '""')}"`,
-        `"${item.itemClassification.replace(/"/g, '""')}"`,
-        `"${item.unitOfMeasure.replace(/"/g, '""')}"`,
-        item.unitPrice,
-        item.createdAt,
-        item.updatedAt
-      ];
+      const row = headers.map(header => {
+        const value = item[header as keyof typeof item] ?? '';
+        const stringValue = String(value);
+        return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
+      });
       csvRows.push(row.join(','));
     });
 
@@ -127,6 +124,68 @@ export function IngredientListTable() {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      try {
+        const expectedHeaders = ["itemNumber", "itemDescription", "itemClassification", "unitOfMeasure", "unitPrice"];
+        const rows = text.split('\n').filter(row => row.trim() !== '');
+        if (rows.length < 1) throw new Error("CSV file is empty or contains only a header.");
+        
+        const headerRow = rows.shift()!.trim().split(',').map(h => h.trim());
+        if (JSON.stringify(headerRow) !== JSON.stringify(expectedHeaders)) {
+            throw new Error(`CSV headers do not match expected format. Expected: ${expectedHeaders.join(',')}`);
+        }
+
+        const newIngredientData: IngredientFormData[] = [];
+        for (const [index, rowStr] of rows.entries()) {
+            const values = rowStr.trim().split(',');
+            const ingredientObject: any = {};
+            expectedHeaders.forEach((header, i) => {
+                ingredientObject[header] = values[i] || "";
+            });
+            
+            const parsed = ingredientSchema.safeParse(ingredientObject);
+            if (!parsed.success) {
+                const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+                throw new Error(`Validation failed on row ${index + 2}: ${errorMessages}`);
+            }
+            newIngredientData.push(parsed.data);
+        }
+        
+        addBulkIngredients(newIngredientData);
+        toast({
+            title: "Import Successful",
+            description: `${newIngredientData.length} ingredient items imported successfully.`,
+        });
+
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Import Failed",
+          description: error.message || "An error occurred while parsing the CSV file.",
+        });
+      } finally {
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+      }
+    };
+    reader.onerror = () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to read the file."});
+    };
+    reader.readAsText(file);
+  };
+
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading ingredients...</div>;
   }
@@ -143,6 +202,17 @@ export function IngredientListTable() {
           className="max-w-sm"
         />
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleImportClick}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import CSV
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".csv"
+            className="hidden"
+          />
           <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />
             Export Data

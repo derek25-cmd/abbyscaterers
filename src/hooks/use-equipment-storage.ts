@@ -9,7 +9,8 @@ import {
   getEquipmentById as getEquipmentByIdFromStorage,
   addEquipment as addEquipmentToStorage,
   updateEquipment as updateEquipmentInStorage,
-  deleteEquipment as deleteEquipmentFromStorage 
+  deleteEquipment as deleteEquipmentFromStorage,
+  addMultipleEquipment as addMultipleEquipmentToStorage
 } from '@/lib/equipment-data';
 
 export function useEquipmentStorage() {
@@ -33,6 +34,12 @@ export function useEquipmentStorage() {
     const newEquipment = addEquipmentToStorage(equipmentData);
     setEquipmentList(prevEquipment => [...prevEquipment, newEquipment]);
     return newEquipment;
+  }, []);
+
+  const addBulkEquipment = useCallback((equipmentDataList: EquipmentFormData[]) => {
+    const newItems = addMultipleEquipmentToStorage(equipmentDataList);
+    setEquipmentList(prev => [...prev, ...newItems]);
+    return newItems;
   }, []);
 
   const updateEquipment = useCallback((originalId: string, updates: EquipmentFormData) => { // Param type from schema
@@ -66,7 +73,7 @@ export function useEquipmentStorage() {
     updateEquipment, 
     deleteEquipment, 
     getEquipmentById,
-    refreshEquipment 
+    refreshEquipment,
+    addBulkEquipment
   };
 }
-

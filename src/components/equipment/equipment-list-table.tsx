@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Download, Loader2 } from "lucide-react";
+import { PlusCircle, Download, Loader2, Upload } from "lucide-react";
 import Link from "next/link";
 import { getEquipmentColumns } from "./columns"; 
 import { useEquipmentStorage } from '@/hooks/use-equipment-storage';
@@ -38,16 +38,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Equipment } from "@/types";
+import { equipmentSchema, type EquipmentFormData } from "@/lib/schemas";
 
 export function EquipmentListTable() {
-  const { equipmentList, isLoading, deleteEquipment: deleteEquipmentFromStore } = useEquipmentStorage();
+  const { equipmentList, isLoading, deleteEquipment: deleteEquipmentFromStore, addBulkEquipment } = useEquipmentStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleDeleteRequest = React.useCallback((equipmentNumber: string) => {
     setItemToDelete(equipmentNumber);
@@ -90,30 +91,20 @@ export function EquipmentListTable() {
   });
 
   const exportData = () => {
-    const csvRows: string[] = [];
     const headers = [
-      "EquipmentNo", "EquipmentName", "OEM", "Model", "PowerRating", "Quantity", 
-      "YearOfManufacture", "EquipmentSource", "Capacity", "Commitment", 
-      "RegistrationNumber", "CreatedAt", "UpdatedAt"
+      "equipmentNumber", "equipmentName", "oem", "model", "powerRating", "quantity", 
+      "yearOfManufacture", "equipmentSource", "capacity", "commitment", 
+      "registrationNumber", "createdAt", "updatedAt"
     ];
-    csvRows.push(headers.join(','));
+    const csvRows: string[] = [headers.join(',')];
 
-    equipmentList.forEach((item: Equipment) => {
-      const row = [
-        item.equipmentNumber,
-        `"${item.equipmentName.replace(/"/g, '""')}"`,
-        `"${(item.oem ?? '').replace(/"/g, '""')}"`,
-        `"${(item.model ?? '').replace(/"/g, '""')}"`,
-        `"${(item.powerRating ?? '').replace(/"/g, '""')}"`,
-        item.quantity,
-        `"${(item.yearOfManufacture ?? '').replace(/"/g, '""')}"`,
-        `"${(item.equipmentSource ?? '').replace(/"/g, '""')}"`,
-        `"${(item.capacity ?? '').replace(/"/g, '""')}"`,
-        `"${(item.commitment ?? '').replace(/"/g, '""')}"`,
-        `"${(item.registrationNumber ?? '').replace(/"/g, '""')}"`,
-        item.createdAt,
-        item.updatedAt
-      ];
+    equipmentList.forEach((item) => {
+      const row = headers.map(header => {
+        const value = item[header as keyof typeof item] ?? '';
+        const stringValue = String(value);
+        // Handle values with commas by enclosing them in double quotes
+        return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
+      });
       csvRows.push(row.join(','));
     });
 
@@ -135,6 +126,68 @@ export function EquipmentListTable() {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      try {
+        const expectedHeaders = ["equipmentNumber", "equipmentName", "oem", "model", "powerRating", "quantity", "yearOfManufacture", "equipmentSource", "capacity", "commitment", "registrationNumber"];
+        const rows = text.split('\n').filter(row => row.trim() !== '');
+        if (rows.length < 1) throw new Error("CSV file is empty or contains only a header.");
+        
+        const headerRow = rows.shift()!.trim().split(',').map(h => h.trim());
+        if (JSON.stringify(headerRow) !== JSON.stringify(expectedHeaders)) {
+            throw new Error(`CSV headers do not match expected format. Expected: ${expectedHeaders.join(',')}`);
+        }
+
+        const newEquipmentData: EquipmentFormData[] = [];
+        for (const [index, rowStr] of rows.entries()) {
+            const values = rowStr.trim().split(',');
+            const equipmentObject: any = {};
+            expectedHeaders.forEach((header, i) => {
+                equipmentObject[header] = values[i] || "";
+            });
+            
+            const parsed = equipmentSchema.safeParse(equipmentObject);
+            if (!parsed.success) {
+                const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+                throw new Error(`Validation failed on row ${index + 2}: ${errorMessages}`);
+            }
+            newEquipmentData.push(parsed.data);
+        }
+        
+        addBulkEquipment(newEquipmentData);
+        toast({
+            title: "Import Successful",
+            description: `${newEquipmentData.length} equipment items imported successfully.`,
+        });
+
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Import Failed",
+          description: error.message || "An error occurred while parsing the CSV file.",
+        });
+      } finally {
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+      }
+    };
+    reader.onerror = () => {
+        toast({ variant: "destructive", title: "Error", description: "Failed to read the file."});
+    }
+    reader.readAsText(file);
+  };
+
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading equipment...</div>;
   }
@@ -151,6 +204,17 @@ export function EquipmentListTable() {
             className="max-w-sm"
           />
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleImportClick}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import CSV
+          </Button>
+           <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".csv"
+            className="hidden"
+          />
           <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />
             Export Data

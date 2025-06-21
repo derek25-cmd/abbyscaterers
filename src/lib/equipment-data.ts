@@ -99,3 +99,35 @@ export function deleteEquipment(equipmentNumber: string): boolean {
   }
   return false;
 }
+
+
+export function addMultipleEquipment(equipmentDataList: EquipmentFormData[]): Equipment[] {
+  const allEquipment = getEquipmentFromStorage();
+  const now = new Date().toISOString();
+
+  const newEquipmentList: Equipment[] = [];
+  const existingNumbers = new Set(allEquipment.map(eq => eq.equipmentNumber));
+  
+  // Also check for duplicates within the imported list itself
+  const newNumbersInBatch = new Set<string>();
+
+  for (const equipmentData of equipmentDataList) {
+    if (existingNumbers.has(equipmentData.equipmentNumber) || newNumbersInBatch.has(equipmentData.equipmentNumber)) {
+      throw new Error(`Duplicate Equipment No. found during import: "${equipmentData.equipmentNumber}". Aborting import.`);
+    }
+
+    const newEquipment: Equipment = {
+      ...equipmentData,
+      id: equipmentData.equipmentNumber,
+      quantity: Number(equipmentData.quantity),
+      createdAt: now,
+      updatedAt: now,
+    };
+    newEquipmentList.push(newEquipment);
+    newNumbersInBatch.add(newEquipment.equipmentNumber);
+  }
+
+  const updatedEquipmentList = [...allEquipment, ...newEquipmentList];
+  saveEquipmentToStorage(updatedEquipmentList);
+  return newEquipmentList;
+}

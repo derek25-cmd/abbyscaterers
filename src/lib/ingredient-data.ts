@@ -98,3 +98,33 @@ export function deleteIngredient(itemNumber: string): boolean {
   }
   return false;
 }
+
+
+export function addMultipleIngredients(ingredientDataList: IngredientFormData[]): Ingredient[] {
+  const allIngredients = getIngredientsFromStorage();
+  const now = new Date().toISOString();
+
+  const newIngredientList: Ingredient[] = [];
+  const existingNumbers = new Set(allIngredients.map(ing => ing.itemNumber));
+  const newNumbersInBatch = new Set<string>();
+
+  for (const ingredientData of ingredientDataList) {
+    if (existingNumbers.has(ingredientData.itemNumber) || newNumbersInBatch.has(ingredientData.itemNumber)) {
+      throw new Error(`Duplicate Item No. found during import: "${ingredientData.itemNumber}". Aborting import.`);
+    }
+
+    const newIngredient: Ingredient = {
+      ...ingredientData,
+      id: ingredientData.itemNumber,
+      unitPrice: Number(ingredientData.unitPrice),
+      createdAt: now,
+      updatedAt: now,
+    };
+    newIngredientList.push(newIngredient);
+    newNumbersInBatch.add(newIngredient.itemNumber);
+  }
+
+  const updatedIngredientList = [...allIngredients, ...newIngredientList];
+  saveIngredientsToStorage(updatedIngredientList);
+  return newIngredientList;
+}
