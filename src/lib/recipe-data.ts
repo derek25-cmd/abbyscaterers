@@ -54,7 +54,6 @@ export function addRecipe(recipeData: RecipeFormData): Recipe {
   }
 
   const newRecipe: Recipe = {
-    id: recipeData.recipeNumber,
     recipeNumber: recipeData.recipeNumber,
     recipeName: recipeData.recipeName,
     ingredients: recipeData.ingredients.map(ing => ({
@@ -86,7 +85,6 @@ export function updateRecipe(originalRecipeNumber: string, updates: RecipeFormDa
       ingredientId: ing.ingredientId,
       measurement: ing.measurement,
     })),
-    id: updates.recipeNumber, // Ensure id is updated if recipeNumber changes
     updatedAt: new Date().toISOString(),
   };
   

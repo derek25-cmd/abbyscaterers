@@ -39,8 +39,9 @@ export function useEquipmentStorage() {
   const addBulkEquipment = useCallback((equipmentDataList: EquipmentFormData[]) => {
     const newItems = addMultipleEquipmentToStorage(equipmentDataList);
     setEquipmentList(prev => [...prev, ...newItems]);
+    refreshEquipment(); // Refresh to ensure correct state
     return newItems;
-  }, []);
+  }, [refreshEquipment]);
 
   const updateEquipment = useCallback((originalId: string, updates: EquipmentFormData) => { // Param type from schema
     const updatedItem = updateEquipmentInStorage(originalId, updates);
@@ -48,9 +49,10 @@ export function useEquipmentStorage() {
       setEquipmentList(prevEquipment => 
         prevEquipment.map(eq => eq.equipmentNumber === originalId ? updatedItem : eq)
       );
+      refreshEquipment(); // In case the ID has changed, refresh the whole list
     }
     return updatedItem;
-  }, []);
+  }, [refreshEquipment]);
 
   const deleteEquipment = useCallback((id: string) => {
     const success = deleteEquipmentFromStorage(id);
@@ -61,10 +63,9 @@ export function useEquipmentStorage() {
   }, []);
   
   const getEquipmentById = useCallback((id: string) => {
-    const itemFromState = equipmentList.find(eq => eq.equipmentNumber === id);
-    if (itemFromState) return itemFromState;
+    // Re-fetch from storage to ensure we have the latest data, especially after potential ID changes.
     return getEquipmentByIdFromStorage(id);
-  }, [equipmentList]);
+  }, []);
 
   return { 
     equipmentList, 

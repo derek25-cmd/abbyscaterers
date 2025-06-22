@@ -39,8 +39,9 @@ export function useIngredientStorage() {
   const addBulkIngredients = useCallback((ingredientDataList: IngredientFormData[]) => {
     const newItems = addMultipleIngredientsToStorage(ingredientDataList);
     setIngredients(prev => [...prev, ...newItems]);
+    refreshIngredients(); // Refresh to ensure correct state
     return newItems;
-  }, []);
+  }, [refreshIngredients]);
 
   const updateIngredient = useCallback((originalId: string, updates: IngredientFormData) => {
     const updatedItem = updateIngredientInStorage(originalId, updates);
@@ -48,9 +49,10 @@ export function useIngredientStorage() {
       setIngredients(prevIngredients => 
         prevIngredients.map(ing => ing.itemNumber === originalId ? updatedItem : ing)
       );
+      refreshIngredients(); // In case the ID has changed, refresh the whole list
     }
     return updatedItem;
-  }, []);
+  }, [refreshIngredients]);
 
   const deleteIngredient = useCallback((itemNumber: string) => {
     const success = deleteIngredientFromStorage(itemNumber);
@@ -61,10 +63,9 @@ export function useIngredientStorage() {
   }, []);
   
   const getIngredientById = useCallback((itemNumber: string) => {
-    const itemFromState = ingredients.find(ing => ing.itemNumber === itemNumber);
-    if (itemFromState) return itemFromState;
+    // Re-fetch from storage to ensure we have the latest data, especially after potential ID changes.
     return getIngredientByIdFromStorage(itemNumber);
-  }, [ingredients]);
+  }, []);
 
   return { 
     ingredients, 

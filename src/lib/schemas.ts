@@ -26,7 +26,6 @@ export const clientSchema = z.object({
 export type ClientFormData = z.infer<typeof clientSchema>;
 
 export const equipmentSchema = z.object({
-  id: z.string().optional(), // Will be set to equipmentNumber on creation/update
   equipmentNumber: z.string().min(1, { message: "Equipment No. is required." }),
   equipmentName: z.string().min(2, { message: "Equipment name must be at least 2 characters." }),
   oem: z.string().optional(),
@@ -45,7 +44,6 @@ export const equipmentSchema = z.object({
 export type EquipmentFormData = z.infer<typeof equipmentSchema>;
 
 export const ingredientSchema = z.object({
-  id: z.string().optional(), // Will be set to itemNumber on creation/update
   itemNumber: z.string().min(1, { message: "Item No. is required." }),
   itemDescription: z.string().min(2, { message: "Item description must be at least 2 characters." }),
   itemClassification: z.enum(ITEM_CLASSIFICATIONS, {
@@ -67,7 +65,6 @@ export const recipeIngredientItemSchema = z.object({
 export type RecipeIngredientItemFormData = z.infer<typeof recipeIngredientItemSchema>;
 
 export const recipeSchema = z.object({
-  id: z.string().optional(), // Will be set to recipeNumber on creation/update
   recipeNumber: z.string().min(1, { message: "Recipe No. is required." }),
   recipeName: z.string().min(2, { message: "Recipe name must be at least 2 characters." }),
   ingredients: z.array(recipeIngredientItemSchema).min(1, { message: "At least one ingredient is required." }),

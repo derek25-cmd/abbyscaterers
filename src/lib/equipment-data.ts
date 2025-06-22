@@ -55,7 +55,6 @@ export function addEquipment(equipmentData: EquipmentFormData): Equipment {
 
   const newEquipment: Equipment = {
     ...equipmentData,
-    id: equipmentData.equipmentNumber, 
     quantity: Number(equipmentData.quantity),
     createdAt: now,
     updatedAt: now,
@@ -77,7 +76,6 @@ export function updateEquipment(originalEquipmentNumber: string, updates: Equipm
   const updatedEquipment: Equipment = {
     ...allEquipment[equipmentIndex],
     ...updates,
-    id: updates.equipmentNumber, // Ensure the id is updated if equipmentNumber changes
     equipmentNumber: updates.equipmentNumber,
     quantity: Number(updates.quantity),
     updatedAt: new Date().toISOString(),
@@ -118,7 +116,6 @@ export function addMultipleEquipment(equipmentDataList: EquipmentFormData[]): Eq
 
     const newEquipment: Equipment = {
       ...equipmentData,
-      id: equipmentData.equipmentNumber,
       quantity: Number(equipmentData.quantity),
       createdAt: now,
       updatedAt: now,

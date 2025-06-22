@@ -19,8 +19,7 @@ export interface Client {
 }
 
 export interface Equipment {
-  id: string; // Internally used unique ID, typically equipmentNumber
-  equipmentNumber: string; // User-facing "No."
+  equipmentNumber: string; // User-facing "No." and unique ID
   equipmentName: string;
   oem?: string;
   model?: string;
@@ -48,8 +47,7 @@ export const ITEM_CLASSIFICATIONS = [
 export type ItemClassification = (typeof ITEM_CLASSIFICATIONS)[number];
 
 export interface Ingredient {
-  id: string; // Internally used unique ID, typically itemNumber
-  itemNumber: string; // User-facing "No."
+  itemNumber: string; // User-facing "No." and unique ID
   itemDescription: string;
   itemClassification: ItemClassification;
   unitOfMeasure: string;
@@ -64,7 +62,6 @@ export interface RecipeIngredientItem {
 }
 
 export interface Recipe {
-  id: string; // Will be the recipeNumber
   recipeNumber: string; // User-facing unique ID
   recipeName: string; // "Food created"
   ingredients: RecipeIngredientItem[];

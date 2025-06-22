@@ -41,9 +41,10 @@ export function useRecipeStorage() {
       setRecipes(prevRecipes => 
         prevRecipes.map(rec => rec.recipeNumber === originalRecipeNumber ? updatedItem : rec)
       );
+      refreshRecipes(); // In case the ID changed, refresh the whole list
     }
     return updatedItem;
-  }, []);
+  }, [refreshRecipes]);
 
   const deleteRecipe = useCallback((recipeNumber: string) => {
     const success = deleteRecipeFromStorage(recipeNumber);
@@ -54,10 +55,9 @@ export function useRecipeStorage() {
   }, []);
   
   const getRecipeById = useCallback((recipeNumber: string) => {
-    const itemFromState = recipes.find(rec => rec.recipeNumber === recipeNumber);
-    if (itemFromState) return itemFromState;
+    // Re-fetch from storage to ensure we have the latest data, especially after potential ID changes.
     return getRecipeByIdFromStorage(recipeNumber);
-  }, [recipes]);
+  }, []);
 
   return { 
     recipes, 

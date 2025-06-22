@@ -54,7 +54,6 @@ export function addIngredient(ingredientData: IngredientFormData): Ingredient {
 
   const newIngredient: Ingredient = {
     ...ingredientData,
-    id: ingredientData.itemNumber,
     unitPrice: Number(ingredientData.unitPrice),
     createdAt: now,
     updatedAt: now,
@@ -76,7 +75,6 @@ export function updateIngredient(originalItemNumber: string, updates: Ingredient
   const updatedIngredient: Ingredient = {
     ...allIngredients[ingredientIndex],
     ...updates,
-    id: updates.itemNumber, // Ensure id is updated if itemNumber changes
     itemNumber: updates.itemNumber,
     unitPrice: Number(updates.unitPrice),
     updatedAt: new Date().toISOString(),
@@ -115,7 +113,6 @@ export function addMultipleIngredients(ingredientDataList: IngredientFormData[])
 
     const newIngredient: Ingredient = {
       ...ingredientData,
-      id: ingredientData.itemNumber,
       unitPrice: Number(ingredientData.unitPrice),
       createdAt: now,
       updatedAt: now,
