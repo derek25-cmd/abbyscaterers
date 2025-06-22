@@ -168,9 +168,17 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       name={`ingredients.${index}.ingredientId`}
                       render={({ field }) => {
                         const [open, setOpen] = React.useState(false);
+                        const [search, setSearch] = React.useState("");
+
+                        const filteredIngredients = React.useMemo(() => {
+                          if (!search) return availableIngredients;
+                          return availableIngredients.filter((ing) =>
+                            ing.itemDescription.toLowerCase().includes(search.toLowerCase())
+                          );
+                        }, [search, availableIngredients]);
 
                         return (
-                          <FormItem className="flex flex-col">
+                          <FormItem>
                             <FormLabel>Ingredient</FormLabel>
                             <Popover open={open} onOpenChange={setOpen}>
                               <PopoverTrigger asChild>
@@ -196,17 +204,22 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search ingredient..." />
+                                  <CommandInput
+                                    placeholder="Search ingredient..."
+                                    value={search}
+                                    onValueChange={setSearch}
+                                  />
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
-                                      {availableIngredients.map((ing) => (
+                                      {filteredIngredients.map((ing) => (
                                         <CommandItem
                                           value={ing.itemDescription}
                                           key={ing.itemNumber}
                                           onSelect={() => {
                                             field.onChange(ing.itemNumber);
                                             setOpen(false);
+                                            setSearch("");
                                           }}
                                         >
                                           <Check
