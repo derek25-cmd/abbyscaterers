@@ -149,7 +149,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative">
+                <div key={item.id} className="mb-4 p-4 border rounded-md relative">
                    {fields.length > 1 && (
                      <Button
                         type="button"
@@ -162,23 +162,15 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
                       render={({ field }) => {
                         const [open, setOpen] = React.useState(false);
-                        const [search, setSearch] = React.useState("");
-
-                        const filteredIngredients = React.useMemo(() => {
-                          if (!search) return availableIngredients;
-                          return availableIngredients.filter((ing) =>
-                            ing.itemDescription.toLowerCase().includes(search.toLowerCase())
-                          );
-                        }, [search, availableIngredients]);
 
                         return (
-                          <FormItem>
+                          <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
                             <Popover open={open} onOpenChange={setOpen}>
                               <PopoverTrigger asChild>
@@ -206,20 +198,17 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                 <Command>
                                   <CommandInput
                                     placeholder="Search ingredient..."
-                                    value={search}
-                                    onValueChange={setSearch}
                                   />
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
-                                      {filteredIngredients.map((ing) => (
+                                      {availableIngredients.map((ing) => (
                                         <CommandItem
-                                          value={ing.itemDescription}
+                                          value={ing.itemNumber}
                                           key={ing.itemNumber}
-                                          onSelect={() => {
-                                            field.onChange(ing.itemNumber);
+                                          onSelect={(currentValue) => {
+                                            field.onChange(currentValue);
                                             setOpen(false);
-                                            setSearch("");
                                           }}
                                         >
                                           <Check
@@ -247,7 +236,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       control={form.control}
                       name={`ingredients.${index}.measurement`}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Measurement</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g. 2 cups, 100g" {...field} />
@@ -287,3 +276,4 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
     </Form>
   );
 }
+
