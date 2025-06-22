@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { recipeSchema, type RecipeFormData } from "@/lib/schemas";
@@ -23,8 +23,17 @@ import type { Recipe, Ingredient } from "@/types";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2 } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 interface RecipeFormProps {
   recipe?: Recipe; 
@@ -140,31 +149,86 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                <div key={item.id} className="mb-4 border rounded-md relative p-4">
+                  {fields.length > 1 && (
+                     <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
+                        onClick={() => remove(index)}
+                        disabled={isSubmitting}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" /> Remove
+                      </Button>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ingredient</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={ingredientsLoading}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={ingredientsLoading ? "Loading..." : "Select ingredient"} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {!ingredientsLoading && availableIngredients.map((ing: Ingredient) => (
-                                <SelectItem key={ing.id} value={ing.itemNumber}>
-                                  {ing.itemDescription} ({ing.itemNumber})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        const [open, setOpen] = React.useState(false);
+
+                        return (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Ingredient</FormLabel>
+                            <Popover open={open} onOpenChange={setOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={open}
+                                    className={cn(
+                                      "w-full justify-between",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                    disabled={ingredientsLoading}
+                                  >
+                                    {field.value
+                                      ? availableIngredients.find(
+                                          (ing) => ing.itemNumber === field.value
+                                        )?.itemDescription
+                                      : (ingredientsLoading ? "Loading..." : "Select ingredient")}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search ingredient..." />
+                                  <CommandList>
+                                    <CommandEmpty>No ingredient found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {availableIngredients.map((ing) => (
+                                        <CommandItem
+                                          value={`${ing.itemDescription} (${ing.itemNumber})`}
+                                          key={ing.itemNumber}
+                                          onSelect={() => {
+                                            form.setValue(`ingredients.${index}.ingredientId`, ing.itemNumber);
+                                            setOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              ing.itemNumber === field.value
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          {ing.itemDescription} ({ing.itemNumber})
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )
+                      }}
                     />
                     <FormField
                       control={form.control}
@@ -180,18 +244,6 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       )}
                     />
                   </div>
-                  {fields.length > 1 && (
-                     <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute top-2 right-2 text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
-                        onClick={() => remove(index)}
-                        disabled={isSubmitting}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" /> Remove
-                      </Button>
-                  )}
                 </div>
               ))}
                <FormMessage>{form.formState.errors.ingredients?.root?.message || form.formState.errors.ingredients?.message}</FormMessage>
