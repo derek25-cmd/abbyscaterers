@@ -149,17 +149,17 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative p-4">
-                  {fields.length > 1 && (
+                <div key={item.id} className="mb-4 border rounded-md relative p-4 pt-8">
+                   {fields.length > 1 && (
                      <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute top-2 right-2 text-destructive hover:text-destructive-foreground hover:bg-destructive/90"
+                        className="absolute top-1 right-1 text-destructive hover:text-destructive-foreground hover:bg-destructive/90 h-auto p-1.5"
                         onClick={() => remove(index)}
                         disabled={isSubmitting}
                       >
-                        <Trash2 className="h-4 w-4 mr-1" /> Remove
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -202,10 +202,10 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                     <CommandGroup>
                                       {availableIngredients.map((ing) => (
                                         <CommandItem
-                                          value={`${ing.itemDescription} (${ing.itemNumber})`}
+                                          value={ing.itemNumber}
                                           key={ing.itemNumber}
-                                          onSelect={() => {
-                                            form.setValue(`ingredients.${index}.ingredientId`, ing.itemNumber);
+                                          onSelect={(currentValue) => {
+                                            form.setValue(`ingredients.${index}.ingredientId`, currentValue);
                                             setOpen(false);
                                           }}
                                         >
