@@ -206,9 +206,8 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                         <CommandItem
                                           value={ing.itemNumber}
                                           key={ing.itemNumber}
-                                          data-cmdk-filter-value={ing.itemDescription}
                                           onSelect={(currentValue) => {
-                                            field.onChange(currentValue);
+                                            form.setValue(`ingredients.${index}.ingredientId`, currentValue);
                                             setOpen(false);
                                           }}
                                         >
