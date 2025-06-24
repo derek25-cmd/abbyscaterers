@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { recipeSchema, type RecipeFormData } from "@/lib/schemas";
-import type { Recipe, Ingredient } from "@/types";
+import type { Recipe } from "@/types";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -149,7 +149,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative p-4 pt-6">
+                <div key={item.id} className="mb-4 border rounded-md relative">
                    {fields.length > 1 && (
                      <Button
                         type="button"
@@ -162,7 +162,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
@@ -205,14 +205,9 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                       {availableIngredients.map((ing) => (
                                         <CommandItem
                                           key={ing.itemNumber}
-                                          value={ing.itemDescription}
+                                          value={ing.itemNumber}
                                           onSelect={(currentValue) => {
-                                            const selectedIngredient = availableIngredients.find(
-                                              (ingredient) => ingredient.itemDescription === currentValue
-                                            );
-                                            if (selectedIngredient) {
-                                              form.setValue(`ingredients.${index}.ingredientId`, selectedIngredient.itemNumber);
-                                            }
+                                            form.setValue(`ingredients.${index}.ingredientId`, currentValue);
                                             setOpen(false);
                                           }}
                                         >
