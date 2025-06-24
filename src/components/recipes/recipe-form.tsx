@@ -149,7 +149,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative p-4">
+                <div key={item.id} className="mb-4 border rounded-md relative p-4 pt-6">
                    {fields.length > 1 && (
                      <Button
                         type="button"
@@ -204,17 +204,22 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                     <CommandGroup>
                                       {availableIngredients.map((ing) => (
                                         <CommandItem
-                                          value={ing.itemNumber}
                                           key={ing.itemNumber}
+                                          value={ing.itemDescription}
                                           onSelect={(currentValue) => {
-                                            form.setValue(`ingredients.${index}.ingredientId`, currentValue);
+                                            const selectedIngredient = availableIngredients.find(
+                                              (ingredient) => ingredient.itemDescription === currentValue
+                                            );
+                                            if (selectedIngredient) {
+                                              form.setValue(`ingredients.${index}.ingredientId`, selectedIngredient.itemNumber);
+                                            }
                                             setOpen(false);
                                           }}
                                         >
                                           <Check
                                             className={cn(
                                               "mr-2 h-4 w-4",
-                                              ing.itemNumber === field.value
+                                              field.value === ing.itemNumber
                                                 ? "opacity-100"
                                                 : "opacity-0"
                                             )}
