@@ -74,7 +74,6 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
     setOpenStates(fields.map(() => false));
   }, [fields.length]);
 
-
   useEffect(() => {
     if (recipe) {
       form.reset({
@@ -101,7 +100,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
         router.push("/recipes");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
       let errorMessage = "An unexpected error occurred.";
       if (error instanceof Error) {
@@ -158,7 +157,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative">
+                <div key={item.id} className="mb-4 border rounded-md relative p-4">
                    {fields.length > 1 && (
                      <Button
                         type="button"
@@ -171,12 +170,11 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
-                      render={({ field }) => {
-                        return (
+                      render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
                              <Popover open={openStates[index]} onOpenChange={(isOpen) => {
@@ -198,20 +196,19 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                     )}
                                     disabled={ingredientsLoading}
                                   >
-                                    {field.value
-                                      ? availableIngredients.find(
-                                          (ing) => ing.itemNumber === field.value
-                                        )?.itemDescription
-                                      : (ingredientsLoading ? "Loading..." : "Select ingredient")}
+                                    {(() => {
+                                      if (ingredientsLoading) return "Loading...";
+                                      if (!field.value) return "Select ingredient";
+                                      const selected = availableIngredients.find(ing => ing.itemNumber === field.value);
+                                      return selected ? `${selected.itemNumber} - ${selected.itemDescription}` : "Select ingredient";
+                                    })()}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput
-                                    placeholder="Search ingredient..."
-                                  />
+                                  <CommandInput placeholder="Search ingredient..." />
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
@@ -236,7 +233,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                                 : "opacity-0"
                                             )}
                                           />
-                                          {ing.itemDescription}
+                                          {ing.itemNumber} - {ing.itemDescription}
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -247,7 +244,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                             <FormMessage />
                           </FormItem>
                         )
-                      }}
+                      }
                     />
                     <FormField
                       control={form.control}
