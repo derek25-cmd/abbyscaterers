@@ -66,14 +66,6 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
     name: "ingredients"
   });
 
-  // State to manage the open/closed state of each ingredient popover individually.
-  const [openStates, setOpenStates] = useState<boolean[]>([]);
-
-  // Synchronize the openStates array with the number of ingredient fields.
-  useEffect(() => {
-    setOpenStates(fields.map(() => false));
-  }, [fields.length]);
-
   useEffect(() => {
     if (recipe) {
       form.reset({
@@ -100,7 +92,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
         router.push("/recipes");
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Submission error:", error);
       let errorMessage = "An unexpected error occurred.";
       if (error instanceof Error) {
@@ -156,7 +148,9 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <Separator />
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
-              {fields.map((item, index) => (
+              {fields.map((item, index) => {
+                const [open, setOpen] = useState(false);
+                return (
                 <div key={item.id} className="mb-4 border rounded-md relative p-4">
                    {fields.length > 1 && (
                      <Button
@@ -177,19 +171,13 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
-                             <Popover open={openStates[index]} onOpenChange={(isOpen) => {
-                               setOpenStates((prev) => {
-                                 const newStates = [...prev];
-                                 newStates[index] = isOpen;
-                                 return newStates;
-                               });
-                             }}>
+                             <Popover open={open} onOpenChange={setOpen}>
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
                                     variant="outline"
                                     role="combobox"
-                                    aria-expanded={openStates[index]}
+                                    aria-expanded={open}
                                     className={cn(
                                       "w-full justify-between",
                                       !field.value && "text-muted-foreground"
@@ -218,11 +206,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                           value={ing.itemNumber}
                                           onSelect={(currentValue) => {
                                             form.setValue(`ingredients.${index}.ingredientId`, currentValue);
-                                            setOpenStates((prev) => {
-                                              const newStates = [...prev];
-                                              newStates[index] = false;
-                                              return newStates;
-                                            });
+                                            setOpen(false);
                                           }}
                                         >
                                           <Check
@@ -250,7 +234,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       control={form.control}
                       name={`ingredients.${index}.measurement`}
                       render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem>
                           <FormLabel>Measurement</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g. 2 cups, 100g" {...field} />
@@ -261,7 +245,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                     />
                   </div>
                 </div>
-              ))}
+              )})}
                <FormMessage>{form.formState.errors.ingredients?.root?.message || form.formState.errors.ingredients?.message}</FormMessage>
               <Button
                 type="button"
