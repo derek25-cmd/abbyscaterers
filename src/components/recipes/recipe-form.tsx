@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/command";
 
 interface RecipeFormProps {
-  recipe?: Recipe; 
+  recipe?: Recipe;
 }
 
 export function RecipeForm({ recipe }: RecipeFormProps) {
@@ -49,7 +49,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
   const form = useForm<RecipeFormData>({
     resolver: zodResolver(recipeSchema),
     defaultValues: recipe
-      ? { 
+      ? {
           recipeNumber: recipe.recipeNumber,
           recipeName: recipe.recipeName,
           ingredients: recipe.ingredients.map(ing => ({ ingredientId: ing.ingredientId, measurement: ing.measurement })) || [],
@@ -60,11 +60,20 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
           ingredients: [{ ingredientId: "", measurement: "" }],
         },
   });
-  
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "ingredients"
   });
+
+  // State to manage the open/closed state of each ingredient popover individually.
+  const [openStates, setOpenStates] = useState<boolean[]>([]);
+
+  // Synchronize the openStates array with the number of ingredient fields.
+  useEffect(() => {
+    setOpenStates(fields.map(() => false));
+  }, [fields.length]);
+
 
   useEffect(() => {
     if (recipe) {
@@ -80,7 +89,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
     setIsSubmitting(true);
     try {
       if (recipe) {
-        const updated = updateRecipe(recipe.recipeNumber, data); 
+        const updated = updateRecipe(recipe.recipeNumber, data);
         if (updated) {
           toast({ title: "Recipe Updated", description: `${updated.recipeName} (No: ${updated.recipeNumber}) has been updated.` });
           router.push(`/recipes/${updated.recipeNumber}`);
@@ -92,7 +101,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
         router.push("/recipes");
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Submission error:", error);
       let errorMessage = "An unexpected error occurred.";
       if (error instanceof Error) {
@@ -144,7 +153,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                 </FormItem>
               )}
             />
-            
+
             <Separator />
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
@@ -167,18 +176,22 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
                       render={({ field }) => {
-                        const [open, setOpen] = React.useState(false);
-
                         return (
                           <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
-                             <Popover open={open} onOpenChange={setOpen}>
+                             <Popover open={openStates[index]} onOpenChange={(isOpen) => {
+                               setOpenStates((prev) => {
+                                 const newStates = [...prev];
+                                 newStates[index] = isOpen;
+                                 return newStates;
+                               });
+                             }}>
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
                                     variant="outline"
                                     role="combobox"
-                                    aria-expanded={open}
+                                    aria-expanded={openStates[index]}
                                     className={cn(
                                       "w-full justify-between",
                                       !field.value && "text-muted-foreground"
@@ -208,7 +221,11 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                           value={ing.itemNumber}
                                           onSelect={(currentValue) => {
                                             form.setValue(`ingredients.${index}.ingredientId`, currentValue);
-                                            setOpen(false);
+                                            setOpenStates((prev) => {
+                                              const newStates = [...prev];
+                                              newStates[index] = false;
+                                              return newStates;
+                                            });
                                           }}
                                         >
                                           <Check
