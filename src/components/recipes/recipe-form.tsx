@@ -24,7 +24,8 @@ import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import debounce from 'lodash.debounce';
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -96,12 +97,12 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         router.push("/recipes");
       }
     } catch (error) {
-      console.error("Submission error:", error);
-      let errorMessage = "An unexpected error occurred.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      toast({ variant: "destructive", title: "Submission Error", description: errorMessage });
+       console.error("Submission error:", error);
+       let errorMessage = "An unexpected error occurred.";
+       if (error instanceof Error) {
+         errorMessage = error.message;
+       }
+       toast({ variant: "destructive", title: "Submission Error", description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -172,6 +173,42 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       name={`ingredients.${index}.ingredientId`}
                       render={({ field }) => {
                         const [open, setOpen] = useState(false);
+                        const [searchTerm, setSearchTerm] = useState("");
+                        const [filteredIngredients, setFilteredIngredients] = useState(availableIngredients);
+
+                        const debounceFilter = useMemo(
+                          () =>
+                            debounce((term: string) => {
+                              if (!availableIngredients) {
+                                setFilteredIngredients([]);
+                                return;
+                              }
+                              const lowerCaseTerm = term.toLowerCase();
+                              const filtered = availableIngredients.filter(
+                                (ing) =>
+                                  ing.itemNumber.toLowerCase().includes(lowerCaseTerm) ||
+                                  ing.itemDescription.toLowerCase().includes(lowerCaseTerm)
+                              );
+                              setFilteredIngredients(filtered);
+                            }, 300),
+                          [availableIngredients]
+                        );
+
+                        useEffect(() => {
+                          debounceFilter(searchTerm);
+                          // Cleanup the debounced function on unmount
+                          return () => {
+                            debounceFilter.cancel();
+                          };
+                        }, [searchTerm, debounceFilter]);
+
+                        useEffect(() => {
+                          if (!open) {
+                            setSearchTerm("");
+                          }
+                          setFilteredIngredients(availableIngredients);
+                        }, [open, availableIngredients]);
+
                         return (
                           <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
@@ -199,17 +236,22 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                               </PopoverTrigger>
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
-                                  <CommandInput placeholder="Search ingredient..." />
+                                  <CommandInput
+                                    placeholder="Search ingredient..."
+                                    value={searchTerm}
+                                    onValueChange={setSearchTerm}
+                                  />
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
-                                      {availableIngredients.map((ing) => (
+                                      {filteredIngredients.map((ing) => (
                                         <CommandItem
                                           key={ing.itemNumber}
                                           value={ing.itemNumber}
                                           onSelect={(currentValue) => {
                                             form.setValue(`ingredients.${index}.ingredientId`, currentValue);
                                             setOpen(false);
+                                            setSearchTerm('');
                                           }}
                                         >
                                           <Check
