@@ -95,7 +95,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
         router.push("/recipes");
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Submission error:", error);
       let errorMessage = "An unexpected error occurred.";
       if (error instanceof Error) {
@@ -150,9 +150,10 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
 
             <Separator />
             <div>
-              <h3 className="text-lg font-medium mb-2">Ingredients</h3>
+              <h3 className="text-lg font-medium mb-4">Ingredients</h3>
+              <div className="space-y-4">
               {fields.map((item, index) => (
-                <div key={item.id} className="mb-4 border rounded-md relative p-4">
+                <div key={item.id} className="border rounded-md p-4 relative">
                    {fields.length > 1 && (
                      <Button
                         type="button"
@@ -165,7 +166,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
@@ -189,7 +190,6 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                   >
                                     {(() => {
                                       if (ingredientsLoading) return "Loading...";
-                                      if (!field.value) return "Select ingredient";
                                       const selected = availableIngredients.find(ing => ing.itemNumber === field.value);
                                       return selected ? `${selected.itemNumber} - ${selected.itemDescription}` : "Select ingredient";
                                     })()}
@@ -249,12 +249,13 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                   </div>
                 </div>
               ))}
+              </div>
                <FormMessage>{form.formState.errors.ingredients?.root?.message || form.formState.errors.ingredients?.message}</FormMessage>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="mt-2"
+                className="mt-4"
                 onClick={() => append({ ingredientId: "", measurement: "" })}
                 disabled={isSubmitting}
               >
