@@ -68,10 +68,13 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
 
   useEffect(() => {
     if (recipe) {
+      const recipeIngredients = recipe.ingredients || [];
       form.reset({
         recipeNumber: recipe.recipeNumber,
         recipeName: recipe.recipeName,
-        ingredients: recipe.ingredients.map(ing => ({ ingredientId: ing.ingredientId, measurement: ing.measurement })) || [],
+        ingredients: recipeIngredients.length > 0 
+          ? recipeIngredients.map(ing => ({ ingredientId: ing.ingredientId, measurement: ing.measurement })) 
+          : [{ ingredientId: "", measurement: "" }],
       });
     }
   }, [recipe, form]);
@@ -92,7 +95,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
         router.push("/recipes");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Submission error:", error);
       let errorMessage = "An unexpected error occurred.";
       if (error instanceof Error) {
@@ -148,9 +151,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             <Separator />
             <div>
               <h3 className="text-lg font-medium mb-2">Ingredients</h3>
-              {fields.map((item, index) => {
-                const [open, setOpen] = useState(false);
-                return (
+              {fields.map((item, index) => (
                 <div key={item.id} className="mb-4 border rounded-md relative p-4">
                    {fields.length > 1 && (
                      <Button
@@ -168,7 +169,9 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
-                      render={({ field }) => (
+                      render={({ field }) => {
+                        const [open, setOpen] = useState(false);
+                        return (
                           <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
                              <Popover open={open} onOpenChange={setOpen}>
@@ -228,7 +231,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                             <FormMessage />
                           </FormItem>
                         )
-                      }
+                      }}
                     />
                     <FormField
                       control={form.control}
@@ -245,7 +248,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                     />
                   </div>
                 </div>
-              )})}
+              ))}
                <FormMessage>{form.formState.errors.ingredients?.root?.message || form.formState.errors.ingredients?.message}</FormMessage>
               <Button
                 type="button"
