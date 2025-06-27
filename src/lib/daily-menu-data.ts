@@ -55,7 +55,6 @@ export function addDailyMenu(menuData: DailyMenuFormData): DailyMenu {
 
   const newMenu: DailyMenu = {
     ...menuData,
-    items: menuData.items.map(item => ({ recipeId: item.recipeId })),
     createdAt: now,
     updatedAt: now,
   };
@@ -77,7 +76,6 @@ export function updateDailyMenu(originalId: string, updates: DailyMenuFormData):
     ...allMenus[menuIndex],
     ...updates,
     id: updates.id,
-    items: updates.items.map(item => ({ recipeId: item.recipeId })),
     updatedAt: new Date().toISOString(),
   };
   

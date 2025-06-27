@@ -77,15 +77,21 @@ export interface Recipe {
   updatedAt: string; // ISO date string
 }
 
-export interface DailyMenuItem {
-  recipeId: string; // References Recipe.recipeNumber
+export const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner"] as const;
+export type MealType = (typeof MEAL_TYPES)[number];
+
+export interface ClientEvent {
+  clientId: string; // References Client.id
+  date: string; // ISO date string
+  numberOfPeople: number;
+  mealType: MealType;
+  recipes: { recipeId: string }[]; // References Recipe.recipeNumber
 }
 
 export interface DailyMenu {
   id: string; // User-facing unique ID
   name: string;
-  date: string; // ISO date string for the menu date
-  items: DailyMenuItem[];
+  clientEvents: ClientEvent[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }

@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DailyMenu } from "@/types";
-import { format, parseISO, isValid } from 'date-fns';
 
 export const getDailyMenuColumns = (
   onDelete: (menuId: string) => void
@@ -38,17 +37,15 @@ export const getDailyMenuColumns = (
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
   },
    {
-    accessorKey: "date",
+    accessorKey: "clientEvents",
     header: ({ column }) => (
       <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Date
+        Client Events
       </Button>
     ),
     cell: ({ row }) => {
-      const dateString = row.getValue("date") as string;
-      if (!dateString) return "N/A";
-      const date = parseISO(dateString);
-      return isValid(date) ? format(date, "PPP") : "Invalid Date";
+      const clientEvents = row.getValue("clientEvents") as any[];
+      return <div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground"/> {clientEvents?.length ?? 0}</div>;
     },
   },
   {

@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import { ITEM_CLASSIFICATIONS, UNITS_OF_MEASURE } from "@/types";
+import { ITEM_CLASSIFICATIONS, UNITS_OF_MEASURE, MEAL_TYPES } from "@/types";
 
 // This schema can remain if other parts of the app use it,
 // but it's no longer directly part of the Client schema.
@@ -83,15 +83,18 @@ export const recipeSchema = z.object({
 
 export type RecipeFormData = z.infer<typeof recipeSchema>;
 
-export const dailyMenuItemSchema = z.object({
-  recipeId: z.string().min(1, "Recipe selection is required."),
+export const clientEventSchema = z.object({
+  clientId: z.string().min(1, "Client selection is required."),
+  date: z.string().datetime({ message: "Invalid date format for event date." }),
+  numberOfPeople: z.coerce.number().int().positive({ message: "Number of people must be a positive number." }),
+  mealType: z.enum(MEAL_TYPES, { errorMap: () => ({ message: "Please select a valid meal type." }) }),
+  recipes: z.array(z.object({ recipeId: z.string().min(1, "Recipe selection is required.") })).min(1, { message: "At least one recipe is required for the event." }),
 });
 
 export const dailyMenuSchema = z.object({
   id: z.string().min(1, { message: "Menu ID is required." }),
   name: z.string().min(2, { message: "Menu name must be at least 2 characters." }),
-  date: z.string().datetime({ message: "Invalid date format for menu date." }),
-  items: z.array(dailyMenuItemSchema).min(1, { message: "At least one recipe is required." }),
+  clientEvents: z.array(clientEventSchema).min(1, { message: "At least one client event is required." }),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });

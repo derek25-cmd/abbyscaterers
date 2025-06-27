@@ -2,19 +2,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Calendar } from "@/components/ui/calendar";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,96 +15,141 @@ import { dailyMenuSchema, type DailyMenuFormData } from "@/lib/schemas";
 import type { DailyMenu } from "@/types";
 import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
+import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { MEAL_TYPES } from "@/types";
 
 interface DailyMenuFormProps {
   menu?: DailyMenu;
 }
 
+const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, control: any }) => {
+    const { fields: recipeFields, append: appendRecipe, remove: removeRecipe } = useFieldArray({
+        control,
+        name: `clientEvents.${nestIndex}.recipes`
+    });
+
+    const { recipes: availableRecipes, isLoading: recipesLoading } = useRecipeStorage();
+
+    return (
+        <div className="space-y-3">
+             <FormLabel>Recipes</FormLabel>
+            {recipeFields.map((item, k) => (
+                <div key={item.id} className="flex items-center gap-2">
+                    <FormField
+                        control={control}
+                        name={`clientEvents.${nestIndex}.recipes.${k}.recipeId`}
+                        render={({ field }) => (
+                            <FormItem className="flex-1">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={recipesLoading}>
+                                                {recipesLoading ? "Loading..." : field.value ? availableRecipes.find(rec => rec.recipeNumber === field.value)?.recipeName : "Select recipe"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search recipe..." />
+                                            <CommandList>
+                                                <CommandEmpty>No recipe found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {availableRecipes.map((rec) => (
+                                                        <CommandItem key={rec.recipeNumber} value={rec.recipeName} onSelect={() => { field.onChange(rec.recipeNumber) }}>
+                                                            <Check className={cn("mr-2 h-4 w-4", rec.recipeNumber === field.value ? "opacity-100" : "opacity-0")} />
+                                                            {rec.recipeName}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90 shrink-0" onClick={() => removeRecipe(k)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+            ))}
+             <FormMessage>{(control.getFieldState(`clientEvents.${nestIndex}.recipes`)?.error as any)?.message}</FormMessage>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendRecipe({ recipeId: "" })}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Recipe
+            </Button>
+        </div>
+    )
+}
+
 export function DailyMenuForm({ menu }: DailyMenuFormProps) {
   const router = useRouter();
   const { addMenu, updateMenu } = useDailyMenuStorage();
-  const { recipes: availableRecipes, isLoading: recipesLoading } = useRecipeStorage();
+  const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<DailyMenuFormData>({
     resolver: zodResolver(dailyMenuSchema),
     defaultValues: menu
-      ? {
-          id: menu.id,
-          name: menu.name,
-          date: menu.date,
-          items: menu.items.map(item => ({ recipeId: item.recipeId })) || [],
-        }
+      ? { ...menu }
       : {
           id: "",
           name: "",
-          date: new Date().toISOString(),
-          items: [{ recipeId: "" }],
+          clientEvents: [{ 
+              clientId: "", 
+              date: new Date().toISOString(), 
+              mealType: "Lunch", 
+              numberOfPeople: 10, 
+              recipes: [{recipeId: ""}] 
+            }],
         },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "items"
+    name: "clientEvents"
   });
 
   useEffect(() => {
     if (menu) {
-      form.reset({
-        id: menu.id,
-        name: menu.name,
-        date: menu.date,
-        items: menu.items.length > 0 ? menu.items.map(item => ({ recipeId: item.recipeId })) : [{ recipeId: "" }],
-      });
+      form.reset(menu);
     }
   }, [menu, form]);
 
   async function onSubmit(data: DailyMenuFormData) {
     setIsSubmitting(true);
     try {
-      const payload: DailyMenuFormData = {
-        ...data,
-        date: new Date(data.date).toISOString(),
-      };
-      
       if (menu) {
-        const updated = updateMenu(menu.id, payload);
+        const updated = updateMenu(menu.id, data);
         if (updated) {
           toast({ title: "Menu Updated", description: `${updated.name} (ID: ${updated.id}) has been updated.` });
           router.push(`/daily-menus/${updated.id}`);
-        } else {
-          toast({ variant: "destructive", title: "Error", description: "Failed to update menu." });
         }
       } else {
-        const newMenuData = addMenu(payload);
+        const newMenuData = addMenu(data);
         toast({ title: "Menu Added", description: `${newMenuData.name} (ID: ${newMenuData.id}) has been added.` });
         router.push("/daily-menus");
       }
     } catch (error) {
        console.error("Submission error:", error);
        let errorMessage = "An unexpected error occurred.";
-       if (error instanceof Error) {
-         errorMessage = error.message;
-       }
+       if (error instanceof Error) { errorMessage = error.message; }
        toast({ variant: "destructive", title: "Submission Error", description: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
   }
+  
+  const isLoading = isSubmitting || clientsLoading;
 
   return (
     <Form {...form}>
@@ -121,191 +158,136 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
           <CardHeader>
             <CardTitle>{menu ? "Edit Daily Menu" : "Add New Daily Menu"}</CardTitle>
             <CardDescription>
-              {menu ? "Update the details for this menu." : "Fill in the information for the new menu."}
+              A menu can contain multiple events for different clients.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="id"
-                  render={({ field }) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Menu ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. MENU-001" {...field} />
-                      </FormControl>
-                      <FormDescription className="flex items-center gap-1">
-                        <Info className="h-3 w-3" /> Enter a unique identifier for this menu.
-                      </FormDescription>
-                      <FormMessage />
+                        <FormLabel>Menu ID</FormLabel>
+                        <FormControl><Input placeholder="e.g. MENU-2024-07" {...field} /></FormControl>
+                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire menu.</FormDescription>
+                        <FormMessage />
                     </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
+                )} />
+                <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Menu Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Monday Lunch Special" {...field} />
-                      </FormControl>
-                       <FormDescription>A descriptive name for the menu.</FormDescription>
-                      <FormMessage />
+                        <FormLabel>Menu Name</FormLabel>
+                        <FormControl><Input placeholder="e.g. Wedding Weekend Special" {...field} /></FormControl>
+                        <FormDescription>A descriptive name for the menu.</FormDescription>
+                        <FormMessage />
                     </FormItem>
-                  )}
-                />
-            </div>
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => {
-                const dateValue = field.value ? parseISO(field.value) : undefined;
-                const isDateValid = dateValue && isValid(dateValue);
-                return (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Menu Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full md:w-1/2 lg:w-1/3 pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {isDateValid && dateValue ? (
-                              format(dateValue, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={isDateValid ? dateValue : undefined}
-                          onSelect={(date) => field.onChange(date?.toISOString())}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription>
-                      The date for which this menu is intended.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium mb-4">Recipes</h3>
-              <div className="space-y-4">
-              {fields.map((item, index) => {
-                 const [open, setOpen] = React.useState(false);
-                 return (
-                  <div key={item.id} className="flex items-center gap-4 border p-4 rounded-md relative">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.recipeId`}
-                      render={({ field }) => (
-                          <FormItem className="flex-1 flex flex-col">
-                            <FormLabel>Recipe</FormLabel>
-                            <Popover open={open} onOpenChange={setOpen}>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn(
-                                      "w-full justify-between",
-                                      !field.value && "text-muted-foreground"
-                                    )}
-                                    disabled={recipesLoading}
-                                  >
-                                    {recipesLoading ? "Loading..." : field.value ? availableRecipes.find(rec => rec.recipeNumber === field.value)?.recipeName : "Select recipe"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
-                                  <CommandInput placeholder="Search recipe..." />
-                                  <CommandList>
-                                    <CommandEmpty>No recipe found.</CommandEmpty>
-                                    <CommandGroup>
-                                      {availableRecipes.map((rec) => (
-                                        <CommandItem
-                                          key={rec.recipeNumber}
-                                          value={rec.recipeNumber}
-                                          onSelect={(currentValue) => {
-                                            form.setValue(`items.${index}.recipeId`, currentValue);
-                                            setOpen(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              field.value === rec.recipeNumber ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          {rec.recipeName}
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )
-                      }
-                    />
-                    {fields.length > 1 && (
-                     <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive-foreground hover:bg-destructive/90 h-9 w-9 mt-6"
-                        onClick={() => remove(index)}
-                        disabled={isSubmitting}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                  )}
-                  </div>
-                 )
-              })}
-              </div>
-               <FormMessage>{form.formState.errors.items?.root?.message || form.formState.errors.items?.message}</FormMessage>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => append({ recipeId: "" })}
-                disabled={isSubmitting}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Recipe
-              </Button>
+                )} />
             </div>
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+        <Separator />
+        
+        <div className="space-y-6">
+             {fields.map((item, index) => (
+                <Card key={item.id} className="relative bg-card/50">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Client Event #{index + 1}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField control={form.control} name={`clientEvents.${index}.clientId`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Client</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading}>
+                                                    {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Search client..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No client found.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {availableClients.map((c) => (
+                                                            <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
+                                                                <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                {c.companyName}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                </FormItem>
+                             )} />
+                             <FormField control={form.control} name={`clientEvents.${index}.date`} render={({ field }) => {
+                                 const dateValue = field.value ? parseISO(field.value) : undefined;
+                                 return (
+                                     <FormItem className="flex flex-col">
+                                         <FormLabel>Event Date</FormLabel>
+                                         <Popover>
+                                             <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                 {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
+                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                             </Button></FormControl></PopoverTrigger>
+                                             <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus /></PopoverContent>
+                                         </Popover>
+                                         <FormMessage />
+                                     </FormItem>
+                                 )
+                             }} />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField control={form.control} name={`clientEvents.${index}.numberOfPeople`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People</FormLabel>
+                                    <FormControl><Input type="number" placeholder="e.g. 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name={`clientEvents.${index}.mealType`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
+                        <Separator />
+                        <ClientEventRecipeForm nestIndex={index} control={form.control} />
+
+                    </CardContent>
+                    {fields.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" className="absolute top-3 right-3 text-destructive hover:bg-destructive/90 hover:text-destructive-foreground" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    )}
+                </Card>
+             ))}
+             <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
+        </div>
+
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch", numberOfPeople: 10, recipes: [{recipeId: ""}] })} disabled={isLoading}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
+        </Button>
+
+        <div className="flex justify-end gap-4 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || recipesLoading}>
-            {(isSubmitting || recipesLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {menu ? "Save Changes" : "Add Menu"}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {menu ? "Save Changes" : "Save Menu"}
           </Button>
         </div>
       </form>
