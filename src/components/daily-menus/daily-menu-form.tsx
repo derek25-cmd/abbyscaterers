@@ -17,7 +17,7 @@ import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
