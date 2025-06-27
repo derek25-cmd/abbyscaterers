@@ -37,27 +37,6 @@ export const getEquipmentColumns = (
     cell: ({ row }) => <div className="font-medium">{row.getValue("equipmentName")}</div>,
   },
   {
-    accessorKey: "oem",
-    header: "OEM",
-  },
-  {
-    accessorKey: "model",
-    header: "Model",
-  },
-  {
-    accessorKey: "quantity",
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Quantity
-      </Button>
-    ),
-    cell: ({ row }) => <div className="text-center">{row.getValue("quantity")}</div>,
-  },
-  {
-    accessorKey: "yearOfManufacture",
-    header: "Year of Mfg.",
-  },
-  {
     id: "actions",
     cell: ({ row }) => {
       const equipment = row.original;

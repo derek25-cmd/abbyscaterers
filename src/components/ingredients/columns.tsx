@@ -13,8 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Ingredient, UnitAndPrice } from "@/types";
-import { Badge } from "@/components/ui/badge";
+import type { Ingredient } from "@/types";
 
 export const getIngredientColumns = (
   onDelete: (itemNumber: string) => void
@@ -36,30 +35,6 @@ export const getIngredientColumns = (
       </Button>
     ),
     cell: ({ row }) => <div className="font-medium">{row.getValue("itemDescription")}</div>,
-  },
-  {
-    accessorKey: "itemClassification",
-    header: "Classification",
-    cell: ({ row }) => {
-      const classification = row.getValue("itemClassification") as string;
-      return <Badge variant="secondary">{classification}</Badge>;
-    }
-  },
-  {
-    accessorKey: "units",
-    header: "Units Available",
-    cell: ({ row }) => {
-      const units = row.getValue("units") as UnitAndPrice[];
-      if (!units || units.length === 0) return <Badge variant="outline">None</Badge>;
-      
-      const sortedUnits = [...units].sort((a, b) => a.unit.localeCompare(b.unit));
-      
-      return (
-        <div className="flex flex-wrap gap-1">
-          {sortedUnits.map(u => <Badge key={u.unit} variant="outline" className="font-mono">{u.unit}</Badge>)}
-        </div>
-      );
-    }
   },
   {
     id: "actions",

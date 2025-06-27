@@ -37,14 +37,6 @@ export const getRecipeColumns = (
     cell: ({ row }) => <div className="font-medium">{row.getValue("recipeName")}</div>,
   },
   {
-    accessorKey: "ingredients",
-    header: "No. of Ingredients",
-    cell: ({ row }) => {
-      const ingredients = row.getValue("ingredients") as unknown[];
-      return <div className="text-center">{ingredients.length}</div>;
-    }
-  },
-  {
     id: "actions",
     cell: ({ row }) => {
       const recipe = row.original;
