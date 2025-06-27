@@ -107,7 +107,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
           clientEvents: [{ 
               clientId: "", 
               date: new Date().toISOString(), 
-              mealType: "Lunch", 
+              mealType: "Lunch only", 
               numberOfPeople: 10, 
               recipes: [{recipeId: ""}] 
             }],
@@ -277,7 +277,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch", numberOfPeople: 10, recipes: [{recipeId: ""}] })} disabled={isLoading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, recipes: [{recipeId: ""}] })} disabled={isLoading}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
         </Button>
 

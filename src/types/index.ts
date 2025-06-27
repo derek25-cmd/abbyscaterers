@@ -77,7 +77,16 @@ export interface Recipe {
   updatedAt: string; // ISO date string
 }
 
-export const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner"] as const;
+export const MEAL_TYPES = [
+    "Breakfast only", 
+    "Lunch only", 
+    "Dinner only", 
+    "Breakfast and lunch", 
+    "Brunch", 
+    "Breakfast, lunch and evening tea", 
+    "Breakfast, lunch and dinner", 
+    "Evening tea"
+] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
 
 export interface ClientEvent {
