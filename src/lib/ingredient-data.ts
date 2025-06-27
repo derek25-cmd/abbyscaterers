@@ -54,7 +54,7 @@ export function addIngredient(ingredientData: IngredientFormData): Ingredient {
 
   const newIngredient: Ingredient = {
     ...ingredientData,
-    unitPrice: Number(ingredientData.unitPrice),
+    units: ingredientData.units,
     createdAt: now,
     updatedAt: now,
   };
@@ -76,7 +76,7 @@ export function updateIngredient(originalItemNumber: string, updates: Ingredient
     ...allIngredients[ingredientIndex],
     ...updates,
     itemNumber: updates.itemNumber,
-    unitPrice: Number(updates.unitPrice),
+    units: updates.units,
     updatedAt: new Date().toISOString(),
   };
 
@@ -113,7 +113,7 @@ export function addMultipleIngredients(ingredientDataList: IngredientFormData[])
 
     const newIngredient: Ingredient = {
       ...ingredientData,
-      unitPrice: Number(ingredientData.unitPrice),
+      units: ingredientData.units,
       createdAt: now,
       updatedAt: now,
     };

@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Ingredient } from "@/types";
+import type { Ingredient, UnitAndPrice } from "@/types";
 import { Badge } from "@/components/ui/badge";
 
 export const getIngredientColumns = (
@@ -46,24 +46,20 @@ export const getIngredientColumns = (
     }
   },
   {
-    accessorKey: "unitOfMeasure",
-    header: "UoM",
-  },
-  {
-    accessorKey: "unitPrice",
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Unit Price
-      </Button>
-    ),
+    accessorKey: "units",
+    header: "Units Available",
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("unitPrice"));
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD", // Adjust currency as needed
-      }).format(amount);
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
+      const units = row.getValue("units") as UnitAndPrice[];
+      if (!units || units.length === 0) return <Badge variant="outline">None</Badge>;
+      
+      const sortedUnits = [...units].sort((a, b) => a.unit.localeCompare(b.unit));
+      
+      return (
+        <div className="flex flex-wrap gap-1">
+          {sortedUnits.map(u => <Badge key={u.unit} variant="outline" className="font-mono">{u.unit}</Badge>)}
+        </div>
+      );
+    }
   },
   {
     id: "actions",

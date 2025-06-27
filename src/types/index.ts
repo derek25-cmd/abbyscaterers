@@ -46,12 +46,19 @@ export const ITEM_CLASSIFICATIONS = [
 
 export type ItemClassification = (typeof ITEM_CLASSIFICATIONS)[number];
 
+export const UNITS_OF_MEASURE = ["kg", "gms", "bunch", "item"] as const;
+export type UnitOfMeasure = (typeof UNITS_OF_MEASURE)[number];
+
+export interface UnitAndPrice {
+  unit: UnitOfMeasure;
+  price: number;
+}
+
 export interface Ingredient {
   itemNumber: string; // User-facing "No." and unique ID
   itemDescription: string;
   itemClassification: ItemClassification;
-  unitOfMeasure: string;
-  unitPrice: number;
+  units: UnitAndPrice[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }

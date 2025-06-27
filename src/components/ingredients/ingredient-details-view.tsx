@@ -5,7 +5,7 @@ import type { Ingredient } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Edit, PackagePlus, Tag, CalendarClock, Info, DollarSign, ListChecks, Scale } from "lucide-react";
+import { Edit, PackagePlus, Tag, CalendarClock, Info, DollarSign, ListChecks } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -42,11 +42,6 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
     return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
   };
 
-  const formattedUnitPrice = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD", // Adjust as needed
-  }).format(ingredient.unitPrice);
-
   return (
     <Card className="shadow-lg">
       <CardHeader className="border-b">
@@ -66,7 +61,7 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
           </Link>
         </div>
       </CardHeader>
-      <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+      <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         
         <div className="space-y-1 divide-y divide-border">
           <h3 className="text-lg font-semibold text-foreground pt-2 pb-3 flex items-center"><Info className="mr-2 h-5 w-5 text-primary" />Basic Information</h3>
@@ -79,13 +74,25 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
           />
         </div>
         
-        <div className="space-y-1 divide-y divide-border">
-          <h3 className="text-lg font-semibold text-foreground pt-2 pb-3 flex items-center"><DollarSign className="mr-2 h-5 w-5 text-primary" />Pricing & Units</h3>
-          <DetailItem icon={Scale} label="Unit of Measure" value={ingredient.unitOfMeasure} />
-          <DetailItem icon={DollarSign} label="Unit Price" value={formattedUnitPrice} />
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-foreground pt-2 flex items-center"><DollarSign className="mr-2 h-5 w-5 text-primary" />Pricing & Units</h3>
+          {ingredient.units && ingredient.units.length > 0 ? (
+            <div className="space-y-2 divide-y divide-border border rounded-md p-4 bg-muted/30">
+              {ingredient.units.map((unitItem, index) => (
+                <div key={index} className="flex justify-between items-center pt-2 first:pt-0">
+                  <span className="text-sm font-medium text-foreground">{unitItem.unit.toUpperCase()}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(unitItem.price)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground p-4 text-center">No pricing information available.</p>
+          )}
         </div>
 
-         <div className="space-y-1 divide-y divide-border md:col-span-2">
+        <div className="space-y-1 divide-y divide-border md:col-span-2">
            <h3 className="text-lg font-semibold text-foreground pt-4 pb-3 flex items-center"><CalendarClock className="mr-2 h-5 w-5 text-primary" />Record Timestamps</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
                 <div className="divide-y divide-border">
