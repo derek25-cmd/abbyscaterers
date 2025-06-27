@@ -1,0 +1,70 @@
+
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
+import type { DailyMenu } from "@/types";
+import type { DailyMenuFormData } from "@/lib/schemas";
+import { 
+  getAllDailyMenus as getAllMenusFromStorage,
+  getDailyMenuById as getMenuByIdFromStorage,
+  addDailyMenu as addMenuToStorage,
+  updateDailyMenu as updateMenuInStorage,
+  deleteDailyMenu as deleteMenuFromStorage 
+} from '@/lib/daily-menu-data';
+
+export function useDailyMenuStorage() {
+  const [menus, setMenus] = useState<DailyMenu[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setMenus(getAllMenusFromStorage());
+      setIsLoading(false);
+    }
+  }, []);
+
+  const refreshMenus = useCallback(() => {
+    if (typeof window !== "undefined") {
+      setMenus(getAllMenusFromStorage());
+    }
+  }, []);
+
+  const addMenu = useCallback((menuData: DailyMenuFormData) => {
+    const newMenu = addMenuToStorage(menuData);
+    setMenus(prevMenus => [...prevMenus, newMenu]);
+    return newMenu;
+  }, []);
+
+  const updateMenu = useCallback((originalId: string, updates: DailyMenuFormData) => {
+    const updatedItem = updateMenuInStorage(originalId, updates);
+    if (updatedItem) {
+      setMenus(prevMenus => 
+        prevMenus.map(menu => menu.id === originalId ? updatedItem : menu)
+      );
+      refreshMenus(); // In case the ID changed, refresh the whole list
+    }
+    return updatedItem;
+  }, [refreshMenus]);
+
+  const deleteMenu = useCallback((id: string) => {
+    const success = deleteMenuFromStorage(id);
+    if (success) {
+      setMenus(prevMenus => prevMenus.filter(menu => menu.id !== id));
+    }
+    return success;
+  }, []);
+  
+  const getMenuById = useCallback((id: string) => {
+    return getMenuByIdFromStorage(id);
+  }, []);
+
+  return { 
+    menus, 
+    isLoading, 
+    addMenu, 
+    updateMenu, 
+    deleteMenu, 
+    getMenuById,
+    refreshMenus 
+  };
+}

@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UtensilsCrossed, ChefHat, ClipboardList, ClipboardSignature } from "lucide-react"; 
+import { Users, UtensilsCrossed, ChefHat, ClipboardList, ClipboardSignature, BookOpen } from "lucide-react"; 
 import {
   SidebarProvider,
   Sidebar,
@@ -33,6 +33,7 @@ const navItems = [
   { href: "/equipment", label: "Equipment", icon: ChefHat },
   { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
+  { href: "/daily-menus", label: "Daily Menus", icon: BookOpen },
 ];
 
 function UserProfile() {

@@ -82,3 +82,18 @@ export const recipeSchema = z.object({
 });
 
 export type RecipeFormData = z.infer<typeof recipeSchema>;
+
+export const dailyMenuItemSchema = z.object({
+  recipeId: z.string().min(1, "Recipe selection is required."),
+});
+
+export const dailyMenuSchema = z.object({
+  id: z.string().min(1, { message: "Menu ID is required." }),
+  name: z.string().min(2, { message: "Menu name must be at least 2 characters." }),
+  date: z.string().datetime({ message: "Invalid date format for menu date." }),
+  items: z.array(dailyMenuItemSchema).min(1, { message: "At least one recipe is required." }),
+  createdAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+export type DailyMenuFormData = z.infer<typeof dailyMenuSchema>;

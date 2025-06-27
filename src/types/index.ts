@@ -76,3 +76,16 @@ export interface Recipe {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+
+export interface DailyMenuItem {
+  recipeId: string; // References Recipe.recipeNumber
+}
+
+export interface DailyMenu {
+  id: string; // User-facing unique ID
+  name: string;
+  date: string; // ISO date string for the menu date
+  items: DailyMenuItem[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
