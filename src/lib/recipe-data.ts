@@ -58,7 +58,8 @@ export function addRecipe(recipeData: RecipeFormData): Recipe {
     recipeName: recipeData.recipeName,
     ingredients: recipeData.ingredients.map(ing => ({
       ingredientId: ing.ingredientId,
-      measurement: ing.measurement,
+      quantity: ing.quantity,
+      unit: ing.unit,
     })),
     createdAt: now,
     updatedAt: now,
@@ -83,7 +84,8 @@ export function updateRecipe(originalRecipeNumber: string, updates: RecipeFormDa
     recipeName: updates.recipeName,
     ingredients: updates.ingredients.map(ing => ({
       ingredientId: ing.ingredientId,
-      measurement: ing.measurement,
+      quantity: ing.quantity,
+      unit: ing.unit,
     })),
     updatedAt: new Date().toISOString(),
   };

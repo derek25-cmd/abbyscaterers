@@ -65,7 +65,8 @@ export interface Ingredient {
 
 export interface RecipeIngredientItem {
   ingredientId: string; // References Ingredient.itemNumber
-  measurement: string;
+  quantity: number;
+  unit: UnitOfMeasure;
 }
 
 export interface Recipe {

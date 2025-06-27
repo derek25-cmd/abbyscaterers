@@ -65,7 +65,10 @@ export type IngredientFormData = z.infer<typeof ingredientSchema>;
 
 export const recipeIngredientItemSchema = z.object({
   ingredientId: z.string().min(1, "Ingredient selection is required."),
-  measurement: z.string().min(1, "Measurement is required."),
+  quantity: z.coerce.number().positive({ message: "Quantity must be a positive number." }),
+  unit: z.enum(UNITS_OF_MEASURE, {
+    errorMap: () => ({ message: "Please select a valid unit." }),
+  }),
 });
 
 export type RecipeIngredientItemFormData = z.infer<typeof recipeIngredientItemSchema>;

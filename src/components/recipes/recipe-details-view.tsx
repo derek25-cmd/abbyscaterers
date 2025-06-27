@@ -152,7 +152,7 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
                         <span className="text-sm text-foreground">
                         {ingredientsLoading ? <Skeleton className="h-5 w-32 inline-block" /> : getIngredientName(item.ingredientId)}
                         </span>
-                        <span className="text-sm text-muted-foreground">{item.measurement}</span>
+                        <span className="text-sm text-muted-foreground font-mono">{`${item.quantity} ${item.unit}`}</span>
                     </li>
                     ))}
                 </ul>

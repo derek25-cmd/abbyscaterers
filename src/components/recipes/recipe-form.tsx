@@ -24,8 +24,7 @@ import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
-import React, { useState, useEffect, useMemo } from "react";
-import debounce from 'lodash.debounce';
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   Command,
@@ -35,6 +34,9 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UNITS_OF_MEASURE } from "@/types";
+
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -53,12 +55,12 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
       ? {
           recipeNumber: recipe.recipeNumber,
           recipeName: recipe.recipeName,
-          ingredients: recipe.ingredients.map(ing => ({ ingredientId: ing.ingredientId, measurement: ing.measurement })) || [],
+          ingredients: recipe.ingredients.map(ing => ({ ingredientId: ing.ingredientId, quantity: ing.quantity, unit: ing.unit })) || [],
         }
       : {
           recipeNumber: "",
           recipeName: "",
-          ingredients: [{ ingredientId: "", measurement: "" }],
+          ingredients: [{ ingredientId: "", quantity: 1, unit: "kg" }],
         },
   });
 
@@ -74,8 +76,8 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         recipeNumber: recipe.recipeNumber,
         recipeName: recipe.recipeName,
         ingredients: recipeIngredients.length > 0 
-          ? recipeIngredients.map(ing => ({ ingredientId: ing.ingredientId, measurement: ing.measurement })) 
-          : [{ ingredientId: "", measurement: "" }],
+          ? recipeIngredients.map(ing => ({ ingredientId: ing.ingredientId, quantity: ing.quantity, unit: ing.unit })) 
+          : [{ ingredientId: "", quantity: 1, unit: "kg" }],
       });
     }
   }, [recipe, form]);
@@ -167,58 +169,19 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                     <FormField
                       control={form.control}
                       name={`ingredients.${index}.ingredientId`}
-                      render={({ field }) => {
-                        const [open, setOpen] = useState(false);
-                        const [searchTerm, setSearchTerm] = useState("");
-                        const [filteredIngredients, setFilteredIngredients] = useState(availableIngredients);
-
-                        const debounceFilter = useMemo(
-                          () =>
-                            debounce((term: string) => {
-                              if (!availableIngredients) {
-                                setFilteredIngredients([]);
-                                return;
-                              }
-                              const lowerCaseTerm = term.toLowerCase();
-                              const filtered = availableIngredients.filter(
-                                (ing) =>
-                                  ing.itemNumber.toLowerCase().includes(lowerCaseTerm) ||
-                                  ing.itemDescription.toLowerCase().includes(lowerCaseTerm)
-                              );
-                              setFilteredIngredients(filtered);
-                            }, 300),
-                          [availableIngredients]
-                        );
-
-                        useEffect(() => {
-                          debounceFilter(searchTerm);
-                          // Cleanup the debounced function on unmount
-                          return () => {
-                            debounceFilter.cancel();
-                          };
-                        }, [searchTerm, debounceFilter]);
-
-                        useEffect(() => {
-                          if (!open) {
-                            setSearchTerm("");
-                          }
-                          setFilteredIngredients(availableIngredients);
-                        }, [open, availableIngredients]);
-
-                        return (
+                      render={({ field }) => (
                           <FormItem className="flex flex-col">
                             <FormLabel>Ingredient</FormLabel>
-                             <Popover open={open} onOpenChange={setOpen}>
+                            <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
                                     variant="outline"
                                     role="combobox"
-                                    aria-expanded={open}
                                     className={cn(
                                       "w-full justify-between",
                                       !field.value && "text-muted-foreground"
@@ -238,20 +201,16 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                 <Command>
                                   <CommandInput
                                     placeholder="Search ingredient..."
-                                    value={searchTerm}
-                                    onValueChange={setSearchTerm}
                                   />
                                   <CommandList>
                                     <CommandEmpty>No ingredient found.</CommandEmpty>
                                     <CommandGroup>
-                                      {filteredIngredients.map((ing) => (
+                                      {availableIngredients.map((ing) => (
                                         <CommandItem
                                           key={ing.itemNumber}
-                                          value={ing.itemNumber}
-                                          onSelect={(currentValue) => {
-                                            form.setValue(`ingredients.${index}.ingredientId`, currentValue);
-                                            setOpen(false);
-                                            setSearchTerm('');
+                                          value={`${ing.itemNumber} - ${ing.itemDescription}`}
+                                          onSelect={() => {
+                                            form.setValue(`ingredients.${index}.ingredientId`, ing.itemNumber);
                                           }}
                                         >
                                           <Check
@@ -273,17 +232,45 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                             <FormMessage />
                           </FormItem>
                         )
-                      }}
+                      }
                     />
                     <FormField
                       control={form.control}
-                      name={`ingredients.${index}.measurement`}
+                      name={`ingredients.${index}.quantity`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Measurement</FormLabel>
+                          <FormLabel>Quantity</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. 2 cups, 100g" {...field} />
+                            <Input
+                              type="number"
+                              step="any"
+                              placeholder="e.g. 2.5"
+                              {...field}
+                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name={`ingredients.${index}.unit`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a unit" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {UNITS_OF_MEASURE.map(unit => (
+                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -298,7 +285,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                 variant="outline"
                 size="sm"
                 className="mt-4"
-                onClick={() => append({ ingredientId: "", measurement: "" })}
+                onClick={() => append({ ingredientId: "", quantity: 1, unit: "kg" })}
                 disabled={isSubmitting}
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Ingredient
