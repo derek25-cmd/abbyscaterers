@@ -1,4 +1,5 @@
 
+
 import { z } from "zod";
 
 // DietaryClassification schema
@@ -143,7 +144,9 @@ export const InvoiceItemSchema = z.object({
   pax: z.number().min(0),
   unitPrice: z.number().min(0),
   total: z.number(),
-  date: z.string().optional(),
+  date: z.string().refine((date) => !isNaN(Date.parse(date)), {
+    message: "A valid date is required",
+  }),
   particularType: z.enum(['event', 'meal']),
   particularDescription: z.string().optional(),
 });
@@ -153,7 +156,7 @@ export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 // Proforma Invoice Schema
 export const ProformaInvoiceSchema = z.object({
   id: z.string().min(1, "Invoice number is required"),
-  invoiceDate: z.string().optional(),
+  invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
   clientId: z.string().nullable(),
   receiverName: z.string(),
   receiverPosition: z.string(),
@@ -166,11 +169,18 @@ export const ProformaInvoiceSchema = z.object({
   vatType: z.enum(['inclusive', 'exclusive']),
   selectedEventType: z.string(),
   customEventType: z.string(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
+  endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
   serviceFields: z.record(z.boolean()),
   serviceDesc: z.string(),
   items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
+}).refine(data => {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return end >= start;
+}, {
+    message: "End date cannot be before start date",
+    path: ["endDate"],
 });
 
 export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
@@ -205,3 +215,10 @@ export const FinalInvoiceSchema = z.object({
 });
 
 export type FinalInvoiceFormData = z.infer<typeof FinalInvoiceSchema>;
+
+
+// Helper function for Zod
+const isValidDate = (dateString?: string) => {
+    if (!dateString) return false;
+    return !isNaN(Date.parse(dateString));
+};
