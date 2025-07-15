@@ -43,10 +43,8 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
     const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
 
     useEffect(() => {
-        // Initialize local item state from form data
         const initialItems = formData.items.map(item => ({
             ...item,
-            // Generate the default particular description on mount if not already present
             particularDescription: item.particularDescription || getParticularText(item)
         }));
         setLocalItems(initialItems);
@@ -202,7 +200,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                           {formData.lpoNumber && <p className="mb-2 ml-6">LPO No.: {formData.lpoNumber}</p>}
                       </div>
                   </div>
-                  <div style={{ width: 220 }}>
+                  <div style={{ width: 220, position: "relative", zIndex: 10 }}>
                       <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
                           <div><strong>TIN: 151-209-696</strong></div>
                           <div><strong>VRN: 40-050290-L</strong></div>
@@ -210,76 +208,68 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                   </div>
               </div>
 
-              <hr className="border-t-2 border-gray-800 mb-3" style={{ marginTop: '0' }} />
+              <hr className="border-t-2 border-gray-800 mb-3 -mt-4" />
               
               <div className="mb-4 text-center text-lg italic p-3">
                 <p>{formData.serviceDesc}</p>
               </div>
 
-              <table className="w-full border-collapse border border-gray-800 mb-3 text-sm">
-                <thead>
-                  <tr className="font-bold">
-                    <th className="border border-gray-800 p-1.5 text-left w-12">S/No.</th>
-                    <th className="border border-gray-800 p-1.5 text-left w-16">QTY</th>
-                    <th className="border border-gray-800 p-1.5 text-left">PARTICULARS</th>
-                    <th className="border border-gray-800 p-1.5 text-right w-36">UNIT PRICE (TSHS)</th>
-                    <th className="border border-gray-800 p-1.5 text-right w-32">TOTAL (TSHS)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {localItems.map((item, index) => (
-                    <tr key={item.id}>
-                      <td className="border border-gray-800 p-1.5">{index + 1}</td>
-                      <td className="border border-gray-800 p-1.5">{item.pax || '{pax}'}</td>
-                      <td className="border border-gray-800 p-1.5">
-                        <div className="flex justify-between items-center">
-                            <span>{item.particularDescription}</span>
-                            <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
-                                <Pencil className="h-3 w-3" />
-                            </button>
-                        </div>
-                      </td>
-                      <td className="border border-gray-800 p-1.5 text-right">{item.unitPrice ? item.unitPrice.toLocaleString() : '{UnitPrice}'}</td>
-                      <td className="border border-gray-800 p-1.5 text-right">{item.total ? item.total.toLocaleString() : '{Total}'}</td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right font-semibold">Sub-Total (TSHS)</td>
-                    <td className="border border-gray-800 p-1.5 text-right font-semibold" colSpan={2}>{calculateSubtotal().toLocaleString()}</td>
-                  </tr>
-                  {formData.multiplyByDays && <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right">No of days</td>
-                    <td className="border border-gray-800 p-1.5 text-right" colSpan={2}>{formData.numberOfDays}</td>
-                  </tr>}
-                  {formData.multiplyByDays && <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right font-semibold bg-muted">TOTAL (TSHS)</td>
-                    <td className="border border-gray-800 p-1.5 text-right font-semibold bg-muted text-accent" colSpan={2}>{calculateTotalDays().toLocaleString()}</td>
-                  </tr>}
-                  <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right">Add Service Charge (TSHS)</td>
-                    <td className="border border-gray-800 p-1.5 text-right" colSpan={2}>{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString() : '0.00'}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right">Add Transportation Costs (TSHS)</td>
-                    <td className="border border-gray-800 p-1.5 text-right" colSpan={2}>{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString() : '0.00'}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right">Add VAT 18% (TSHS)</td>
-                    <td className="border border-gray-800 p-1.5 text-right" colSpan={2}>{calculateVAT().toLocaleString()}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={2}></td>
-                    <td className="border-r border-gray-800 p-1.5 text-right font-bold bg-muted">GRAND TOTAL (TSHS)</td>
-                    <td className="border border-gray-800 p-1.5 text-right font-bold bg-muted text-accent" colSpan={2}>{calculateGrandTotal().toLocaleString()}</td>
-                  </tr>
-                </tbody>
+              <table className="w-full border-collapse border-black text-sm" style={{border: '1px solid black'}}>
+                  <thead>
+                      <tr className="font-bold">
+                          <th className="border border-black p-1.5 text-left w-12">S/No.</th>
+                          <th className="border border-black p-1.5 text-left w-16">QTY</th>
+                          <th className="border border-black p-1.5 text-left">PARTICULARS</th>
+                          <th className="border border-black p-1.5 text-center w-36">UNIT PRICE<br/>(TSHS)</th>
+                          <th className="border border-black p-1.5 text-center w-32">TOTAL<br/>(TSHS)</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {localItems.map((item, index) => (
+                          <tr key={item.id}>
+                              <td className="border border-black p-1.5 text-center">{index + 1}</td>
+                              <td className="border border-black p-1.5 text-center">{item.pax || '{pax}'}</td>
+                              <td className="border border-black p-1.5">
+                                <div className="flex justify-between items-center">
+                                    <span>{item.particularDescription}</span>
+                                    <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
+                                        <Pencil className="h-3 w-3" />
+                                    </button>
+                                </div>
+                              </td>
+                              <td className="border border-black p-1.5 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
+                              <td className="border border-black p-1.5 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
+                          </tr>
+                      ))}
+                      
+                      {/* Cost Breakdown Section */}
+                      <tr>
+                          <td colSpan={3} className="border-r border-black font-semibold text-right p-1.5">TOTAL (TSHS)</td>
+                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{calculateTotalDays().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                       <tr>
+                          <td colSpan={3} className="border-r border-black text-right p-1.5">No of days</td>
+                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.numberOfDays || 'N/A'}</td>
+                      </tr>
+                      <tr>
+                          <td colSpan={3} className="border-r border-black text-right p-1.5">Add Service Charge (TSHS)</td>
+                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                      </tr>
+                       <tr>
+                          <td colSpan={3} className="border-r border-black text-right p-1.5">Add Transportation Costs (TSHS)</td>
+                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                      </tr>
+                      <tr>
+                          <td colSpan={3} className="border-r border-black text-right p-1.5">Add VAT 18% (TSHS)</td>
+                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.vatType === 'exclusive' ? calculateVAT().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
+                      </tr>
+                      <tr>
+                          <td colSpan={3} className="border-r border-black font-bold bg-muted text-right p-1.5">GRAND TOTAL(TSHS)</td>
+                          <td colSpan={2} className="border-l border-black font-bold bg-muted text-right p-1.5">{calculateGrandTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                  </tbody>
               </table>
+
               <div className="mb-6 text-center text-md font-bold p-2 bg-white rounded">
                 <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(calculateGrandTotal())}.</span></span>
               </div>
