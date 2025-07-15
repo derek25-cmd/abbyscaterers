@@ -109,7 +109,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-primary">Invoice Preview</h1>
             <div className="space-x-2 flex flex-wrap">
-              <Button variant="outline" onClick={onDismiss} disabled={isSaving}>
+              <Button variant="outline" onClick={onDismiss} disabled={isSaving || exporting}>
                 <Edit className="w-4 h-4 mr-2" /> Edit
               </Button>
               <Button onClick={onSave} disabled={isSaving || exporting}>

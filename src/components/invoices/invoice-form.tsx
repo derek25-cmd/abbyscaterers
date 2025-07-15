@@ -14,7 +14,7 @@ import { CalendarIcon, Plus, Trash2, Eye, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, differenceInCalendarDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
@@ -91,7 +91,7 @@ export function InvoiceForm() {
             },
             serviceDesc: '',
             items: [{
-                id: '1', eventType: eventTypes[0], customEventType: '', mealType: '',
+                id: '1', eventType: eventTypes[0], customEventType: '', mealType: mealTypes[1],
                 pax: 0, unitPrice: 0, total: 0, date: undefined, particularType: 'event'
             }]
         }
@@ -102,9 +102,7 @@ export function InvoiceForm() {
         name: "items"
     });
 
-    const watchItems = form.watch('items');
-    const watchStartDate = form.watch('startDate');
-    const watchEndDate = form.watch('endDate');
+    const watchedFormValues = form.watch();
 
     useEffect(() => {
         if (isEditMode && invoiceId) {
@@ -122,15 +120,18 @@ export function InvoiceForm() {
     }, [isEditMode, invoiceId, getInvoiceById, form, router, toast]);
 
     useEffect(() => {
-        if (watchStartDate && watchEndDate) {
-            const start = parseISO(watchStartDate);
-            const end = parseISO(watchEndDate);
-            if (isValid(start) && isValid(end)) {
-                const diff = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-                form.setValue('numberOfDays', diff);
+        const { startDate, endDate } = watchedFormValues;
+        if (startDate && endDate) {
+            const start = parseISO(startDate);
+            const end = parseISO(endDate);
+            if (isValid(start) && isValid(end) && end >= start) {
+                const diff = differenceInCalendarDays(end, start) + 1;
+                form.setValue('numberOfDays', diff, { shouldValidate: true });
+            } else {
+                 form.setValue('numberOfDays', 1, { shouldValidate: true });
             }
         }
-    }, [watchStartDate, watchEndDate, form]);
+    }, [watchedFormValues.startDate, watchedFormValues.endDate, form]);
 
     useEffect(() => {
         const subscription = form.watch((value, { name, type }) => {
@@ -153,11 +154,12 @@ export function InvoiceForm() {
             if (isEditMode && invoiceId) {
                 updateInvoice(invoiceId, data);
                 toast({ title: 'Success', description: 'Invoice updated successfully.' });
+                router.push(`/invoices/${data.id}`);
             } else {
-                addInvoice(data);
+                const newInvoice = addInvoice(data);
                 toast({ title: 'Success', description: 'Invoice created successfully.' });
+                router.push(`/invoices/${newInvoice.id}`);
             }
-            router.push('/invoices');
         } catch (error) {
             console.error("Failed to save invoice", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to save invoice.' });
@@ -165,6 +167,19 @@ export function InvoiceForm() {
             setIsSubmitting(false);
         }
     }
+    
+    // Calculation logic
+    const calculateSubtotal = () => watchedFormValues.items?.reduce((sum, item) => sum + (item.total || 0), 0) ?? 0;
+    const calculateTotalDays = () => {
+        const subtotal = calculateSubtotal();
+        return watchedFormValues.multiplyByDays ? subtotal * (watchedFormValues.numberOfDays || 1) : subtotal;
+    };
+    const calculateVAT = () => {
+        const total = calculateTotalDays() + (watchedFormValues.serviceCharge || 0) + (watchedFormValues.transportCosts || 0);
+        return watchedFormValues.vatType === 'exclusive' ? total * 0.18 : 0;
+    };
+    const calculateGrandTotal = () => calculateTotalDays() + (watchedFormValues.serviceCharge || 0) + (watchedFormValues.transportCosts || 0) + calculateVAT();
+
 
     if (showPreview) {
         const formData = form.getValues();
@@ -188,6 +203,7 @@ export function InvoiceForm() {
             </CardHeader>
             <CardContent>
             <form onSubmit={form.handleSubmit(() => setShowPreview(true))} className="space-y-8">
+
 
                 {/* Invoice Details Section */}
                 <Card className="p-6">
@@ -295,7 +311,7 @@ export function InvoiceForm() {
                         {serviceFieldsList.map(item => (
                             <div key={item.key} className="flex items-center space-x-2">
                                 <Controller name={`serviceFields.${item.key}`} control={form.control} render={({ field }) => (
-                                    <Checkbox id={`sf-${item.key}`} checked={field.value} onCheckedChange={field.onChange} />
+                                    <Checkbox id={`sf-${item.key}`} checked={!!field.value} onCheckedChange={field.onChange} />
                                 )}/>
                                 <Label htmlFor={`sf-${item.key}`}>{item.label}</Label>
                             </div>
@@ -386,9 +402,49 @@ export function InvoiceForm() {
                          )}/></div>
                     </div>
                 </Card>
+                
+                 {/* Summary Section */}
+                <div className="mt-8 p-4 bg-muted/50 rounded-lg">
+                    <h3 className="text-lg font-bold mb-4">Summary</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-2">
+                            <div className="flex justify-between">
+                                <span>Subtotal:</span>
+                                <span>{calculateSubtotal().toLocaleString()} TSHS</span>
+                            </div>
+                            {watchedFormValues.multiplyByDays && (
+                            <div className="flex justify-between">
+                                <span>Subtotal × Days ({watchedFormValues.numberOfDays}):</span>
+                                <span>{calculateTotalDays().toLocaleString()} TSHS</span>
+                            </div>
+                            )}
+                            <div className="flex justify-between">
+                                <span>Service Charge:</span>
+                                <span>{(watchedFormValues.serviceCharge || 0).toLocaleString()} TSHS</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Transport Costs:</span>
+                                <span>{(watchedFormValues.transportCosts || 0).toLocaleString()} TSHS</span>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                             <div className="flex justify-between">
+                                <span>VAT ({watchedFormValues.vatType === 'exclusive' ? '18%' : '0%'}):</span>
+                                <span>{calculateVAT().toLocaleString()} TSHS</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+                                <span>Grand Total:</span>
+                                <span className="text-primary">{calculateGrandTotal().toLocaleString()} TSHS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <div className="mt-8 flex justify-end gap-4">
-                    <Button type="submit" size="lg">
+                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                    <Button type="submit" size="lg" disabled={isSubmitting || invoicesLoading || clientsLoading}>
+                        {(isSubmitting || invoicesLoading || clientsLoading) && <Loader2 className="animate-spin mr-2" />}
                         <Eye className="w-5 h-5 mr-2" /> Preview Invoice
                     </Button>
                 </div>
