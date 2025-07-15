@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ingredientSchema, type IngredientFormData } from "@/lib/schemas";
+import { IngredientSchema, type IngredientFormData } from "@/lib/schemas";
 
 export function IngredientListTable() {
   const { ingredients, isLoading, deleteIngredient: deleteIngredientFromStore, addBulkIngredients } = useIngredientStorage();
@@ -153,7 +153,7 @@ export function IngredientListTable() {
                 ingredientObject[header] = values[i] || "";
             });
             
-            const parsed = ingredientSchema.safeParse(ingredientObject);
+            const parsed = IngredientSchema.safeParse(ingredientObject);
             if (!parsed.success) {
                 const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
                 throw new Error(`Validation failed on row ${index + 2}: ${errorMessages}`);
