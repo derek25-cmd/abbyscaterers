@@ -116,6 +116,7 @@ export interface InvoiceItem {
   total: number;
   date?: string; // ISO string
   particularType: 'event' | 'meal';
+  particularDescription?: string;
 }
 
 export interface Invoice {

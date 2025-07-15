@@ -144,7 +144,10 @@ export const InvoiceItemSchema = z.object({
   total: z.number(),
   date: z.string().optional(),
   particularType: z.enum(['event', 'meal']),
+  particularDescription: z.string().optional(),
 });
+export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
+
 
 export const InvoiceSchema = z.object({
   id: z.string().min(1, "Invoice number is required"),
