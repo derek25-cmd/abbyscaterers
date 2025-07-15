@@ -151,9 +151,9 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                   <div className="mb-4 text-center text-lg italic p-3">
                     <p>{serviceDesc}</p>
                   </div>
-                  <table className="w-full border-collapse border border-gray-800 mb-3 text-sm">
+                  <table className="w-full border-collapse border border-gray-800 mb-3 text-base">
                     <thead>
-                        <tr style={{ fontSize: '15px', fontWeight: 'bold' }}>
+                        <tr style={{ fontSize: '16px', fontWeight: 'bold' }}>
                         <th className="border border-gray-800 p-1 text-center w-12">S/No.</th>
                         <th className="border border-gray-800 p-1 text-center w-16">QTY</th>
                         <th className="border border-gray-800 p-1 text-left">PARTICULARS</th>
@@ -164,9 +164,9 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     <tbody>
                           {localItems.map((item, index) => (
                               <tr key={item.id}>
-                                  <td className="border border-black p-1.5 text-center">{index + 1}</td>
-                                  <td className="border border-black p-1.5 text-center">{item.pax || '{pax}'}</td>
-                                  <td className="border border-black p-1.5">
+                                  <td className="border border-black p-2 text-center">{index + 1}</td>
+                                  <td className="border border-black p-2 text-center">{item.pax || '{pax}'}</td>
+                                  <td className="border border-black p-2">
                                     <div className="flex justify-between items-center">
                                         <span>{item.particularDescription || getParticularText(item)}</span>
                                         <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
@@ -174,60 +174,60 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                         </button>
                                     </div>
                                   </td>
-                                  <td className="border border-black p-1.5 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
-                                  <td className="border border-black p-1.5 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
+                                  <td className="border border-black p-2 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
+                                  <td className="border border-black p-2 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
                               </tr>
                           ))}
                          <tr>
-                            <td colSpan={3} className="border-r border-black p-1"></td>
-                            <td className="border-y border-black p-1 text-right font-semibold">Sub-Total (TSHS)</td>
-                            <td className="border border-black p-1 text-right font-semibold">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td colSpan={3} className="border-r border-black p-1.5"></td>
+                            <td className="border-y border-black p-1.5 text-right font-semibold">Sub-Total (TSHS)</td>
+                            <td className="border border-black p-1.5 text-right font-semibold">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                         {multiplyByDays && (
                         <tr>
-                            <td colSpan={3} className="border-r border-black p-1"></td>
-                            <td className="border-y border-black p-1 text-right">No of days</td>
-                            <td className="border border-black p-1 text-right">{numberOfDays || 1}</td>
+                            <td colSpan={3} className="border-r border-black p-1.5"></td>
+                            <td className="border-y border-black p-1.5 text-right">No of days</td>
+                            <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
                         </tr>
                         )}
                         {multiplyByDays && (
                             <tr>
-                                <td colSpan={3} className="border-r border-black p-1 font-bold">Total For {numberOfDays || 1} Days</td>
-                                <td className="border-y border-black p-1 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
-                                <td className="border border-black p-1 text-right font-bold bg-secondary/20">{totalForDays.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5 font-bold">Total For {numberOfDays || 1} Days</td>
+                                <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{totalForDays.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                         )}
                         <tr>
-                            <td colSpan={3} className="border-r border-black p-1"></td>
-                            <td className="border-y border-black p-1 text-right">Add Service Charge (TSHS)</td>
-                            <td className="border border-black p-1 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                            <td colSpan={3} className="border-r border-black p-1.5"></td>
+                            <td className="border-y border-black p-1.5 text-right">Add Service Charge (TSHS)</td>
+                            <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                         </tr>
                          <tr>
-                            <td colSpan={3} className="border-r border-black p-1"></td>
-                            <td className="border-y border-black p-1 text-right">Add Transportation Costs (TSHS)</td>
-                            <td className="border border-black p-1 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                            <td colSpan={3} className="border-r border-black p-1.5"></td>
+                            <td className="border-y border-black p-1.5 text-right">Add Transportation Costs (TSHS)</td>
+                            <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                         </tr>
                         <tr>
-                            <td colSpan={3} className="border-r border-black p-1"></td>
-                            <td className="border-y border-black p-1 text-right">Add VAT 18% (TSHS)</td>
-                            <td className="border border-black p-1 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
+                            <td colSpan={3} className="border-r border-black p-1.5"></td>
+                            <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
+                            <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
                         </tr>
                         <tr>
-                            <td colSpan={3} className="border-r border-black p-1"></td>
-                            <td className="border-y border-black p-1 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
-                            <td className="border border-black p-1 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td colSpan={3} className="border-r border-black p-1.5"></td>
+                            <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
+                            <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                     </tbody>
                 </table>
 
-                <div className="my-4 text-md p-2 bg-white rounded">
-                    <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(grandTotal)}.</span></span>
+                <div className="my-4 text-lg p-2 bg-white rounded">
+                    <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
                 </div>
                 
                 <div className="flex-grow"></div>
                 
                   <div className="flex justify-end mb-4">
-                    <div className="text-center text-xs">
+                    <div className="text-center text-sm">
                       <p className="mb-1">For and on behalf of:-</p>
                       <p className="mb-2 font-semibold">Abby's Legendary Caterers Limited</p>
                       <img alt="Signature and Seal" className="h-20 w-auto block mx-auto mb-2" src="https://placehold.co/200x80.png" data-ai-hint="signature seal"/>
@@ -237,7 +237,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
 
                   <div className="text-sm">
                     <p className="font-bold mb-1">Terms & Conditions:</p>
-                    <ul className="space-y-0.5 list-disc list-inside text-xs">
+                    <ul className="space-y-1 list-disc list-inside text-sm">
                       <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
                       <li>Payments shall be by Bank transfer or by Cheque.</li>
                       <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>

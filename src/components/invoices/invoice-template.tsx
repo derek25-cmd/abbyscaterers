@@ -152,9 +152,9 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                         <p>{serviceDesc}</p>
                     </div>
                     
-                    <table className="w-full border-collapse border border-gray-800 mb-3 text-sm">
+                    <table className="w-full border-collapse border border-gray-800 mb-3 text-base">
                         <thead>
-                            <tr style={{ fontSize: '15px', fontWeight: 'bold' }}>
+                            <tr style={{ fontSize: '16px', fontWeight: 'bold' }}>
                                 <th className="border border-gray-800 p-1 text-center w-12">S/No.</th>
                                 <th className="border border-gray-800 p-1 text-center w-16">QTY</th>
                                 <th className="border border-gray-800 p-1 text-left">PARTICULARS</th>
@@ -165,9 +165,9 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                         <tbody>
                             {localItems.map((item, index) => (
                                  <tr key={item.id}>
-                                  <td className="border border-black p-1.5 text-center">{index + 1}</td>
-                                  <td className="border border-black p-1.5 text-center">{item.pax || '{pax}'}</td>
-                                  <td className="border border-black p-1.5">
+                                  <td className="border border-black p-2 text-center">{index + 1}</td>
+                                  <td className="border border-black p-2 text-center">{item.pax || '{pax}'}</td>
+                                  <td className="border border-black p-2">
                                     <div className="flex justify-between items-center">
                                         <span>{item.particularDescription || getParticularText(item)}</span>
                                         <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
@@ -175,62 +175,62 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                         </button>
                                     </div>
                                   </td>
-                                  <td className="border border-black p-1.5 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
-                                  <td className="border border-black p-1.5 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
+                                  <td className="border border-black p-2 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
+                                  <td className="border border-black p-2 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
                               </tr>
                             ))}
                              <tr>
-                                <td colSpan={3} className="border-r border-black p-1"></td>
-                                <td className="border-y border-black p-1 text-right font-semibold">Sub-Total (TSHS)</td>
-                                <td className="border border-black p-1 text-right font-semibold">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right font-semibold">Sub-Total (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right font-semibold">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                             {multiplyByDays && (
                             <tr>
-                                <td colSpan={3} className="border-r border-black p-1"></td>
-                                <td className="border-y border-black p-1 text-right">No of days</td>
-                                <td className="border border-black p-1 text-right">{numberOfDays || 1}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">No of days</td>
+                                <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
                             </tr>
                             )}
                             {multiplyByDays && (
                              <tr>
-                                <td colSpan={3} className="border-r border-black p-1 font-bold">Total For {numberOfDays || 1} Days</td>
-                                <td className="border-y border-black p-1 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
-                                <td className="border border-black p-1 text-right font-bold bg-secondary/20">{totalForDays.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5 font-bold">Total For {numberOfDays || 1} Days</td>
+                                <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{totalForDays.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                             )}
                             <tr>
-                                <td colSpan={3} className="border-r border-black p-1"></td>
-                                <td className="border-y border-black p-1 text-right">Add Service Charge(TSHS)</td>
-                                <td className="border border-black p-1 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">Add Service Charge(TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3} className="border-r border-black p-1"></td>
-                                <td className="border-y border-black p-1 text-right">Add Transportation Costs(TSHS)</td>
-                                <td className="border border-black p-1 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">Add Transportation Costs(TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3} className="border-r border-black p-1"></td>
-                                <td className="border-y border-black p-1 text-right">Add VAT 18% (TSHS)</td>
-                                <td className="border border-black p-1 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3} className="border-r border-black p-1"></td>
-                                <td className="border-y border-black p-1 text-right font-bold bg-secondary/40">GRAND TOTAL(TSHS)</td>
-                                <td className="border border-black p-1 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td colSpan={3} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL(TSHS)</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div className="my-4 text-md p-2 bg-white rounded">
-                        <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(grandTotal)}.</span></span>
+                    <div className="my-4 text-lg p-2 bg-white rounded">
+                        <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
                     </div>
 
                     <div className="flex justify-between items-end mt-8">
-                        <div className="text-xs space-y-2">
+                        <div className="text-base space-y-2">
                             <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                             <p className="mt-1">For and on behalf of Abby's Legendary Caterers Limited</p>
-                            <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
-                            <div className="grid grid-cols-2 gap-x-4">
+                            <p className="font-bold pt-4">Please remit your payment to the below Bank details:</p>
+                            <div className="grid grid-cols-[max-content_auto] gap-x-4 gap-y-1">
                                 <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
                                 <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
                                 <div>Account Number(TZS)</div><div>: 9120002502036</div>
@@ -239,12 +239,12 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                 <div>Swift Code</div><div>: SBICTZTX</div>
                             </div>
                         </div>
-                        <div className="text-center text-xs">
+                        <div className="text-center text-sm">
                           <img alt="Signature and Seal" className="h-24 w-auto block mx-auto mb-2" src="https://placehold.co/200x100.png" data-ai-hint="signature seal"/>
                         </div>
                     </div>
 
-                    <p className="text-center text-xs mt-6 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
+                    <p className="text-center text-base mt-6 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
                 </div>
             </Card>
             <Dialog open={editState.open} onOpenChange={(isOpen) => !isOpen && setEditState({ open: false, itemId: '', currentValue: '' })}>
