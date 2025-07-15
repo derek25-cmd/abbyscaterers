@@ -34,6 +34,7 @@ const navItems = [
   { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
   { href: "/daily-menus", label: "Daily Menus", icon: BookOpen },
+  { href: "/invoices", label: "Proforma Invoice", icon: ClipboardSignature },
 ];
 
 function UserProfile() {

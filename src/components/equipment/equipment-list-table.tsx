@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { equipmentSchema, type EquipmentFormData } from "@/lib/schemas";
+import { EquipmentSchema, type EquipmentFormData } from "@/lib/schemas";
 
 export function EquipmentListTable() {
   const { equipmentList, isLoading, deleteEquipment: deleteEquipmentFromStore, addBulkEquipment } = useEquipmentStorage();
@@ -155,7 +155,7 @@ export function EquipmentListTable() {
                 equipmentObject[header] = values[i] || "";
             });
             
-            const parsed = equipmentSchema.safeParse(equipmentObject);
+            const parsed = EquipmentSchema.safeParse(equipmentObject);
             if (!parsed.success) {
                 const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
                 throw new Error(`Validation failed on row ${index + 2}: ${errorMessages}`);
