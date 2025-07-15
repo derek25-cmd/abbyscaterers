@@ -193,7 +193,8 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
               <div className="flex justify-between items-end mb-3">
                   <div className="flex-1">
                       <div className="text-base">
-                          <p className="mb-1"><strong>To:</strong> {formData.receiverName}</p>
+                          <p className="mb-1"><strong>To:</strong></p>
+                          {formData.receiverName && <p className="mb-1 ml-6">{formData.receiverName}</p>}
                           {formData.receiverPosition && <p className="mb-1 ml-6">{formData.receiverPosition}</p>}
                           {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
                           {(client?.address1 || client?.address2) && <p className="mb-1 ml-6">{client.address1} {client.address2}</p>}
@@ -243,36 +244,41 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                       
                       {/* Cost Breakdown Section */}
                     <tr>
-                        <td colSpan={3} rowSpan={7} className="border border-black align-top p-1.5">
-                           <div className="mb-6 text-md font-bold p-2 bg-white rounded">
-                                <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(calculateGrandTotal())}.</span></span>
-                            </div>
-                        </td>
-                        <td className="border border-gray-800 p-1 text-right font-semibold">Total (TSHS)</td>
-                        <td className="border border-gray-800 p-1 text-right font-semibold">{calculateTotalDays() ? calculateTotalDays().toLocaleString() : '{Total}'}</td>
+                        <td colSpan={3} className="border-r border-black"></td>
+                        <td className="border-y border-black p-1 text-right font-semibold">Total (TSHS)</td>
+                        <td className="border border-black p-1 text-right font-semibold">{formData.multiplyByDays ? calculateTotalDays().toLocaleString() : calculateSubtotal().toLocaleString()}</td>
                     </tr>
                     <tr>
-                        <td className="border border-gray-800 p-1 text-right">No of days</td>
-                        <td className="border border-gray-800 p-1 text-right">{formData.numberOfDays || '{No. of days}'}</td>
+                        <td colSpan={3} className="border-r border-black"></td>
+                        <td className="border-y border-black p-1 text-right">No of days</td>
+                        <td className="border border-black p-1 text-right">{formData.numberOfDays || '{No. of days}'}</td>
                     </tr>
                     <tr>
-                        <td className="border border-gray-800 p-1 text-right">Add Service Charge (TSHS)</td>
-                        <td className="border border-gray-800 p-1 text-right">{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString() : '0.00'}</td>
+                        <td colSpan={3} className="border-r border-black"></td>
+                        <td className="border-y border-black p-1 text-right">Add Service Charge (TSHS)</td>
+                        <td className="border border-black p-1 text-right">{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString() : '0.00'}</td>
                     </tr>
                     <tr>
-                        <td className="border border-gray-800 p-1 text-right">Add Transportation Costs (TSHS)</td>
-                        <td className="border border-gray-800 p-1 text-right">{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString() : '0.00'}</td>
+                        <td colSpan={3} className="border-r border-black"></td>
+                        <td className="border-y border-black p-1 text-right">Add Transportation Costs (TSHS)</td>
+                        <td className="border border-black p-1 text-right">{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString() : '0.00'}</td>
                     </tr>
                     <tr>
-                        <td className="border border-gray-800 p-1 text-right">Add VAT 18% (TSHS)</td>
-                        <td className="border border-gray-800 p-1 text-right">{calculateVAT() ? calculateVAT().toLocaleString() : '{VAT}'}</td>
+                        <td colSpan={3} className="border-r border-black"></td>
+                        <td className="border-y border-black p-1 text-right">Add VAT 18% (TSHS)</td>
+                        <td className="border border-black p-1 text-right">{calculateVAT() ? calculateVAT().toLocaleString() : '{VAT}'}</td>
                     </tr>
                     <tr>
-                        <td className="border border-gray-800 p-1 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
-                        <td className="border border-gray-800 p-1 text-right font-bold bg-secondary/40 text-accent">{calculateGrandTotal() ? calculateGrandTotal().toLocaleString() : '{GrandTotal}'}</td>
+                        <td colSpan={3} className="border-r border-black"></td>
+                        <td className="border-y border-black p-1 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
+                        <td className="border border-black p-1 text-right font-bold bg-secondary/40 text-accent">{calculateGrandTotal() ? calculateGrandTotal().toLocaleString() : '{GrandTotal}'}</td>
                     </tr>
                 </tbody>
             </table>
+
+            <div className="my-6 text-md font-bold p-2 bg-white rounded">
+                <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(calculateGrandTotal())}.</span></span>
+            </div>
 
               <div className="flex justify-end mb-6">
                 <div className="text-center text-xs">
