@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Eye, Download, Loader2, Save, Edit, Pencil } from 'lucide-react';
@@ -37,12 +37,12 @@ interface EditParticularsState {
 }
 
 export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }: InvoicePreviewProps) {
-    const [exporting, setExporting] = useState(false);
+    const [exporting, setExporting] = React.useState(false);
     const { toast } = useToast();
-    const [localItems, setLocalItems] = useState<InvoiceItem[]>([]);
-    const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
+    const [localItems, setLocalItems] = React.useState<InvoiceItem[]>([]);
+    const [editState, setEditState] = React.useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
 
-    useEffect(() => {
+    React.useEffect(() => {
         const initialItems = formData.items.map(item => ({
             ...item,
             particularDescription: item.particularDescription || getParticularText(item)
@@ -213,18 +213,17 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
               <div className="mb-4 text-center text-lg italic p-3">
                 <p>{formData.serviceDesc}</p>
               </div>
-
-              <table className="w-full border-collapse border-black text-sm" style={{border: '1px solid black'}}>
-                  <thead>
-                      <tr className="font-bold">
-                          <th className="border border-black p-1.5 text-left w-12">S/No.</th>
-                          <th className="border border-black p-1.5 text-left w-16">QTY</th>
-                          <th className="border border-black p-1.5 text-left">PARTICULARS</th>
-                          <th className="border border-black p-1.5 text-center w-36">UNIT PRICE<br/>(TSHS)</th>
-                          <th className="border border-black p-1.5 text-center w-32">TOTAL<br/>(TSHS)</th>
-                      </tr>
-                  </thead>
-                  <tbody>
+              <table className="w-full border-collapse border border-gray-800 mb-3">
+                <thead>
+                    <tr style={{ fontSize: '17px', fontWeight: 'bold' }}>
+                    <th className="border border-gray-800 p-1 text-left w-12">S/No.</th>
+                    <th className="border border-gray-800 p-1 text-left w-16">QTY</th>
+                    <th className="border border-gray-800 p-1 text-left">PARTICULARS</th>
+                    <th className="border border-gray-800 p-1 text-right w-48">UNIT PRICE<br/>(TSHS)</th>
+                    <th className="border border-gray-800 p-1 text-right w-32">TOTAL (TSHS)</th>
+                    </tr>
+                </thead>
+                <tbody>
                       {localItems.map((item, index) => (
                           <tr key={item.id}>
                               <td className="border border-black p-1.5 text-center">{index + 1}</td>
@@ -243,36 +242,37 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                       ))}
                       
                       {/* Cost Breakdown Section */}
-                      <tr>
-                          <td colSpan={3} className="border-r border-black font-semibold text-right p-1.5">TOTAL (TSHS)</td>
-                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{calculateTotalDays().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
-                       <tr>
-                          <td colSpan={3} className="border-r border-black text-right p-1.5">No of days</td>
-                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.numberOfDays || 'N/A'}</td>
-                      </tr>
-                      <tr>
-                          <td colSpan={3} className="border-r border-black text-right p-1.5">Add Service Charge (TSHS)</td>
-                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
-                      </tr>
-                       <tr>
-                          <td colSpan={3} className="border-r border-black text-right p-1.5">Add Transportation Costs (TSHS)</td>
-                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
-                      </tr>
-                      <tr>
-                          <td colSpan={3} className="border-r border-black text-right p-1.5">Add VAT 18% (TSHS)</td>
-                          <td colSpan={2} className="border-l border-black p-1.5 text-right">{formData.vatType === 'exclusive' ? calculateVAT().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
-                      </tr>
-                      <tr>
-                          <td colSpan={3} className="border-r border-black font-bold bg-muted text-right p-1.5">GRAND TOTAL(TSHS)</td>
-                          <td colSpan={2} className="border-l border-black font-bold bg-muted text-right p-1.5">{calculateGrandTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
-                  </tbody>
-              </table>
-
-              <div className="mb-6 text-center text-md font-bold p-2 bg-white rounded">
-                <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(calculateGrandTotal())}.</span></span>
-              </div>
+                    <tr>
+                        <td colSpan={3} rowSpan={7} className="border border-black align-top p-1.5">
+                           <div className="mb-6 text-md font-bold p-2 bg-white rounded">
+                                <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(calculateGrandTotal())}.</span></span>
+                            </div>
+                        </td>
+                        <td className="border border-gray-800 p-1 text-right font-semibold">Total (TSHS)</td>
+                        <td className="border border-gray-800 p-1 text-right font-semibold">{calculateTotalDays() ? calculateTotalDays().toLocaleString() : '{Total}'}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-800 p-1 text-right">No of days</td>
+                        <td className="border border-gray-800 p-1 text-right">{formData.numberOfDays || '{No. of days}'}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-800 p-1 text-right">Add Service Charge (TSHS)</td>
+                        <td className="border border-gray-800 p-1 text-right">{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString() : '0.00'}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-800 p-1 text-right">Add Transportation Costs (TSHS)</td>
+                        <td className="border border-gray-800 p-1 text-right">{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString() : '0.00'}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-800 p-1 text-right">Add VAT 18% (TSHS)</td>
+                        <td className="border border-gray-800 p-1 text-right">{calculateVAT() ? calculateVAT().toLocaleString() : '{VAT}'}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-gray-800 p-1 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
+                        <td className="border border-gray-800 p-1 text-right font-bold bg-secondary/40 text-accent">{calculateGrandTotal() ? calculateGrandTotal().toLocaleString() : '{GrandTotal}'}</td>
+                    </tr>
+                </tbody>
+            </table>
 
               <div className="flex justify-end mb-6">
                 <div className="text-center text-xs">
