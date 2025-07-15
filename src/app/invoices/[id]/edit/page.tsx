@@ -1,9 +1,7 @@
 
-import { InvoiceForm } from "@/components/invoices/invoice-form";
+"use client";
 
-export async function generateStaticParams() {
-  return [];
-}
+import { InvoiceForm } from "@/components/invoices/invoice-form";
 
 export default function EditInvoicePage() {
     return <InvoiceForm />;

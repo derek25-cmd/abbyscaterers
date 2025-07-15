@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Eye, Download, Loader2, Save } from 'lucide-react';
+import { Eye, Download, Loader2, Save, Edit } from 'lucide-react';
 import { format, isValid, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -25,7 +25,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
     const { toast } = useToast();
 
     const calculateSubtotal = () => formData.items.reduce((sum, item) => sum + item.total, 0);
-    const calculateTotalDays = () => formData.multiplyByDays ? calculateSubtotal() * formData.numberOfDays : calculateSubtotal();
+    const calculateTotalDays = () => formData.multiplyByDays ? calculateSubtotal() * (formData.numberOfDays || 1) : calculateSubtotal();
     const calculateVAT = () => {
         const total = calculateTotalDays() + formData.serviceCharge + formData.transportCosts;
         return formData.vatType === 'exclusive' ? total * 0.18 : 0;
@@ -85,8 +85,9 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                 const imgData = canvas.toDataURL('image/png');
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pdfWidth = 210;
-                const pdfHeight = 297;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                const imgProps = pdf.getImageProperties(imgData);
+                const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
                 pdf.save(`proforma_invoice_${formData.id || 'draft'}.pdf`);
                 toast({ title: 'Success', description: 'Invoice exported as PDF.' });
             } catch (error) {
@@ -109,7 +110,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
             <h1 className="text-2xl font-bold text-primary">Invoice Preview</h1>
             <div className="space-x-2 flex flex-wrap">
               <Button variant="outline" onClick={onDismiss} disabled={isSaving}>
-                <Eye className="w-4 h-4 mr-2" /> Edit
+                <Edit className="w-4 h-4 mr-2" /> Edit
               </Button>
               <Button onClick={onSave} disabled={isSaving || exporting}>
                 {isSaving ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
@@ -187,16 +188,16 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                   <td className="border border-gray-800 p-1.5 text-right font-semibold">Sub-Total (TSHS)</td>
                   <td className="border border-gray-800 p-1.5 text-right font-semibold">{calculateSubtotal().toLocaleString()}</td>
                 </tr>
-                <tr>
+                {formData.multiplyByDays && <tr>
                   <td colSpan={3} />
                   <td className="border border-gray-800 p-1.5 text-right">No of days</td>
                   <td className="border border-gray-800 p-1.5 text-right">{formData.numberOfDays}</td>
-                </tr>
-                <tr>
+                </tr>}
+                {formData.multiplyByDays && <tr>
                   <td colSpan={3} />
                   <td className="border border-gray-800 p-1.5 text-right font-semibold bg-muted">TOTAL (TSHS)</td>
                   <td className="border border-gray-800 p-1.5 text-right font-semibold bg-muted text-accent">{calculateTotalDays().toLocaleString()}</td>
-                </tr>
+                </tr>}
                 <tr>
                   <td colSpan={3} />
                   <td className="border border-gray-800 p-1.5 text-right">Add Service Charge (TSHS)</td>
