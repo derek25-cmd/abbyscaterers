@@ -134,8 +134,8 @@ export const DailyMenuSchema = z.object({
 export type DailyMenuFormData = z.infer<typeof DailyMenuSchema>;
 
 
-// Proforma Invoice Schema
-export const ProformaInvoiceItemSchema = z.object({
+// Shared Invoice Item Schema
+export const InvoiceItemSchema = z.object({
   id: z.string(),
   eventType: z.string().min(1),
   customEventType: z.string().optional(),
@@ -147,9 +147,10 @@ export const ProformaInvoiceItemSchema = z.object({
   particularType: z.enum(['event', 'meal']),
   particularDescription: z.string().optional(),
 });
-export type ProformaInvoiceItem = z.infer<typeof ProformaInvoiceItemSchema>;
+export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 
 
+// Proforma Invoice Schema
 export const ProformaInvoiceSchema = z.object({
   id: z.string().min(1, "Invoice number is required"),
   invoiceDate: z.string().optional(),
@@ -169,21 +170,13 @@ export const ProformaInvoiceSchema = z.object({
   endDate: z.string().optional(),
   serviceFields: z.record(z.boolean()),
   serviceDesc: z.string(),
-  items: z.array(ProformaInvoiceItemSchema).min(1, "At least one item is required."),
+  items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
 });
 
 export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
 
 
 // Final Invoice Schema
-export const FinalInvoiceItemSchema = z.object({
-    id: z.string(),
-    particulars: z.string().min(1, "Particulars are required."),
-    quantity: z.number().min(0),
-    unitPrice: z.number().min(0),
-    total: z.number(),
-});
-
 export const FinalInvoiceSchema = z.object({
     id: z.string().min(1, "Invoice number is required"),
     proformaId: z.string().optional(),
@@ -193,10 +186,20 @@ export const FinalInvoiceSchema = z.object({
     clientId: z.string().nullable(),
     receiverName: z.string(),
     receiverPosition: z.string(),
-    serviceDesc: z.string(),
-    items: z.array(FinalInvoiceItemSchema).min(1, "At least one item is required."),
+    lpoNumber: z.string(),
+    location: z.string(),
+    numberOfDays: z.number().min(1),
+    multiplyByDays: z.boolean(),
     serviceCharge: z.number().min(0),
+    transportCosts: z.number().min(0),
     vatType: z.enum(['inclusive', 'exclusive']),
+    selectedEventType: z.string(),
+    customEventType: z.string(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    serviceFields: z.record(z.boolean()),
+    serviceDesc: z.string(),
+    items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
 });

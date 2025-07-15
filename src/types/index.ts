@@ -106,8 +106,8 @@ export interface DailyMenu {
   updatedAt: string; // ISO date string
 }
 
-// Proforma Invoice Types
-export interface ProformaInvoiceItem {
+// Shared Invoice Item Type
+export interface InvoiceItem {
   id: string;
   eventType: string;
   customEventType?: string;
@@ -120,6 +120,7 @@ export interface ProformaInvoiceItem {
   particularDescription?: string;
 }
 
+// Proforma Invoice Types
 export interface ProformaInvoice {
   id: string; // The invoice number
   invoiceDate?: string; // ISO string
@@ -139,21 +140,13 @@ export interface ProformaInvoice {
   endDate?: string; // ISO string
   serviceFields: Record<string, boolean>;
   serviceDesc: string;
-  items: ProformaInvoiceItem[];
+  items: InvoiceItem[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
 
 
 // Final Invoice Types
-export interface InvoiceItem {
-  id: string;
-  particulars: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
-
 export interface Invoice {
   id: string; // The final invoice number
   proformaId?: string; // Optional link to the source proforma
@@ -161,10 +154,20 @@ export interface Invoice {
   clientId: string | null;
   receiverName: string;
   receiverPosition: string;
+  lpoNumber: string;
+  location: string;
+  numberOfDays: number;
+  multiplyByDays: boolean;
+  serviceCharge: number;
+  transportCosts: number;
+  vatType: 'inclusive' | 'exclusive';
+  selectedEventType: string;
+  customEventType: string;
+  startDate?: string; // ISO string
+  endDate?: string; // ISO string
+  serviceFields: Record<string, boolean>;
   serviceDesc: string;
   items: InvoiceItem[];
-  serviceCharge: number;
-  vatType: 'inclusive' | 'exclusive';
   signedAtDate?: string; // ISO string
   signedAtLocation?: string;
   createdAt: string; // ISO date string
