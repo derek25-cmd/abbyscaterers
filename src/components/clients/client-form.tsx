@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { clientSchema, type ClientFormData } from "@/lib/schemas";
+import { ClientSchema, type ClientFormData } from "@/lib/schemas";
 import type { Client } from "@/types";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -38,7 +38,7 @@ export function ClientForm({ client }: ClientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ClientFormData>({
-    resolver: zodResolver(clientSchema),
+    resolver: zodResolver(ClientSchema),
     defaultValues: client
       ? {
           ...client,

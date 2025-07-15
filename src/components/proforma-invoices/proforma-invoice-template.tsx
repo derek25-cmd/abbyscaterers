@@ -133,11 +133,11 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                       <div className="flex-1">
                           <div className="text-base">
                               <p className="mb-1"><strong>To:</strong></p>
-                              {receiverName && <p className="mb-1 ml-6">{receiverName}</p>}
-                              {receiverPosition && <p className="mb-1 ml-6">{receiverPosition}</p>}
-                              {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
-                              {(client?.address1 || client?.address2) && <p className="mb-1 ml-6">{client.address1} {client.address2}</p>}
-                              {lpoNumber && <p className="mb-2 ml-6">LPO No.: {lpoNumber}</p>}
+                              {receiverName && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{receiverName}</p>}
+                              {receiverPosition && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{receiverPosition}</p>}
+                              {client?.companyName && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{client.companyName}</p>}
+                              {(client?.address1 || client?.address2) && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{client.address1} {client.address2}</p>}
+                              {lpoNumber && <p className="mb-2 ml-6" style={{ fontSize: '18px' }}>LPO No.: {lpoNumber}</p>}
                           </div>
                       </div>
                       <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-5px' }}>
