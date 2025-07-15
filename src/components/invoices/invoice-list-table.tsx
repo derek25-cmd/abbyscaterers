@@ -39,9 +39,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useClientStorage } from "@/hooks/use-client-storage";
+import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+
 
 export function InvoiceListTable() {
+  const router = useRouter();
   const { invoices, isLoading: invoicesLoading, deleteInvoice } = useInvoiceStorage();
+  const { proformaInvoices, isLoading: proformasLoading } = useProformaInvoiceStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   
@@ -50,6 +58,8 @@ export function InvoiceListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+
+  const [popoverOpen, setPopoverOpen] = React.useState(false);
 
   const handleDeleteRequest = React.useCallback((invoiceId: string) => {
     setItemToDelete(invoiceId);
@@ -102,7 +112,7 @@ export function InvoiceListTable() {
     }
   });
   
-  const isLoading = invoicesLoading || clientsLoading;
+  const isLoading = invoicesLoading || clientsLoading || proformasLoading;
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading invoices...</div>;
@@ -120,10 +130,42 @@ export function InvoiceListTable() {
           className="max-w-sm"
         />
         <div className="flex gap-2">
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" aria-expanded={popoverOpen}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create from Proforma
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0">
+                <Command>
+                    <CommandInput placeholder="Search proforma..." />
+                    <CommandList>
+                        <CommandEmpty>No proforma invoices found.</CommandEmpty>
+                        <CommandGroup>
+                            {proformaInvoices.map((pi) => (
+                                <CommandItem
+                                    key={pi.id}
+                                    value={`${pi.id} - ${getClientName(pi.clientId)}`}
+                                    onSelect={() => {
+                                        router.push(`/invoices/new?fromProforma=${pi.id}`);
+                                        setPopoverOpen(false);
+                                    }}
+                                >
+                                    <Check className={cn("mr-2 h-4 w-4", "opacity-0" )} />
+                                    {pi.id} - {getClientName(pi.clientId)}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
           <Link href="/invoices/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              New Invoice
+              New Invoice from Scratch
             </Button>
           </Link>
         </div>
@@ -171,7 +213,7 @@ export function InvoiceListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No invoices found.
+                  No final invoices found.
                 </TableCell>
               </TableRow>
             )}

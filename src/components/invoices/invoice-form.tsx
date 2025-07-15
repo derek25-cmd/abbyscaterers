@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -10,135 +10,63 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Eye, Loader2 } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { format, parseISO, isValid, differenceInCalendarDays } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
+import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
 import { useInvoiceStorage } from '@/hooks/use-invoice-storage';
-import { InvoiceSchema, type InvoiceFormData } from '@/lib/schemas';
-import { InvoicePreview } from './invoice-preview';
+import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
+import { InvoiceTemplate } from './invoice-template';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Textarea } from '../ui/textarea';
 
-const eventTypes = [
-  'Catering services',
-  'Refreshments',
-  'Conference package',
-  'Wedding',
-  'Confirmation',
-  'Funeral',
-  'Custom'
-];
+interface InvoiceFormProps {
+    invoiceId?: string;
+    proformaId?: string;
+}
 
-const mealTypes = [
-  'Breakfast',
-  'Lunch',
-  'Dinner',
-  'Breakfast and lunch',
-  'Breakfast, lunch and evening tea',
-  'Breakfast, lunch and dinner',
-  'Evening tea',
-  'Brunch',
-];
-
-const serviceFieldsList = [
-  { key: 'eventType', label: 'Event Type' },
-  { key: 'mealType', label: 'Meal Type' },
-  { key: 'pax', label: 'Total Pax' },
-  { key: 'numberOfDays', label: 'Number of Days' },
-  { key: 'startDate', label: 'Start Date' },
-  { key: 'endDate', label: 'End Date' },
-  { key: 'location', label: 'Location' }
-];
-
-export function InvoiceForm() {
+export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
     const router = useRouter();
-    const params = useParams();
     const { clients, isLoading: clientsLoading } = useClientStorage();
+    const { getProformaById, isLoading: proformasLoading } = useProformaInvoiceStorage();
     const { getInvoiceById, addInvoice, updateInvoice, isLoading: invoicesLoading } = useInvoiceStorage();
     const { toast } = useToast();
 
-    const invoiceId = typeof params.id === 'string' ? params.id : undefined;
     const isEditMode = !!invoiceId;
-
-    const [showPreview, setShowPreview] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
 
-    const form = useForm<InvoiceFormData>({
-        resolver: zodResolver(InvoiceSchema),
+    const form = useForm<FinalInvoiceFormData>({
+        resolver: zodResolver(FinalInvoiceSchema),
         defaultValues: {
             id: "",
+            proformaId: proformaId,
             invoiceDate: new Date().toISOString(),
             clientId: null,
             receiverName: '',
             receiverPosition: '',
-            lpoNumber: '',
-            location: '',
-            numberOfDays: 1,
-            multiplyByDays: true,
-            serviceCharge: 0,
-            transportCosts: 0,
-            vatType: 'inclusive',
-            selectedEventType: eventTypes[0],
-            customEventType: '',
-            startDate: undefined,
-            endDate: undefined,
-            serviceFields: {
-                eventType: true, mealType: true, pax: true,
-                numberOfDays: true, startDate: true, endDate: true, location: true
-            },
             serviceDesc: '',
-            items: [{
-                id: '1', eventType: eventTypes[0], customEventType: '', mealType: mealTypes[1],
-                pax: 0, unitPrice: 0, total: 0, date: undefined, particularType: 'event'
-            }]
+            items: [{ id: '1', particulars: '', quantity: 1, unitPrice: 0, total: 0 }],
+            serviceCharge: 0,
+            vatType: 'inclusive',
+            signedAtDate: new Date().toISOString(),
+            signedAtLocation: 'Dar es Salaam'
         }
     });
-
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "items"
-    });
-
-    const watchedFormValues = form.watch();
-
-    useEffect(() => {
-        if (isEditMode && invoiceId) {
-            const existingInvoice = getInvoiceById(invoiceId);
-            if (existingInvoice) {
-                form.reset({
-                    ...existingInvoice,
-                    invoiceDate: existingInvoice.invoiceDate || new Date().toISOString(),
-                });
-            } else {
-                toast({ variant: 'destructive', title: 'Error', description: 'Invoice not found.' });
-                router.push('/invoices');
-            }
-        }
-    }, [isEditMode, invoiceId, getInvoiceById, form, router, toast]);
-
-    useEffect(() => {
-        const { startDate, endDate } = watchedFormValues;
-        if (startDate && endDate) {
-            const start = parseISO(startDate);
-            const end = parseISO(endDate);
-            if (isValid(start) && isValid(end) && end >= start) {
-                const diff = differenceInCalendarDays(end, start) + 1;
-                form.setValue('numberOfDays', diff, { shouldValidate: true });
-            } else {
-                 form.setValue('numberOfDays', 1, { shouldValidate: true });
-            }
-        }
-    }, [watchedFormValues.startDate, watchedFormValues.endDate, form]);
+    
+    const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
+    const watchedItems = form.watch("items");
 
     useEffect(() => {
         const subscription = form.watch((value, { name, type }) => {
             if (name?.startsWith('items')) {
                 const items = form.getValues('items');
                 items.forEach((item, index) => {
-                    const newTotal = (item.pax || 0) * (item.unitPrice || 0);
+                    const newTotal = (item.quantity || 0) * (item.unitPrice || 0);
                     if (item.total !== newTotal) {
                         form.setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
                     }
@@ -148,7 +76,38 @@ export function InvoiceForm() {
         return () => subscription.unsubscribe();
     }, [form]);
 
-    async function handleSave(data: InvoiceFormData) {
+    useEffect(() => {
+        if (isEditMode && invoiceId) {
+            const existingInvoice = getInvoiceById(invoiceId);
+            if (existingInvoice) form.reset(existingInvoice);
+        } else if (proformaId) {
+            const proforma = getProformaById(proformaId);
+            if (proforma) {
+                form.reset({
+                    id: '',
+                    proformaId: proforma.id,
+                    invoiceDate: new Date().toISOString(),
+                    clientId: proforma.clientId,
+                    receiverName: proforma.receiverName,
+                    receiverPosition: proforma.receiverPosition,
+                    serviceDesc: proforma.serviceDesc,
+                    items: proforma.items.map(pi => ({
+                        id: pi.id,
+                        particulars: pi.particularDescription || '',
+                        quantity: pi.pax,
+                        unitPrice: pi.unitPrice,
+                        total: pi.total
+                    })),
+                    serviceCharge: proforma.serviceCharge,
+                    vatType: proforma.vatType,
+                    signedAtDate: new Date().toISOString(),
+                    signedAtLocation: 'Dar es Salaam'
+                });
+            }
+        }
+    }, [isEditMode, invoiceId, proformaId, getInvoiceById, getProformaById, form]);
+
+    async function handleSave(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
@@ -167,48 +126,37 @@ export function InvoiceForm() {
             setIsSubmitting(false);
         }
     }
-    
-    // Calculation logic
-    const calculateSubtotal = () => watchedFormValues.items?.reduce((sum, item) => sum + (item.total || 0), 0) ?? 0;
-    const calculateTotalDays = () => {
-        const subtotal = calculateSubtotal();
-        return watchedFormValues.multiplyByDays ? subtotal * (watchedFormValues.numberOfDays || 1) : subtotal;
-    };
-    const calculateVAT = () => {
-        const total = calculateTotalDays() + (watchedFormValues.serviceCharge || 0) + (watchedFormValues.transportCosts || 0);
-        return watchedFormValues.vatType === 'exclusive' ? total * 0.18 : 0;
-    };
-    const calculateGrandTotal = () => calculateTotalDays() + (watchedFormValues.serviceCharge || 0) + (watchedFormValues.transportCosts || 0) + calculateVAT();
-
 
     if (showPreview) {
         const formData = form.getValues();
         const selectedClient = clients.find(c => c.id === formData.clientId);
         return (
-            <InvoicePreview
-              formData={formData}
-              client={selectedClient}
-              onDismiss={() => setShowPreview(false)}
-              onSave={() => form.handleSubmit(handleSave)()}
-              isSaving={isSubmitting}
-            />
-        );
+            <div>
+                 <div className="flex justify-end gap-4 mb-4">
+                    <Button type="button" variant="outline" onClick={() => setShowPreview(false)}>Back to Edit</Button>
+                    <Button type="button" onClick={() => form.handleSubmit(handleSave)()} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
+                        {isEditMode ? 'Update Invoice' : 'Save Invoice'}
+                    </Button>
+                </div>
+                <InvoiceTemplate invoiceData={formData} client={selectedClient} />
+            </div>
+        )
     }
 
     return (
         <Card className="max-w-5xl mx-auto">
             <CardHeader>
-                <CardTitle className="text-3xl font-bold text-primary">{isEditMode ? "Edit Proforma Invoice" : "Proforma Invoice Generator"}</CardTitle>
-                <CardDescription>Fill in the details below to create a new proforma invoice.</CardDescription>
+                <CardTitle className="text-3xl font-bold text-primary">{isEditMode ? "Edit Invoice" : "Create New Invoice"}</CardTitle>
+                <CardDescription>{proformaId ? `Creating invoice from Proforma #${proformaId}` : "Fill in the details for the final invoice."}</CardDescription>
             </CardHeader>
             <CardContent>
-            <form onSubmit={form.handleSubmit(() => setShowPreview(true))} className="space-y-8">
-
-
-                {/* Invoice Details Section */}
-                <Card className="p-6">
-                    <CardTitle className="text-xl mb-4">Invoice Details</CardTitle>
+                <form onSubmit={form.handleSubmit(() => setShowPreview(true))} className="space-y-8">
+                    {/* Invoice & Client Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Controller name="id" control={form.control} render={({ field }) => (
+                            <div><Label>Invoice Number</Label><Input {...field} placeholder="e.g., INV-2024-001" /></div>
+                        )}/>
                         <Controller name="invoiceDate" control={form.control} render={({ field }) => (
                             <div><Label>Invoice Date</Label>
                                 <Popover><PopoverTrigger asChild>
@@ -220,237 +168,92 @@ export function InvoiceForm() {
                                 </Popover>
                             </div>
                         )}/>
-                        <Controller name="id" control={form.control} render={({ field }) => (
-                            <div><Label>Invoice Number</Label><Input {...field} placeholder="e.g., PI-2024-001" /></div>
-                        )}/>
-                    </div>
-                </Card>
-
-                {/* Client Info Section */}
-                <Card className="p-6">
-                  <CardTitle className="text-xl mb-4">Client Information</CardTitle>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Controller name="clientId" control={form.control} render={({ field }) => (
-                        <div><Label>Select Client</Label>
-                            <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={clientsLoading}>
-                            <SelectTrigger><SelectValue placeholder={clientsLoading ? "Loading..." : "Select a client"} /></SelectTrigger>
-                            <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                    )}/>
-                    <Controller name="lpoNumber" control={form.control} render={({ field }) => (
-                        <div><Label>LPO Number</Label><Input {...field} placeholder="Enter LPO number" /></div>
-                    )}/>
-                    <Controller name="receiverName" control={form.control} render={({ field }) => (
-                        <div><Label>Receiver Name</Label><Input {...field} placeholder="Enter receiver name" /></div>
-                    )}/>
-                    <Controller name="receiverPosition" control={form.control} render={({ field }) => (
-                        <div><Label>Receiver Position</Label><Input {...field} placeholder="Enter receiver position" /></div>
-                    )}/>
-                  </div>
-                </Card>
-
-                {/* Event Details Section */}
-                <Card className="p-6">
-                    <CardTitle className="text-xl mb-4">Event Details</CardTitle>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <Controller name="startDate" control={form.control} render={({ field }) => (
-                            <div><Label>Start Date</Label>
-                                <Popover><PopoverTrigger asChild>
-                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick start date</span>}
-                                    </Button></PopoverTrigger>
-                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                </Popover>
-                            </div>
-                        )}/>
-                        <Controller name="endDate" control={form.control} render={({ field }) => (
-                            <div><Label>End Date</Label>
-                                <Popover><PopoverTrigger asChild>
-                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick end date</span>}
-                                    </Button></PopoverTrigger>
-                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                </Popover>
-                            </div>
-                        )}/>
-                        <Controller name="location" control={form.control} render={({ field }) => (
-                            <div><Label>Location</Label><Input {...field} placeholder="Enter event location" /></div>
-                        )}/>
-                        <Controller name="numberOfDays" control={form.control} render={({ field }) => (
-                             <div><Label>Number of Days</Label><Input type="number" min="1" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)} /></div>
-                        )}/>
-                        <Controller name="multiplyByDays" control={form.control} render={({ field }) => (
-                            <div className="flex items-center space-x-2 mt-2 pt-6">
-                                <Checkbox id="multiply-days" checked={field.value} onCheckedChange={field.onChange} />
-                                <Label htmlFor="multiply-days">Multiply subtotal by number of days</Label>
-                            </div>
-                        )}/>
-                    </div>
-                </Card>
-
-                {/* Service Description Customization */}
-                <Card className="p-6">
-                    <CardTitle className="text-xl mb-4">Service Description</CardTitle>
-                    <div className="space-y-4">
-                        <div><Label>Event Type for Description</Label>
-                            <Controller name="selectedEventType" control={form.control} render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>{eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                         <Controller name="clientId" control={form.control} render={({ field }) => (
+                            <div><Label>Select Client</Label>
+                                <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={clientsLoading}>
+                                <SelectTrigger><SelectValue placeholder={clientsLoading ? "Loading..." : "Select a client"} /></SelectTrigger>
+                                <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}</SelectContent>
                                 </Select>
-                            )}/>
-                            {form.watch('selectedEventType') === 'Custom' && <Controller name="customEventType" control={form.control} render={({ field }) => (
-                                <Input {...field} placeholder="Custom Event Type" className="mt-2" />
-                            )}/>}
+                            </div>
+                        )}/>
+                        <Controller name="receiverName" control={form.control} render={({ field }) => (
+                            <div><Label>Receiver Name</Label><Input {...field} placeholder="Enter receiver name" /></div>
+                        )}/>
+                        <Controller name="receiverPosition" control={form.control} render={({ field }) => (
+                            <div><Label>Receiver Position</Label><Input {...field} placeholder="Enter receiver position" /></div>
+                        )}/>
+                    </div>
+
+                    {/* Service Description */}
+                     <div>
+                        <Label>Service Description</Label>
+                        <Controller name="serviceDesc" control={form.control} render={({ field }) => <Textarea {...field} placeholder="Being costs for provision of..."/>} />
+                    </div>
+
+                    {/* Invoice Items */}
+                    <Card className="p-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-primary">Invoice Items</h3>
+                            <Button type="button" onClick={() => append({ id: Date.now().toString(), particulars: '', quantity: 1, unitPrice: 0, total: 0 })} size="sm">
+                                <Plus className="w-4 h-4 mr-2" /> Add Item
+                            </Button>
                         </div>
-                        <div><Label className="block">Customize Service Description Fields</Label>
-                        <div className="flex flex-wrap gap-4 mt-2">
-                        {serviceFieldsList.map(item => (
-                            <div key={item.key} className="flex items-center space-x-2">
-                                <Controller name={`serviceFields.${item.key}`} control={form.control} render={({ field }) => (
-                                    <Checkbox id={`sf-${item.key}`} checked={!!field.value} onCheckedChange={field.onChange} />
-                                )}/>
-                                <Label htmlFor={`sf-${item.key}`}>{item.label}</Label>
+                        <div className="space-y-4">
+                        {fields.map((item, index) => (
+                            <div key={item.id} className="grid grid-cols-1 md:grid-cols-8 gap-2 items-end p-2 border rounded-md">
+                                <div className="md:col-span-4"><Label>Particulars</Label><Controller name={`items.${index}.particulars`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
+                                <div><Label>Qty</Label><Controller name={`items.${index}.quantity`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />} /></div>
+                                <div className="md:col-span-2"><Label>Unit Price</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />} /></div>
+                                <div>
+                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="w-4 h-4" /></Button>
+                                </div>
                             </div>
                         ))}
-                        </div></div>
-                        <div><Label className="block">Service Description Text</Label>
-                            <Controller name="serviceDesc" control={form.control} render={({ field }) => (
-                                <textarea className="w-full border rounded p-2 mt-1 bg-background" rows={3} {...field} />
-                            )}/>
                         </div>
-                    </div>
-                </Card>
+                    </Card>
 
-                {/* Invoice Items Section */}
-                <Card className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-primary">Invoice Items</h3>
-                        <Button type="button" onClick={() => append({ id: Date.now().toString(), eventType: eventTypes[0], customEventType: '', mealType: '', pax: 0, unitPrice: 0, total: 0, date: undefined, particularType: 'event' })} size="sm">
-                            <Plus className="w-4 h-4 mr-2" /> Add Item
+                    {/* Financials */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Controller name="serviceCharge" control={form.control} render={({ field }) => (
+                             <div><Label>Service Charge (TSHS)</Label><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></div>
+                        )}/>
+                        <Controller name="vatType" control={form.control} render={({ field }) => (
+                             <div><Label>VAT Type</Label>
+                                <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent><SelectItem value="inclusive">Inclusive</SelectItem><SelectItem value="exclusive">Exclusive (+18%)</SelectItem></SelectContent>
+                                </Select>
+                             </div>
+                         )}/>
+                    </div>
+
+                     {/* Signature Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <Controller name="signedAtLocation" control={form.control} render={({ field }) => (
+                            <div><Label>Signed At Location</Label><Input {...field} /></div>
+                        )}/>
+                        <Controller name="signedAtDate" control={form.control} render={({ field }) => (
+                            <div><Label>Signed At Date</Label>
+                                <Popover><PopoverTrigger asChild>
+                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                    </Button></PopoverTrigger>
+                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                </Popover>
+                            </div>
+                        )}/>
+                    </div>
+
+
+                    <div className="flex justify-end gap-4">
+                        <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                        <Button type="submit" size="lg" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+                            Preview & Save
                         </Button>
                     </div>
-                    <div className="space-y-6">
-                        {fields.map((item, index) => (
-                            <Card key={item.id} className="p-6 border-l-4 border-primary">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h4 className="text-lg font-semibold text-primary">Item #{index + 1}</h4>
-                                    <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}>
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                    <div><Label>Show in Particulars</Label>
-                                        <Controller name={`items.${index}.particularType`} control={form.control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent><SelectItem value="event">Event Type</SelectItem><SelectItem value="meal">Meal Type</SelectItem></SelectContent>
-                                            </Select>
-                                        )}/>
-                                    </div>
-                                    <div><Label>Event Type</Label>
-                                        <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        )}/>
-                                        {form.watch(`items.${index}.eventType`) === 'Custom' && <Controller name={`items.${index}.customEventType`} control={form.control} render={({ field }) => (
-                                            <Input {...field} placeholder="Custom Event" className="mt-2"/>
-                                        )}/>}
-                                    </div>
-                                     <div><Label>Meal Type</Label>
-                                        <Controller name={`items.${index}.mealType`} control={form.control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        )}/>
-                                    </div>
-                                    <div><Label>Date</Label>
-                                        <Controller name={`items.${index}.date`} control={form.control} render={({ field }) => (
-                                            <Popover><PopoverTrigger asChild>
-                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick date</span>}
-                                                </Button></PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value): undefined} onSelect={d=>field.onChange(d?.toISOString())} /></PopoverContent>
-                                            </Popover>
-                                        )}/>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                     <div><Label>Pax</Label><Controller name={`items.${index}.pax`} control={form.control} render={({ field }) => (<Input type="number" min="0" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />)} /></div>
-                                     <div><Label>Unit Price (TSHS)</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => (<Input type="number" min="0" step="0.01" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />)} /></div>
-                                     <div><Label>Total (TSHS)</Label><Controller name={`items.${index}.total`} control={form.control} render={({ field }) => (<Input type="number" {...field} readOnly className="bg-muted" />)} /></div>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
-                </Card>
-                
-                {/* Additional Charges Section */}
-                <Card className="p-6">
-                    <CardTitle className="text-xl mb-4">Additional Charges</CardTitle>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                         <div><Label>Service Charge (TSHS)</Label><Controller name="serviceCharge" control={form.control} render={({ field }) => (<Input type="number" min="0" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/>)} /></div>
-                         <div><Label>Transport Costs (TSHS)</Label><Controller name="transportCosts" control={form.control} render={({ field }) => (<Input type="number" min="0" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/>)} /></div>
-                         <div><Label>VAT Type</Label><Controller name="vatType" control={form.control} render={({ field }) => (
-                             <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
-                             <SelectContent><SelectItem value="inclusive">Inclusive (0%)</SelectItem><SelectItem value="exclusive">Exclusive (+18%)</SelectItem></SelectContent>
-                             </Select>
-                         )}/></div>
-                    </div>
-                </Card>
-                
-                 {/* Summary Section */}
-                <div className="mt-8 p-4 bg-muted/50 rounded-lg">
-                    <h3 className="text-lg font-bold mb-4">Summary</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-2">
-                            <div className="flex justify-between">
-                                <span>Subtotal:</span>
-                                <span>{calculateSubtotal().toLocaleString()} TSHS</span>
-                            </div>
-                            {watchedFormValues.multiplyByDays && (
-                            <div className="flex justify-between">
-                                <span>Subtotal × Days ({watchedFormValues.numberOfDays}):</span>
-                                <span>{calculateTotalDays().toLocaleString()} TSHS</span>
-                            </div>
-                            )}
-                            <div className="flex justify-between">
-                                <span>Service Charge:</span>
-                                <span>{(watchedFormValues.serviceCharge || 0).toLocaleString()} TSHS</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Transport Costs:</span>
-                                <span>{(watchedFormValues.transportCosts || 0).toLocaleString()} TSHS</span>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                             <div className="flex justify-between">
-                                <span>VAT ({watchedFormValues.vatType === 'exclusive' ? '18%' : '0%'}):</span>
-                                <span>{calculateVAT().toLocaleString()} TSHS</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
-                                <span>Grand Total:</span>
-                                <span className="text-primary">{calculateGrandTotal().toLocaleString()} TSHS</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div className="mt-8 flex justify-end gap-4">
-                    <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                    <Button type="submit" size="lg" disabled={isSubmitting || invoicesLoading || clientsLoading}>
-                        {(isSubmitting || invoicesLoading || clientsLoading) && <Loader2 className="animate-spin mr-2" />}
-                        <Eye className="w-5 h-5 mr-2" /> Preview Invoice
-                    </Button>
-                </div>
-            </form>
+                </form>
             </CardContent>
         </Card>
     );
 }
-

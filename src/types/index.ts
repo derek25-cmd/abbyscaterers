@@ -1,4 +1,5 @@
 
+
 export interface DietaryClassification {
   restriction: string;
   category: string;
@@ -106,7 +107,7 @@ export interface DailyMenu {
 }
 
 // Proforma Invoice Types
-export interface InvoiceItem {
+export interface ProformaInvoiceItem {
   id: string;
   eventType: string;
   customEventType?: string;
@@ -119,7 +120,7 @@ export interface InvoiceItem {
   particularDescription?: string;
 }
 
-export interface Invoice {
+export interface ProformaInvoice {
   id: string; // The invoice number
   invoiceDate?: string; // ISO string
   clientId: string | null;
@@ -138,7 +139,34 @@ export interface Invoice {
   endDate?: string; // ISO string
   serviceFields: Record<string, boolean>;
   serviceDesc: string;
+  items: ProformaInvoiceItem[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+
+// Final Invoice Types
+export interface InvoiceItem {
+  id: string;
+  particulars: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface Invoice {
+  id: string; // The final invoice number
+  proformaId?: string; // Optional link to the source proforma
+  invoiceDate: string; // ISO string
+  clientId: string | null;
+  receiverName: string;
+  receiverPosition: string;
+  serviceDesc: string;
   items: InvoiceItem[];
+  serviceCharge: number;
+  vatType: 'inclusive' | 'exclusive';
+  signedAtDate?: string; // ISO string
+  signedAtLocation?: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }

@@ -2,9 +2,9 @@
 "use client";
 
 import type { Invoice } from "@/types";
-import type { InvoiceFormData } from "@/lib/schemas";
+import type { FinalInvoiceFormData } from "@/lib/schemas";
 
-const INVOICES_STORAGE_KEY = "caterSmartInvoices";
+const INVOICES_STORAGE_KEY = "caterSmartFinalInvoices";
 
 function getInvoicesFromStorage(): Invoice[] {
   if (typeof window === "undefined") return [];
@@ -45,7 +45,7 @@ export function getInvoiceById(id: string): Invoice | undefined {
   return allInvoices.find(invoice => invoice.id === id);
 }
 
-export function addInvoice(invoiceData: InvoiceFormData): Invoice {
+export function addInvoice(invoiceData: FinalInvoiceFormData): Invoice {
   const allInvoices = getInvoicesFromStorage();
   const now = new Date().toISOString();
 
@@ -63,7 +63,7 @@ export function addInvoice(invoiceData: InvoiceFormData): Invoice {
   return newInvoice;
 }
 
-export function updateInvoice(originalId: string, updates: InvoiceFormData): Invoice | undefined {
+export function updateInvoice(originalId: string, updates: FinalInvoiceFormData): Invoice | undefined {
   const allInvoices = getInvoicesFromStorage();
   const invoiceIndex = allInvoices.findIndex(inv => inv.id === originalId);
   if (invoiceIndex === -1) return undefined;

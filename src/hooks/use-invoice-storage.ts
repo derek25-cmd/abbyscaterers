@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Invoice } from "@/types";
-import type { InvoiceFormData } from "@/lib/schemas";
+import type { FinalInvoiceFormData } from "@/lib/schemas";
 import { 
   getAllInvoices as getAllFromStorage,
   getInvoiceById as getByIdFromStorage,
@@ -29,13 +29,13 @@ export function useInvoiceStorage() {
     }
   }, []);
 
-  const addInvoice = useCallback((data: InvoiceFormData) => {
+  const addInvoice = useCallback((data: FinalInvoiceFormData) => {
     const newItem = addToStorage(data);
     setInvoices(prev => [...prev, newItem]);
     return newItem;
   }, []);
 
-  const updateInvoice = useCallback((originalId: string, updates: InvoiceFormData) => {
+  const updateInvoice = useCallback((originalId: string, updates: FinalInvoiceFormData) => {
     const updatedItem = updateInStorage(originalId, updates);
     if (updatedItem) {
       setInvoices(prev => prev.map(item => item.id === originalId ? updatedItem : item));
