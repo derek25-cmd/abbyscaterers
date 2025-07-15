@@ -87,6 +87,8 @@ export function InvoiceViewPageComponent() {
       formData={formData}
       client={client}
       onDismiss={() => router.push(`/invoices/${invoice.id}/edit`)}
+      onSave={() => router.push(`/invoices/${invoice.id}/edit`)} // In view-only, save/edit do same thing
+      isSaving={false}
     />
   );
 }

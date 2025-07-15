@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Eye, Download, Loader2 } from 'lucide-react';
+import { Eye, Download, Loader2, Save } from 'lucide-react';
 import { format, isValid, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -16,9 +16,11 @@ interface InvoicePreviewProps {
     formData: InvoiceFormData;
     client: Client | undefined;
     onDismiss: () => void;
+    onSave: () => void;
+    isSaving: boolean;
 }
 
-export function InvoicePreview({ formData, client, onDismiss }: InvoicePreviewProps) {
+export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }: InvoicePreviewProps) {
     const [exporting, setExporting] = useState(false);
     const { toast } = useToast();
 
@@ -106,10 +108,14 @@ export function InvoicePreview({ formData, client, onDismiss }: InvoicePreviewPr
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-primary">Invoice Preview</h1>
             <div className="space-x-2 flex flex-wrap">
-              <Button variant="outline" onClick={onDismiss}>
+              <Button variant="outline" onClick={onDismiss} disabled={isSaving}>
                 <Eye className="w-4 h-4 mr-2" /> Edit
               </Button>
-              <Button variant="outline" onClick={handleExportPDF} disabled={exporting}>
+              <Button onClick={onSave} disabled={isSaving || exporting}>
+                {isSaving ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
+                {isSaving ? "Saving..." : "Save Invoice"}
+              </Button>
+              <Button variant="outline" onClick={handleExportPDF} disabled={exporting || isSaving}>
                 {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
                 {exporting ? "Exporting..." : "Export PDF"}
               </Button>

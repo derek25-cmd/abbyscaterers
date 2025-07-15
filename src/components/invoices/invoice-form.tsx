@@ -106,7 +106,7 @@ export function InvoiceForm() {
                 setInvoice(existingInvoice);
                 form.reset({
                     ...existingInvoice,
-                    id: existingInvoice.id, // Ensure the invoice number is set
+                    id: existingInvoice.id,
                 });
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: 'Invoice not found.' });
@@ -139,7 +139,7 @@ export function InvoiceForm() {
                 router.push('/invoices');
             } else {
                 addInvoice(data);
-                toast({ title: 'Success', description: 'Invoice saved successfully.' });
+                toast({ title: 'Success', description: 'Invoice created successfully.' });
                 router.push('/invoices');
             }
         } catch (error) {
@@ -153,7 +153,15 @@ export function InvoiceForm() {
     if (showPreview) {
         const formData = form.getValues();
         const selectedClient = clients.find(c => c.id === formData.clientId);
-        return <InvoicePreview formData={formData} client={selectedClient} onDismiss={() => setShowPreview(false)} />;
+        return (
+            <InvoicePreview
+              formData={formData}
+              client={selectedClient}
+              onDismiss={() => setShowPreview(false)}
+              onSave={form.handleSubmit(onSubmit)}
+              isSaving={isSubmitting}
+            />
+        );
     }
 
   return (
@@ -164,7 +172,7 @@ export function InvoiceForm() {
           <CardDescription>Fill in the details below to create a new proforma invoice.</CardDescription>
         </CardHeader>
         <CardContent>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(() => setShowPreview(true))} className="space-y-8">
             <Card className="p-6">
               <CardTitle className="text-xl mb-4">Invoice Details</CardTitle>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -253,17 +261,10 @@ export function InvoiceForm() {
                 />
               </div>
             </Card>
-
-            {/* Other form sections like event details, service description, etc. go here */}
-            {/* The form structure is large, so I will omit the full code for brevity, but it follows the same Controller pattern. */}
             
             <div className="mt-8 flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => setShowPreview(true)}>
+              <Button type="submit">
                 <Eye className="w-4 h-4 mr-2" /> Preview Invoice
-              </Button>
-               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2" />}
-                {isSubmitting ? "Saving..." : "Save Invoice"}
               </Button>
             </div>
             </form>
