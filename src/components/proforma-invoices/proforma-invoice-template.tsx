@@ -114,7 +114,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
     return (
         <>
             <Card id="proforma-invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm' /* A4 height */ }}>
-              <div className="relative" style={{ paddingBottom: '80px' }}>
+              <div className="flex flex-col h-full">
                   {/* HEADER SECTION */}
                   <div className="flex justify-between items-start mb-6 relative">
                     <div className="flex-1"></div>
@@ -223,8 +223,10 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                 <div className="my-4 text-md p-2 bg-white rounded">
                     <span>Amount in Words: <span className="italic font-normal">Tanzania Shillings {convertToWords(grandTotal)}.</span></span>
                 </div>
-
-                  <div className="flex justify-end mb-4 absolute bottom-0 right-8" style={{bottom: '80px'}}>
+                
+                <div className="flex-grow"></div>
+                
+                  <div className="flex justify-end mb-4">
                     <div className="text-center text-xs">
                       <p className="mb-1">For and on behalf of:-</p>
                       <p className="mb-2 font-semibold">Abby's Legendary Caterers Limited</p>
@@ -233,7 +235,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     </div>
                   </div>
 
-                  <div className="text-sm absolute bottom-0 left-8" style={{bottom: '80px'}}>
+                  <div className="text-sm">
                     <p className="font-bold mb-1">Terms & Conditions:</p>
                     <ul className="space-y-0.5 list-disc list-inside text-xs">
                       <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
