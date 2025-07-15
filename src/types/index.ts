@@ -104,3 +104,40 @@ export interface DailyMenu {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+
+// Proforma Invoice Types
+export interface InvoiceItem {
+  id: string;
+  eventType: string;
+  customEventType?: string;
+  mealType: string;
+  pax: number;
+  unitPrice: number;
+  total: number;
+  date?: string; // ISO string
+  particularType: 'event' | 'meal';
+}
+
+export interface Invoice {
+  id: string; // The invoice number
+  invoiceDate?: string; // ISO string
+  clientId: string | null;
+  receiverName: string;
+  receiverPosition: string;
+  lpoNumber: string;
+  location: string;
+  numberOfDays: number;
+  multiplyByDays: boolean;
+  serviceCharge: number;
+  transportCosts: number;
+  vatType: 'inclusive' | 'exclusive';
+  selectedEventType: string;
+  customEventType: string;
+  startDate?: string; // ISO string
+  endDate?: string; // ISO string
+  serviceFields: Record<string, boolean>;
+  serviceDesc: string;
+  items: InvoiceItem[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
