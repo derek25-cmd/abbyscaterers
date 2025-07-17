@@ -557,8 +557,7 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       children,
-      asChild, // Destructure asChild to prevent it from being passed to the button
-      ...forwardedProps
+      ...props
     },
     ref
   ) => {
@@ -568,6 +567,9 @@ const SidebarMenuButton = React.forwardRef<
     React.useEffect(() => {
       setMounted(true)
     }, [])
+    
+    // Remove asChild from props to prevent passing it to the Button component
+    const { asChild, ...otherProps } = props;
 
     const coreButtonElement = (
       <Button
@@ -578,8 +580,7 @@ const SidebarMenuButton = React.forwardRef<
         variant={variant}
         size={size}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        asChild={asChild}
-        {...forwardedProps}
+        {...otherProps}
       >
         {children}
       </Button>
@@ -721,13 +722,15 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentProps<"a"> & {
+    asChild?: boolean
     size?: "sm" | "md"
     isActive?: boolean
   }
->(({ size = "md", isActive, className, ...props }, ref) => {
+>(({ size = "md", isActive, className, asChild = false, ...props }, ref) => {
+  const Comp = asChild ? Slot : "a"
 
   return (
-    <a
+    <Comp
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}

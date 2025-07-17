@@ -47,8 +47,8 @@ const navItems = [
     label: "Invoicing", 
     icon: InvoiceIcon,
     subItems: [
-      { href: "/proforma-invoices", label: "Proforma Invoice" },
-      { href: "/invoices", label: "Final Invoices" }
+      { href: "/invoicing/proforma-invoices", label: "Proforma Invoice" },
+      { href: "/invoicing/invoices", label: "Final Invoices" }
     ]
   },
   { href: "/finances", label: "Finances", icon: Banknote },
@@ -117,7 +117,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                      <SidebarMenuSub>
                         {item.subItems.map(subItem => (
                            <SidebarMenuSubItem key={subItem.href}>
-                             <Link href={subItem.href}>
+                             <Link href={subItem.href} asChild>
                                <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
                                  {subItem.label}
                                </SidebarMenuSubButton>
