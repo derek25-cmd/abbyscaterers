@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { dailyMenuSchema, type DailyMenuFormData } from "@/lib/schemas";
+import { DailyMenuSchema, type DailyMenuFormData } from "@/lib/schemas";
 import type { DailyMenu } from "@/types";
 import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
@@ -98,7 +98,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<DailyMenuFormData>({
-    resolver: zodResolver(dailyMenuSchema),
+    resolver: zodResolver(DailyMenuSchema),
     defaultValues: menu
       ? { ...menu }
       : {
