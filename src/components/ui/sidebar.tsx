@@ -544,7 +544,7 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
+  React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & {
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
@@ -560,13 +560,13 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
+      asChild, // Destructure asChild to prevent it from being passed to the Button
       ...props
     },
     ref
   ) => {
     const { isMobile, state: sidebarState } = useSidebar();
     const [mounted, setMounted] = React.useState(false);
-    const { asChild, ...otherProps } = props;
 
     React.useEffect(() => {
       setMounted(true);
@@ -581,7 +581,7 @@ const SidebarMenuButton = React.forwardRef<
         variant={variant}
         size={size}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...otherProps}
+        {...props}
       >
         {children}
       </Button>
@@ -589,7 +589,7 @@ const SidebarMenuButton = React.forwardRef<
 
     const content = href ? (
       <Link href={href} passHref legacyBehavior>
-        {React.cloneElement(button, { as: "a" })}
+        {button}
       </Link>
     ) : (
       button
@@ -737,7 +737,7 @@ const SidebarMenuSubButton = React.forwardRef<
 >(({ size = "md", isActive, className, children, ...props }, ref) => {
 
   return (
-    <Slot
+    <a
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -751,7 +751,7 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    >{children}</Slot>
+    >{children}</a>
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
