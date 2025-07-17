@@ -86,7 +86,7 @@ const SidebarProvider = React.forwardRef<
                 document.cookie = `${SIDEBAR_COOKIE_NAME}=${newOpenState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
             }
         },
-        [open, setOpenProp, _setOpen] // Added _setOpen to dependencies
+        [open, setOpenProp]
     );
     
     React.useEffect(() => {
@@ -543,12 +543,11 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement, // The ref will point to the underlying button
-  React.ComponentPropsWithoutRef<"button"> & { // Base on button props for clarity
-    isActive?: boolean;
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-    asChild?: boolean;
-  } & VariantProps<typeof sidebarMenuButtonVariants>
+  React.ElementRef<typeof Button>,
+  React.ComponentProps<typeof Button> & {
+    isActive?: boolean
+    tooltip?: string | React.ComponentProps<typeof TooltipContent>
+  }
 >(
   (
     {
@@ -558,61 +557,55 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       children,
-      // `...forwardedProps` will capture props from parent `Link`
-      // including Link's `asChild` (which will be true) and `href`, `onClick`, etc.
+      asChild, // Destructure asChild to prevent it from being passed to the button
       ...forwardedProps
     },
     ref
   ) => {
-    const { isMobile, state: sidebarState } = useSidebar();
-    const [mounted, setMounted] = React.useState(false);
+    const { isMobile, state: sidebarState } = useSidebar()
+    const [mounted, setMounted] = React.useState(false)
 
     React.useEffect(() => {
-      setMounted(true);
-    }, []);
+      setMounted(true)
+    }, [])
 
-    // Prepare props for the core <button> element.
-    // Strip `asChild` if it came from `forwardedProps` (e.g., from Link).
-    const buttonProps = { ...forwardedProps };
-    if (buttonProps.asChild) {
-      delete buttonProps.asChild;
-    }
-    
     const coreButtonElement = (
-      <button // Always render a button as the core interactive element
+      <Button
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
+        variant={variant}
+        size={size}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...buttonProps} // Spread the (potentially modified) forwardedProps
+        asChild={asChild}
+        {...forwardedProps}
       >
         {children}
-      </button>
-    );
+      </Button>
+    )
 
     if (!tooltip) {
-      return coreButtonElement;
+      return coreButtonElement
     }
-    
+
     return (
       <Tooltip>
-        <TooltipTrigger asChild> 
-          {coreButtonElement}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{coreButtonElement}</TooltipTrigger>
         {mounted && (
           <TooltipContent
             side="right"
             align="center"
-            hidden={(sidebarState !== "collapsed" || isMobile)}
-            {...(typeof tooltip === 'string' ? { children: tooltip } : tooltip)}
+            hidden={sidebarState !== "collapsed" || isMobile}
+            {...(typeof tooltip === "string" ? { children: tooltip } : tooltip)}
           />
         )}
       </Tooltip>
-    );
+    )
   }
-);
+)
 SidebarMenuButton.displayName = "SidebarMenuButton"
+
 
 const SidebarMenuAction = React.forwardRef<
   HTMLButtonElement,
@@ -728,15 +721,13 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentProps<"a"> & {
-    asChild?: boolean
     size?: "sm" | "md"
     isActive?: boolean
   }
->(({ asChild = false, size = "md", isActive, className, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a"
+>(({ size = "md", isActive, className, ...props }, ref) => {
 
   return (
-    <Comp
+    <a
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}

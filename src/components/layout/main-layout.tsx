@@ -117,7 +117,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                      <SidebarMenuSub>
                         {item.subItems.map(subItem => (
                            <SidebarMenuSubItem key={subItem.href}>
-                             <Link href={subItem.href} passHref legacyBehavior>
+                             <Link href={subItem.href}>
                                <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
                                  {subItem.label}
                                </SidebarMenuSubButton>
@@ -127,7 +127,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                      </SidebarMenuSub>
                   </>
                 ) : (
-                  <Link href={item.href || "#"} passHref legacyBehavior>
+                  <Link href={item.href || "#"} passHref>
                     <SidebarMenuButton
                       isActive={item.href ? currentPathname.startsWith(item.href) : false}
                       tooltip={{ children: item.label, side: "right" }}
