@@ -51,6 +51,7 @@ const navItems = [
       { href: "/invoicing/invoices", label: "Final Invoices" }
     ]
   },
+  { href: "/clients", label: "Clients", icon: Users },
   { href: "/finances", label: "Finances", icon: Banknote },
   { href: "/reports", label: "Reports", icon: BarChart },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -109,7 +110,6 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                      <SidebarMenuButton
                         isActive={item.subItems.some(sub => currentPathname.startsWith(sub.href))}
                         tooltip={{ children: item.label, side: "right" }}
-                        asChild={false} // Important: This is a trigger, not a link
                       >
                        <item.icon />
                        <span>{item.label}</span>
@@ -127,15 +127,14 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                      </SidebarMenuSub>
                   </>
                 ) : (
-                  <Link href={item.href || "#"} passHref>
-                    <SidebarMenuButton
+                  <SidebarMenuButton
+                      href={item.href || "#"}
                       isActive={item.href ? currentPathname.startsWith(item.href) : false}
                       tooltip={{ children: item.label, side: "right" }}
                     >
                       <item.icon />
                       <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
+                  </SidebarMenuButton>
                 )}
               </SidebarMenuItem>
             ))}

@@ -2,6 +2,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
@@ -543,10 +544,11 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  React.ElementRef<typeof Button>,
+  HTMLButtonElement,
   React.ComponentProps<typeof Button> & {
-    isActive?: boolean
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>
+    isActive?: boolean;
+    tooltip?: string | React.ComponentProps<typeof TooltipContent>;
+    href?: string;
   }
 >(
   (
@@ -557,21 +559,20 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       children,
+      href,
       ...props
     },
     ref
   ) => {
-    const { isMobile, state: sidebarState } = useSidebar()
-    const [mounted, setMounted] = React.useState(false)
-
-    React.useEffect(() => {
-      setMounted(true)
-    }, [])
-    
-    // Remove asChild from props to prevent passing it to the Button component
+    const { isMobile, state: sidebarState } = useSidebar();
+    const [mounted, setMounted] = React.useState(false);
     const { asChild, ...otherProps } = props;
 
-    const coreButtonElement = (
+    React.useEffect(() => {
+      setMounted(true);
+    }, []);
+
+    const button = (
       <Button
         ref={ref}
         data-sidebar="menu-button"
@@ -584,15 +585,23 @@ const SidebarMenuButton = React.forwardRef<
       >
         {children}
       </Button>
-    )
+    );
+
+    const content = href ? (
+      <Link href={href} passHref legacyBehavior>
+        {React.cloneElement(button, { as: "a" })}
+      </Link>
+    ) : (
+      button
+    );
 
     if (!tooltip) {
-      return coreButtonElement
+      return content;
     }
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{coreButtonElement}</TooltipTrigger>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
         {mounted && (
           <TooltipContent
             side="right"
@@ -602,9 +611,9 @@ const SidebarMenuButton = React.forwardRef<
           />
         )}
       </Tooltip>
-    )
+    );
   }
-)
+);
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 
@@ -722,15 +731,13 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentProps<"a"> & {
-    asChild?: boolean
     size?: "sm" | "md"
     isActive?: boolean
   }
->(({ size = "md", isActive, className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a"
+>(({ size = "md", isActive, className, children, ...props }, ref) => {
 
   return (
-    <Comp
+    <Slot
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -744,7 +751,7 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    />
+    >{children}</Slot>
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
