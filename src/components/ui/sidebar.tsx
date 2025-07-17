@@ -546,9 +546,9 @@ const sidebarMenuButtonVariants = cva(
 const SidebarMenuButton = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & {
-    isActive?: boolean;
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-    href?: string;
+    isActive?: boolean
+    tooltip?: string | React.ComponentProps<typeof TooltipContent>
+    href?: string
   }
 >(
   (
@@ -560,17 +560,16 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
-      asChild, // Destructure asChild to prevent it from being passed to the Button
       ...props
     },
     ref
   ) => {
-    const { isMobile, state: sidebarState } = useSidebar();
-    const [mounted, setMounted] = React.useState(false);
+    const { isMobile, state: sidebarState } = useSidebar()
+    const [mounted, setMounted] = React.useState(false)
 
     React.useEffect(() => {
-      setMounted(true);
-    }, []);
+      setMounted(true)
+    }, [])
 
     const button = (
       <Button
@@ -585,18 +584,18 @@ const SidebarMenuButton = React.forwardRef<
       >
         {children}
       </Button>
-    );
+    )
 
     const content = href ? (
-      <Link href={href} passHref legacyBehavior>
+      <Link href={href} passHref asChild>
         {button}
       </Link>
     ) : (
       button
-    );
+    )
 
     if (!tooltip) {
-      return content;
+      return content
     }
 
     return (
@@ -611,11 +610,10 @@ const SidebarMenuButton = React.forwardRef<
           />
         )}
       </Tooltip>
-    );
+    )
   }
-);
+)
 SidebarMenuButton.displayName = "SidebarMenuButton"
-
 
 const SidebarMenuAction = React.forwardRef<
   HTMLButtonElement,
@@ -735,9 +733,10 @@ const SidebarMenuSubButton = React.forwardRef<
     isActive?: boolean
   }
 >(({ size = "md", isActive, className, children, ...props }, ref) => {
+  const Comp = Slot
 
   return (
-    <a
+    <Comp
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -751,7 +750,9 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    >{children}</a>
+    >
+      {children}
+    </Comp>
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
