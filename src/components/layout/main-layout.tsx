@@ -107,11 +107,11 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
 
   return (
     <>
-      <Sidebar className="border-r bg-sidebar shadow-card">
+      <Sidebar className="border-r bg-card shadow-sm">
         <SidebarContent className="gap-6 p-4">
             <div className="px-2 pb-2">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                     <span className="text-white font-bold text-sm">CS</span>
                   </div>
                    {!open ? null : (
@@ -138,9 +138,9 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          <SidebarMenuSub>
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <Link href={subItem.href} passHref legacyBehavior>
-                                   <SidebarMenuSubButton asChild isActive={currentPathname.startsWith(subItem.href)}>
-                                     <a>{subItem.label}</a>
+                                 <Link href={subItem.href} passHref asChild>
+                                   <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                     {subItem.label}
                                    </SidebarMenuSubButton>
                                  </Link>
                                </SidebarMenuSubItem>
@@ -189,7 +189,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
               </div>
             </div>
           </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/20 min-h-0">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/30 min-h-0">
           {children}
         </main>
       </SidebarInset>

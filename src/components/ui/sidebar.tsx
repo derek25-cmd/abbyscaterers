@@ -560,7 +560,7 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
-      asChild: _asChild, // Destructure to avoid passing down
+      asChild, // Destructure asChild and remove it from props
       ...props
     },
     ref
@@ -581,7 +581,7 @@ const SidebarMenuButton = React.forwardRef<
         variant={variant}
         size={size}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        asChild
+        asChild={!!href || asChild} // Use asChild if href is present
         {...props}
       >
         <div>{children}</div>
@@ -589,7 +589,7 @@ const SidebarMenuButton = React.forwardRef<
     )
 
     const content = href ? (
-      <Link href={href} passHref>
+      <Link href={href} passHref asChild>
         {button}
       </Link>
     ) : (
@@ -736,7 +736,7 @@ const SidebarMenuSubButton = React.forwardRef<
   }
 >(({ size = "md", isActive, className, ...props }, ref) => {
   return (
-    <a
+    <Slot
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
