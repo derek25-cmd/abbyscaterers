@@ -98,12 +98,12 @@ const SidebarProvider = React.forwardRef<
                 ?.split("=")[1];
             if (cookieValue) {
                 const cookieOpenState = cookieValue === "true";
-                if (openProp === undefined) { // Only set from cookie if not controlled
+                if (openProp === undefined) { 
                     _setOpen(cookieOpenState);
                 }
             }
         }
-    }, [openProp]); // Effect for initial cookie read
+    }, [openProp]); 
 
 
     const toggleSidebar = React.useCallback(() => {
@@ -560,7 +560,7 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
-      asChild,
+      asChild: _,
       ...props
     },
     ref
@@ -573,22 +573,22 @@ const SidebarMenuButton = React.forwardRef<
     }, [])
 
     const button = (
-      <Button
-        ref={ref}
-        data-sidebar="menu-button"
-        data-size={size}
-        data-active={isActive}
-        variant={variant}
-        size={size}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...props}
-      >
-        {children}
-      </Button>
-    )
+        <Button
+          ref={ref}
+          data-sidebar="menu-button"
+          data-size={size}
+          data-active={isActive}
+          variant={variant}
+          size={size}
+          className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+          {...props}
+        >
+          {children}
+        </Button>
+      );
 
     const content = href ? (
-      <Link href={href} passHref legacyBehavior={false} asChild>
+      <Link href={href} passHref legacyBehavior>
         {button}
       </Link>
     ) : (
@@ -735,7 +735,7 @@ const SidebarMenuSubButton = React.forwardRef<
     asChild?: boolean
   }
 >(({ size = "md", isActive, className, children, asChild, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a"
+    const Comp = asChild ? Slot : "a";
 
   return (
     <Comp

@@ -3,21 +3,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UtensilsCrossed, ChefHat, ClipboardList, ClipboardSignature, BookOpen, FileText as InvoiceIcon, Home, BarChart, Settings, Banknote } from "lucide-react"; 
+import { 
+    Home, 
+    BookOpen, 
+    UtensilsCrossed, 
+    ClipboardSignature, 
+    ClipboardList, 
+    ChefHat, 
+    FileText,
+    Users,
+    BarChart3,
+    Settings,
+    Bell,
+    DollarSign
+} from "lucide-react"; 
 import {
   SidebarProvider,
   Sidebar,
-  SidebarHeader,
   SidebarContent,
-  SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
-  useSidebar,
   SidebarMenuSub,
   SidebarMenuSubButton,
+  useSidebar,
   SidebarMenuSubItem
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -45,17 +56,21 @@ const navItems = [
   { href: "/equipment", label: "Inventory", icon: ChefHat },
   { 
     label: "Invoicing", 
-    icon: InvoiceIcon,
+    icon: FileText,
     subItems: [
       { href: "/invoicing/proforma-invoices", label: "Proforma Invoice" },
       { href: "/invoicing/invoices", label: "Final Invoices" }
     ]
   },
   { href: "/clients", label: "Clients", icon: Users },
-  { href: "/finances", label: "Finances", icon: Banknote },
-  { href: "/reports", label: "Reports", icon: BarChart },
-  { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+const managementItems = [
+    { href: "#", label: "Finances", icon: DollarSign },
+    { href: "#", label: "Reports", icon: BarChart3 },
+    { href: "#", label: "Settings", icon: Settings }
+];
+
 
 function UserProfile() {
   return (
@@ -71,7 +86,7 @@ function UserProfile() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Abby&apos;s Legendary</p>
+            <p className="text-sm font-medium leading-none">Abby's Legendary</p>
             <p className="text-xs leading-none text-muted-foreground">
               admin@abbyscatering.com
             </p>
@@ -92,67 +107,87 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
 
   return (
     <>
-      <Sidebar className="border-r" collapsible="icon">
-        <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className={`p-1.5 bg-primary rounded-lg text-primary-foreground transition-all ${open ? "" : ""}`}>
-              <UtensilsCrossed className="h-6 w-6" />
+      <Sidebar className="border-r bg-sidebar shadow-card">
+        <SidebarContent className="gap-6 p-4">
+            <div className="px-2 pb-2">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">CS</span>
+                  </div>
+                   {!open ? null : (
+                     <div>
+                        <h1 className="text-lg font-bold text-foreground">CaterSmart</h1>
+                        <p className="text-xs text-muted-foreground">Catering Management</p>
+                    </div>
+                   )}
+                </div>
             </div>
-            <span className={`font-semibold text-xl ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-200`}>
-              CaterSmart
-            </span>
-          </Link>
-        </SidebarHeader>
-        <SidebarContent className="p-2">
-          <SidebarMenu>
-            {navItems.map((item) => (
-              <SidebarMenuItem key={item.label}>
-                {item.subItems ? (
-                  <>
-                     <SidebarMenuButton
-                        isActive={item.subItems.some(sub => currentPathname.startsWith(sub.href))}
-                        tooltip={{ children: item.label, side: "right" }}
-                      >
-                       <item.icon />
-                       <span>{item.label}</span>
-                     </SidebarMenuButton>
-                     <SidebarMenuSub>
-                        {item.subItems.map(subItem => (
-                           <SidebarMenuSubItem key={subItem.href}>
-                             <Link href={subItem.href} passHref asChild>
-                               <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                 {subItem.label}
-                               </SidebarMenuSubButton>
-                             </Link>
-                           </SidebarMenuSubItem>
-                        ))}
-                     </SidebarMenuSub>
-                  </>
-                ) : (
-                  <SidebarMenuButton
-                      href={item.href || "#"}
-                      isActive={item.href ? currentPathname.startsWith(item.href) : false}
-                      tooltip={{ children: item.label, side: "right" }}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                  </SidebarMenuButton>
-                )}
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+            <SidebarMenu>
+                {navItems.map((item) => (
+                  <SidebarMenuItem key={item.label}>
+                    {item.subItems ? (
+                      <>
+                         <SidebarMenuButton
+                            isActive={item.subItems.some(sub => currentPathname.startsWith(sub.href))}
+                            tooltip={{ children: item.label, side: "right" }}
+                          >
+                           <item.icon />
+                           <span>{item.label}</span>
+                         </SidebarMenuButton>
+                         <SidebarMenuSub>
+                            {item.subItems.map(subItem => (
+                               <SidebarMenuSubItem key={subItem.href}>
+                                 <Link href={subItem.href} passHref>
+                                   <SidebarMenuSubButton asChild isActive={currentPathname.startsWith(subItem.href)}>
+                                     <a>{subItem.label}</a>
+                                   </SidebarMenuSubButton>
+                                 </Link>
+                               </SidebarMenuSubItem>
+                            ))}
+                         </SidebarMenuSub>
+                      </>
+                    ) : (
+                       <SidebarMenuButton
+                          href={item.href || "#"}
+                          isActive={item.href ? currentPathname.startsWith(item.href) : false}
+                          tooltip={{ children: item.label, side: "right" }}
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                      </SidebarMenuButton>
+                    )}
+                  </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+            <SidebarMenu>
+                {managementItems.map((item) => (
+                    <SidebarMenuItem key={item.label}>
+                        <SidebarMenuButton href={item.href} isActive={false} tooltip={{children: item.label, side: 'right'}}>
+                            <item.icon />
+                            <span>{item.label}</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter className="p-4">
-        </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
-          <SidebarTrigger className="md:hidden" />
-          <div className="flex-1">
-          </div>
-          <UserProfile />
-        </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30">
+            <div className="h-full px-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full"></span>
+                </Button>
+                <UserProfile />
+              </div>
+            </div>
+          </header>
+        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/20 min-h-0">
           {children}
         </main>
       </SidebarInset>
