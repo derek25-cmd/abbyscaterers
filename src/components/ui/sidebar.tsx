@@ -560,6 +560,7 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
+      asChild,
       ...props
     },
     ref
@@ -587,7 +588,7 @@ const SidebarMenuButton = React.forwardRef<
     )
 
     const content = href ? (
-      <Link href={href} passHref asChild>
+      <Link href={href} passHref legacyBehavior={false} asChild>
         {button}
       </Link>
     ) : (
@@ -731,9 +732,10 @@ const SidebarMenuSubButton = React.forwardRef<
   React.ComponentProps<"a"> & {
     size?: "sm" | "md"
     isActive?: boolean
+    asChild?: boolean
   }
->(({ size = "md", isActive, className, children, ...props }, ref) => {
-  const Comp = Slot
+>(({ size = "md", isActive, className, children, asChild, ...props }, ref) => {
+  const Comp = asChild ? Slot : "a"
 
   return (
     <Comp
