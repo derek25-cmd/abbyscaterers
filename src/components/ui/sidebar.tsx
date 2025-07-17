@@ -560,7 +560,7 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
-      asChild: _,
+      asChild: _asChild, // Destructure to avoid passing down
       ...props
     },
     ref
@@ -573,22 +573,23 @@ const SidebarMenuButton = React.forwardRef<
     }, [])
 
     const button = (
-        <Button
-          ref={ref}
-          data-sidebar="menu-button"
-          data-size={size}
-          data-active={isActive}
-          variant={variant}
-          size={size}
-          className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-          {...props}
-        >
-          {children}
-        </Button>
-      );
+      <Button
+        ref={ref}
+        data-sidebar="menu-button"
+        data-size={size}
+        data-active={isActive}
+        variant={variant}
+        size={size}
+        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        asChild
+        {...props}
+      >
+        <div>{children}</div>
+      </Button>
+    )
 
     const content = href ? (
-      <Link href={href} passHref legacyBehavior>
+      <Link href={href} passHref>
         {button}
       </Link>
     ) : (
@@ -732,13 +733,10 @@ const SidebarMenuSubButton = React.forwardRef<
   React.ComponentProps<"a"> & {
     size?: "sm" | "md"
     isActive?: boolean
-    asChild?: boolean
   }
->(({ size = "md", isActive, className, children, asChild, ...props }, ref) => {
-    const Comp = asChild ? Slot : "a";
-
+>(({ size = "md", isActive, className, ...props }, ref) => {
   return (
-    <Comp
+    <a
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -752,9 +750,7 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    >
-      {children}
-    </Comp>
+    />
   )
 })
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"

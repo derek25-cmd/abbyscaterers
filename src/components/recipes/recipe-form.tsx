@@ -17,8 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { recipeSchema, type RecipeFormData } from "@/lib/schemas";
+import { Separator } from "../ui/separator";
+import { RecipeSchema, type RecipeFormData } from "@/lib/schemas";
 import type { Recipe } from "@/types";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
@@ -50,7 +50,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<RecipeFormData>({
-    resolver: zodResolver(recipeSchema),
+    resolver: zodResolver(RecipeSchema),
     defaultValues: recipe
       ? {
           recipeNumber: recipe.recipeNumber,
