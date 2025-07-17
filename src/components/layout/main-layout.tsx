@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, UtensilsCrossed, ChefHat, ClipboardList, ClipboardSignature, BookOpen, FileText as InvoiceIcon } from "lucide-react"; 
+import { Users, UtensilsCrossed, ChefHat, ClipboardList, ClipboardSignature, BookOpen, FileText as InvoiceIcon, Home, BarChart, Settings, Banknote } from "lucide-react"; 
 import {
   SidebarProvider,
   Sidebar,
@@ -16,6 +16,9 @@ import {
   SidebarInset,
   SidebarTrigger,
   useSidebar,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,13 +32,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navItems = [
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/equipment", label: "Equipment", icon: ChefHat },
-  { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
-  { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
-  { href: "/daily-menus", label: "Daily Menus", icon: BookOpen },
-  { href: "/proforma-invoices", label: "Proforma Invoice", icon: ClipboardSignature },
-  { href: "/invoices", label: "Invoices", icon: InvoiceIcon },
+  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/daily-menus", label: "Bookings", icon: BookOpen },
+  { 
+    label: "Menu / Food Costing", 
+    icon: UtensilsCrossed,
+    subItems: [
+      { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
+      { href: "/ingredients", label: "Ingredients", icon: ClipboardList }
+    ]
+  },
+  { href: "/equipment", label: "Inventory", icon: ChefHat },
+  { 
+    label: "Invoicing", 
+    icon: InvoiceIcon,
+    subItems: [
+      { href: "/proforma-invoices", label: "Proforma Invoice" },
+      { href: "/invoices", label: "Final Invoices" }
+    ]
+  },
+  { href: "/finances", label: "Finances", icon: Banknote },
+  { href: "/reports", label: "Reports", icon: BarChart },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function UserProfile() {
@@ -68,7 +86,6 @@ function UserProfile() {
   );
 }
 
-// Inner component to use the sidebar context
 function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
   const { open } = useSidebar();
 
@@ -86,29 +103,51 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
         <SidebarContent className="p-2">
           <SidebarMenu>
             {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-              <Link href={item.href}>
-                <SidebarMenuButton
-                  isActive={currentPathname.startsWith(item.href)}
-                  tooltip={{ children: item.label, side: "right", className: "bg-popover text-popover-foreground" }}
-                >
-                  <item.icon />
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </Link>
+              <SidebarMenuItem key={item.label}>
+                {item.subItems ? (
+                  <>
+                     <SidebarMenuButton
+                        isActive={item.subItems.some(sub => currentPathname.startsWith(sub.href))}
+                        tooltip={{ children: item.label, side: "right" }}
+                        asChild={false} // Important: This is a trigger, not a link
+                      >
+                       <item.icon />
+                       <span>{item.label}</span>
+                     </SidebarMenuButton>
+                     <SidebarMenuSub>
+                        {item.subItems.map(subItem => (
+                           <SidebarMenuSubItem key={subItem.href}>
+                             <Link href={subItem.href}>
+                               <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                 {subItem.label}
+                               </SidebarMenuSubButton>
+                             </Link>
+                           </SidebarMenuSubItem>
+                        ))}
+                     </SidebarMenuSub>
+                  </>
+                ) : (
+                  <Link href={item.href || "#"}>
+                    <SidebarMenuButton
+                      isActive={item.href ? currentPathname.startsWith(item.href) : false}
+                      tooltip={{ children: item.label, side: "right" }}
+                    >
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                )}
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-4">
-          {/* Footer content if any, e.g. settings or help link */}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
           <SidebarTrigger className="md:hidden" />
           <div className="flex-1">
-            {/* Potentially breadcrumbs or page title here */}
           </div>
           <UserProfile />
         </header>
@@ -121,11 +160,11 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
 }
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname(); // Get pathname here
+  const pathname = usePathname(); 
 
   return (
-    <SidebarProvider defaultOpen> {/* SidebarProvider wraps the content that uses the hook */}
-      <LayoutContentWrapper currentPathname={pathname}> {/* Pass children and pathname */}
+    <SidebarProvider defaultOpen> 
+      <LayoutContentWrapper currentPathname={pathname}> 
         {children}
       </LayoutContentWrapper>
     </SidebarProvider>
