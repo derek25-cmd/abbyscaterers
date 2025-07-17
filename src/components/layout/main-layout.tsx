@@ -94,9 +94,11 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
     <>
       <Sidebar className="border-r" collapsible="icon">
         <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
-            <UtensilsCrossed className={`h-8 w-8 text-primary transition-all ${open ? "" : "mx-auto"}`} />
-            <span className={`font-semibold text-lg ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-300`}>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className={`p-1.5 bg-primary rounded-lg text-primary-foreground transition-all ${open ? "" : ""}`}>
+              <UtensilsCrossed className="h-6 w-6" />
+            </div>
+            <span className={`font-semibold text-xl ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-200`}>
               CaterSmart
             </span>
           </Link>

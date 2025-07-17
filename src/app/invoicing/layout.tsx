@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { FileText, ClipboardSignature } from "lucide-react";
 
 const invoicingNavItems = [
     { href: "/invoicing/proforma-invoices", label: "Proforma Invoices" },
@@ -21,8 +20,7 @@ export default function InvoicingLayout({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <FileText className="mr-3 h-8 w-8 text-primary" />
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Invoicing
         </h1>
         <p className="text-muted-foreground">

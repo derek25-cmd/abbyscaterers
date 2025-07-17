@@ -6,8 +6,7 @@ export default function ClientsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-          <Users className="mr-3 h-8 w-8 text-primary" />
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Client Management
         </h1>
         <p className="text-muted-foreground">
