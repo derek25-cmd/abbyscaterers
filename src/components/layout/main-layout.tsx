@@ -24,12 +24,12 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarInset,
-  SidebarTrigger,
   SidebarMenuSub,
   SidebarMenuSubButton,
   useSidebar,
-  SidebarMenuSubItem
+  SidebarTrigger,
+  SidebarMenuSubItem,
+  SidebarInset
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -70,7 +70,6 @@ const managementItems = [
     { href: "#", label: "Reports", icon: BarChart3 },
     { href: "#", label: "Settings", icon: Settings }
 ];
-
 
 function UserProfile() {
   return (
@@ -138,23 +137,21 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          <SidebarMenuSub>
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <Link href={subItem.href} passHref asChild>
-                                   <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                     {subItem.label}
-                                   </SidebarMenuSubButton>
-                                 </Link>
+                                 <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
+                                   {subItem.label}
+                                 </SidebarMenuSubButton>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
                       </>
                     ) : (
-                       <SidebarMenuButton
-                          href={item.href || "#"}
-                          isActive={item.href ? currentPathname.startsWith(item.href) : false}
-                          tooltip={{ children: item.label, side: "right" }}
-                        >
-                          <item.icon />
-                          <span>{item.label}</span>
+                      <SidebarMenuButton
+                        href={item.href}
+                        isActive={item.href ? currentPathname.startsWith(item.href) : false}
+                        tooltip={{ children: item.label, side: "right" }}
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
                       </SidebarMenuButton>
                     )}
                   </SidebarMenuItem>
@@ -164,10 +161,14 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                        <SidebarMenuButton href={item.href} isActive={false} tooltip={{children: item.label, side: 'right'}}>
-                            <item.icon />
-                            <span>{item.label}</span>
-                        </SidebarMenuButton>
+                      <SidebarMenuButton
+                        href={item.href}
+                        isActive={false}
+                        tooltip={{children: item.label, side: 'right'}}
+                      >
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>

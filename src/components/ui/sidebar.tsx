@@ -560,7 +560,7 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
-      asChild, // Destructure asChild and remove it from props
+      asChild: _, // consume asChild so it doesn't get passed to the button
       ...props
     },
     ref
@@ -571,7 +571,7 @@ const SidebarMenuButton = React.forwardRef<
     React.useEffect(() => {
       setMounted(true)
     }, [])
-
+    
     const button = (
       <Button
         ref={ref}
@@ -581,15 +581,14 @@ const SidebarMenuButton = React.forwardRef<
         variant={variant}
         size={size}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        asChild={!!href || asChild} // Use asChild if href is present
         {...props}
       >
-        <div>{children}</div>
+        {children}
       </Button>
     )
 
     const content = href ? (
-      <Link href={href} passHref asChild>
+       <Link href={href} passHref legacyBehavior>
         {button}
       </Link>
     ) : (
@@ -729,14 +728,16 @@ const SidebarMenuSubItem = React.forwardRef<
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 const SidebarMenuSubButton = React.forwardRef<
-  HTMLAnchorElement,
+  React.ElementRef<"a">,
   React.ComponentProps<"a"> & {
-    size?: "sm" | "md"
-    isActive?: boolean
+    size?: "sm" | "md";
+    isActive?: boolean;
+    href?: string;
   }
->(({ size = "md", isActive, className, ...props }, ref) => {
-  return (
-    <Slot
+>(({ size = "md", isActive, className, children, href, ...props }, ref) => {
+
+  const content = (
+    <a
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -750,9 +751,21 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    />
-  )
-})
+    >
+      {children}
+    </a>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} passHref legacyBehavior>
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+});
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 export {
