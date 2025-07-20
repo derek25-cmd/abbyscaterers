@@ -549,6 +549,7 @@ const SidebarMenuButton = React.forwardRef<
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
     href?: string
+    asChild?: boolean
   }
 >(
   (
@@ -560,7 +561,7 @@ const SidebarMenuButton = React.forwardRef<
       className,
       children,
       href,
-      asChild: _, // consume asChild so it doesn't get passed to the button
+      asChild = false,
       ...props
     },
     ref
@@ -571,9 +572,11 @@ const SidebarMenuButton = React.forwardRef<
     React.useEffect(() => {
       setMounted(true)
     }, [])
-    
+
+    const Comp = asChild ? Slot : Button
+
     const button = (
-      <Button
+      <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
@@ -584,24 +587,16 @@ const SidebarMenuButton = React.forwardRef<
         {...props}
       >
         {children}
-      </Button>
-    )
-
-    const content = href ? (
-       <Link href={href} passHref legacyBehavior>
-        {button}
-      </Link>
-    ) : (
-      button
+      </Comp>
     )
 
     if (!tooltip) {
-      return content
+      return button
     }
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
         {mounted && (
           <TooltipContent
             side="right"
@@ -728,15 +723,13 @@ const SidebarMenuSubItem = React.forwardRef<
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 const SidebarMenuSubButton = React.forwardRef<
-  React.ElementRef<"a">,
+  HTMLAnchorElement,
   React.ComponentProps<"a"> & {
     size?: "sm" | "md";
     isActive?: boolean;
-    href?: string;
   }
->(({ size = "md", isActive, className, children, href, ...props }, ref) => {
-
-  const content = (
+>(({ size = "md", isActive, className, ...props }, ref) => {
+  return (
     <a
       ref={ref}
       data-sidebar="menu-sub-button"
@@ -751,20 +744,8 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    >
-      {children}
-    </a>
+    />
   );
-
-  if (href) {
-    return (
-      <Link href={href} passHref legacyBehavior>
-        {content}
-      </Link>
-    );
-  }
-
-  return content;
 });
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
@@ -794,3 +775,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
