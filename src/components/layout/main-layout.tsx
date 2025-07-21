@@ -137,7 +137,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          <SidebarMenuSub>
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <Link href={subItem.href} passHref legacyBehavior>
+                                 <Link href={subItem.href} asChild>
                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
                                      {subItem.label}
                                    </SidebarMenuSubButton>
@@ -147,7 +147,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          </SidebarMenuSub>
                       </>
                     ) : (
-                      <Link href={item.href} passHref>
+                      <Link href={item.href} passHref legacyBehavior>
                          <SidebarMenuButton
                           isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                           tooltip={{ children: item.label, side: "right" }}
@@ -164,7 +164,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                      <Link href={item.href} passHref>
+                      <Link href={item.href} passHref legacyBehavior>
                         <SidebarMenuButton
                           isActive={false}
                           tooltip={{children: item.label, side: 'right'}}
@@ -213,5 +213,3 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
