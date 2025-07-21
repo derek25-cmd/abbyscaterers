@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { IngredientInputForm, type Ingredient } from "@/components/costing/IngredientInputForm";
+import IngredientInputForm, { type Ingredient } from "@/components/costing/IngredientInputForm";
 import { useCostingData } from "@/hooks/useCostingData";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
