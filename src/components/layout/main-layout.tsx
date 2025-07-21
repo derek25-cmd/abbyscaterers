@@ -139,20 +139,20 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                         >
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
-                                    {subItem.label}
-                                  </SidebarMenuSubButton>
+                                  <Link href={subItem.href} passHref asChild>
+                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                      {subItem.label}
+                                    </SidebarMenuSubButton>
+                                  </Link>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href} passHref>
+                      <Link href={item.href} passHref asChild>
                         <SidebarMenuButton asChild isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}>
-                           <a>
-                            <item.icon />
-                            <span>{item.label}</span>
-                          </a>
+                           <item.icon />
+                           <span>{item.label}</span>
                         </SidebarMenuButton>
                       </Link>
                     )}
@@ -164,12 +164,10 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href} passHref>
+                       <Link href={item.href} passHref asChild>
                         <SidebarMenuButton variant="ghost" asChild isActive={false} tooltip={{children: item.label, side: 'right'}}>
-                          <a>
                             <item.icon />
                             <span>{item.label}</span>
-                          </a>
                         </SidebarMenuButton>
                       </Link>
                     </SidebarMenuItem>

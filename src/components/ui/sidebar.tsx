@@ -10,11 +10,7 @@ import { ChevronDown, PanelLeft } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   Tooltip,
   TooltipContent,
@@ -199,41 +195,48 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const SidebarMenuButton = React.forwardRef<
-  React.ElementRef<typeof Button>, 
+  React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & {
-    isActive?: boolean
-    tooltip?: React.ComponentProps<typeof TooltipContent> | string
+    isActive?: boolean;
+    tooltip?: React.ComponentProps<typeof TooltipContent> | string;
+    asChild?: boolean;
   }
->(({ isActive = false, tooltip, className, children, ...props }, ref) => {
-    const { open } = useSidebar()
+>(({ isActive = false, tooltip, className, asChild = false, ...props }, ref) => {
+  const { open } = useSidebar();
+  const Comp = asChild ? Slot : Button;
 
-    const button = (
-      <Button ref={ref} data-active={isActive} className={cn("w-full justify-start items-center gap-2", className)} {...props}>
-         {children}
-      </Button>
-    )
+  const buttonContent = (
+    <Comp
+      ref={ref}
+      data-active={isActive}
+      className={cn("w-full justify-start items-center gap-2", className)}
+      {...props}
+    />
+  );
 
-    if (!tooltip || open) {
-      return button
-    }
-
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
-        <TooltipContent {...(typeof tooltip === "string" ? { children: tooltip } : tooltip)}>
-            {typeof tooltip === "string" ? tooltip : tooltip.children}
-        </TooltipContent>
-      </Tooltip>
-    )
+  if (!tooltip || open) {
+    return buttonContent;
   }
-)
-SidebarMenuButton.displayName = "SidebarMenuButton"
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+      <TooltipContent
+        {...(typeof tooltip === "string" ? { children: tooltip } : tooltip)}
+      >
+        {typeof tooltip === "string" ? tooltip : tooltip.children}
+      </TooltipContent>
+    </Tooltip>
+  );
+});
+SidebarMenuButton.displayName = "SidebarMenuButton";
+
 
 interface SidebarMenuSubProps {
-  label: string
-  icon: React.ReactNode
-  children: React.ReactNode
-  isActive?: boolean
+  label: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  isActive?: boolean;
 }
 
 const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps) => {
@@ -241,25 +244,30 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if(!open) setIsOpen(false);
+    if (!open) setIsOpen(false);
   }, [open]);
 
   if (!open) {
     return (
-      <SidebarMenuButton tooltip={{ children: label, side: "right" }} isActive={isActive} variant="ghost">
-        {icon}
-      </SidebarMenuButton>
-    )
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" className="w-full justify-start items-center gap-2" isActive={isActive}>
+            {icon}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    );
   }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
-        <SidebarMenuButton variant="ghost" isActive={isActive} className="w-full">
+        <Button variant="ghost" isActive={isActive} className="w-full">
             {icon}
             <span className="flex-1 text-left">{label}</span>
             <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
-        </SidebarMenuButton>
+        </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <SidebarMenu className="ml-4 mt-1 border-l pl-4">{children}</SidebarMenu>
@@ -268,48 +276,36 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
   );
 };
 
-
-const SidebarMenuSubItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li">>(({ ...props }, ref) => (
-    <li ref={ref} className="relative" {...props} />
-));
+const SidebarMenuSubItem = React.forwardRef<
+  HTMLLIElement,
+  React.ComponentProps<"li">
+>((props, ref) => <li ref={ref} className="relative" {...props} />);
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
 
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
-  React.ComponentProps<"a"> & { isActive?: boolean; asChild?: boolean, href: string }
->(({ className, isActive, asChild = false, href, ...props }, ref) => {
-  const Comp = asChild ? Slot : 'a';
+  React.ComponentProps<"a"> & { isActive?: boolean }
+>(({ className, isActive, ...props }, ref) => {
   return (
-    <Link href={href} passHref legacyBehavior>
-      <Comp
-        ref={ref}
-        data-active={isActive}
-        className={cn(
-          "flex items-center gap-2 rounded-md p-1.5 text-sm font-normal text-sidebar-foreground/80 outline-none transition-colors",
-          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-          "focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-          "data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground",
-          className
-        )}
-        {...props}
-      />
-    </Link>
+    <a
+      ref={ref}
+      className={cn(
+        "flex items-center gap-2 rounded-md p-1.5 text-sm font-normal text-sidebar-foreground/80 outline-none transition-colors",
+        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        isActive && "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+        className
+      )}
+      {...props}
+    />
   );
 });
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
 
 
-const SidebarContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
-  ({ className, ...props }, ref) => {
-    return <div ref={ref} className={cn(className)} {...props} />;
-  }
-);
-
-
 export {
   Sidebar,
   SidebarBody,
-  SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
