@@ -146,7 +146,7 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
     const state = open ? "expanded" : "collapsed"
     
     return (
-      <div data-state={state} className={cn("hidden md:flex flex-col h-svh w-[16rem] data-[state=collapsed]:w-[3.5rem] transition-[width] duration-300 ease-in-out border-r", className)} ref={ref} {...props}>
+      <div data-state={state} className={cn("hidden md:flex flex-col h-svh bg-sidebar text-sidebar-foreground w-[16rem] data-[state=collapsed]:w-[3.5rem] transition-[width] duration-300 ease-in-out border-r border-sidebar-border", className)} ref={ref} {...props}>
           {children}
       </div>
     )
@@ -200,8 +200,10 @@ const SidebarMenuButton = React.forwardRef<
     isActive?: boolean;
     tooltip?: React.ComponentProps<typeof TooltipContent> | string;
     asChild?: boolean;
+    icon?: React.ReactNode;
+    label?: React.ReactNode;
   }
->(({ isActive = false, tooltip, className, asChild = false, ...props }, ref) => {
+>(({ isActive = false, tooltip, className, asChild = false, icon, label, ...props }, ref) => {
   const { open } = useSidebar();
   const Comp = asChild ? Slot : Button;
 
@@ -211,7 +213,10 @@ const SidebarMenuButton = React.forwardRef<
       data-active={isActive}
       className={cn("w-full justify-start items-center gap-2", className)}
       {...props}
-    />
+    >
+      {icon}
+      {open && label}
+    </Comp>
   );
 
   if (!tooltip || open) {
@@ -251,7 +256,7 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" className="w-full justify-start items-center gap-2" isActive={isActive}>
+          <Button variant="ghost" className="w-full justify-start items-center gap-2" data-active={isActive}>
             {icon}
           </Button>
         </TooltipTrigger>
@@ -263,14 +268,14 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" isActive={isActive} className="w-full">
+        <Button variant="ghost" data-active={isActive} className="w-full">
             {icon}
             <span className="flex-1 text-left">{label}</span>
             <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <SidebarMenu className="ml-4 mt-1 border-l pl-4">{children}</SidebarMenu>
+        <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-4">{children}</SidebarMenu>
       </CollapsibleContent>
     </Collapsible>
   );
