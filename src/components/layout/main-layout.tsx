@@ -139,11 +139,9 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                         >
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                  <Link href={subItem.href} passHref>
-                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                      {subItem.label}
-                                    </SidebarMenuSubButton>
-                                  </Link>
+                                  <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
+                                    {subItem.label}
+                                  </SidebarMenuSubButton>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>

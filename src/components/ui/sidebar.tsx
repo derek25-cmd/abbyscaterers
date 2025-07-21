@@ -195,8 +195,8 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const SidebarMenuButton = React.forwardRef<
-  React.ElementRef<typeof Button>,
-  React.ComponentProps<typeof Button> & {
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
     isActive?: boolean;
     tooltip?: React.ComponentProps<typeof TooltipContent> | string;
     asChild?: boolean;
@@ -205,13 +205,13 @@ const SidebarMenuButton = React.forwardRef<
   }
 >(({ isActive = false, tooltip, className, asChild = false, icon, label, ...props }, ref) => {
   const { open } = useSidebar();
-  const Comp = asChild ? Slot : Button;
+  const Comp = asChild ? Slot : 'button';
 
   const buttonContent = (
     <Comp
       ref={ref}
       data-active={isActive}
-      className={cn("w-full justify-start items-center gap-2", className)}
+      className={cn("w-full justify-start items-center gap-2", "inline-flex whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", "h-10 px-4 py-2", className)}
       {...props}
     >
       {icon}
@@ -289,10 +289,10 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
 
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
-  React.ComponentProps<"a"> & { isActive?: boolean }
->(({ className, isActive, ...props }, ref) => {
+  React.ComponentProps<typeof Link> & { isActive?: boolean }
+>(({ className, isActive, children, ...props }, ref) => {
   return (
-    <a
+    <Link
       ref={ref}
       className={cn(
         "flex items-center gap-2 rounded-md p-1.5 text-sm font-normal text-sidebar-foreground/80 outline-none transition-colors",
@@ -302,7 +302,9 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </Link>
   );
 });
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
