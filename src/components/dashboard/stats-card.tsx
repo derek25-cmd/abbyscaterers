@@ -25,10 +25,10 @@ export function StatsCard({ title, value, change, changeType = "neutral", icon: 
   };
 
   return (
-    <Card className="bg-gradient-card shadow-card hover:shadow-elegant transition-smooth hover:scale-105">
+    <Card className="bg-gradient-card shadow-card hover:shadow-elegant transition-smooth hover:-translate-y-1">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-primary" />
+        <Icon className="h-5 w-5 text-primary" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-foreground">{value}</div>
@@ -36,9 +36,6 @@ export function StatsCard({ title, value, change, changeType = "neutral", icon: 
           <p className={`text-xs ${getChangeColor()} mt-1`}>
             {change}
           </p>
-        )}
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
         )}
       </CardContent>
     </Card>

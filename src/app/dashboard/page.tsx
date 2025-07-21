@@ -10,24 +10,31 @@ import {
   Package,
   ChefHat,
   Plus,
-  BarChart3
+  BarChart3,
+  BookOpen
 } from "lucide-react";
+import Link from "next/link";
 
 export default function DashboardPage() {
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-primary p-8 text-white shadow-elegant">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-primary p-8 text-primary-foreground shadow-elegant">
+        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/25 dark:[mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.05))]"></div>
         <div className="relative z-10">
           <h1 className="text-4xl font-bold mb-2">Welcome to CaterSmart</h1>
-          <p className="text-xl text-white/90 mb-6">Professional catering management made simple</p>
+          <p className="text-xl text-primary-foreground/90 mb-6">Your all-in-one catering management solution.</p>
           <div className="flex gap-4">
-            <Button size="lg" variant="secondary" className="bg-white/10 hover:bg-white/20 border-white/20">
-              <Plus className="h-5 w-5 mr-2" />
-              New Booking
+            <Button size="lg" variant="secondary" className="bg-primary-foreground/10 hover:bg-primary-foreground/20 border-primary-foreground/20" asChild>
+              <Link href="/daily-menus/new">
+                <Plus className="h-5 w-5 mr-2" />
+                New Booking
+              </Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10">
-              <BarChart3 className="h-5 w-5 mr-2" />
-              View Reports
+            <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
+               <Link href="/reports">
+                <BarChart3 className="h-5 w-5 mr-2" />
+                View Reports
+              </Link>
             </Button>
           </div>
         </div>
@@ -40,7 +47,7 @@ export default function DashboardPage() {
           value="42"
           change="+5% from last month"
           changeType="positive"
-          icon={Calendar}
+          icon={BookOpen}
           description="Monthly bookings"
         />
         <StatsCard
@@ -56,7 +63,7 @@ export default function DashboardPage() {
           value="3"
           change="In the next 7 days"
           changeType="neutral"
-          icon={Users}
+          icon={Calendar}
           description="Scheduled events"
         />
         <StatsCard
