@@ -15,7 +15,7 @@ import {
     BarChart3,
     Settings,
     Bell,
-    DollarSign
+    DollarSign,
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -28,7 +28,10 @@ import {
   useSidebar,
   SidebarTrigger,
   SidebarMenuSubItem,
-  SidebarMenuSubButton
+  SidebarMenuSubButton,
+  SidebarHeader,
+  SidebarInset,
+  SidebarFooter
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -106,21 +109,20 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
   return (
     <>
       <Sidebar className="border-r bg-card shadow-sm">
-        <SidebarContent className="gap-6 p-4">
-            <div className="px-2 pb-2">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">CS</span>
-                  </div>
-                   {!open ? null : (
-                     <div>
-                        <h1 className="text-lg font-bold text-foreground">CaterSmart</h1>
-                        <p className="text-xs text-muted-foreground">Catering Management</p>
-                    </div>
-                   )}
-                </div>
-            </div>
-            <div>
+        <SidebarHeader>
+             <div className="flex items-center gap-3">
+               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                 <span className="text-white font-bold text-sm">CS</span>
+               </div>
+                {!open ? null : (
+                  <div>
+                     <h1 className="text-lg font-bold text-foreground">CaterSmart</h1>
+                     <p className="text-xs text-muted-foreground">Catering Management</p>
+                 </div>
+                )}
+             </div>
+        </SidebarHeader>
+        <SidebarContent>
             <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.label}>
@@ -136,8 +138,8 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          <SidebarMenuSub>
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <SidebarMenuSubButton asChild isActive={currentPathname.startsWith(subItem.href)} href={subItem.href}>
-                                    <Link href={subItem.href}>{subItem.label}</Link>
+                                 <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
+                                    {subItem.label}
                                  </SidebarMenuSubButton>
                                </SidebarMenuSubItem>
                             ))}
@@ -155,7 +157,8 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                   </SidebarMenuItem>
                 ))}
             </SidebarMenu>
-            </div>
+        </SidebarContent>
+         <SidebarFooter>
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
@@ -168,10 +171,10 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>
-        </SidebarContent>
+        </SidebarFooter>
       </Sidebar>
-      <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/30 min-h-0">
-          <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30 -mx-4 -mt-4 md:-mx-6 md:-mt-6 lg:-mx-8 lg:-mt-8 mb-4">
+      <SidebarInset>
+          <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30 mb-4">
               <div className="h-full px-6 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <SidebarTrigger />
@@ -186,8 +189,10 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                 </div>
               </div>
             </header>
-          {children}
-        </main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/30 min-h-0">
+            {children}
+          </main>
+      </SidebarInset>
     </>
   );
 }

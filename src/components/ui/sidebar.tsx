@@ -548,7 +548,6 @@ const SidebarMenuButton = React.forwardRef<
   React.ComponentProps<typeof Button> & {
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
-    asChild?: boolean
   }
 >(
   (
@@ -570,8 +569,8 @@ const SidebarMenuButton = React.forwardRef<
     React.useEffect(() => {
       setMounted(true)
     }, [])
-
-    const Comp = asChild ? Slot : Button
+    
+    const Comp = asChild ? Slot : Button;
 
     const button = (
        <Comp
@@ -725,12 +724,11 @@ const SidebarMenuSubButton = React.forwardRef<
   React.ComponentProps<"a"> & {
     size?: "sm" | "md";
     isActive?: boolean;
-    asChild?: boolean;
     href?: string;
   }
->(({ size = "md", isActive, className, children, asChild = false, href, ...props }, ref) => {
-  const Comp = asChild ? Slot : 'a';
-  const linkContent = <Comp
+>(({ size = "md", isActive, className, children, href, ...props }, ref) => {
+  const content = (
+    <a
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -744,14 +742,22 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    >{children}</Comp>;
+    >
+      {children}
+    </a>
+  );
 
   if (href) {
-    return <Link href={href} passHref legacyBehavior>{linkContent}</Link>
+    return (
+      <Link href={href} passHref legacyBehavior>
+        {content}
+      </Link>
+    );
   }
 
-  return linkContent;
+  return content;
 });
+
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 export {
