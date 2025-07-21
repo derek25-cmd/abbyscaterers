@@ -202,11 +202,11 @@ const SidebarMenuButton = React.forwardRef<
     tooltip?: React.ComponentProps<typeof TooltipContent> | string;
     asChild?: boolean;
   }
->(({ isActive = false, tooltip, className, asChild = false, children, ...props }, ref) => {
+>(({ isActive = false, tooltip, className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
   const { open } = useSidebar();
 
-  const buttonContent = (
+  const button = (
     <Comp
       ref={ref}
       data-active={isActive}
@@ -219,18 +219,16 @@ const SidebarMenuButton = React.forwardRef<
         className
       )}
       {...props}
-    >
-        {children}
-    </Comp>
+    />
   );
   
   if (!tooltip || open) {
-    return buttonContent;
+    return button;
   }
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent
         {...(typeof tooltip === "string" ? { children: tooltip } : tooltip)}
       >
@@ -338,4 +336,3 @@ export {
   useSidebar,
 }
 
-    
