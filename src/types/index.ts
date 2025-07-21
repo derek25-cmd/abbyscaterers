@@ -1,5 +1,6 @@
 
 
+
 export interface DietaryClassification {
   restriction: string;
   category: string;
@@ -175,4 +176,13 @@ export interface Invoice {
   signedAtLocation?: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+}
+
+// Daily Costing Snapshot
+export interface DailyCosting {
+    date: string; // YYYY-MM-DD format
+    totalIngredientCost: number;
+    totalEventIncome: number;
+    netProfitLoss: number;
+    createdAt: string; // ISO string
 }

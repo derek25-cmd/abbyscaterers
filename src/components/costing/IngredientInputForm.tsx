@@ -1,4 +1,6 @@
 
+"use client";
+
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -77,7 +79,7 @@ const IngredientInputForm = ({ availableIngredients, usedIngredients, onUsageCha
                     <TableCell className="font-medium">{ingredient.itemDescription}</TableCell>
                     <TableCell><Badge variant="secondary">{ingredient.units[0]?.unit || 'N/A'}</Badge></TableCell>
                     <TableCell>{(ingredient.units[0]?.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell><Input type="number" step="any" value={usedIng.quantity || ""} onChange={(e) => handleQuantityChange(ingredient.itemNumber, parseFloat(e.target.value) || 0)} placeholder="0"/></TableCell>
+                    <TableCell><Input type="number" step="any" value={usedIng.quantity || ""} onChange={(e) => handleQuantityChange(ingredient.itemNumber, parseFloat(e.target.value) || 0)} placeholder="0.00"/></TableCell>
                     <TableCell><Button variant="ghost" size="icon" onClick={() => handleRemoveIngredient(ingredient.itemNumber)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                   </TableRow>
                 )
