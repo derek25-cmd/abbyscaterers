@@ -202,16 +202,24 @@ const SidebarMenuButton = React.forwardRef<
     tooltip?: React.ComponentProps<typeof TooltipContent> | string;
     asChild?: boolean;
   }
->(({ isActive = false, tooltip, className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : 'button';
+>(({ isActive = false, tooltip, className, asChild = false, children, ...props }, ref) => {
+  const Comp = asChild ? Slot : "button";
 
   const button = (
     <Comp
       ref={ref}
       data-active={isActive}
-      className={cn("w-full justify-start items-center gap-2", "inline-flex whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", "h-10 px-4 py-2", "bg-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground", className)}
+      className={cn(
+        "w-full justify-start items-center gap-2", 
+        "inline-flex whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", 
+        "h-10 px-4 py-2", 
+        "bg-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground", 
+        className
+      )}
       {...props}
-    />
+    >
+        {children}
+    </Comp>
   );
 
   if (!tooltip) {
