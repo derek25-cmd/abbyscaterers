@@ -146,17 +146,9 @@ SidebarProvider.displayName = "SidebarProvider"
 
 const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
   ({ className, children, ...props }, ref) => {
-    const { isMobile, openMobile, setOpenMobile, open } = useSidebar()
+    const { open } = useSidebar()
     const state = open ? "expanded" : "collapsed"
     
-    if(isMobile) {
-      return (
-        <div className={cn("md:hidden", className)} ref={ref} {...props}>
-           {children}
-        </div>
-      )
-    }
-
     return (
       <div data-state={state} className={cn("hidden md:flex flex-col h-svh w-[16rem] data-[state=collapsed]:w-[3.5rem] transition-[width] duration-300 ease-in-out border-r", className)} ref={ref} {...props}>
           {children}
@@ -206,8 +198,9 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 ))
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
-
-const SidebarMenuButton = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button> & {
+const SidebarMenuButton = React.forwardRef<
+  React.ElementRef<typeof Button>, 
+  React.ComponentProps<typeof Button> & {
     isActive?: boolean
     tooltip?: React.ComponentProps<typeof TooltipContent> | string
   }
@@ -281,7 +274,31 @@ const SidebarMenuSubItem = React.forwardRef<HTMLLIElement, React.ComponentProps<
 ));
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
 
-// Dummy export to prevent breaking changes if anyone was using it.
+const SidebarMenuSubButton = React.forwardRef<
+  HTMLAnchorElement,
+  React.ComponentProps<"a"> & { isActive?: boolean; asChild?: boolean, href: string }
+>(({ className, isActive, asChild = false, href, ...props }, ref) => {
+  const Comp = asChild ? Slot : 'a';
+  return (
+    <Link href={href} passHref legacyBehavior>
+      <Comp
+        ref={ref}
+        data-active={isActive}
+        className={cn(
+          "flex items-center gap-2 rounded-md p-1.5 text-sm font-normal text-sidebar-foreground/80 outline-none transition-colors",
+          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          "focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+          "data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground",
+          className
+        )}
+        {...props}
+      />
+    </Link>
+  );
+});
+SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
+
+
 const SidebarContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
   ({ className, ...props }, ref) => {
     return <div ref={ref} className={cn(className)} {...props} />;
@@ -299,6 +316,7 @@ export {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
+  SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarTrigger,

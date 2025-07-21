@@ -23,7 +23,6 @@ import {
   SidebarProvider,
   Sidebar,
   SidebarBody,
-  SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
@@ -33,6 +32,7 @@ import {
   SidebarMenuSubItem,
   SidebarTrigger,
   useSidebar,
+  SidebarMenuSubButton
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -139,16 +139,14 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                         >
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <Link href={subItem.href} passHref legacyBehavior>
-                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                      {subItem.label}
-                                    </SidebarMenuSubButton>
-                                  </Link>
+                                 <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
+                                    {subItem.label}
+                                  </SidebarMenuSubButton>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href} passHref legacyBehavior>
+                      <Link href={item.href} passHref>
                         <SidebarMenuButton asChild isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}>
                            <a>
@@ -166,7 +164,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href} passHref legacyBehavior>
+                       <Link href={item.href} passHref>
                         <SidebarMenuButton variant="ghost" asChild isActive={false} tooltip={{children: item.label, side: 'right'}}>
                           <a>
                             <item.icon />
