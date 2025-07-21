@@ -16,7 +16,8 @@ import {
     Settings,
     Bell,
     DollarSign,
-    Menu as MenuIcon
+    Menu as MenuIcon,
+    Calculator
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -65,6 +66,7 @@ const navItems = [
     ]
   },
   { href: "/clients", label: "Clients", icon: Users },
+  { href: "/costing", label: "Costing", icon: Calculator },
 ];
 
 const managementItems = [
@@ -137,20 +139,22 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                         >
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <Link href={subItem.href}>
-                                   <SidebarMenuButton variant="ghost" isActive={currentPathname.startsWith(subItem.href)}>
-                                     {subItem.label}
-                                   </SidebarMenuButton>
-                                 </Link>
+                                 <Link href={subItem.href} passHref legacyBehavior>
+                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                      {subItem.label}
+                                    </SidebarMenuSubButton>
+                                  </Link>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href}>
-                        <SidebarMenuButton isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
+                      <Link href={item.href} passHref legacyBehavior>
+                        <SidebarMenuButton asChild isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}>
-                          <item.icon />
-                          <span>{item.label}</span>
+                           <a>
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </a>
                         </SidebarMenuButton>
                       </Link>
                     )}
@@ -162,10 +166,12 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href}>
-                        <SidebarMenuButton variant="ghost" isActive={false} tooltip={{children: item.label, side: 'right'}}>
-                          <item.icon />
-                          <span>{item.label}</span>
+                       <Link href={item.href} passHref legacyBehavior>
+                        <SidebarMenuButton variant="ghost" asChild isActive={false} tooltip={{children: item.label, side: 'right'}}>
+                          <a>
+                            <item.icon />
+                            <span>{item.label}</span>
+                          </a>
                         </SidebarMenuButton>
                       </Link>
                     </SidebarMenuItem>
