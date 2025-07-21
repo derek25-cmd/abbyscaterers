@@ -241,15 +241,7 @@ const SidebarMenuButton = React.forwardRef<
 });
 SidebarMenuButton.displayName = "SidebarMenuButton";
 
-
-interface SidebarMenuSubProps {
-  label: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  isActive?: boolean;
-}
-
-const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps) => {
+const SidebarMenuSub = ({ label, icon, children, isActive }: { label: string; icon: React.ReactNode; children: React.ReactNode; isActive?: boolean }) => {
   const { open } = useSidebar();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -261,7 +253,12 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" className="w-full justify-start items-center gap-2 h-10 px-2 py-2" data-active={isActive}>
+          <Button
+            variant="ghost"
+            className="w-full justify-start items-center gap-2 h-10 px-2 py-2"
+            data-active={isActive}
+            aria-label={label}
+          >
             {icon}
           </Button>
         </TooltipTrigger>
@@ -271,16 +268,24 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
   }
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" data-active={isActive} className="w-full h-10 px-4 py-2">
-            {icon}
-            <span className="flex-1 text-left">{label}</span>
-            <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
+        <Button
+          variant="ghost"
+          data-active={isActive}
+          className="w-full h-10 px-4 py-2 justify-start"
+        >
+          {icon}
+          <span className="flex-1 text-left ml-2">{label}</span>
+          <ChevronDown
+            className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")}
+          />
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-4">{children}</SidebarMenu>
+        <SidebarMenu className="ml-4 mt-1 border-l border-sidebar-border pl-4">
+          {children}
+        </SidebarMenu>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -332,3 +337,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
