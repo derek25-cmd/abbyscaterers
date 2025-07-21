@@ -286,6 +286,8 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
     </Collapsible>
   );
 };
+SidebarMenuSub.displayName = "SidebarMenuSub";
+
 
 const SidebarMenuSubItem = React.forwardRef<
   HTMLLIElement,
