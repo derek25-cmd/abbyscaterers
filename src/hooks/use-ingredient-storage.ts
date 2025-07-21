@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -49,7 +50,10 @@ export function useIngredientStorage() {
       setIngredients(prevIngredients => 
         prevIngredients.map(ing => ing.itemNumber === originalId ? updatedItem : ing)
       );
-      refreshIngredients(); // In case the ID has changed, refresh the whole list
+      // No full refresh needed if ID doesn't change, but it's safer if it might
+       if (originalId !== updatedItem.itemNumber) {
+         refreshIngredients();
+       }
     }
     return updatedItem;
   }, [refreshIngredients]);
@@ -63,9 +67,9 @@ export function useIngredientStorage() {
   }, []);
   
   const getIngredientById = useCallback((itemNumber: string) => {
-    // Re-fetch from storage to ensure we have the latest data, especially after potential ID changes.
-    return getIngredientByIdFromStorage(itemNumber);
-  }, []);
+    // Read from state for performance, as it's expected to be in sync.
+    return ingredients.find(ing => ing.itemNumber === itemNumber) || getIngredientByIdFromStorage(itemNumber);
+  }, [ingredients]);
 
   return { 
     ingredients, 

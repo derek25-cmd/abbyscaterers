@@ -1,3 +1,4 @@
+
 import { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -18,7 +19,7 @@ export function StatsCard({ title, value, change, changeType = "neutral", icon: 
       case "negative":
         return "text-destructive";
       case "warning":
-          return "text-yellow-600";
+          return "text-yellow-600 dark:text-yellow-400";
       default:
         return "text-muted-foreground";
     }

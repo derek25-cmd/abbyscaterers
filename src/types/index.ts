@@ -62,6 +62,7 @@ export interface Ingredient {
   units: UnitAndPrice[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  quantityUsed?: number; // Ephemeral property for costing
 }
 
 export interface RecipeIngredientItem {

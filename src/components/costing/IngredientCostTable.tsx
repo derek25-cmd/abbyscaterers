@@ -11,6 +11,10 @@ interface IngredientCostTableProps {
 const IngredientCostTable = ({ ingredients }: IngredientCostTableProps) => {
   const ingredientsWithUsage = ingredients.filter(ing => (ing as any).quantityUsed > 0);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+  }
+
   const calculateCost = (ingredient: Ingredient) => {
     const quantityUsed = (ingredient as any).quantityUsed || 0;
     if (quantityUsed > 0 && ingredient.units.length > 0) {
@@ -47,10 +51,10 @@ const IngredientCostTable = ({ ingredients }: IngredientCostTableProps) => {
                 <TableCell>
                     {(ingredient as any).quantityUsed} {ingredient.units[0].unit}
                 </TableCell>
-                <TableCell>${ingredient.units[0].price.toFixed(2)} / {ingredient.units[0].unit}</TableCell>
+                <TableCell>{formatCurrency(ingredient.units[0].price)} / {ingredient.units[0].unit}</TableCell>
                 <TableCell className="text-right font-medium">
                   <span className="text-destructive">
-                    ${calculateCost(ingredient).toFixed(2)}
+                    {formatCurrency(calculateCost(ingredient))}
                   </span>
                 </TableCell>
               </TableRow>
@@ -64,7 +68,7 @@ const IngredientCostTable = ({ ingredients }: IngredientCostTableProps) => {
                 Total Ingredient Cost
               </TableCell>
               <TableCell className="text-right font-bold text-lg text-destructive">
-                ${totalCost.toFixed(2)}
+                {formatCurrency(totalCost)}
               </TableCell>
             </TableRow>
           </TableBody>

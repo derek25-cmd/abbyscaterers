@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Ingredient } from "@/types";
@@ -57,26 +58,28 @@ export function addIngredient(ingredientData: IngredientFormData): Ingredient {
     units: ingredientData.units,
     createdAt: now,
     updatedAt: now,
+    quantityUsed: 0,
   };
   const updatedIngredientList = [...allIngredients, newIngredient];
   saveIngredientsToStorage(updatedIngredientList);
   return newIngredient;
 }
 
-export function updateIngredient(originalItemNumber: string, updates: IngredientFormData): Ingredient | undefined {
+export function updateIngredient(originalItemNumber: string, updates: IngredientFormData | Ingredient): Ingredient | undefined {
   const allIngredients = getIngredientsFromStorage();
   const ingredientIndex = allIngredients.findIndex(ing => ing.itemNumber === originalItemNumber);
   if (ingredientIndex === -1) return undefined;
 
-  if (updates.itemNumber && updates.itemNumber !== originalItemNumber && allIngredients.some(ing => ing.itemNumber === updates.itemNumber)) {
-    throw new Error(`Cannot update Item No. to "${updates.itemNumber}" as it already exists for another ingredient.`);
+  const newId = 'itemNumber' in updates ? updates.itemNumber : originalItemNumber;
+
+  if (newId && newId !== originalItemNumber && allIngredients.some(ing => ing.itemNumber === newId)) {
+    throw new Error(`Cannot update Item No. to "${newId}" as it already exists for another ingredient.`);
   }
   
   const updatedIngredient: Ingredient = {
     ...allIngredients[ingredientIndex],
     ...updates,
-    itemNumber: updates.itemNumber,
-    units: updates.units,
+    itemNumber: newId,
     updatedAt: new Date().toISOString(),
   };
 
@@ -116,6 +119,7 @@ export function addMultipleIngredients(ingredientDataList: IngredientFormData[])
       units: ingredientData.units,
       createdAt: now,
       updatedAt: now,
+      quantityUsed: 0,
     };
     newIngredientList.push(newIngredient);
     newNumbersInBatch.add(newIngredient.itemNumber);

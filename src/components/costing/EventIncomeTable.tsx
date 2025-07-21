@@ -13,6 +13,10 @@ interface EventIncomeTableProps {
 const EventIncomeTable = ({ events }: EventIncomeTableProps) => {
   const { getClientById } = useClientStorage();
   const totalIncome = events.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+  }
 
   return (
     <Card>
@@ -45,7 +49,7 @@ const EventIncomeTable = ({ events }: EventIncomeTableProps) => {
                 </TableCell>
                 <TableCell className="text-right font-medium">
                   <span className="text-success">
-                    ${totalPrice.toFixed(2)}
+                    {formatCurrency(totalPrice)}
                   </span>
                 </TableCell>
               </TableRow>
@@ -59,7 +63,7 @@ const EventIncomeTable = ({ events }: EventIncomeTableProps) => {
                 Total Event Income
               </TableCell>
               <TableCell className="text-right font-bold text-lg text-success">
-                ${totalIncome.toFixed(2)}
+                {formatCurrency(totalIncome)}
               </TableCell>
             </TableRow>
           </TableBody>

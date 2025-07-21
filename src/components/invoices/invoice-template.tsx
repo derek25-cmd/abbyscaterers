@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -110,6 +111,10 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
     const vat = vatType === 'exclusive' ? (totalForDays + serviceCharge + transportCosts) * 0.18 : 0;
     const grandTotal = totalForDays + serviceCharge + transportCosts + vat;
+
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+    }
     
     return (
         <>
@@ -175,14 +180,14 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                         </button>
                                     </div>
                                   </td>
-                                  <td className="border border-black p-2 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
-                                  <td className="border border-black p-2 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
+                                  <td className="border border-black p-2 text-right">{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
+                                  <td className="border border-black p-2 text-right">{item.total ? formatCurrency(item.total) : '{Total}'}</td>
                               </tr>
                             ))}
                              <tr>
                                 <td colSpan={3} className="border-r border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right font-semibold">Sub-Total (TSHS)</td>
-                                <td className="border border-black p-1.5 text-right font-semibold">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="border border-black p-1.5 text-right font-semibold">{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
                             <tr>
@@ -195,28 +200,28 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                              <tr>
                                 <td colSpan={3} className="border-r border-black p-1.5 font-bold">Total For {numberOfDays || 1} Days</td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
-                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{totalForDays.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{formatCurrency(totalForDays)}</td>
                             </tr>
                             )}
                             <tr>
                                 <td colSpan={3} className="border-r border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Service Charge(TSHS)</td>
-                                <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                                <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
                             </tr>
                             <tr>
                                 <td colSpan={3} className="border-r border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Transportation Costs(TSHS)</td>
-                                <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                                <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
                             <tr>
                                 <td colSpan={3} className="border-r border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
-                                <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
+                                <td className="border border-black p-1.5 text-right">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
                             </tr>
                             <tr>
                                 <td colSpan={3} className="border-r border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL(TSHS)</td>
-                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
                     </table>

@@ -156,6 +156,11 @@ export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 
 
 // Proforma Invoice Schema
+const isValidDate = (dateString?: string) => {
+    if (!dateString) return false;
+    return !isNaN(Date.parse(dateString));
+};
+
 export const ProformaInvoiceSchema = z.object({
   id: z.string().min(1, "Invoice number is required"),
   invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
@@ -217,10 +222,3 @@ export const FinalInvoiceSchema = z.object({
 });
 
 export type FinalInvoiceFormData = z.infer<typeof FinalInvoiceSchema>;
-
-
-// Helper function for Zod
-const isValidDate = (dateString?: string) => {
-    if (!dateString) return false;
-    return !isNaN(Date.parse(dateString));
-};

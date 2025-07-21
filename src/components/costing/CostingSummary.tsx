@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart } from "lucide-react";
@@ -12,6 +13,10 @@ interface CostingSummaryProps {
 const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: CostingSummaryProps) => {
   const isProfit = netProfitLoss >= 0;
   const profitLossPercentage = totalIncome > 0 ? (netProfitLoss / totalIncome) * 100 : 0;
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -23,7 +28,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-destructive">
-            ${totalIngredientCost.toFixed(2)}
+            {formatCurrency(totalIngredientCost)}
           </div>
           <p className="text-xs text-muted-foreground">
             Daily food cost
@@ -39,7 +44,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-success">
-            ${totalIncome.toFixed(2)}
+            {formatCurrency(totalIncome)}
           </div>
           <p className="text-xs text-muted-foreground">
             Event revenue
@@ -61,7 +66,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
             "text-2xl font-bold",
             isProfit ? "text-success" : "text-destructive"
           )}>
-            {isProfit ? '+' : ''}${netProfitLoss.toFixed(2)}
+            {isProfit ? '+' : ''}{formatCurrency(netProfitLoss)}
           </div>
           <p className="text-xs text-muted-foreground">
             Daily {isProfit ? 'profit' : 'loss'}

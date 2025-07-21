@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { Ingredient } from "@/types";
@@ -41,6 +42,10 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
     const parsedDate = parseISO(dateString);
     return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
   };
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+  }
 
   return (
     <Card className="shadow-lg">
@@ -75,14 +80,14 @@ export function IngredientDetailsView({ ingredient }: IngredientDetailsViewProps
         </div>
         
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground pt-2 flex items-center"><DollarSign className="mr-2 h-5 w-5 text-primary" />Pricing & Units</h3>
+          <h3 className="text-lg font-semibold text-foreground pt-2 flex items-center"><DollarSign className="mr-2 h-5 w-5 text-primary" />Pricing & Units (TSHS)</h3>
           {ingredient.units && ingredient.units.length > 0 ? (
             <div className="space-y-2 divide-y divide-border border rounded-md p-4 bg-muted/30">
               {ingredient.units.map((unitItem, index) => (
                 <div key={index} className="flex justify-between items-center pt-2 first:pt-0">
                   <span className="text-sm font-medium text-foreground">{unitItem.unit.toUpperCase()}</span>
                   <span className="text-sm text-muted-foreground">
-                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(unitItem.price)}
+                    {formatCurrency(unitItem.price)}
                   </span>
                 </div>
               ))}

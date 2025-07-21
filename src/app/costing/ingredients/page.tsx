@@ -10,33 +10,49 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Ingredient } from "@/types";
 
+export type IngredientUsage = {
+  itemNumber: string;
+  quantity: number;
+};
+
 export default function ManageIngredientsPage() {
-  const { ingredients, updateIngredient, isLoading } = useIngredientStorage();
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const { ingredients, updateIngredient, isLoading, getIngredientById } = useIngredientStorage();
   const { toast } = useToast();
+  const [usedIngredients, setUsedIngredients] = useState<IngredientUsage[]>([]);
 
   useEffect(() => {
-    // Initialize quantities from storage
-    const initialQuantities: Record<string, number> = {};
+    // On mount, load ingredients that already have a quantityUsed from storage
+    const initialUsed: IngredientUsage[] = [];
     ingredients.forEach(ing => {
-      // Assuming a 'quantityUsed' field might exist on the ingredient type
-      // For now, we'll manage it separately in the component's state
-      initialQuantities[ing.itemNumber] = (ing as any).quantityUsed || 0;
+      const quantityUsed = (ing as any).quantityUsed;
+      if (quantityUsed && quantityUsed > 0) {
+        initialUsed.push({ itemNumber: ing.itemNumber, quantity: quantityUsed });
+      }
     });
-    setQuantities(initialQuantities);
+    setUsedIngredients(initialUsed);
   }, [ingredients]);
-
-
+  
   const handleSaveChanges = () => {
-     // This is a simplified approach. A real app would save these quantities
-     // to a separate "daily usage" record, not directly on the ingredient.
-     // For this demo, we can just show a toast.
-    Object.entries(quantities).forEach(([itemNumber, quantity]) => {
-      const ingredient = ingredients.find(i => i.itemNumber === itemNumber);
+    // Persist the ephemeral `quantityUsed` on the main ingredient object
+    // This is a simplified approach. A real app might save this to a separate record.
+    const allIngredientIds = new Set(ingredients.map(i => i.itemNumber));
+    const usedIngredientIds = new Set(usedIngredients.map(i => i.itemNumber));
+
+    // Update ingredients that were used
+    usedIngredients.forEach(({ itemNumber, quantity }) => {
+      const ingredient = getIngredientById(itemNumber);
       if(ingredient) {
-          // This is a conceptual update. The 'updateIngredient' hook would need
-          // to be adapted if we were to persist this data.
-          // updateIngredient(itemNumber, { ...ingredient, quantityUsed: quantity });
+          updateIngredient(itemNumber, { ...ingredient, quantityUsed: quantity } as any);
+      }
+    });
+
+    // Clear quantityUsed for ingredients that are no longer in the list
+    allIngredientIds.forEach(id => {
+      if (!usedIngredientIds.has(id)) {
+        const ingredient = getIngredientById(id);
+        if (ingredient && (ingredient as any).quantityUsed) {
+           updateIngredient(id, { ...ingredient, quantityUsed: 0 } as any);
+        }
       }
     });
 
@@ -46,10 +62,10 @@ export default function ManageIngredientsPage() {
     });
   };
 
-  const handleQuantityChange = (itemNumber: string, quantity: number) => {
-    setQuantities(prev => ({...prev, [itemNumber]: quantity}));
-  }
-
+  const handleUsageChange = (updatedUsedIngredients: IngredientUsage[]) => {
+      setUsedIngredients(updatedUsedIngredients);
+  };
+  
   return (
     <div className="container mx-auto p-6 space-y-6">
        <div className="flex justify-between items-center">
@@ -66,9 +82,9 @@ export default function ManageIngredientsPage() {
       </div>
 
       <IngredientInputForm
-        ingredients={ingredients}
-        quantities={quantities}
-        onQuantityChange={handleQuantityChange}
+        availableIngredients={ingredients}
+        usedIngredients={usedIngredients}
+        onUsageChange={handleUsageChange}
         isLoading={isLoading}
       />
 
