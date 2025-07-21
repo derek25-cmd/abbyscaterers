@@ -138,9 +138,11 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          <SidebarMenuSub>
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
-                                    {subItem.label}
-                                 </SidebarMenuSubButton>
+                                 <Link href={subItem.href} passHref legacyBehavior>
+                                   <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                     {subItem.label}
+                                   </SidebarMenuSubButton>
+                                 </Link>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
@@ -208,3 +210,5 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

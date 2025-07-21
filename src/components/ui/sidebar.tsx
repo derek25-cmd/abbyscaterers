@@ -544,7 +544,7 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
+  React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & {
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
@@ -724,10 +724,9 @@ const SidebarMenuSubButton = React.forwardRef<
   React.ComponentProps<"a"> & {
     size?: "sm" | "md";
     isActive?: boolean;
-    href?: string;
   }
->(({ size = "md", isActive, className, children, href, ...props }, ref) => {
-  const content = (
+>(({ size = "md", isActive, className, children, ...props }, ref) => {
+  return (
     <a
       ref={ref}
       data-sidebar="menu-sub-button"
@@ -746,18 +745,7 @@ const SidebarMenuSubButton = React.forwardRef<
       {children}
     </a>
   );
-
-  if (href) {
-    return (
-      <Link href={href} passHref legacyBehavior>
-        {content}
-      </Link>
-    );
-  }
-
-  return content;
 });
-
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 export {
@@ -786,3 +774,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
