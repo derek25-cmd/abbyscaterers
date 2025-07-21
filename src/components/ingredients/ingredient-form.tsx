@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ingredientSchema, type IngredientFormData } from "@/lib/schemas";
+import { IngredientSchema, type IngredientFormData } from "@/lib/schemas";
 import type { Ingredient } from "@/types";
 import { ITEM_CLASSIFICATIONS, UNITS_OF_MEASURE } from "@/types";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
@@ -37,7 +37,7 @@ export function IngredientForm({ ingredient }: IngredientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<IngredientFormData>({
-    resolver: zodResolver(ingredientSchema),
+    resolver: zodResolver(IngredientSchema),
     defaultValues: ingredient
       ? { ...ingredient }
       : {
