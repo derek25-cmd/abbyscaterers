@@ -105,9 +105,6 @@ export function DailyMenuEditPageComponent() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-6 flex items-center">
-        <SquarePen className="mr-2 h-6 w-6 text-primary" /> Edit Menu: <BookOpen className="ml-2 mr-1 h-6 w-6 text-accent" /> {menu.name}
-      </h1>
       <DailyMenuForm menu={menu} />
     </div>
   );

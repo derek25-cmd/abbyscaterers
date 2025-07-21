@@ -17,7 +17,7 @@ import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
@@ -108,7 +108,9 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
               clientId: "", 
               date: new Date().toISOString(), 
               mealType: "Lunch only", 
-              numberOfPeople: 10, 
+              numberOfPeople: 10,
+              unitPrice: 0,
+              vatType: "inclusive", 
               recipes: [{recipeId: ""}] 
             }],
         },
@@ -156,26 +158,26 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>{menu ? "Edit Daily Menu" : "Add New Daily Menu"}</CardTitle>
+            <CardTitle>{menu ? `Edit Menu: ${menu.name}` : "Add New Booking"}</CardTitle>
             <CardDescription>
-              A menu can contain multiple events for different clients.
+              A booking can contain multiple events for different clients and dates.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Menu ID</FormLabel>
-                        <FormControl><Input placeholder="e.g. MENU-2024-07" {...field} /></FormControl>
-                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire menu.</FormDescription>
+                        <FormLabel>Booking ID</FormLabel>
+                        <FormControl><Input placeholder="e.g. BOOK-2024-07" {...field} /></FormControl>
+                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire booking.</FormDescription>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Menu Name</FormLabel>
+                        <FormLabel>Booking Name</FormLabel>
                         <FormControl><Input placeholder="e.g. Wedding Weekend Special" {...field} /></FormControl>
-                        <FormDescription>A descriptive name for the menu.</FormDescription>
+                        <FormDescription>A descriptive name for the booking.</FormDescription>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -263,6 +265,32 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
                                 </FormItem>
                             )} />
                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                             <FormField control={form.control} name={`clientEvents.${index}.unitPrice`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>Unit Price</FormLabel>
+                                    <FormControl><Input type="number" placeholder="e.g. 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                             )}/>
+                             <FormItem>
+                                <FormLabel>Total Price</FormLabel>
+                                <Input type="text" readOnly disabled value={`$${(form.watch(`clientEvents.${index}.unitPrice`) * form.watch(`clientEvents.${index}.numberOfPeople`)).toFixed(2)}`} />
+                             </FormItem>
+                              <FormField control={form.control} name={`clientEvents.${index}.vatType`} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center">VAT</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select VAT type" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="inclusive">Inclusive</SelectItem>
+                                            <SelectItem value="exclusive">Exclusive</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                         </div>
                         <Separator />
                         <ClientEventRecipeForm nestIndex={index} control={form.control} />
 
@@ -277,7 +305,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, recipes: [{recipeId: ""}] })} disabled={isLoading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, vatType: "inclusive", recipes: [{recipeId: ""}] })} disabled={isLoading}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
         </Button>
 
@@ -287,7 +315,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {menu ? "Save Changes" : "Save Menu"}
+            {menu ? "Save Changes" : "Save Booking"}
           </Button>
         </div>
       </form>

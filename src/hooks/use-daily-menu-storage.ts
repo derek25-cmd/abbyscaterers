@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { DailyMenu } from "@/types";
+import type { DailyMenu, ClientEvent } from "@/types";
 import type { DailyMenuFormData } from "@/lib/schemas";
 import { 
   getAllDailyMenus as getAllMenusFromStorage,
@@ -11,6 +11,7 @@ import {
   updateDailyMenu as updateMenuInStorage,
   deleteDailyMenu as deleteMenuFromStorage 
 } from '@/lib/daily-menu-data';
+import { format } from 'date-fns';
 
 export function useDailyMenuStorage() {
   const [menus, setMenus] = useState<DailyMenu[]>([]);
@@ -57,6 +58,20 @@ export function useDailyMenuStorage() {
   const getMenuById = useCallback((id: string) => {
     return getMenuByIdFromStorage(id);
   }, []);
+  
+  const getEventsForDate = useCallback((date: Date): ClientEvent[] => {
+    const targetDateStr = format(date, 'yyyy-MM-dd');
+    const allEvents: ClientEvent[] = [];
+    menus.forEach(menu => {
+        menu.clientEvents.forEach(event => {
+            const eventDateStr = format(new Date(event.date), 'yyyy-MM-dd');
+            if (eventDateStr === targetDateStr) {
+                allEvents.push(event);
+            }
+        });
+    });
+    return allEvents;
+  }, [menus]);
 
   return { 
     menus, 
@@ -65,6 +80,7 @@ export function useDailyMenuStorage() {
     updateMenu, 
     deleteMenu, 
     getMenuById,
-    refreshMenus 
+    refreshMenus,
+    getEventsForDate
   };
 }

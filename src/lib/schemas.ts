@@ -121,6 +121,8 @@ export const ClientEventSchema = z.object({
   }),
   numberOfPeople: z.number().min(1, "Number of people must be at least 1"),
   mealType: MealTypeSchema,
+  unitPrice: z.number().min(0, "Unit price must be a positive number"),
+  vatType: z.enum(['inclusive', 'exclusive']),
   recipes: z
     .array(ClientEventRecipeSchema)
     .min(1, "At least one recipe is required for an event"),

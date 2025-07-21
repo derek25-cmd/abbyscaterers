@@ -10,59 +10,32 @@ import EventIncomeTable from "./EventIncomeTable";
 import DateSelector from "./DateSelector";
 import CostingSummary from "./CostingSummary";
 import { useToast } from "@/hooks/use-toast";
-import { useCostingData } from "@/hooks/useCostingData";
+import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
+import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
-  const { ingredients, getEventsForDate } = useCostingData();
+  const { getEventsForDate } = useDailyMenuStorage();
+  const { ingredients } = useIngredientStorage();
 
-  // Get events for the selected date
   const dailyEvents = useMemo(() => {
     return getEventsForDate(selectedDate);
   }, [selectedDate, getEventsForDate]);
 
-  // Unit conversion logic
-  const convertToBaseUnit = (quantity: number, unit: string) => {
-    switch (unit.toLowerCase()) {
-      case 'kg':
-        return quantity * 1000; // Convert to grams
-      case 'bunches':
-      case 'items':
-      case 'grams':
-      default:
-        return quantity;
+  const totalIncome = dailyEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  
+  // A more realistic calculation would be to sum up costs of all ingredients
+  // for all recipes used in today's events. This is a simplified version.
+  const totalIngredientCost = ingredients.reduce((sum, item) => {
+    const quantityUsed = (item as any).quantityUsed || 0; // Assuming this ephemeral data exists
+    if (quantityUsed > 0 && item.units.length > 0) {
+      // Use the first unit price for simplicity
+      return sum + (quantityUsed * item.units[0].price);
     }
-  };
-
-  const getBaseUnitPrice = (price: number, unit: string) => {
-    switch (unit.toLowerCase()) {
-      case 'kg':
-        return price / 1000; // Price per gram
-      case 'bunches':
-      case 'items':
-      case 'grams':
-      default:
-        return price;
-    }
-  };
-
-  // Calculate costs
-  const ingredientCosts = ingredients.map(ingredient => {
-    const baseQuantity = convertToBaseUnit(ingredient.stock_quantity_used || 0, ingredient.unit_of_measure);
-    const basePrice = getBaseUnitPrice(ingredient.unit_price, ingredient.unit_of_measure);
-    const totalCost = baseQuantity * basePrice;
-    
-    return {
-      ...ingredient,
-      baseQuantity,
-      basePrice,
-      totalCost
-    };
-  });
-
-  const totalIngredientCost = ingredientCosts.reduce((sum, item) => sum + item.totalCost, 0);
-  const totalIncome = dailyEvents.reduce((sum, event) => sum + event.amount_paid, 0);
+    return sum;
+  }, 0);
+  
   const netProfitLoss = totalIncome - totalIngredientCost;
 
   const handleExport = () => {
@@ -89,7 +62,7 @@ export const DailyCostingModule = () => {
           <Link href="/costing/ingredients">
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4 mr-2" />
-              Manage Ingredients
+              Input Usage
             </Button>
           </Link>
           <Button onClick={handleExport} variant="outline" size="sm">
@@ -112,7 +85,7 @@ export const DailyCostingModule = () => {
 
       {/* Detailed Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <IngredientCostTable ingredients={ingredientCosts} />
+        <IngredientCostTable ingredients={ingredients} />
         <EventIncomeTable events={dailyEvents} />
       </div>
     </div>

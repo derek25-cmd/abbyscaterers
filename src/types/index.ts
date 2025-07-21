@@ -96,6 +96,8 @@ export interface ClientEvent {
   numberOfPeople: number;
   mealType: MealType;
   recipes: { recipeId: string }[]; // References Recipe.recipeNumber
+  unitPrice: number;
+  vatType: 'inclusive' | 'exclusive';
 }
 
 export interface DailyMenu {

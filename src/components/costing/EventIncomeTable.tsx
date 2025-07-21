@@ -1,22 +1,18 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-
-interface Event {
-  id: number;
-  event_name: string;
-  client_name: string;
-  event_date: Date;
-  amount_paid: number;
-}
+import { format, parseISO } from "date-fns";
+import type { ClientEvent } from "@/types";
+import { useClientStorage } from "@/hooks/use-client-storage";
 
 interface EventIncomeTableProps {
-  events: Event[];
+  events: ClientEvent[];
 }
 
 const EventIncomeTable = ({ events }: EventIncomeTableProps) => {
-  const totalIncome = events.reduce((sum, event) => sum + event.amount_paid, 0);
+  const { getClientById } = useClientStorage();
+  const totalIncome = events.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
 
   return (
     <Card>
@@ -30,31 +26,36 @@ const EventIncomeTable = ({ events }: EventIncomeTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Event Name</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Income</TableHead>
+              <TableHead>Meal Type</TableHead>
+              <TableHead>Total Price</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {events.map((event) => (
-              <TableRow key={event.id}>
-                <TableCell className="font-medium">{event.event_name}</TableCell>
-                <TableCell>{event.client_name}</TableCell>
+            {events.length > 0 ? events.map((event, index) => {
+              const client = getClientById(event.clientId);
+              const totalPrice = event.unitPrice * event.numberOfPeople;
+              return (
+              <TableRow key={index}>
+                <TableCell className="font-medium">{client?.companyName || "Unknown Client"}</TableCell>
                 <TableCell>
                   <Badge variant="outline">
-                    {format(event.event_date, "MMM dd, yyyy")}
+                    {event.mealType}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right font-medium">
                   <span className="text-success">
-                    ${event.amount_paid.toFixed(2)}
+                    ${totalPrice.toFixed(2)}
                   </span>
                 </TableCell>
               </TableRow>
-            ))}
+            )}) : (
+              <TableRow>
+                  <TableCell colSpan={3} className="text-center h-24">No events scheduled for this date.</TableCell>
+              </TableRow>
+            )}
             <TableRow className="border-t-2">
-              <TableCell colSpan={3} className="font-bold">
+              <TableCell colSpan={2} className="font-bold">
                 Total Event Income
               </TableCell>
               <TableCell className="text-right font-bold text-lg text-success">
