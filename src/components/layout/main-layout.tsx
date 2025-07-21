@@ -30,9 +30,9 @@ import {
   SidebarMenuItem,
   SidebarMenuSub,
   SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarTrigger,
   useSidebar,
-  SidebarMenuSubButton
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -139,20 +139,23 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                         >
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                  <SidebarMenuSubButton href={subItem.href} isActive={currentPathname.startsWith(subItem.href)}>
-                                    {subItem.label}
-                                  </SidebarMenuSubButton>
+                                  <Link href={subItem.href} asChild>
+                                      <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                        {subItem.label}
+                                      </SidebarMenuSubButton>
+                                  </Link>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href} passHref asChild>
+                      <Link href={item.href} asChild>
                         <SidebarMenuButton 
                             isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}
-                            icon={<item.icon />}
-                            label={item.label}
-                        />
+                        >
+                          <item.icon />
+                          {open && <span>{item.label}</span>}
+                        </SidebarMenuButton>
                       </Link>
                     )}
                   </SidebarMenuItem>
@@ -163,14 +166,15 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href} passHref asChild>
+                       <Link href={item.href} asChild>
                         <SidebarMenuButton 
                           variant="ghost" 
                           isActive={false} 
                           tooltip={{children: item.label, side: 'right'}}
-                          icon={<item.icon />}
-                          label={item.label}
-                        />
+                        >
+                           <item.icon />
+                           {open && <span>{item.label}</span>}
+                         </SidebarMenuButton>
                       </Link>
                     </SidebarMenuItem>
                 ))}

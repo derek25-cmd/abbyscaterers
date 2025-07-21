@@ -194,38 +194,36 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 ))
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
+
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
     isActive?: boolean;
     tooltip?: React.ComponentProps<typeof TooltipContent> | string;
     asChild?: boolean;
-    icon?: React.ReactNode;
-    label?: React.ReactNode;
   }
->(({ isActive = false, tooltip, className, asChild = false, icon, label, ...props }, ref) => {
-  const { open } = useSidebar();
+>(({ isActive = false, tooltip, className, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : 'button';
 
-  const buttonContent = (
+  const button = (
     <Comp
       ref={ref}
       data-active={isActive}
-      className={cn("w-full justify-start items-center gap-2", "inline-flex whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", "h-10 px-4 py-2", className)}
+      className={cn("w-full justify-start items-center gap-2", "inline-flex whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", "h-10 px-4 py-2", "bg-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground", className)}
       {...props}
-    >
-      {icon}
-      {open && label}
-    </Comp>
+    />
   );
 
-  if (!tooltip || open) {
-    return buttonContent;
+  if (!tooltip) {
+    return button;
   }
+
+  const { open } = useSidebar();
+  if (open) return button;
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent
         {...(typeof tooltip === "string" ? { children: tooltip } : tooltip)}
       >
@@ -256,7 +254,7 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" className="w-full justify-start items-center gap-2" data-active={isActive}>
+          <Button variant="ghost" className="w-full justify-start items-center gap-2 h-10 px-4 py-2" data-active={isActive}>
             {icon}
           </Button>
         </TooltipTrigger>
@@ -268,7 +266,7 @@ const SidebarMenuSub = ({ label, icon, children, isActive }: SidebarMenuSubProps
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" data-active={isActive} className="w-full">
+        <Button variant="ghost" data-active={isActive} className="w-full h-10 px-4 py-2">
             {icon}
             <span className="flex-1 text-left">{label}</span>
             <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
