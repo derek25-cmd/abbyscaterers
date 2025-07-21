@@ -544,11 +544,10 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  React.ElementRef<typeof Button>,
+  HTMLButtonElement,
   React.ComponentProps<typeof Button> & {
     isActive?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
-    href?: string
     asChild?: boolean
   }
 >(
@@ -560,7 +559,6 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       children,
-      href,
       asChild = false,
       ...props
     },
@@ -576,7 +574,7 @@ const SidebarMenuButton = React.forwardRef<
     const Comp = asChild ? Slot : Button
 
     const button = (
-      <Comp
+       <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
@@ -727,10 +725,12 @@ const SidebarMenuSubButton = React.forwardRef<
   React.ComponentProps<"a"> & {
     size?: "sm" | "md";
     isActive?: boolean;
+    asChild?: boolean;
+    href?: string;
   }
->(({ size = "md", isActive, className, ...props }, ref) => {
-  return (
-    <a
+>(({ size = "md", isActive, className, children, asChild = false, href, ...props }, ref) => {
+  const Comp = asChild ? Slot : 'a';
+  const linkContent = <Comp
       ref={ref}
       data-sidebar="menu-sub-button"
       data-size={size}
@@ -744,8 +744,13 @@ const SidebarMenuSubButton = React.forwardRef<
         className
       )}
       {...props}
-    />
-  );
+    >{children}</Comp>;
+
+  if (href) {
+    return <Link href={href} passHref legacyBehavior>{linkContent}</Link>
+  }
+
+  return linkContent;
 });
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
@@ -775,5 +780,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    

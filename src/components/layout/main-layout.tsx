@@ -25,11 +25,10 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarMenuSub,
-  SidebarMenuSubButton,
   useSidebar,
   SidebarTrigger,
   SidebarMenuSubItem,
-  SidebarInset
+  SidebarMenuSubButton
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -137,25 +136,21 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                          <SidebarMenuSub>
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                 <Link href={subItem.href} asChild>
-                                   <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                     {subItem.label}
-                                   </SidebarMenuSubButton>
-                                 </Link>
+                                 <SidebarMenuSubButton asChild isActive={currentPathname.startsWith(subItem.href)} href={subItem.href}>
+                                    <Link href={subItem.href}>{subItem.label}</Link>
+                                 </SidebarMenuSubButton>
                                </SidebarMenuSubItem>
                             ))}
                          </SidebarMenuSub>
                       </>
                     ) : (
-                      <Link href={item.href} passHref legacyBehavior>
-                         <SidebarMenuButton
-                          isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
-                          tooltip={{ children: item.label, side: "right" }}
-                          >
+                      <SidebarMenuButton asChild isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
+                          tooltip={{ children: item.label, side: "right" }}>
+                        <Link href={item.href}>
                           <item.icon />
                           <span>{item.label}</span>
-                         </SidebarMenuButton>
-                      </Link>
+                        </Link>
+                      </SidebarMenuButton>
                     )}
                   </SidebarMenuItem>
                 ))}
@@ -164,40 +159,35 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                      <Link href={item.href} passHref legacyBehavior>
-                        <SidebarMenuButton
-                          isActive={false}
-                          tooltip={{children: item.label, side: 'right'}}
-                        >
+                      <SidebarMenuButton asChild isActive={false} tooltip={{children: item.label, side: 'right'}}>
+                        <Link href={item.href}>
                           <item.icon />
                           <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </Link>
+                        </Link>
+                      </SidebarMenuButton>
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset>
-        <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30">
-            <div className="h-full px-6 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger />
+      <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/30 min-h-0">
+          <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30 -mx-4 -mt-4 md:-mx-6 md:-mt-6 lg:-mx-8 lg:-mt-8 mb-4">
+              <div className="h-full px-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-4 w-4" />
+                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full"></span>
+                  </Button>
+                  <UserProfile />
+                </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full"></span>
-                </Button>
-                <UserProfile />
-              </div>
-            </div>
-          </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/30 min-h-0">
+            </header>
           {children}
         </main>
-      </SidebarInset>
     </>
   );
 }
