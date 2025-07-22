@@ -9,15 +9,17 @@ const ClientListTable = dynamic(() =>
   {
     ssr: false,
     loading: () => (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-pulse">
         <div className="flex items-center justify-between gap-2">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-10 w-40" />
         </div>
-        <Skeleton className="h-96 w-full rounded-md border" />
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
+        <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
         </div>
       </div>
     )

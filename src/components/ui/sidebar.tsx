@@ -197,24 +197,19 @@ SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    isActive?: boolean;
+  React.ComponentProps<typeof Button> & {
     tooltip?: React.ComponentProps<typeof TooltipContent> | string;
-    asChild?: boolean;
+    isActive?: boolean;
   }
->(({ isActive = false, tooltip, className, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
+>(({ isActive = false, tooltip, className, ...props }, ref) => {
   const { open } = useSidebar();
 
   const button = (
-    <Comp
+    <Button
       ref={ref}
       data-active={isActive}
       className={cn(
         "w-full justify-start items-center gap-2", 
-        "inline-flex whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", 
-        "h-10 px-4 py-2", 
-        "bg-transparent hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-primary data-[active=true]:text-sidebar-primary-foreground", 
         !open && "px-2",
         className
       )}
@@ -238,6 +233,7 @@ const SidebarMenuButton = React.forwardRef<
   );
 });
 SidebarMenuButton.displayName = "SidebarMenuButton";
+
 
 const SidebarMenuSub = ({ label, icon, children, isActive }: { label: string; icon: React.ReactNode; children: React.ReactNode; isActive?: boolean }) => {
   const { open } = useSidebar();
@@ -299,10 +295,10 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem";
 
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
-  React.ComponentProps<typeof Link> & { isActive?: boolean }
+  React.AnchorHTMLAttributes<HTMLAnchorElement> & { isActive?: boolean }
 >(({ className, isActive, children, ...props }, ref) => {
   return (
-    <Link
+    <a
       ref={ref}
       className={cn(
         "flex items-center gap-2 rounded-md p-1.5 text-sm font-normal text-sidebar-foreground/80 outline-none transition-colors",
@@ -314,11 +310,10 @@ const SidebarMenuSubButton = React.forwardRef<
       {...props}
     >
       {children}
-    </Link>
+    </a>
   );
 });
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton";
-
 
 export {
   Sidebar,
@@ -335,4 +330,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-

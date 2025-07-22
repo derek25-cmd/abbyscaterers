@@ -22,6 +22,20 @@ import {
 import Link from "next/link";
 import { useMemo } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function DashboardLoadingSkeleton() {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+        <div className="w-full max-w-4xl p-8 text-center">
+            <Loader2 className="h-16 w-16 animate-spin text-primary mb-6 mx-auto" />
+            <h1 className="text-3xl font-bold text-foreground mb-2">Loading Your Dashboard</h1>
+            <p className="text-muted-foreground text-lg">Crunching the latest numbers, just for you...</p>
+        </div>
+      </div>
+    );
+}
+
 
 export default function DashboardPage() {
   const { menus, isLoading: menusLoading } = useDailyMenuStorage();
@@ -70,13 +84,7 @@ export default function DashboardPage() {
   }, [menus, invoices, ingredients]);
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center bg-background p-4 text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <h1 className="text-2xl font-semibold text-foreground">Loading Dashboard...</h1>
-        <p className="text-muted-foreground">Crunching the latest numbers for you.</p>
-      </div>
-    );
+    return <DashboardLoadingSkeleton />;
   }
 
   return (

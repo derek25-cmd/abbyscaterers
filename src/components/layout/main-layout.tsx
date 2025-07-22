@@ -113,7 +113,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
   const { open } = useSidebar();
 
   return (
-    <>
+    <div className="flex h-screen w-full overflow-hidden">
       <Sidebar>
         <SidebarHeader>
              <div className="flex items-center gap-2.5">
@@ -148,13 +148,16 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href} asChild>
+                      <Link href={item.href} legacyBehavior passHref>
                         <SidebarMenuButton 
                             isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}
+                            asChild
                         >
-                          <item.icon />
-                          {open && <span>{item.label}</span>}
+                          <a>
+                            <item.icon />
+                           {open && <span>{item.label}</span>}
+                          </a>
                         </SidebarMenuButton>
                       </Link>
                     )}
@@ -166,7 +169,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href} asChild>
+                       <Link href={item.href} passHref asChild>
                         <SidebarMenuButton 
                           variant="ghost" 
                           isActive={false} 
@@ -181,8 +184,8 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
-      <div className="flex-1">
-          <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
+      <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30 shrink-0">
               <div className="h-full px-4 sm:px-6 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <SidebarTrigger className="md:hidden"/>
@@ -197,11 +200,11 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                 </div>
               </div>
             </header>
-          <main className="flex-1 p-4 md:p-6 lg:p-8 bg-muted/40 min-h-[calc(100vh-4rem)]">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-muted/40">
             {children}
           </main>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -216,4 +219,3 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
