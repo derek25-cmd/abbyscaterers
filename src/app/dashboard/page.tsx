@@ -16,26 +16,12 @@ import {
   Package,
   Plus,
   BarChart3,
-  BookOpen,
-  Loader2
+  BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays } from "date-fns";
-import { Skeleton } from "@/components/ui/skeleton";
-
-function DashboardLoadingSkeleton() {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-        <div className="w-full max-w-4xl p-8 text-center">
-            <Loader2 className="h-16 w-16 animate-spin text-primary mb-6 mx-auto" />
-            <h1 className="text-3xl font-bold text-foreground mb-2">Loading Your Dashboard</h1>
-            <p className="text-muted-foreground text-lg">Crunching the latest numbers, just for you...</p>
-        </div>
-      </div>
-    );
-}
-
+import { LoadingPage } from "@/components/layout/loading-page";
 
 export default function DashboardPage() {
   const { menus, isLoading: menusLoading } = useDailyMenuStorage();
@@ -84,7 +70,7 @@ export default function DashboardPage() {
   }, [menus, invoices, ingredients]);
 
   if (isLoading) {
-    return <DashboardLoadingSkeleton />;
+    return <LoadingPage title="Loading Your Dashboard" message="Crunching the latest numbers, just for you..."/>;
   }
 
   return (

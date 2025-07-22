@@ -6,10 +6,9 @@ import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { DailyMenu } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton"; 
-import { BookOpen, SquarePen } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import Link from "next/link";
+import { LoadingPage } from "@/components/layout/loading-page";
 
 export function DailyMenuEditPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -66,17 +65,7 @@ export function DailyMenuEditPageComponent() {
   }, [menuId, getMenuById, storageLoading, isMounted]);
 
   if (!isMounted || componentLoading || storageLoading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <Skeleton className="h-12 w-3/4 mb-6" />
-        <Skeleton className="h-[500px] w-full" /> 
-        <div className="flex justify-end gap-4">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-        </div>
-      </div>
-    );
+    return <LoadingPage title="Loading Booking Editor..." message="Getting the form ready for your changes."/>;
   }
 
   if (error) {
@@ -104,7 +93,7 @@ export function DailyMenuEditPageComponent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto animate-fade-in">
       <DailyMenuForm menu={menu} />
     </div>
   );

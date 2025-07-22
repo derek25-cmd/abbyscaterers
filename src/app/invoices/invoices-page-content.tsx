@@ -2,27 +2,13 @@
 "use client";
 
 import dynamic from 'next/dynamic';
-import { Skeleton } from '@/components/ui/skeleton';
+import { LoadingPage } from '@/components/layout/loading-page';
 
 const InvoiceListTable = dynamic(() =>
   import('@/components/invoices/invoice-list-table').then(mod => mod.InvoiceListTable),
   {
     ssr: false,
-    loading: () => (
-      <div className="space-y-4 animate-pulse">
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-10 w-40" />
-        </div>
-        <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    )
+    loading: () => <LoadingPage title="Loading Invoices..." message="Preparing your list of final invoices." />
   }
 );
 

@@ -6,9 +6,9 @@ import { useClientStorage } from '@/hooks/use-client-storage';
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Client } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from "next/link";
+import { LoadingPage } from '@/components/layout/loading-page';
 
 export function ClientDetailsPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -62,21 +62,7 @@ export function ClientDetailsPageComponent() {
   }, [clientId, getClientById, storageLoading, isMounted]);
 
   if (!isMounted || componentLoading || storageLoading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6 p-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-1/2" />
-          <Skeleton className="h-10 w-28" />
-        </div>
-        <Skeleton className="h-12 w-1/3" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-24 w-full md:col-span-2" />
-          <Skeleton className="h-48 w-full md:col-span-2" />
-        </div>
-      </div>
-    );
+    return <LoadingPage title="Loading Client Details..." message="Fetching client records, just a moment." />;
   }
 
   if (error) {
@@ -104,7 +90,7 @@ export function ClientDetailsPageComponent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto animate-fade-in">
       <ClientDetailsView client={client} />
     </div>
   );

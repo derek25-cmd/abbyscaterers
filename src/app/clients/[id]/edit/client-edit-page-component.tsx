@@ -6,9 +6,9 @@ import { useClientStorage } from '@/hooks/use-client-storage';
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Client } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import Link from "next/link";
+import { LoadingPage } from '@/components/layout/loading-page';
 
 export function ClientEditPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -66,16 +66,7 @@ export function ClientEditPageComponent() {
   }, [clientId, getClientById, storageLoading, isMounted]);
 
   if (!isMounted || componentLoading || storageLoading) {
-    return (
-      <div className="max-w-3xl mx-auto space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <Skeleton className="h-96 w-full" />
-        <div className="flex justify-end gap-4">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-        </div>
-      </div>
-    );
+    return <LoadingPage title="Loading Client Editor..." message="Getting everything ready for you to make changes."/>
   }
 
   if (error) {
@@ -103,7 +94,7 @@ export function ClientEditPageComponent() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto animate-fade-in">
       <ClientForm client={client} />
     </div>
   );

@@ -148,7 +148,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href} legacyBehavior passHref>
+                      <Link href={item.href} legacyBehavior>
                         <SidebarMenuButton 
                             isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}
@@ -169,7 +169,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href} passHref asChild>
+                       <Link href={item.href} asChild>
                         <SidebarMenuButton 
                           variant="ghost" 
                           isActive={false} 

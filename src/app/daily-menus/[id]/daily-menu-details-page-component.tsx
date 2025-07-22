@@ -6,9 +6,9 @@ import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { DailyMenu } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { LoadingPage } from "@/components/layout/loading-page";
 
 export function DailyMenuDetailsPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -61,17 +61,7 @@ export function DailyMenuDetailsPageComponent() {
   }, [menuId, getMenuById, storageLoading, isMounted]);
 
   if (!isMounted || componentLoading || storageLoading) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6 p-4">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-1/2" />
-          <Skeleton className="h-10 w-48" /> 
-        </div>
-        <Skeleton className="h-8 w-1/3 mb-2" /> 
-        <Skeleton className="h-40 w-full md:col-span-2" />
-        <Skeleton className="h-32 w-full md:col-span-2" />
-      </div>
-    );
+    return <LoadingPage title="Loading Booking Details..." message="Fetching all the event details for this booking." />;
   }
 
   if (error) {
@@ -99,7 +89,7 @@ export function DailyMenuDetailsPageComponent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto animate-fade-in">
       <DailyMenuDetailsView menu={menu} />
     </div>
   );
