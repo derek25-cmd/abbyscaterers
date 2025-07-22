@@ -19,7 +19,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       {/* Total Ingredient Cost */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
