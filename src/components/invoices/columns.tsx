@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Invoice } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
+import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 type InvoiceWithClientName = Invoice & { clientName: string };
 
@@ -39,6 +41,24 @@ export const getInvoiceColumns = (
         if (!dateStr) return 'N/A';
         const date = parseISO(dateStr);
         return isValid(date) ? format(date, 'PPP') : 'Invalid Date';
+    },
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string;
+      return (
+        <Badge
+          className={cn(
+            "capitalize",
+            status === 'paid' ? 'bg-success/20 text-success-foreground border-success/30' : 'bg-destructive/10 text-destructive-foreground border-destructive/20'
+          )}
+          variant="outline"
+        >
+          {status}
+        </Badge>
+      );
     },
   },
   {

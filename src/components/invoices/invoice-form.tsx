@@ -77,6 +77,7 @@ export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
         defaultValues: {
             id: "",
             proformaId: proformaId,
+            status: 'outstanding',
             invoiceDate: new Date().toISOString(),
             clientId: null,
             receiverName: '',
@@ -165,6 +166,7 @@ export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
                     ...proforma, // Spread proforma data
                     proformaId: proforma.id,
                     id: '', // Clear final invoice ID
+                    status: 'outstanding',
                     invoiceDate: new Date().toISOString(), // Set new date for final invoice
                     // map proforma items to final invoice items
                     items: proforma.items.map(pi => ({
@@ -259,6 +261,17 @@ export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
                                 <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={clientsLoading}>
                                 <SelectTrigger><SelectValue placeholder={clientsLoading ? "Loading..." : "Select a client"} /></SelectTrigger>
                                 <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+                        )}/>
+                         <Controller name="status" control={form.control} render={({ field }) => (
+                            <div><Label>Status</Label>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="outstanding">Outstanding</SelectItem>
+                                    <SelectItem value="paid">Paid</SelectItem>
+                                </SelectContent>
                                 </Select>
                             </div>
                         )}/>

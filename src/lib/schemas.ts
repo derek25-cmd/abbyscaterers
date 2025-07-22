@@ -197,6 +197,7 @@ export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
 export const FinalInvoiceSchema = z.object({
     id: z.string().min(1, "Invoice number is required"),
     proformaId: z.string().optional(),
+    status: z.enum(['outstanding', 'paid']),
     invoiceDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
         message: "A valid date is required",
     }),

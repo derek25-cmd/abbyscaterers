@@ -36,8 +36,10 @@ export default function DashboardPage() {
         menu.clientEvents.some(event => isThisMonth(new Date(event.date)))
     ).length;
     
-    const totalOutstandingInvoices = invoices.length; // Simplified: assumes all stored invoices are outstanding
-    const outstandingAmount = invoices.reduce((acc, inv) => {
+    const outstandingInvoices = invoices.filter(inv => inv.status === 'outstanding');
+    const totalOutstandingInvoices = outstandingInvoices.length;
+    
+    const outstandingAmount = outstandingInvoices.reduce((acc, inv) => {
         const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
         const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
         const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);

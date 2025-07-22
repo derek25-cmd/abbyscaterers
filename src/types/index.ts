@@ -1,6 +1,7 @@
 
 
 
+
 export interface DietaryClassification {
   restriction: string;
   category: string;
@@ -154,6 +155,7 @@ export interface ProformaInvoice {
 export interface Invoice {
   id: string; // The final invoice number
   proformaId?: string; // Optional link to the source proforma
+  status: 'outstanding' | 'paid';
   invoiceDate: string; // ISO string
   clientId: string | null;
   receiverName: string;
