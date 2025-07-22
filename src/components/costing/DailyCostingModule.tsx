@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Settings } from "lucide-react";
+import { FileText, Settings, Loader2 } from "lucide-react";
 import Link from "next/link";
 import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
@@ -12,7 +12,8 @@ import CostingSummary from "./CostingSummary";
 import { useToast } from "@/hooks/use-toast";
 import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
-import { useReactToPrint } from "react-to-print";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -20,6 +21,7 @@ export const DailyCostingModule = () => {
   const { getEventsForDate } = useDailyMenuStorage();
   const { ingredients } = useIngredientStorage();
   const printRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const dailyEvents = useMemo(() => {
     return getEventsForDate(selectedDate);
@@ -37,12 +39,51 @@ export const DailyCostingModule = () => {
   
   const netProfitLoss = totalIncome - totalIngredientCost;
 
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Daily_Costing_Report_${selectedDate.toISOString().split('T')[0]}`,
-    onAfterPrint: () => toast({ title: "Print Job Completed", description: "Your report has been sent to the printer or saved as a PDF."}),
-    onPrintError: () => toast({ variant: "destructive", title: "Print Error", description: "There was an error while trying to print the report."})
-  });
+  const handlePdfExport = async () => {
+    if (!printRef.current) return;
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: null
+      });
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+      
+      pdf.save(`Daily_Costing_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+      toast({ title: "Export Successful", description: "Report exported to PDF." });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -59,14 +100,14 @@ export const DailyCostingModule = () => {
               Input Usage
             </Button>
           </Link>
-          <Button onClick={handlePrint} variant="outline" size="sm">
-            <FileText className="h-4 w-4 mr-2" />
-            Print / Export PDF
+          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
+             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+             {isExporting ? 'Exporting...' : 'Export PDF'}
           </Button>
         </div>
       </div>
 
-      <div ref={printRef} className="space-y-6">
+      <div ref={printRef} className="space-y-6 bg-background p-4 rounded-lg">
         <div className="text-center hidden print:block pt-8">
             <h1 className="text-2xl font-bold">Daily Costing Report</h1>
             <p className="text-lg">{selectedDate.toLocaleDateString()}</p>

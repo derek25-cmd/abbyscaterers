@@ -19,15 +19,15 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       {/* Total Ingredient Cost */}
-      <Card>
+      <Card className="p-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Ingredient Cost</CardTitle>
           <ShoppingCart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">
+          <div className="text-xl font-bold text-destructive">
             {formatCurrency(totalIngredientCost)}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -37,13 +37,13 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
       </Card>
 
       {/* Total Income */}
-      <Card>
+      <Card className="p-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Income</CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-success">
+          <div className="text-xl font-bold text-success">
             {formatCurrency(totalIncome)}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -53,7 +53,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
       </Card>
 
       {/* Net Profit/Loss */}
-      <Card>
+      <Card className="p-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Net Profit/Loss</CardTitle>
           {isProfit ? 
@@ -63,7 +63,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         </CardHeader>
         <CardContent>
           <div className={cn(
-            "text-2xl font-bold",
+            "text-xl font-bold",
             isProfit ? "text-success" : "text-destructive"
           )}>
             {isProfit ? '+' : ''}{formatCurrency(netProfitLoss)}
@@ -75,7 +75,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
       </Card>
 
       {/* Profit Margin */}
-      <Card>
+      <Card className="p-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Profit Margin</CardTitle>
           <Badge variant={isProfit ? "secondary" : "destructive"}>
@@ -83,7 +83,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
           </Badge>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
+          <div className="text-xl font-bold">
             {Math.abs(profitLossPercentage).toFixed(1)}%
           </div>
           <p className="text-xs text-muted-foreground">
