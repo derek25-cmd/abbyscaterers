@@ -28,43 +28,16 @@ import Link from "next/link";
 import { getColumns } from "./columns";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 export function ClientListTable() {
-  const { clients, isLoading, deleteClient: deleteClientFromStore } = useClientStorage();
+  const { clients, isLoading } = useClientStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [clientToDelete, setClientToDelete] = React.useState<string | null>(null);
-
-  const handleDeleteRequest = React.useCallback((clientId: string) => {
-    setClientToDelete(clientId);
-  }, []);
-
-  const confirmDelete = React.useCallback(() => {
-    if (clientToDelete) {
-      const success = deleteClientFromStore(clientToDelete);
-      if (success) {
-        toast({ title: "Client Deleted", description: "The client has been successfully deleted." });
-      } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete client." });
-      }
-      setClientToDelete(null);
-    }
-  }, [clientToDelete, deleteClientFromStore, toast]);
   
-  const columns = React.useMemo(() => getColumns(handleDeleteRequest), [handleDeleteRequest]);
+  const columns = React.useMemo(() => getColumns(), []);
 
   const table = useReactTable({
     data: clients,
@@ -84,7 +57,7 @@ export function ClientListTable() {
       rowSelection,
     },
     initialState: {
-      pagination: { pageSize: 10 }
+      pagination: { pageSize: 20 }
     }
   });
 
@@ -224,22 +197,6 @@ export function ClientListTable() {
           Next
         </Button>
       </div>
-      <AlertDialog open={!!clientToDelete} onOpenChange={(open) => !open && setClientToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the client and remove their data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setClientToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

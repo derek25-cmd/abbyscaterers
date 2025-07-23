@@ -29,6 +29,17 @@ import { cn } from "@/lib/utils";
 import React, { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ClientFormProps {
   client?: Client; // For editing existing client
@@ -36,7 +47,7 @@ interface ClientFormProps {
 
 export function ClientForm({ client }: ClientFormProps) {
   const router = useRouter();
-  const { addClient, updateClient } = useClientStorage();
+  const { addClient, updateClient, deleteClient } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -111,6 +122,14 @@ export function ClientForm({ client }: ClientFormProps) {
       setIsSubmitting(false);
     }
   }
+
+  const handleDelete = () => {
+    if (client) {
+        deleteClient(client.id);
+        toast({ title: "Client Deleted", description: "The client has been permanently removed."});
+        router.push('/clients');
+    }
+  };
 
   return (
     <Form {...form}>
@@ -328,14 +347,43 @@ export function ClientForm({ client }: ClientFormProps) {
             </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {client ? "Save Changes" : "Add Client"}
-          </Button>
+        <div className="flex justify-between items-center gap-4">
+            <div>
+              {client && (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button type="button" variant="destructive" disabled={isSubmitting}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Client
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the client
+                                <span className="font-semibold text-foreground"> {client.companyName}</span> and all associated data.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+            <div className="flex gap-4">
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+                    Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {client ? "Save Changes" : "Add Client"}
+                </Button>
+            </div>
         </div>
       </form>
     </Form>
