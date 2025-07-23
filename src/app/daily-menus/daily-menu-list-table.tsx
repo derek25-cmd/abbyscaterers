@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -71,9 +72,9 @@ export function DailyMenuListTable() {
     if (itemToDelete) {
       const success = deleteMenuFromStore(itemToDelete);
       if (success) {
-        toast({ title: "Menu Deleted", description: "The daily menu has been successfully deleted." });
+        toast({ title: "Order Deleted", description: "The order has been successfully deleted." });
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete the menu." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete the order." });
       }
       setItemToDelete(null);
     }
@@ -104,14 +105,14 @@ export function DailyMenuListTable() {
   });
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading menus...</div>;
+    return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading orders...</div>;
   }
 
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filter by menu name..."
+          placeholder="Filter by order name..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
             table.getColumn("name")?.setFilterValue(event.target.value)
@@ -119,10 +120,10 @@ export function DailyMenuListTable() {
           className="max-w-sm"
         />
         <div className="flex gap-2">
-          <Link href="/daily-menus/new" passHref>
+          <Link href="/orders/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Menu
+              Add New Order
             </Button>
           </Link>
         </div>
@@ -170,7 +171,7 @@ export function DailyMenuListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {clientIdFilter ? `No bookings found for client ID: ${clientIdFilter}.` : 'No menus found.'}
+                  {clientIdFilter ? `No orders found for client ID: ${clientIdFilter}.` : 'No orders found.'}
                 </TableCell>
               </TableRow>
             )}
@@ -200,7 +201,7 @@ export function DailyMenuListTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the menu.
+              This action cannot be undone. This will permanently delete the order.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

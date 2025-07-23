@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -17,7 +18,8 @@ import {
     Bell,
     DollarSign,
     Menu as MenuIcon,
-    Calculator
+    Calculator,
+    Utensils
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -47,7 +49,8 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/daily-menus", label: "Bookings", icon: BookOpen },
+  { href: "/orders", label: "Orders", icon: BookOpen },
+  { href: "/menus", label: "Menus", icon: Utensils },
   { 
     label: "Menu / Food Costing", 
     icon: UtensilsCrossed,
