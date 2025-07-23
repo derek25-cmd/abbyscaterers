@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
+import { useOrderStorage } from '@/hooks/use-order-storage';
 import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from '@/lib/schemas';
 import { ProformaInvoiceTemplate } from './proforma-invoice-template';
 import { Textarea } from '../ui/textarea';
@@ -67,6 +68,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const router = useRouter();
     const { clients, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
+    const { addOrder } = useOrderStorage();
     const { toast } = useToast();
 
     const isEditMode = !!invoiceId;
@@ -101,6 +103,52 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
+    const { addOrder: createOrderInDB } = useOrderStorage();
+
+    const handleSaveAndCreateOrder = (itemIndex: number) => {
+        const itemData = form.getValues(`items.${itemIndex}`);
+        const client_id = form.getValues('clientId');
+
+        if (!client_id) {
+            toast({
+                variant: "destructive",
+                title: "Client Not Selected",
+                description: "Please select a client before creating an order."
+            });
+            return;
+        }
+
+        try {
+            const orderData = {
+                id: `ORD-${Date.now()}`,
+                name: `Order for ${itemData.eventType} on ${format(parseISO(itemData.date!), 'PPP')}`,
+                clientEvents: [{
+                    clientId: client_id,
+                    date: itemData.date || new Date().toISOString(),
+                    numberOfPeople: itemData.pax,
+                    mealType: itemData.mealType,
+                    unitPrice: itemData.unitPrice,
+                    vatType: itemData.vatType,
+                    recipes: [], // Default to empty recipes
+                }]
+            };
+
+            createOrderInDB(orderData as any); // Type assertion might be needed based on schema strictness
+
+            toast({
+                title: "Order Created",
+                description: `Order ${orderData.id} has been saved to the database.`,
+            });
+        } catch (error) {
+            console.error("Failed to create order:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to Create Order",
+                description: "An error occurred while saving the order.",
+            });
+        }
+    };
+
 
     const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
@@ -451,8 +499,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 </div>
 
 
-                                <div className="absolute top-1 right-1">
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                <div className="absolute top-1 right-1 flex flex-col gap-1">
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                     <Button type="button" variant="outline" size="icon" onClick={() => handleSaveAndCreateOrder(index)} className="h-7 w-7"><Save className="h-4 w-4 text-primary" /></Button>
                                 </div>
                             </div>
                         ))}
