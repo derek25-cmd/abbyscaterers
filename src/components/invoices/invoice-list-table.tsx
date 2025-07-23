@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   ColumnFiltersState,
   SortingState,
@@ -43,12 +44,14 @@ import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 
 export function InvoiceListTable() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const clientIdFilter = searchParams.get('clientId');
+
   const { invoices, isLoading: invoicesLoading, deleteInvoice } = useInvoiceStorage();
   const { proformaInvoices, isLoading: proformasLoading } = useProformaInvoiceStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();
@@ -84,10 +87,16 @@ export function InvoiceListTable() {
     return client?.companyName || 'Unknown Client';
   }, [clients]);
 
-  const tableData = React.useMemo(() => invoices.map(inv => ({
+  const filteredInvoices = React.useMemo(() => {
+    return clientIdFilter
+      ? invoices.filter(inv => inv.clientId === clientIdFilter)
+      : invoices;
+  }, [invoices, clientIdFilter]);
+
+  const tableData = React.useMemo(() => filteredInvoices.map(inv => ({
     ...inv,
     clientName: getClientName(inv.clientId)
-  })), [invoices, getClientName]);
+  })), [filteredInvoices, getClientName]);
   
   const columns = React.useMemo(() => getInvoiceColumns(handleDeleteRequest), [handleDeleteRequest]);
 
@@ -214,7 +223,7 @@ export function InvoiceListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No final invoices found.
+                  {clientIdFilter ? `No invoices found for client ID: ${clientIdFilter}.` : 'No final invoices found.'}
                 </TableCell>
               </TableRow>
             )}

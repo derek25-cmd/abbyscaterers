@@ -9,6 +9,7 @@ import type { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import Link from "next/link";
 import { LoadingPage } from '@/components/layout/loading-page';
+import { ClientActionCenter } from '@/components/clients/client-action-center';
 
 export function ClientDetailsPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -90,8 +91,9 @@ export function ClientDetailsPageComponent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in">
+    <div className="max-w-4xl mx-auto animate-fade-in space-y-6">
       <ClientDetailsView client={client} />
+      <ClientActionCenter client={client} />
     </div>
   );
 }

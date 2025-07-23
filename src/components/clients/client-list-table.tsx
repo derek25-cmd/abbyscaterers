@@ -28,6 +28,8 @@ import Link from "next/link";
 import { getColumns } from "./columns";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { ORGANIZATION_TYPES } from "@/types";
 
 export function ClientListTable() {
   const { clients, isLoading } = useClientStorage();
@@ -107,24 +109,48 @@ export function ClientListTable() {
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <Input
-          placeholder="Filter by company name..."
-          value={(table.getColumn("companyName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("companyName")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+          <Input
+            placeholder="Filter by Reg. No..."
+            value={(table.getColumn("id")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("id")?.setFilterValue(event.target.value)
+            }
+            className="w-full sm:w-40"
+          />
+          <Input
+            placeholder="Filter by Name..."
+            value={(table.getColumn("companyName")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("companyName")?.setFilterValue(event.target.value)
+            }
+            className="w-full sm:w-52"
+          />
+          <Select
+            value={(table.getColumn("typeOfOrganization")?.getFilterValue() as string) ?? ""}
+            onValueChange={(value) => table.getColumn("typeOfOrganization")?.setFilterValue(value === "all" ? "" : value)}
+          >
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Filter by Org. Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {ORGANIZATION_TYPES.map(type => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />
-            Export Data
+            Export
           </Button>
           <Link href="/clients/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Client
+              Add Client
             </Button>
           </Link>
         </div>
@@ -155,9 +181,10 @@ export function ClientListTable() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="py-2"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-2">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

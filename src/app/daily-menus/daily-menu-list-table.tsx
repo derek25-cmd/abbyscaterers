@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import {
   ColumnFiltersState,
   SortingState,
@@ -26,8 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getProformaInvoiceColumns } from "./columns"; 
-import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
+import { getDailyMenuColumns } from "./columns"; 
+import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -39,66 +39,50 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useClientStorage } from "@/hooks/use-client-storage";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
+import type { DailyMenu } from "@/types";
 
-
-export function ProformaInvoiceListTable() {
-  const router = useRouter();
+export function DailyMenuListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
   
-  const { proformaInvoices, isLoading: proformasLoading, deleteProformaInvoice } = useProformaInvoiceStorage();
-  const { clients, isLoading: clientsLoading } = useClientStorage();
+  const { menus, isLoading, deleteMenu: deleteMenuFromStore } = useDailyMenuStorage();
   const { toast } = useToast();
-  
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
-  const [popoverOpen, setPopoverOpen] = React.useState(false);
+  const filteredMenus = React.useMemo(() => {
+    if (!clientIdFilter) {
+      return menus;
+    }
+    return menus.filter(menu => 
+      menu.clientEvents.some(event => event.clientId === clientIdFilter)
+    );
+  }, [menus, clientIdFilter]);
 
-  const handleDeleteRequest = React.useCallback((invoiceId: string) => {
-    setItemToDelete(invoiceId);
+
+  const handleDeleteRequest = React.useCallback((menuId: string) => {
+    setItemToDelete(menuId);
   }, []);
 
   const confirmDelete = React.useCallback(() => {
     if (itemToDelete) {
-      const success = deleteProformaInvoice(itemToDelete);
+      const success = deleteMenuFromStore(itemToDelete);
       if (success) {
-        toast({ title: "Proforma Invoice Deleted", description: "The proforma invoice has been successfully deleted." });
+        toast({ title: "Menu Deleted", description: "The daily menu has been successfully deleted." });
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete the proforma invoice." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete the menu." });
       }
       setItemToDelete(null);
     }
-  }, [itemToDelete, deleteProformaInvoice, toast]);
+  }, [itemToDelete, deleteMenuFromStore, toast]);
   
-  const getClientName = React.useCallback((clientId: string | null) => {
-    if (!clientId) return 'N/A';
-    const client = clients.find(c => c.id === clientId);
-    return client?.companyName || 'Unknown Client';
-  }, [clients]);
-
-  const filteredInvoices = React.useMemo(() => {
-    return clientIdFilter 
-      ? proformaInvoices.filter(inv => inv.clientId === clientIdFilter)
-      : proformaInvoices;
-  }, [proformaInvoices, clientIdFilter]);
-
-  const tableData = React.useMemo(() => filteredInvoices.map(inv => ({
-    ...inv,
-    clientName: getClientName(inv.clientId)
-  })), [filteredInvoices, getClientName]);
-  
-  const columns = React.useMemo(() => getProformaInvoiceColumns(handleDeleteRequest), [handleDeleteRequest]);
+  const columns = React.useMemo(() => getDailyMenuColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
-    data: tableData,
+    data: filteredMenus,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -118,29 +102,27 @@ export function ProformaInvoiceListTable() {
       pagination: { pageSize: 10 }
     }
   });
-  
-  const isLoading = proformasLoading || clientsLoading;
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading proforma invoices...</div>;
+    return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading menus...</div>;
   }
 
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filter by client name..."
-          value={(table.getColumn("clientName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("clientName")?.setFilterValue(event.target.value)
+          placeholder="Filter by menu name..."
+          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            table.getColumn("name")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
         <div className="flex gap-2">
-          <Link href="/proforma-invoices/new" passHref>
+          <Link href="/daily-menus/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              New Proforma Invoice
+              Add New Menu
             </Button>
           </Link>
         </div>
@@ -188,7 +170,7 @@ export function ProformaInvoiceListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {clientIdFilter ? `No proformas found for client ID: ${clientIdFilter}.` : 'No proforma invoices found.'}
+                  {clientIdFilter ? `No bookings found for client ID: ${clientIdFilter}.` : 'No menus found.'}
                 </TableCell>
               </TableRow>
             )}
@@ -213,12 +195,12 @@ export function ProformaInvoiceListTable() {
           Next
         </Button>
       </div>
-      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open: boolean) => !open && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the proforma invoice.
+              This action cannot be undone. This will permanently delete the menu.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
