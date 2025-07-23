@@ -26,7 +26,14 @@ export const getColumns = (): ColumnDef<Client>[] => [
   {
     accessorKey: "companyName",
     header: "Company Name",
-    cell: ({ row }) => <div className="font-medium">{row.getValue("companyName")}</div>,
+    cell: ({ row }) => {
+        const client = row.original;
+        return (
+            <Link href={`/clients/${client.id}`} className="font-medium text-primary hover:underline">
+                {row.getValue("companyName")}
+            </Link>
+        )
+    },
   },
   {
     accessorKey: "createdAt",
