@@ -1,6 +1,11 @@
 
 
-
+export const ORGANIZATION_TYPES = [
+  "Industrial", "Commercial", "Financial", "Service", "Agricultural",
+  "Educational", "Medical", "Technological", "Entertainment and Media",
+  "Legal", "Military", "Governmental", "Religious", "NGO"
+] as const;
+export type OrganizationType = (typeof ORGANIZATION_TYPES)[number];
 
 export interface DietaryClassification {
   restriction: string;
@@ -8,14 +13,23 @@ export interface DietaryClassification {
   isAmbiguous: boolean;
 }
 
+export interface Contact {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export interface Client {
-  id: string;
+  id: string; // Customer Registration Number
   companyName: string;
   companyEmail: string;
   phoneNumber: string;
   address1: string;
   address2?: string;
+  postalCode?: string;
   primaryLocation: string;
+  typeOfOrganization: OrganizationType;
+  contacts: Contact[];
   lastContacted: string; // ISO date string
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string

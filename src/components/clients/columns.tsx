@@ -14,37 +14,39 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Client } from "@/types";
+import { format, parseISO, isValid } from 'date-fns';
+import { Badge } from "../ui/badge";
 
 export const getColumns = (
   onDelete: (clientId: string) => void
 ): ColumnDef<Client>[] => [
   {
     accessorKey: "id",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Client ID
-        </Button>
-      );
-    },
+    header: "Reg. No.",
     cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
   },
   {
     accessorKey: "companyName",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Company Name
-        </Button>
-      );
-    },
+    header: "Company Name",
     cell: ({ row }) => <div className="font-medium">{row.getValue("companyName")}</div>,
+  },
+  {
+    accessorKey: "createdAt",
+    header: "Date Created",
+    cell: ({ row }) => {
+      const dateStr = row.getValue("createdAt") as string | undefined;
+      if (!dateStr) return 'N/A';
+      const date = parseISO(dateStr);
+      return isValid(date) ? format(date, 'PPP') : 'Invalid Date';
+    },
+  },
+  {
+    accessorKey: "typeOfOrganization",
+    header: "Org. Type",
+    cell: ({ row }) => {
+      const orgType = row.getValue("typeOfOrganization") as string;
+      return orgType ? <Badge variant="secondary">{orgType}</Badge> : <span className="text-muted-foreground">N/A</span>;
+    },
   },
   {
     id: "actions",

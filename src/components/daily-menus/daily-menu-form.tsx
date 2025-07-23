@@ -167,7 +167,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Booking ID</FormLabel>
+                        <FormLabel>Daily Order ID</FormLabel>
                         <FormControl><Input placeholder="e.g. BOOK-2024-07" {...field} /></FormControl>
                         <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire booking.</FormDescription>
                         <FormMessage />

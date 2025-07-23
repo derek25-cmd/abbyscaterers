@@ -9,18 +9,35 @@ export const DietaryClassificationSchema = z.object({
   isAmbiguous: z.boolean(),
 });
 
+// Organization Types
+export const ORGANIZATION_TYPES = [
+  "Industrial", "Commercial", "Financial", "Service", "Agricultural",
+  "Educational", "Medical", "Technological", "Entertainment and Media",
+  "Legal", "Military", "Governmental", "Religious", "NGO"
+] as const;
+
+// Contact Schema
+export const ContactSchema = z.object({
+  name: z.string().min(1, "Contact name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(1, "Contact phone is required"),
+});
+
 // Client schema
 export const ClientSchema = z.object({
-  id: z.string().min(1, "Client ID is required"),
+  id: z.string().min(1, "Customer Registration Number is required"),
   companyName: z.string().min(1, "Company name is required"),
-  companyEmail: z.string().email().min(1, "A valid email is required"),
-  phoneNumber: z.string().min(1, "Phone number is required"),
+  companyEmail: z.string().email().min(1, "A valid company email is required"),
+  phoneNumber: z.string().min(1, "Company phone number is required"),
   address1: z.string().min(1, "Address 1 is required"),
   address2: z.string().optional(),
   primaryLocation: z.string().min(1, "Primary location is required"),
+  typeOfOrganization: z.enum(ORGANIZATION_TYPES),
+  postalCode: z.string().optional(),
   lastContacted: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Invalid ISO date string",
   }),
+  contacts: z.array(ContactSchema).min(1, "At least one contact is required."),
 });
 
 export type ClientFormData = z.infer<typeof ClientSchema>;

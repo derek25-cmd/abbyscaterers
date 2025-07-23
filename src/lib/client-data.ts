@@ -54,6 +54,7 @@ export function addClient(clientData: ClientFormData): Client {
   }
 
   const newClient: Client = {
+    ...clientData,
     id: clientData.id,
     companyName: clientData.companyName,
     companyEmail: clientData.companyEmail,
@@ -61,6 +62,9 @@ export function addClient(clientData: ClientFormData): Client {
     address1: clientData.address1,
     address2: clientData.address2 || "",
     primaryLocation: clientData.primaryLocation,
+    typeOfOrganization: clientData.typeOfOrganization,
+    postalCode: clientData.postalCode || "",
+    contacts: clientData.contacts.filter(c => c.name), // Only save contacts with a name
     lastContacted: clientData.lastContacted,
     createdAt: now,
     updatedAt: now,
@@ -82,7 +86,8 @@ export function updateClient(originalId: string, updates: ClientFormData): Clien
   const updatedClient: Client = {
     ...clients[clientIndex],
     ...updates,
-    id: updates.id, // Ensure the ID is updated from the form data
+    id: updates.id,
+    contacts: updates.contacts.filter(c => c.name), // Filter out empty contacts
     updatedAt: new Date().toISOString(),
   };
   
