@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from 'next/navigation';
 import {
   ColumnFiltersState,
   SortingState,
@@ -38,8 +39,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import type { DailyMenu } from "@/types";
 
 export function DailyMenuListTable() {
+  const searchParams = useSearchParams();
+  const clientIdFilter = searchParams.get('clientId');
+  
   const { menus, isLoading, deleteMenu: deleteMenuFromStore } = useDailyMenuStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -47,6 +52,16 @@ export function DailyMenuListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+
+  const filteredMenus = React.useMemo(() => {
+    if (!clientIdFilter) {
+      return menus;
+    }
+    return menus.filter(menu => 
+      menu.clientEvents.some(event => event.clientId === clientIdFilter)
+    );
+  }, [menus, clientIdFilter]);
+
 
   const handleDeleteRequest = React.useCallback((menuId: string) => {
     setItemToDelete(menuId);
@@ -67,7 +82,7 @@ export function DailyMenuListTable() {
   const columns = React.useMemo(() => getDailyMenuColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
-    data: menus,
+    data: filteredMenus,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -155,7 +170,7 @@ export function DailyMenuListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No menus found.
+                  {clientIdFilter ? `No bookings found for client ID: ${clientIdFilter}.` : 'No menus found.'}
                 </TableCell>
               </TableRow>
             )}
