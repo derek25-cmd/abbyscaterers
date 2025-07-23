@@ -36,7 +36,7 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                     <ActionItem 
-                        href="/daily-menus/new"
+                        href={`/daily-menus/new?clientId=${client.id}`}
                         title="Create New Order"
                         description="Start a new booking or event"
                         icon={BookOpen}
@@ -50,7 +50,7 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
                 </div>
                 <div className="space-y-3">
                     <ActionItem 
-                        href="/proforma-invoices/new"
+                        href={`/proforma-invoices/new?clientId=${client.id}`}
                         title="Create New Proforma"
                         description="Generate a proforma invoice"
                         icon={FileText}
@@ -64,7 +64,7 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
                 </div>
                  <div className="space-y-3">
                     <ActionItem 
-                        href="/invoices/new"
+                        href={`/invoices/new?clientId=${client.id}`}
                         title="Create New Invoice"
                         description="Generate a final invoice"
                         icon={FileText}

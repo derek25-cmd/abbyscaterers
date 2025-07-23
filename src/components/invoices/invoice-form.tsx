@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, Eye } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, Eye, ChevronsUpDown, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -23,11 +23,13 @@ import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
 import { InvoiceTemplate } from './invoice-template';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 interface InvoiceFormProps {
     invoiceId?: string;
     proformaId?: string;
+    clientId?: string;
 }
 
 const eventTypes = [
@@ -61,7 +63,7 @@ const serviceFieldsList = [
   { key: 'location', label: 'Location' }
 ];
 
-export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
+export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProps) {
     const router = useRouter();
     const { clients, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById } = useProformaInvoiceStorage();
@@ -79,7 +81,7 @@ export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
             proformaId: proformaId,
             status: 'outstanding',
             invoiceDate: new Date().toISOString(),
-            clientId: null,
+            clientId: clientId || null,
             receiverName: '',
             receiverPosition: '',
             lpoNumber: '',
@@ -258,10 +260,29 @@ export function InvoiceForm({ invoiceId, proformaId }: InvoiceFormProps) {
                         )}/>
                          <Controller name="clientId" control={form.control} render={({ field }) => (
                             <div><Label>Select Client</Label>
-                                <Select onValueChange={field.onChange} value={field.value ?? ""} disabled={clientsLoading}>
-                                <SelectTrigger><SelectValue placeholder={clientsLoading ? "Loading..." : "Select a client"} /></SelectTrigger>
-                                <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}</SelectContent>
-                                </Select>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
+                                            {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search client..." />
+                                            <CommandList><CommandEmpty>No client found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {clients.map((c) => (
+                                                    <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
+                                                        <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                        {c.companyName}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         )}/>
                          <Controller name="status" control={form.control} render={({ field }) => (

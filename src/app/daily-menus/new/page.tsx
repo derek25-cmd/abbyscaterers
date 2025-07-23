@@ -2,12 +2,15 @@
 "use client"; 
 
 import { DailyMenuForm } from "@/components/daily-menus/daily-menu-form";
-import { BookOpen } from "lucide-react";
+import { useSearchParams } from 'next/navigation';
 
 export default function NewDailyMenuPage() {
+  const searchParams = useSearchParams();
+  const clientId = searchParams.get('clientId');
+
   return (
     <div className="max-w-4xl mx-auto">
-      <DailyMenuForm />
+      <DailyMenuForm clientId={clientId ?? undefined} />
     </div>
   );
 }

@@ -28,6 +28,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 interface ProformaInvoiceFormProps {
     invoiceId?: string;
+    clientId?: string;
 }
 
 const eventTypes = [
@@ -61,7 +62,7 @@ const serviceFieldsList = [
   { key: 'location', label: 'Location' }
 ];
 
-export function ProformaInvoiceForm({ invoiceId }: ProformaInvoiceFormProps) {
+export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceFormProps) {
     const router = useRouter();
     const { clients, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
@@ -76,7 +77,7 @@ export function ProformaInvoiceForm({ invoiceId }: ProformaInvoiceFormProps) {
         defaultValues: {
             id: "",
             invoiceDate: new Date().toISOString(),
-            clientId: null,
+            clientId: clientId || null,
             receiverName: '',
             receiverPosition: '',
             lpoNumber: '',
@@ -243,7 +244,7 @@ export function ProformaInvoiceForm({ invoiceId }: ProformaInvoiceFormProps) {
                                 <div><Label>Select Client</Label>
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading}>
+                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
                                             {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>

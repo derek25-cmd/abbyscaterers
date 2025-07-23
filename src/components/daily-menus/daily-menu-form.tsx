@@ -27,6 +27,7 @@ import { MEAL_TYPES } from "@/types";
 
 interface DailyMenuFormProps {
   menu?: DailyMenu;
+  clientId?: string;
 }
 
 const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, control: any }) => {
@@ -90,7 +91,7 @@ const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, cont
     )
 }
 
-export function DailyMenuForm({ menu }: DailyMenuFormProps) {
+export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
   const router = useRouter();
   const { addMenu, updateMenu } = useDailyMenuStorage();
   const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
@@ -105,7 +106,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
           id: "",
           name: "",
           clientEvents: [{ 
-              clientId: "", 
+              clientId: clientId || "", 
               date: new Date().toISOString(), 
               mealType: "Lunch only", 
               numberOfPeople: 10,
@@ -201,7 +202,7 @@ export function DailyMenuForm({ menu }: DailyMenuFormProps) {
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
-                                                <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading}>
+                                                <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
                                                     {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
