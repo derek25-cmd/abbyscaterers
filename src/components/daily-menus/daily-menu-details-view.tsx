@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import type { Order, ClientEvent } from "@/types";
+import type { DailyMenu, ClientEvent } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
@@ -17,8 +17,8 @@ import html2canvas from "html2canvas";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "../ui/badge";
 
-interface OrderDetailsViewProps {
-  order: Order;
+interface DailyMenuDetailsViewProps {
+  menu: DailyMenu;
 }
 
 function ClientEventCard({ event }: { event: ClientEvent }) {
@@ -71,7 +71,7 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
     )
 }
 
-export function OrderDetailsView({ order }: OrderDetailsViewProps) {
+export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -112,8 +112,8 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
         heightLeft -= pdfHeight;
       }
       
-      pdf.save(`${order.name.replace(/ /g, '_')}_order.pdf`);
-      toast({ title: "Export Successful", description: "Order exported to PDF." });
+      pdf.save(`${menu.name.replace(/ /g, '_')}_menu.pdf`);
+      toast({ title: "Export Successful", description: "Menu exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
@@ -128,10 +128,10 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
         <div>
            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
              <BookOpen className="mr-3 h-8 w-8 text-primary" />
-             {order.name}
+             {menu.name}
            </h1>
            <p className="text-muted-foreground ml-11">
-             Order ID: {order.id}
+             Menu ID: {menu.id}
            </p>
         </div>
         <div className="flex gap-2">
@@ -139,31 +139,31 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                {isExporting ? 'Exporting...' : 'Export as PDF'}
             </Button>
-            <Link href={`/orders/${order.id}/edit`} passHref>
+            <Link href={`/daily-menus/${menu.id}/edit`}>
               <Button>
-                <SquarePen className="mr-2 h-4 w-4" /> Edit Order
+                <SquarePen className="mr-2 h-4 w-4" /> Edit Menu
               </Button>
             </Link>
         </div>
       </div>
       
       <div ref={printRef} className="space-y-6">
-        {order.clientEvents && order.clientEvents.length > 0 ? (
-            order.clientEvents.map((event, index) => (
+        {menu.clientEvents && menu.clientEvents.length > 0 ? (
+            menu.clientEvents.map((event, index) => (
                 <ClientEventCard key={index} event={event} />
             ))
         ) : (
             <Card>
                 <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground">No client events have been added to this order yet.</p>
+                    <p className="text-center text-muted-foreground">No client events have been added to this menu yet.</p>
                 </CardContent>
             </Card>
         )}
       </div>
 
       <div className="mt-6 flex justify-end">
-         <Link href="/orders" passHref>
-            <Button variant="ghost">Back to Order List</Button>
+         <Link href="/daily-menus">
+            <Button variant="ghost">Back to Menu List</Button>
           </Link>
       </div>
     </>

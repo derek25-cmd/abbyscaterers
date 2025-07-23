@@ -4,14 +4,14 @@
 import dynamic from 'next/dynamic';
 import { LoadingPage } from '@/components/layout/loading-page';
 
-const OrderListTable = dynamic(() =>
-  import('@/components/orders/order-list-table').then(mod => mod.OrderListTable),
+const DailyMenuListTable = dynamic(() =>
+  import('@/components/daily-menus/daily-menu-list-table').then(mod => mod.DailyMenuListTable),
   {
     ssr: false,
-    loading: () => <LoadingPage title="Loading Orders..." message="Organizing all your events and orders." />
+    loading: () => <LoadingPage title="Loading Bookings..." message="Organizing all your events and bookings." />
   }
 );
 
-export function OrdersPageContent() {
-  return <OrderListTable />;
+export function DailyMenusPageContent() {
+  return <DailyMenuListTable />;
 }

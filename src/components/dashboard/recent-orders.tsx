@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useOrderStorage } from "@/hooks/use-order-storage";
+import { useOrderStorage as useDailyMenuStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Button } from "../ui/button";
 import { format, parseISO } from 'date-fns';
 
 export function RecentOrders() {
-    const { orders: menus, isLoading: menusLoading } = useOrderStorage();
+    const { orders: menus, isLoading: menusLoading } = useDailyMenuStorage();
     const { getClientById, isLoading: clientsLoading } = useClientStorage();
 
     const isLoading = menusLoading || clientsLoading;

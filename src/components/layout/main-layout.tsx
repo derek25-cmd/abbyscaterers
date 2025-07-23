@@ -47,7 +47,7 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/orders", label: "Orders", icon: BookOpen },
+  { href: "/daily-menus", label: "Bookings", icon: BookOpen },
   { 
     label: "Menu / Food Costing", 
     icon: UtensilsCrossed,
@@ -139,7 +139,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                         >
                             {item.subItems.map(subItem => (
                                <SidebarMenuSubItem key={subItem.href}>
-                                  <Link href={subItem.href} passHref legacyBehavior>
+                                  <Link href={subItem.href}>
                                       <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
                                         {subItem.label}
                                       </SidebarMenuSubButton>
@@ -148,16 +148,13 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                             ))}
                          </SidebarMenuSub>
                     ) : (
-                      <Link href={item.href} legacyBehavior>
+                      <Link href={item.href}>
                         <SidebarMenuButton 
                             isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
                             tooltip={{ children: item.label, side: "right" }}
-                            asChild
                         >
-                          <a>
                             <item.icon />
                            {open && <span>{item.label}</span>}
-                          </a>
                         </SidebarMenuButton>
                       </Link>
                     )}
@@ -169,7 +166,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href} asChild>
+                       <Link href={item.href}>
                         <SidebarMenuButton 
                           variant="ghost" 
                           isActive={false} 

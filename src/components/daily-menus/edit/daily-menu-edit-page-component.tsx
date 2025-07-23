@@ -1,24 +1,24 @@
 
 "use client";
 
-import { OrderForm } from "@/components/orders/order-form";
-import { useOrderStorage } from "@/hooks/use-order-storage";
+import { DailyMenuForm } from "@/components/daily-menus/daily-menu-form";
+import { useOrderStorage as useDailyMenuStorage } from "@/hooks/use-order-storage";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { Order } from "@/types";
+import type { DailyMenu } from "@/types";
 import { Button } from '@/components/ui/button';
 import Link from "next/link";
 import { LoadingPage } from "@/components/layout/loading-page";
 
-export function OrderEditPageComponent() {
+export function DailyMenuEditPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
-  const { getOrderById, isLoading: storageLoading } = useOrderStorage();
-  const [order, setOrder] = useState<Order | undefined>(undefined);
+  const { getOrderById: getMenuById, isLoading: storageLoading } = useDailyMenuStorage();
+  const [menu, setMenu] = useState<DailyMenu | undefined>(undefined);
   const [componentLoading, setComponentLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const orderId = typeof params.id === 'string' ? params.id : undefined; 
+  const menuId = typeof params.id === 'string' ? params.id : undefined; 
 
   useEffect(() => {
     setIsMounted(true);
@@ -29,9 +29,9 @@ export function OrderEditPageComponent() {
       return;
     }
     
-    if (!orderId) {
-      setError("Invalid order ID provided.");
-      setOrder(undefined);
+    if (!menuId) {
+      setError("Invalid menu ID provided.");
+      setMenu(undefined);
       setComponentLoading(false);
       return;
     }
@@ -44,17 +44,17 @@ export function OrderEditPageComponent() {
     setComponentLoading(true);
     setError(null);
     try {
-      const fetchedOrder = getOrderById(orderId); 
-      if (fetchedOrder) {
-        setOrder(fetchedOrder);
+      const fetchedMenu = getMenuById(menuId); 
+      if (fetchedMenu) {
+        setMenu(fetchedMenu);
       } else {
-        setOrder(undefined);
-        setError("Order not found. Cannot edit a non-existent item.");
+        setMenu(undefined);
+        setError("Menu not found. Cannot edit a non-existent item.");
       }
     } catch (e: unknown) {
-      console.error("Error fetching order for edit:", e);
-      setOrder(undefined);
-      let message = "An unexpected error occurred while loading order data for editing.";
+      console.error("Error fetching menu for edit:", e);
+      setMenu(undefined);
+      let message = "An unexpected error occurred while loading menu data for editing.";
       if (e instanceof Error) {
         message = `An unexpected error occurred: ${e.message}`;
       }
@@ -62,31 +62,31 @@ export function OrderEditPageComponent() {
     } finally {
       setComponentLoading(false);
     }
-  }, [orderId, getOrderById, storageLoading, isMounted]);
+  }, [menuId, getMenuById, storageLoading, isMounted]);
 
   if (!isMounted || componentLoading || storageLoading) {
-    return <LoadingPage title="Loading Order Editor..." message="Getting the form ready for your changes."/>;
+    return <LoadingPage title="Loading Menu Editor..." message="Getting the form ready for your changes."/>;
   }
 
   if (error) {
     return (
       <div className="text-center py-10 max-w-xl mx-auto">
-        <h2 className="text-2xl font-semibold text-destructive mb-4">Error Loading Order for Editing</h2>
+        <h2 className="text-2xl font-semibold text-destructive mb-4">Error Loading Menu for Editing</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button asChild>
-          <Link href="/orders">Go to Order List</Link>
+          <Link href="/daily-menus">Go to Menu List</Link>
         </Button>
       </div>
     );
   }
 
-  if (!order || !order.id) { 
+  if (!menu || !menu.id) { 
     return (
       <div className="text-center py-10 max-w-xl mx-auto">
-        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Order Data Not Available for Editing</h2>
-        <p className="text-muted-foreground mb-6">Could not load order data for editing. The item might have been deleted or the ID is incorrect.</p>
+        <h2 className="text-2xl font-semibold text-muted-foreground mb-4">Menu Data Not Available for Editing</h2>
+        <p className="text-muted-foreground mb-6">Could not load menu data for editing. The item might have been deleted or the ID is incorrect.</p>
         <Button asChild>
-          <Link href="/orders">Go to Order List</Link>
+          <Link href="/daily-menus">Go to Menu List</Link>
         </Button>
       </div>
     );
@@ -94,7 +94,7 @@ export function OrderEditPageComponent() {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
-      <OrderForm order={order} />
+      <DailyMenuForm menu={menu} />
     </div>
   );
 }
