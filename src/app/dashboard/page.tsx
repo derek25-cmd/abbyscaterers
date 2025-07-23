@@ -2,7 +2,7 @@
 "use client";
 
 import { useClientStorage } from "@/hooks/use-client-storage";
-import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -24,7 +24,7 @@ import { isThisMonth, isFuture, isWithinInterval, addDays } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
 
 export default function DashboardPage() {
-  const { menus, isLoading: menusLoading } = useDailyMenuStorage();
+  const { orders: menus, isLoading: menusLoading } = useOrderStorage();
   const { invoices, isLoading: invoicesLoading } = useInvoiceStorage();
   const { ingredients, isLoading: ingredientsLoading } = useIngredientStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();

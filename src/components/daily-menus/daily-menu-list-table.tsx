@@ -26,8 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { getDailyMenuColumns } from "./columns"; 
-import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
+import { getOrderColumns } from "./columns"; 
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -39,13 +39,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { DailyMenu } from "@/types";
+import type { Order } from "@/types";
 
-export function DailyMenuListTable() {
+export function OrderListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
   
-  const { menus, isLoading, deleteMenu: deleteMenuFromStore } = useDailyMenuStorage();
+  const { orders, isLoading, deleteOrder: deleteOrderFromStore } = useOrderStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -53,36 +53,36 @@ export function DailyMenuListTable() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
-  const filteredMenus = React.useMemo(() => {
+  const filteredOrders = React.useMemo(() => {
     if (!clientIdFilter) {
-      return menus;
+      return orders;
     }
-    return menus.filter(menu => 
-      menu.clientEvents.some(event => event.clientId === clientIdFilter)
+    return orders.filter(order => 
+      order.clientEvents.some(event => event.clientId === clientIdFilter)
     );
-  }, [menus, clientIdFilter]);
+  }, [orders, clientIdFilter]);
 
 
-  const handleDeleteRequest = React.useCallback((menuId: string) => {
-    setItemToDelete(menuId);
+  const handleDeleteRequest = React.useCallback((orderId: string) => {
+    setItemToDelete(orderId);
   }, []);
 
   const confirmDelete = React.useCallback(() => {
     if (itemToDelete) {
-      const success = deleteMenuFromStore(itemToDelete);
+      const success = deleteOrderFromStore(itemToDelete);
       if (success) {
-        toast({ title: "Menu Deleted", description: "The daily menu has been successfully deleted." });
+        toast({ title: "Order Deleted", description: "The order has been successfully deleted." });
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete the menu." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to delete the order." });
       }
       setItemToDelete(null);
     }
-  }, [itemToDelete, deleteMenuFromStore, toast]);
+  }, [itemToDelete, deleteOrderFromStore, toast]);
   
-  const columns = React.useMemo(() => getDailyMenuColumns(handleDeleteRequest), [handleDeleteRequest]);
+  const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
-    data: filteredMenus,
+    data: filteredOrders,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -104,14 +104,14 @@ export function DailyMenuListTable() {
   });
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading menus...</div>;
+    return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading orders...</div>;
   }
 
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filter by menu name..."
+          placeholder="Filter by order name..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
             table.getColumn("name")?.setFilterValue(event.target.value)
@@ -119,10 +119,10 @@ export function DailyMenuListTable() {
           className="max-w-sm"
         />
         <div className="flex gap-2">
-          <Link href="/daily-menus/new" passHref>
+          <Link href="/orders/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Menu
+              Add New Order
             </Button>
           </Link>
         </div>
@@ -170,7 +170,7 @@ export function DailyMenuListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {clientIdFilter ? `No bookings found for client ID: ${clientIdFilter}.` : 'No menus found.'}
+                  {clientIdFilter ? `No orders found for client ID: ${clientIdFilter}.` : 'No orders found.'}
                 </TableCell>
               </TableRow>
             )}
@@ -200,7 +200,7 @@ export function DailyMenuListTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the menu.
+              This action cannot be undone. This will permanently delete the order.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

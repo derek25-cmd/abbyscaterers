@@ -13,16 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { DailyMenu } from "@/types";
+import type { Order } from "@/types";
 
-export const getDailyMenuColumns = (
-  onDelete: (menuId: string) => void
-): ColumnDef<DailyMenu>[] => [
+export const getOrderColumns = (
+  onDelete: (orderId: string) => void
+): ColumnDef<Order>[] => [
   {
     accessorKey: "id",
     header: ({ column }) => (
       <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Menu ID
+        Order ID
       </Button>
     ),
     cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
@@ -31,7 +31,7 @@ export const getDailyMenuColumns = (
     accessorKey: "name",
     header: ({ column }) => (
       <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Menu Name
+        Order Name
       </Button>
     ),
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
@@ -51,7 +51,7 @@ export const getDailyMenuColumns = (
   {
     id: "actions",
     cell: ({ row }) => {
-      const menu = row.original;
+      const order = row.original;
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -63,21 +63,21 @@ export const getDailyMenuColumns = (
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem asChild>
-              <Link href={`/daily-menus/${menu.id}`} className="flex items-center cursor-pointer">
+              <Link href={`/orders/${order.id}`} className="flex items-center cursor-pointer">
                 <Eye className="mr-2 h-4 w-4" /> View Details
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/daily-menus/${menu.id}/edit`} className="flex items-center cursor-pointer">
-                <Edit className="mr-2 h-4 w-4" /> Edit Menu
+              <Link href={`/orders/${order.id}/edit`} className="flex items-center cursor-pointer">
+                <Edit className="mr-2 h-4 w-4" /> Edit Order
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => onDelete(menu.id)}
+              onClick={() => onDelete(order.id)}
               className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center cursor-pointer"
             >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Menu
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Order
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

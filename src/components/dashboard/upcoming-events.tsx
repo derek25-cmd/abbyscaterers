@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, MapPin, Users, Loader2, BookOpen } from "lucide-react";
@@ -16,7 +16,7 @@ interface upcomingEvent extends ClientEvent {
 }
 
 export function UpcomingEvents() {
-    const { menus, isLoading: menusLoading } = useDailyMenuStorage();
+    const { orders: menus, isLoading: menusLoading } = useOrderStorage();
     const { getClientById, isLoading: clientsLoading } = useClientStorage();
 
     const isLoading = menusLoading || clientsLoading;

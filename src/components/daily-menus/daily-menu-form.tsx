@@ -11,9 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { DailyMenuSchema, type DailyMenuFormData } from "@/lib/schemas";
-import type { DailyMenu } from "@/types";
-import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
+import { OrderSchema, type OrderFormData } from "@/lib/schemas";
+import type { Order } from "@/types";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -25,8 +25,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES } from "@/types";
 
-interface DailyMenuFormProps {
-  menu?: DailyMenu;
+interface OrderFormProps {
+  order?: Order;
   clientId?: string;
 }
 
@@ -91,17 +91,17 @@ const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, cont
     )
 }
 
-export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
+export function OrderForm({ order, clientId }: OrderFormProps) {
   const router = useRouter();
-  const { addMenu, updateMenu } = useDailyMenuStorage();
+  const { addOrder, updateOrder } = useOrderStorage();
   const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<DailyMenuFormData>({
-    resolver: zodResolver(DailyMenuSchema),
-    defaultValues: menu
-      ? { ...menu }
+  const form = useForm<OrderFormData>({
+    resolver: zodResolver(OrderSchema),
+    defaultValues: order
+      ? { ...order }
       : {
           id: "",
           name: "",
@@ -123,24 +123,24 @@ export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
   });
 
   useEffect(() => {
-    if (menu) {
-      form.reset(menu);
+    if (order) {
+      form.reset(order);
     }
-  }, [menu, form]);
+  }, [order, form]);
 
-  async function onSubmit(data: DailyMenuFormData) {
+  async function onSubmit(data: OrderFormData) {
     setIsSubmitting(true);
     try {
-      if (menu) {
-        const updated = updateMenu(menu.id, data);
+      if (order) {
+        const updated = updateOrder(order.id, data);
         if (updated) {
-          toast({ title: "Menu Updated", description: `${updated.name} (ID: ${updated.id}) has been updated.` });
-          router.push(`/daily-menus/${updated.id}`);
+          toast({ title: "Order Updated", description: `${updated.name} (ID: ${updated.id}) has been updated.` });
+          router.push(`/orders/${updated.id}`);
         }
       } else {
-        const newMenuData = addMenu(data);
-        toast({ title: "Menu Added", description: `${newMenuData.name} (ID: ${newMenuData.id}) has been added.` });
-        router.push("/daily-menus");
+        const newOrderData = addOrder(data);
+        toast({ title: "Order Added", description: `${newOrderData.name} (ID: ${newOrderData.id}) has been added.` });
+        router.push("/orders");
       }
     } catch (error) {
        console.error("Submission error:", error);
@@ -159,26 +159,26 @@ export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>{menu ? `Edit Menu: ${menu.name}` : "Add New Booking"}</CardTitle>
+            <CardTitle>{order ? `Edit Order: ${order.name}` : "Add New Order"}</CardTitle>
             <CardDescription>
-              A booking can contain multiple events for different clients and dates.
+              An order can contain multiple events for different clients and dates.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Daily Order ID</FormLabel>
+                        <FormLabel>Order ID</FormLabel>
                         <FormControl><Input placeholder="e.g. BOOK-2024-07" {...field} /></FormControl>
-                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire booking.</FormDescription>
+                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire order.</FormDescription>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Booking Name</FormLabel>
+                        <FormLabel>Order Name</FormLabel>
                         <FormControl><Input placeholder="e.g. Wedding Weekend Special" {...field} /></FormControl>
-                        <FormDescription>A descriptive name for the booking.</FormDescription>
+                        <FormDescription>A descriptive name for the order.</FormDescription>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -316,7 +316,7 @@ export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {menu ? "Save Changes" : "Save Booking"}
+            {order ? "Save Changes" : "Save Order"}
           </Button>
         </div>
       </form>

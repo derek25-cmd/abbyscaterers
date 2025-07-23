@@ -1,18 +1,18 @@
 
 "use client";
 
-import type { DailyMenu } from "@/types";
-import type { DailyMenuFormData } from "@/lib/schemas";
+import type { Order } from "@/types";
+import type { OrderFormData } from "@/lib/schemas";
 
-const DAILY_MENUS_STORAGE_KEY = "caterSmartDailyMenus";
+const ORDERS_STORAGE_KEY = "caterSmartOrders";
 
-function getMenusFromStorage(): DailyMenu[] {
+function getOrdersFromStorage(): Order[] {
   if (typeof window === "undefined") return [];
   let data = null;
   try {
-    data = localStorage.getItem(DAILY_MENUS_STORAGE_KEY);
+    data = localStorage.getItem(ORDERS_STORAGE_KEY);
   } catch (error) {
-    console.error("Error reading daily menus from localStorage:", error);
+    console.error("Error reading orders from localStorage:", error);
     return [];
   }
 
@@ -20,77 +20,77 @@ function getMenusFromStorage(): DailyMenu[] {
     try {
       return JSON.parse(data);
     } catch (error) {
-      console.error("Error parsing daily menus from localStorage:", error);
+      console.error("Error parsing orders from localStorage:", error);
       return [];
     }
   }
   return [];
 }
 
-function saveMenusToStorage(menus: DailyMenu[]): void {
+function saveOrdersToStorage(orders: Order[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(DAILY_MENUS_STORAGE_KEY, JSON.stringify(menus));
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
   } catch (error) {
-    console.error("Error saving daily menus to localStorage:", error);
+    console.error("Error saving orders to localStorage:", error);
   }
 }
 
-export function getAllDailyMenus(): DailyMenu[] {
-  return getMenusFromStorage();
+export function getAllOrders(): Order[] {
+  return getOrdersFromStorage();
 }
 
-export function getDailyMenuById(id: string): DailyMenu | undefined {
-  const allMenus = getMenusFromStorage();
-  return allMenus.find(menu => menu.id === id);
+export function getOrderById(id: string): Order | undefined {
+  const allOrders = getOrdersFromStorage();
+  return allOrders.find(order => order.id === id);
 }
 
-export function addDailyMenu(menuData: DailyMenuFormData): DailyMenu {
-  const allMenus = getMenusFromStorage();
+export function addOrder(orderData: OrderFormData): Order {
+  const allOrders = getOrdersFromStorage();
   const now = new Date().toISOString();
 
-  if (allMenus.some(menu => menu.id === menuData.id)) {
-    throw new Error(`Menu ID "${menuData.id}" already exists.`);
+  if (allOrders.some(order => order.id === orderData.id)) {
+    throw new Error(`Order ID "${orderData.id}" already exists.`);
   }
 
-  const newMenu: DailyMenu = {
-    ...menuData,
+  const newOrder: Order = {
+    ...orderData,
     createdAt: now,
     updatedAt: now,
   };
-  const updatedMenuList = [...allMenus, newMenu];
-  saveMenusToStorage(updatedMenuList);
-  return newMenu;
+  const updatedOrderList = [...allOrders, newOrder];
+  saveOrdersToStorage(updatedOrderList);
+  return newOrder;
 }
 
-export function updateDailyMenu(originalId: string, updates: DailyMenuFormData): DailyMenu | undefined {
-  const allMenus = getMenusFromStorage();
-  const menuIndex = allMenus.findIndex(menu => menu.id === originalId);
-  if (menuIndex === -1) return undefined;
+export function updateOrder(originalId: string, updates: OrderFormData): Order | undefined {
+  const allOrders = getOrdersFromStorage();
+  const orderIndex = allOrders.findIndex(order => order.id === originalId);
+  if (orderIndex === -1) return undefined;
 
-  if (updates.id && updates.id !== originalId && allMenus.some(menu => menu.id === updates.id)) {
-    throw new Error(`Cannot update Menu ID to "${updates.id}" as it already exists for another menu.`);
+  if (updates.id && updates.id !== originalId && allOrders.some(order => order.id === updates.id)) {
+    throw new Error(`Cannot update Order ID to "${updates.id}" as it already exists for another order.`);
   }
   
-  const updatedMenu: DailyMenu = {
-    ...allMenus[menuIndex],
+  const updatedOrder: Order = {
+    ...allOrders[orderIndex],
     ...updates,
     id: updates.id,
     updatedAt: new Date().toISOString(),
   };
   
-  const updatedAllMenus = [...allMenus];
-  updatedAllMenus[menuIndex] = updatedMenu;
-  saveMenusToStorage(updatedAllMenus);
-  return updatedMenu;
+  const updatedAllOrders = [...allOrders];
+  updatedAllOrders[orderIndex] = updatedOrder;
+  saveOrdersToStorage(updatedAllOrders);
+  return updatedOrder;
 }
 
-export function deleteDailyMenu(id: string): boolean {
-  let allMenus = getMenusFromStorage();
-  const initialLength = allMenus.length;
-  allMenus = allMenus.filter(menu => menu.id !== id);
-  if (allMenus.length < initialLength) {
-    saveMenusToStorage(allMenus);
+export function deleteOrder(id: string): boolean {
+  let allOrders = getOrdersFromStorage();
+  const initialLength = allOrders.length;
+  allOrders = allOrders.filter(order => order.id !== id);
+  if (allOrders.length < initialLength) {
+    saveOrdersToStorage(allOrders);
     return true;
   }
   return false;

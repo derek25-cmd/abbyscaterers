@@ -117,7 +117,7 @@ export interface ClientEvent {
   vatType: 'inclusive' | 'exclusive';
 }
 
-export interface DailyMenu {
+export interface Order {
   id: string; // User-facing unique ID
   name: string;
   clientEvents: ClientEvent[];
@@ -137,6 +137,7 @@ export interface InvoiceItem {
   date?: string; // ISO string
   particularType: 'event' | 'meal';
   particularDescription?: string;
+  vatType: 'inclusive' | 'exclusive';
 }
 
 // Proforma Invoice Types

@@ -47,7 +47,7 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/daily-menus", label: "Bookings", icon: BookOpen },
+  { href: "/orders", label: "Orders", icon: BookOpen },
   { 
     label: "Menu / Food Costing", 
     icon: UtensilsCrossed,

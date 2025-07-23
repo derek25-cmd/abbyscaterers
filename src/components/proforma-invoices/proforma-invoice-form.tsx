@@ -24,6 +24,7 @@ import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 
 interface ProformaInvoiceFormProps {
@@ -93,14 +94,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             endDate: new Date().toISOString(),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: '1', particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() }],
+            items: [{ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() }],
         }
     });
     
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
-
 
     const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
@@ -128,12 +128,27 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         const subscription = form.watch((value, { name, type }) => {
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
-                items.forEach((item, index) => {
-                    const newTotal = (item.pax || 0) * (item.unitPrice || 0);
-                    if (item.total !== newTotal) {
-                        form.setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
+                const parts = name.split('.');
+                if(parts.length > 2) {
+                    const index = parseInt(parts[1], 10);
+                    const fieldName = parts[2];
+                    const item = items[index];
+
+                    if (fieldName === 'pax' || fieldName === 'unitPrice') {
+                        const newTotal = (item.pax || 0) * (item.unitPrice || 0);
+                         if (item.total !== newTotal) {
+                             form.setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
+                         }
                     }
-                });
+                    
+                    if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date') {
+                        if (item.particularType === 'event') {
+                            form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${format(parseISO(item.date!), 'PPP')}`)
+                        } else {
+                            form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${format(parseISO(item.date!), 'PPP')}`)
+                        }
+                    }
+                }
             }
             if (name === 'startDate' || name === 'endDate') {
                 const { startDate, endDate } = form.getValues();
@@ -352,71 +367,90 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     </Accordion>
 
 
-                    {/* Invoice Items */}
+                    {/* Order Items */}
                     <Card className="p-4 border-primary/20">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
+                            <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Order Items</h3>
                             <Button type="button" onClick={() => append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() })} size="sm">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item
                             </Button>
                         </div>
                         <div className="space-y-4">
                         {fields.map((item, index) => (
-                            <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end p-3 border rounded-md relative bg-card/60">
-                                <div className="md:col-span-2">
-                                    <Label>Particulars</Label>
-                                    <Controller name={`items.${index}.particularType`} control={form.control} render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent><SelectItem value="event">Event</SelectItem><SelectItem value="meal">Meal</SelectItem></SelectContent>
-                                        </Select>
-                                    )}/>
+                            <div key={item.id} className="p-4 border rounded-md relative bg-card/60 space-y-4">
+                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                    <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
+                                    <div>
+                                        <Label>Event Type</Label>
+                                        <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        )}/>
+                                    </div>
+                                     <div>
+                                        <Label>Meal Type</Label>
+                                        <Controller name={`items.${index}.mealType`} control={form.control} render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        )}/>
+                                    </div>
+                                    <div>
+                                      <Label>Event Date</Label>
+                                      <Controller name={`items.${index}.date`} control={form.control} render={({ field }) => (
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                          </Popover>
+                                      )} />
+                                    </div>
                                 </div>
-                                <div className="md:col-span-2">
-                                    <Label>Event Type</Label>
-                                    <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                    )}/>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                    <div><Label>No. of People</Label><Controller name={`items.${index}.pax`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />} /></div>
+                                    <div><Label>Unit Price</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />} /></div>
+                                    <div><Label>Total</Label><Controller name={`items.${index}.total`} control={form.control} render={({ field }) => <Input type="number" {...field} readOnly />} /></div>
+                                    <div>
+                                        <Label>VAT</Label>
+                                        <Controller name={`items.${index}.vatType`} control={form.control} render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="inclusive">Inclusive</SelectItem>
+                                                    <SelectItem value="exclusive">Exclusive</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}/>
+                                    </div>
                                 </div>
-                                 <div className="md:col-span-2">
-                                    <Label>Meal Type</Label>
-                                    <Controller name={`items.${index}.mealType`} control={form.control} render={({ field }) => (
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                    )}/>
+                                <div>
+                                    <Label>Particulars Display</Label>
+                                    <Controller
+                                        name={`items.${index}.particularType`}
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="event" id={`event-${index}`} />
+                                                    <Label htmlFor={`event-${index}`}>Event Type</Label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="meal" id={`meal-${index}`} />
+                                                    <Label htmlFor={`meal-${index}`}>Meal Type</Label>
+                                                </div>
+                                            </RadioGroup>
+                                        )}
+                                    />
                                 </div>
-                                <div className="md:col-span-2">
-                                  <Label>Item Date</Label>
-                                  <Controller name={`items.${index}.date`} control={form.control} render={({ field }) => (
-                                      <Popover>
-                                        <PopoverTrigger asChild>
-                                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                          </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                          <Calendar 
-                                            mode="single" 
-                                            selected={field.value ? parseISO(field.value) : undefined} 
-                                            onSelect={(d) => field.onChange(d?.toISOString())}
-                                            disabled={{ 
-                                                before: form.getValues('startDate') ? parseISO(form.getValues('startDate')) : undefined, 
-                                                after: form.getValues('endDate') ? parseISO(form.getValues('endDate')) : undefined 
-                                            }}
-                                          />
-                                        </PopoverContent>
-                                      </Popover>
-                                  )} />
-                                </div>
-                                <div><Label>Pax</Label><Controller name={`items.${index}.pax`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />} /></div>
-                                <div><Label>Unit Price</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />} /></div>
-                                <div><Label>Total</Label><Controller name={`items.${index}.total`} control={form.control} render={({ field }) => <Input type="number" {...field} readOnly />} /></div>
+
+
                                 <div className="absolute top-1 right-1">
                                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                                 </div>
@@ -433,7 +467,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                              <div><Label>Transport Costs (TSHS)</Label><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></div>
                         )}/>
                         <Controller name="vatType" control={form.control} render={({ field }) => (
-                             <div><Label>VAT Type</Label>
+                             <div><Label>VAT Type (Overall)</Label>
                                 <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
                                 <SelectContent><SelectItem value="inclusive">Inclusive</SelectItem><SelectItem value="exclusive">Exclusive (+18%)</SelectItem></SelectContent>
                                 </Select>

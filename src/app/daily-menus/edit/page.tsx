@@ -1,5 +1,5 @@
 
-import { DailyMenuEditPageComponent } from './daily-menu-edit-page-component';
+import { OrderEditPageComponent } from './order-edit-page-component';
 
 export async function generateStaticParams() {
   // For 'output: export', dynamic routes are handled client-side.
@@ -8,6 +8,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function EditDailyMenuPage({ params }: { params: { id: string } }) {
-  return <DailyMenuEditPageComponent />;
+export default function EditOrderPage({ params }: { params: { id: string } }) {
+  return <OrderEditPageComponent />;
 }

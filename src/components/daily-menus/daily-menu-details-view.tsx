@@ -2,11 +2,11 @@
 "use client";
 
 import React, { useState } from "react";
-import type { DailyMenu, ClientEvent } from "@/types";
+import type { Order, ClientEvent } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { BookOpen, Info, CalendarClock, Utensils, SquarePen, Users, FileText, Loader2, UtensilsCrossed, CalendarDays, User } from "lucide-react";
+import { BookOpen, Info, CalendarClock, Utensils, SquarePen, Users, FileText, Loader2, UtensilsCrossed, CalendarDays, User, DollarSign } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
@@ -17,8 +17,8 @@ import html2canvas from "html2canvas";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "../ui/badge";
 
-interface DailyMenuDetailsViewProps {
-  menu: DailyMenu;
+interface OrderDetailsViewProps {
+  order: Order;
 }
 
 function ClientEventCard({ event }: { event: ClientEvent }) {
@@ -26,6 +26,7 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
     const { getRecipeById, isLoading: recipesLoading } = useRecipeStorage();
 
     const client = getClientById(event.clientId);
+    const totalPrice = event.unitPrice * event.numberOfPeople;
 
     const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy") => {
         if (!dateString) return "N/A";
@@ -39,28 +40,38 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                 {clientsLoading ? <Skeleton className="h-6 w-3/4" /> :
                 <CardTitle className="text-xl text-primary flex items-center">{client?.companyName || "Unknown Client"}</CardTitle>
                 }
-                <CardDescription className="flex items-center gap-4 pt-1">
+                <CardDescription className="flex items-center gap-4 pt-1 flex-wrap">
                     <span className="flex items-center gap-1.5 text-sm"><CalendarDays className="h-4 w-4 text-accent" /> {formatDateSafe(event.date)}</span>
                     <span className="flex items-center gap-1.5 text-sm"><Users className="h-4 w-4 text-accent" /> {event.numberOfPeople} People</span>
                     <Badge variant="secondary">{event.mealType}</Badge>
                 </CardDescription>
             </CardHeader>
-            <CardContent className="pt-4">
-                 <h4 className="font-semibold text-foreground mb-2 flex items-center"><UtensilsCrossed className="mr-2 h-4 w-4 text-primary"/>Recipes</h4>
-                 {recipesLoading ? <Skeleton className="h-20 w-full" /> : (
-                    <ul className="space-y-1 list-disc list-inside text-muted-foreground">
-                        {event.recipes.map((r, index) => {
-                            const recipe = getRecipeById(r.recipeId);
-                            return <li key={index}>{recipe?.recipeName || "Unknown Recipe"}</li>
-                        })}
-                    </ul>
-                 )}
+            <CardContent className="pt-4 grid md:grid-cols-2 gap-6">
+                 <div>
+                    <h4 className="font-semibold text-foreground mb-2 flex items-center"><UtensilsCrossed className="mr-2 h-4 w-4 text-primary"/>Recipes</h4>
+                    {recipesLoading ? <Skeleton className="h-20 w-full" /> : (
+                        <ul className="space-y-1 list-disc list-inside text-muted-foreground">
+                            {event.recipes.map((r, index) => {
+                                const recipe = getRecipeById(r.recipeId);
+                                return <li key={index}>{recipe?.recipeName || "Unknown Recipe"}</li>
+                            })}
+                        </ul>
+                    )}
+                 </div>
+                 <div className="border-l border-border pl-6">
+                     <h4 className="font-semibold text-foreground mb-2 flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary"/>Pricing</h4>
+                     <div className="text-sm space-y-2 text-muted-foreground">
+                        <p>Unit Price: <span className="font-medium text-foreground">${event.unitPrice.toFixed(2)}</span></p>
+                        <p>Total Price: <span className="font-medium text-foreground">${totalPrice.toFixed(2)}</span></p>
+                        <p>VAT: <Badge variant="outline">{event.vatType}</Badge></p>
+                     </div>
+                 </div>
             </CardContent>
         </Card>
     )
 }
 
-export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
+export function OrderDetailsView({ order }: OrderDetailsViewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -101,8 +112,8 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
         heightLeft -= pdfHeight;
       }
       
-      pdf.save(`${menu.name.replace(/ /g, '_')}_menu.pdf`);
-      toast({ title: "Export Successful", description: "Menu exported to PDF." });
+      pdf.save(`${order.name.replace(/ /g, '_')}_order.pdf`);
+      toast({ title: "Export Successful", description: "Order exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
@@ -117,10 +128,10 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
         <div>
            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
              <BookOpen className="mr-3 h-8 w-8 text-primary" />
-             {menu.name}
+             {order.name}
            </h1>
            <p className="text-muted-foreground ml-11">
-             Menu ID: {menu.id}
+             Order ID: {order.id}
            </p>
         </div>
         <div className="flex gap-2">
@@ -128,31 +139,31 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                {isExporting ? 'Exporting...' : 'Export as PDF'}
             </Button>
-            <Link href={`/daily-menus/${menu.id}/edit`} passHref>
+            <Link href={`/orders/${order.id}/edit`} passHref>
               <Button>
-                <SquarePen className="mr-2 h-4 w-4" /> Edit Menu
+                <SquarePen className="mr-2 h-4 w-4" /> Edit Order
               </Button>
             </Link>
         </div>
       </div>
       
       <div ref={printRef} className="space-y-6">
-        {menu.clientEvents && menu.clientEvents.length > 0 ? (
-            menu.clientEvents.map((event, index) => (
+        {order.clientEvents && order.clientEvents.length > 0 ? (
+            order.clientEvents.map((event, index) => (
                 <ClientEventCard key={index} event={event} />
             ))
         ) : (
             <Card>
                 <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground">No client events have been added to this menu yet.</p>
+                    <p className="text-center text-muted-foreground">No client events have been added to this order yet.</p>
                 </CardContent>
             </Card>
         )}
       </div>
 
       <div className="mt-6 flex justify-end">
-         <Link href="/daily-menus" passHref>
-            <Button variant="ghost">Back to Menu List</Button>
+         <Link href="/orders" passHref>
+            <Button variant="ghost">Back to Order List</Button>
           </Link>
       </div>
     </>
