@@ -122,7 +122,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     <div className="flex-1"></div>
                     <div className="text-right">
                       <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
-                      <div className="mt-2 text-lg space-y-1">
+                      <div className="mt-1 text-lg space-y-0">
                         <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
                         <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
                       </div>
@@ -133,11 +133,12 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                       <div className="flex-1">
                           <div className="text-base">
                               <p className="mb-1"><strong>To:</strong></p>
-                              {receiverName && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{receiverName}</p>}
-                              {receiverPosition && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{receiverPosition}</p>}
-                              {client?.companyName && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{client.companyName}</p>}
-                              {(client?.address1 || client?.address2) && <p className="mb-1 ml-6" style={{ fontSize: '18px' }}>{client.address1} {client.address2}</p>}
-                              {lpoNumber && <p className="mb-2 ml-6" style={{ fontSize: '18px' }}>LPO No.: {lpoNumber}</p>}
+                              {receiverName && <p className="mb-1 ml-6">{receiverName}</p>}
+                              {receiverPosition && <p className="mb-1 ml-6">{receiverPosition}</p>}
+                              {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
+                              {client?.address1 && <p className="mb-1 ml-6">{client.address1}</p>}
+                              {client?.address2 && <p className="mb-1 ml-6">{client.address2}</p>}
+                              {lpoNumber && <p className="mb-2 ml-6 pt-1 font-bold text-lg">LPO No.: {lpoNumber}</p>}
                           </div>
                       </div>
                       <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-5px' }}>
@@ -148,9 +149,9 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                       </div>
                   </div>
 
-                  <hr className="border-t-2 border-gray-800 mb-3" />
+                  <hr className="border-t-2 border-gray-800" />
                   
-                  <div className="mb-4 text-center text-lg italic p-3">
+                  <div className="my-2 text-center text-lg italic p-2">
                     <p>{serviceDesc}</p>
                   </div>
                   <table className="w-full border-collapse border border-gray-800 mb-3 text-base">
