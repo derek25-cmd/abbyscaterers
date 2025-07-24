@@ -77,6 +77,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
     
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
+    const [notes, setNotes] = useState("");
     
     const getParticularText = (item: InvoiceItem): string => {
         if (item.particularType === 'event') {
@@ -115,136 +116,145 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
 
     return (
         <>
-            <Card id="proforma-invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
-              <div className="flex flex-col h-full">
-                  {/* HEADER SECTION */}
-                  <div className="flex justify-between items-start mb-4 relative">
-                    <div className="flex-1"></div>
-                    <div className="text-right">
-                      <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
-                      <div className="mt-1 text-lg space-y-0">
-                        <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
-                        <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
-                      </div>
+            <div style={{ marginLeft: '1cm' }}>
+                <Card id="proforma-invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
+                <div className="flex flex-col h-full">
+                    {/* HEADER SECTION */}
+                    <div className="flex justify-between items-start mb-2 relative">
+                        <div className="flex-1"></div>
+                        <div className="text-right">
+                        <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
+                        <div className="mt-1 text-base space-y-0">
+                            <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
+                            <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
+                        </div>
+                        </div>
                     </div>
-                  </div>
 
-                  <div className="flex justify-between items-end mb-1">
-                      <div className="flex-1">
-                          <div className="text-base">
-                              <p className="mb-1"><strong>To:</strong></p>
-                              {receiverName && <p className="mb-1 ml-6">{receiverName}</p>}
-                              {receiverPosition && <p className="mb-1 ml-6">{receiverPosition}</p>}
-                              {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
-                              {client?.address1 && <p className="mb-1 ml-6">{client.address1}</p>}
-                              {client?.address2 && <p className="mb-1 ml-6">{client.address2}</p>}
-                              {lpoNumber && <p className="mb-2 ml-6 pt-1 font-bold text-lg">LPO No.: {lpoNumber}</p>}
-                          </div>
-                      </div>
-                      <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-5px' }}>
-                          <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
-                              <div><strong>TIN: 151-209-696</strong></div>
-                              <div><strong>VRN: 40-050290-L</strong></div>
-                          </div>
-                      </div>
-                  </div>
+                    <div className="flex justify-between items-end mb-1">
+                        <div className="flex-1">
+                            <div className="text-base">
+                                <p className="mb-1"><strong>To:</strong></p>
+                                {receiverName && <p className="mb-1 ml-6">{receiverName}</p>}
+                                {receiverPosition && <p className="mb-1 ml-6">{receiverPosition}</p>}
+                                {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
+                                {client?.address1 && <p className="mb-1 ml-6">{client.address1}</p>}
+                                {client?.address2 && <p className="mb-1 ml-6">{client.address2}</p>}
+                                {lpoNumber && <p className="mb-2 ml-6 pt-2 font-bold text-lg">LPO No.: {lpoNumber}</p>}
+                            </div>
+                        </div>
+                        <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-5px' }}>
+                            <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
+                                <div><strong>TIN: 151-209-696</strong></div>
+                                <div><strong>VRN: 40-050290-L</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr className="border-t-2 border-gray-800" />
+                    
+                    <div className="my-2 text-center text-base italic p-1">
+                        <p>{serviceDesc}</p>
+                    </div>
 
-                  <hr className="border-t-2 border-gray-800" />
-                  
-                  <div className="my-2 text-center text-lg italic p-2">
-                    <p>{serviceDesc}</p>
-                  </div>
-                  <table className="w-full border-collapse border border-gray-800 mb-3 text-base">
-                    <thead>
-                        <tr style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                          <th className="border border-gray-800 p-1 text-center w-12">S/No.</th>
-                          <th className="border border-gray-800 p-1 text-center w-24">Order ID</th>
-                          <th className="border border-gray-800 p-1 text-center w-16">QTY</th>
-                          <th className="border border-gray-800 p-1 text-center">PARTICULARS</th>
-                          <th className="border border-gray-800 p-1 text-center w-48">UNIT PRICE<br/>(TSHS)</th>
-                          <th className="border border-gray-800 p-1 text-center w-48">TOTAL (TSHS)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                          {localItems.map((item, index) => (
-                              <tr key={item.id}>
-                                  <td className="border border-black p-1 text-center">{index + 1}</td>
-                                  <td className="border border-black p-1 text-center font-mono text-xs">{item.id}</td>
-                                  <td className="border border-black p-1 text-center">{item.pax || '{pax}'}</td>
-                                  <td className="border border-black p-1">
-                                    <div className="flex justify-between items-center">
-                                        <span>{item.particularDescription || getParticularText(item)}</span>
-                                        <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
-                                            <Pencil className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                  </td>
-                                  <td className="border border-black p-1 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
-                                  <td className="border border-black p-1 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
-                              </tr>
-                          ))}
-                        <tr>
-                            <td colSpan={4} className="border-r border-black p-1.5 font-bold">Total</td>
-                            <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
-                            <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                        {multiplyByDays && (
-                        <tr>
-                            <td colSpan={4} className="border-r border-black p-1.5"></td>
-                            <td className="border-y border-black p-1.5 text-right">No of days</td>
-                            <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
-                        </tr>
-                        )}
-                        <tr>
-                            <td colSpan={4} className="border-r border-black p-1.5"></td>
-                            <td className="border-y border-black p-1.5 text-right">Add Service Charge (TSHS)</td>
-                            <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
-                        </tr>
-                         <tr>
-                            <td colSpan={4} className="border-r border-black p-1.5"></td>
-                            <td className="border-y border-black p-1.5 text-right">Add Transportation Costs (TSHS)</td>
-                            <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
-                        </tr>
-                        <tr>
-                            <td colSpan={4} className="border-r border-black p-1.5"></td>
-                            <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
-                            <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
-                        </tr>
-                        <tr>
-                            <td colSpan={4} className="border-r border-black p-1.5"></td>
-                            <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
-                            <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                    <table className="w-full border-collapse border border-gray-800 text-sm">
+                        <thead>
+                            <tr style={{ fontWeight: 'bold' }}>
+                                <th className="border border-gray-800 p-1 text-center w-auto">S/No.</th>
+                                <th className="border border-gray-800 p-1 text-center w-auto">Order ID</th>
+                                <th className="border border-gray-800 p-1 text-center w-auto">QTY</th>
+                                <th className="border border-gray-800 p-1 text-center w-[40%]">PARTICULARS</th>
+                                <th className="border border-gray-800 p-1 text-center w-auto">UNIT PRICE<br/>(TSHS)</th>
+                                <th className="border border-gray-800 p-1 text-center w-auto">TOTAL (TSHS)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {localItems.map((item, index) => (
+                                <tr key={item.id}>
+                                    <td className="border border-black p-1 text-center">{index + 1}</td>
+                                    <td className="border border-black p-1 text-center font-mono text-xs">{item.id}</td>
+                                    <td className="border border-black p-1 text-center">{item.pax || '{pax}'}</td>
+                                    <td className="border border-black p-1">
+                                        <div className="flex justify-between items-center">
+                                            <span>{item.particularDescription || getParticularText(item)}</span>
+                                            <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
+                                                <Pencil className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td className="border border-black p-1 text-right">{item.unitPrice ? item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{UnitPrice}'}</td>
+                                    <td className="border border-black p-1 text-right">{item.total ? item.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '{Total}'}</td>
+                                </tr>
+                            ))}
+                             <tr>
+                                <td colSpan={3} className="border-r border-black p-1.5 align-top">
+                                    <Textarea 
+                                        placeholder="Notes concerning the order..." 
+                                        value={notes} 
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center"
+                                    />
+                                </td>
+                                <td className="border-l border-r border-black"></td>
+                                <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                            {multiplyByDays && (
+                            <tr>
+                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">No of days</td>
+                                <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
+                            </tr>
+                            )}
+                            <tr>
+                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">Add Service Charge (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                            </tr>
+                            <tr>
+                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">Add Transportation Costs (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
+                            </tr>
+                            <tr>
+                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
+                            </tr>
+                            <tr>
+                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                <div className="my-4 text-lg p-2 bg-white rounded">
-                    <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
+                    <div className="my-4 text-base p-2 bg-white rounded">
+                        <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
+                    </div>
+                    
+                    <div className="flex-grow"></div>
+                    
+                    <div className="flex justify-end mb-4">
+                        <div className="text-center" style={{ fontSize: '14px' }}>
+                        <p className="mb-1">For and on behalf of:-</p>
+                        <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
+                        <img alt="Signature and Seal" className="h-20 w-auto block mx-auto mb-2" src="https://placehold.co/200x80.png" data-ai-hint="signature seal"/>
+                        <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                        </div>
+                    </div>
+
+                    <div className="text-sm">
+                        <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
+                        <ul className="space-y-1 list-disc list-inside" style={{ fontFamily:'monospace', fontSize: '14px' }}>
+                        <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
+                        <li>Payments shall be by Bank transfer or by Cheque.</li>
+                        <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
+                        <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
+                        </ul>
+                    </div>
                 </div>
-                
-                <div className="flex-grow"></div>
-                
-                  <div className="flex justify-end mb-4">
-                    <div className="text-center text-sm" style={{ fontSize: '14px' }}>
-                      <p className="mb-1">For and on behalf of:-</p>
-                      <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
-                      <img alt="Signature and Seal" className="h-20 w-auto block mx-auto mb-2" src="https://placehold.co/200x80.png" data-ai-hint="signature seal"/>
-                      <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
-                    </div>
-                  </div>
-
-                  <div className="text-sm">
-                    <p className="font-bold mb-1" style={{ fontSize: '16px' }}>Terms & Conditions:</p>
-                    <ul className="space-y-1 list-disc list-inside" style={{ fontFamily:'monospace', fontSize: '16px' }}>
-                      <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
-                      <li>Payments shall be by Bank transfer or by Cheque.</li>
-                      <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
-                      <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
-                    </ul>
-                  </div>
-              </div>
-            </Card>
-
+                </Card>
+            </div>
             <Dialog open={editState.open} onOpenChange={(isOpen) => !isOpen && setEditState({ open: false, itemId: '', currentValue: '' })}>
                 <DialogContent>
                     <DialogHeader>
