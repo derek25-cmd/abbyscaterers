@@ -120,8 +120,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                 <Card id="proforma-invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
                 <div className="flex flex-col h-full">
                     {/* HEADER SECTION */}
-                    <div className="flex justify-between items-start mb-2 relative">
-                        <div className="flex-1"></div>
+                    <div className="flex justify-end items-start mb-2 relative">
                         <div className="text-right">
                         <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
                         <div className="mt-1 text-base space-y-0">
@@ -186,15 +185,14 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 </tr>
                             ))}
                              <tr>
-                                <td colSpan={3} className="border-r border-black p-1.5 align-top">
+                                <td colSpan={4} className="border-l border-b border-black p-1.5 align-top">
                                     <Textarea 
                                         placeholder="Notes concerning the order..." 
                                         value={notes} 
                                         onChange={(e) => setNotes(e.target.value)}
-                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center"
+                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none"
                                     />
                                 </td>
-                                <td className="border-l border-r border-black"></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
