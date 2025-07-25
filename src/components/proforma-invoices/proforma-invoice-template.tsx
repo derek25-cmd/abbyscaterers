@@ -77,6 +77,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
     
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
+    const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
     
     const getParticularText = (item: InvoiceItem): string => {
         if (item.particularType === 'event') {
