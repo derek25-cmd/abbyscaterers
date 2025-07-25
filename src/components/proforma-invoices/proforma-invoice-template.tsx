@@ -76,7 +76,6 @@ interface EditParticularsState {
 export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoiceTemplateProps) {
     
     const [localItems, setLocalItems] = useState(invoiceData.items);
-    const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
     const [notes, setNotes] = useState("");
     
     const getParticularText = (item: InvoiceItem): string => {
@@ -151,7 +150,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     </div>
                     <hr className="border-t-2 border-gray-800" />
                     
-                    <div className="my-2 text-center text-base italic p-1">
+                    <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
                         <p>{serviceDesc}</p>
                     </div>
 
