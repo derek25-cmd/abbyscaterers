@@ -117,6 +117,8 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
     }
 
+    const summaryRowCount = 5 + (multiplyByDays ? 2 : 0);
+
     return (
         <>
         <div style={{ marginLeft: '1cm' }}>
@@ -192,7 +194,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                             ))}
                             {/* Summary Rows */}
                              <tr>
-                                <td colSpan={4} rowSpan={8} className="p-1 align-middle border-t-2 border-black flex items-center justify-center">
+                                <td colSpan={4} rowSpan={summaryRowCount} className="p-1 align-middle border-t-2 border-l-2 border-b-2 border-black flex items-center justify-center">
                                     <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0"/>
                                 </td>
                                 <td className="p-1 text-right font-semibold border-t-2 border-l-2 border-b border-black">Sub-Total (TSHS)</td>
