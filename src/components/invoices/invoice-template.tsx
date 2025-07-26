@@ -164,13 +164,13 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                         
                          <table className="w-full border-collapse border border-gray-800 text-sm">
                             <thead>
-                                <tr style={{ fontWeight: 'bold' }}>
-                                    <th className="border border-gray-800 p-1 text-center" style={{ width: '5%' }}>S/No.</th>
-                                    <th className="border border-gray-800 p-1 text-center" style={{ width: '5%' }}>QTY</th>
-                                    <th className="border border-gray-800 p-1 text-center" style={{ width: '15%' }}>Order ID</th>
-                                    <th className="border border-gray-800 p-1 text-center" style={{ width: '40%' }}>PARTICULARS</th>
-                                    <th className="border border-gray-800 p-1 text-center" style={{ width: '17.5%' }}>UNIT PRICE<br/>(TSHS)</th>
-                                    <th className="border border-gray-800 p-1 text-center" style={{ width: '17.5%' }}>TOTAL (TSHS)</th>
+                                <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
+                                    <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '15%' }}>Order ID</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '40%' }}>PARTICULARS</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '17.5%' }}>UNIT PRICE<br/>(TSHS)</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '17.5%' }}>TOTAL (TSHS)</th>
                                 </tr>
                             </thead>
                             <tbody>

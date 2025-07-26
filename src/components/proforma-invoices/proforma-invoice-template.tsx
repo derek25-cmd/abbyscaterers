@@ -158,13 +158,13 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
 
                     <table className="w-full border-collapse border border-gray-800 text-sm">
                         <thead>
-                            <tr style={{ fontWeight: 'bold' }}>
-                                <th className="border border-gray-800 p-1 text-center" style={{ width: '5%' }}>S/No.</th>
-                                <th className="border border-gray-800 p-1 text-center" style={{ width: '5%' }}>QTY</th>
-                                <th className="border border-gray-800 p-1 text-center" style={{ width: '15%' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1 text-center" style={{ width: '40%' }}>PARTICULARS</th>
-                                <th className="border border-gray-800 p-1 text-center" style={{ width: '17.5%' }}>UNIT PRICE<br/>(TSHS)</th>
-                                <th className="border border-gray-800 p-1 text-center" style={{ width: '17.5%' }}>TOTAL (TSHS)</th>
+                            <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
+                                <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '15%' }}>Order ID</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '40%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '17.5%' }}>UNIT PRICE<br/>(TSHS)</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '17.5%' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -186,7 +186,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 </tr>
                             ))}
                              <tr>
-                                <td rowSpan={summaryRowCount} className="border-x border-black p-1.5 align-top">
+                                <td rowSpan={summaryRowCount} colSpan={4} className="border-x border-black p-1.5 align-top">
                                     <Textarea 
                                         placeholder="Notes concerning the order..." 
                                         value={notes} 
@@ -194,39 +194,32 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                         className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none h-full"
                                     />
                                 </td>
-                                <td colSpan={3} className="border-b border-black"></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                             {multiplyByDays && (
                             <tr>
-                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">No of days</td>
                                 <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
                             </tr>
                             )}
                             <tr>
-                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Service Charge (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Transportation Costs (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Total Before VAT (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{totalBeforeVAT.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
