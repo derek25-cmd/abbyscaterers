@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useOrderStorage as useDailyMenuStorage } from "@/hooks/use-order-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, MapPin, Users, Loader2, BookOpen } from "lucide-react";
@@ -11,22 +11,22 @@ import type { ClientEvent } from "@/types";
 import { format, parseISO, isFuture } from 'date-fns';
 
 interface upcomingEvent extends ClientEvent {
-    menuId: string;
-    menuName: string;
+    orderId: string;
+    orderName: string;
 }
 
 export function UpcomingEvents() {
-    const { orders: menus, isLoading: menusLoading } = useDailyMenuStorage();
+    const { orders, isLoading: ordersLoading } = useOrderStorage();
     const { getClientById, isLoading: clientsLoading } = useClientStorage();
 
-    const isLoading = menusLoading || clientsLoading;
+    const isLoading = ordersLoading || clientsLoading;
 
-    const upcomingEvents: upcomingEvent[] = menus
-        .flatMap(menu => 
-            menu.clientEvents.map(event => ({
+    const upcomingEvents: upcomingEvent[] = orders
+        .flatMap(order => 
+            order.clientEvents.map(event => ({
                 ...event,
-                menuId: menu.id,
-                menuName: menu.name
+                orderId: order.id,
+                orderName: order.name
             }))
         )
         .filter(event => isFuture(parseISO(event.date)))
@@ -52,7 +52,7 @@ export function UpcomingEvents() {
                         <h3 className="text-lg font-semibold">No Upcoming Events</h3>
                         <p className="text-sm">Schedule new bookings to see them here.</p>
                          <Button asChild variant="secondary" className="mt-4">
-                            <Link href="/daily-menus/new">Schedule an Event</Link>
+                            <Link href="/orders/new">Schedule an Event</Link>
                         </Button>
                     </div>
                 ) : (
@@ -60,7 +60,7 @@ export function UpcomingEvents() {
                         {upcomingEvents.map((event, index) => {
                             const client = getClientById(event.clientId);
                             return (
-                                <Link href={`/daily-menus/${event.menuId}`} key={`${event.menuId}-${index}`} className="block p-4 rounded-lg bg-background/50 hover:bg-accent/50 transition-smooth border border-border/50">
+                                <Link href={`/orders/${event.orderId}`} key={`${event.orderId}-${index}`} className="block p-4 rounded-lg bg-background/50 hover:bg-accent/50 transition-smooth border border-border/50">
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-semibold text-foreground">{client?.companyName || 'Unknown Client'}</h4>
                                         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">

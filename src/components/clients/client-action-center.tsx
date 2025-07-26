@@ -36,13 +36,13 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                     <ActionItem 
-                        href={`/daily-menus/new?clientId=${client.id}`}
+                        href={`/orders/new?clientId=${client.id}`}
                         title="Create New Order"
                         description="Start a new booking or event"
                         icon={BookOpen}
                     />
                     <ActionItem 
-                        href={`/daily-menus?clientId=${client.id}`}
+                        href={`/orders?clientId=${client.id}`}
                         title="Retrieve Existing Orders"
                         description="View all bookings for this client"
                         icon={BookOpen}
