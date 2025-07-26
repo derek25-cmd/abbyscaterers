@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState } from 'react';
@@ -164,8 +163,8 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                             <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '15%' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '40%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '10%' }}>Order ID</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '45%' }}>PARTICULARS</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '15%' }}>UNIT PRICE (TSHS)</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '20%' }}>TOTAL (TSHS)</th>
                             </tr>
@@ -190,40 +189,43 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                             ))}
                              {/* Summary Rows */}
                             <tr>
-                                <td colSpan={4} className="p-1 text-right font-semibold border-t-2 border-black">Sub-Total (TSHS)</td>
+                                <td colSpan={3} rowSpan={7} className="p-1 text-center align-middle border-t-2 border-black">
+                                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0"/>
+                                </td>
+                                <td className="p-1 text-right font-semibold border-t-2 border-black">Sub-Total (TSHS)</td>
                                 <td colSpan={2} className="p-1 text-right font-semibold border-t-2 border-black">{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
                                 <>
                                 <tr>
-                                    <td colSpan={4} className="p-1 text-right">No of days</td>
+                                    <td className="p-1 text-right">No of days</td>
                                     <td colSpan={2} className="p-1 text-right">{numberOfDays || 1}</td>
                                 </tr>
                                 <tr>
-                                    <td colSpan={4} className="p-1 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
+                                    <td className="p-1 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
                                     <td colSpan={2} className="p-1 text-right font-bold bg-secondary/20">{formatCurrency(totalForDays)}</td>
                                 </tr>
                                 </>
                             )}
                             <tr>
-                                <td colSpan={4} className="p-1 text-right">Add Service Charge (TSHS)</td>
+                                <td className="p-1 text-right">Add Service Charge (TSHS)</td>
                                 <td colSpan={2} className="p-1 text-right">{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="p-1 text-right">Add Transportation Costs (TSHS)</td>
+                                <td className="p-1 text-right">Add Transportation Costs (TSHS)</td>
                                 <td colSpan={2} className="p-1 text-right">{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="p-1 text-right">Total Before VAT (TSHS)</td>
+                                <td className="p-1 text-right">Total Before VAT (TSHS)</td>
                                 <td colSpan={2} className="p-1 text-right">{formatCurrency(totalBeforeVAT)}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="p-1 text-right">Add VAT 18% (TSHS)</td>
+                                <td className="p-1 text-right">Add VAT 18% (TSHS)</td>
                                 <td colSpan={2} className="p-1 text-right">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="p-1 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
-                                <td colSpan={2} className="p-1 text-right font-bold bg-secondary/40 text-accent">{formatCurrency(grandTotal)}</td>
+                                <td colSpan={4} className="p-1 text-right font-bold bg-secondary/40 border-t-2 border-black">GRAND TOTAL (TSHS)</td>
+                                <td colSpan={2} className="p-1 text-right font-bold bg-secondary/40 border-t-2 border-black text-accent">{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
                     </table>
