@@ -103,7 +103,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
-    const { addOrder: createOrderInDB } = useOrderStorage();
 
     const handleSaveAndCreateOrder = (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
@@ -120,7 +119,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
         try {
             const orderData = {
-                id: `ORD-${Date.now()}`,
+                id: itemData.id || `ORD-${Date.now()}`,
                 name: `Order for ${itemData.eventType} on ${format(parseISO(itemData.date!), 'PPP')}`,
                 clientEvents: [{
                     clientId: client_id,
@@ -130,10 +129,12 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     unitPrice: itemData.unitPrice,
                     vatType: itemData.vatType,
                     recipes: [], // Default to empty recipes
-                }]
+                }],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             };
 
-            createOrderInDB(orderData as any); // Type assertion might be needed based on schema strictness
+            addOrder(orderData as any); // Type assertion might be needed based on schema strictness
 
             toast({
                 title: "Order Created",
@@ -581,3 +582,5 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         </Card>
     );
 }
+
+    
