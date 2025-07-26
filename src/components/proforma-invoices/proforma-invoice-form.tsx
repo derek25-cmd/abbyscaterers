@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, Eye, ChevronsUpDown, Check, Settings2, User, Info, FileText } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, Eye, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO, addDays } from 'date-fns';
@@ -68,12 +68,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const router = useRouter();
     const { clients, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
-    const { addOrder } = useOrderStorage();
+    const { orders, addOrder } = useOrderStorage();
     const { toast } = useToast();
 
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
+    const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
 
     const form = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
@@ -128,24 +129,27 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
                     vatType: itemData.vatType,
-                    recipes: [], // Default to empty recipes
+                    recipes: [],
                 }],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
 
-            addOrder(orderData as any); // Type assertion might be needed based on schema strictness
+            addOrder(orderData as any); 
 
             toast({
                 title: "Order Created",
-                description: `Order ${orderData.id} has been saved to the database.`,
+                description: `Order ${orderData.id} has been saved.`,
             });
+            setOpenAccordionItems([]); // Collapse the current item
         } catch (error) {
             console.error("Failed to create order:", error);
+            let message = "An error occurred while saving the order.";
+            if (error instanceof Error) message = error.message;
             toast({
                 variant: "destructive",
                 title: "Failed to Create Order",
-                description: "An error occurred while saving the order.",
+                description: message,
             });
         }
     };
@@ -420,93 +424,108 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     <Card className="p-4 border-primary/20">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Order Items</h3>
-                            <Button type="button" onClick={() => append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() })} size="sm">
+                            <Button type="button" onClick={() => { 
+                                const newIndex = fields.length;
+                                append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() });
+                                setOpenAccordionItems([`item-${newIndex}`]);
+                             }} size="sm">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item
                             </Button>
                         </div>
-                        <div className="space-y-4">
-                        {fields.map((item, index) => (
-                            <div key={item.id} className="p-4 border rounded-md relative bg-card/60 space-y-4">
-                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                    <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
-                                    <div>
-                                        <Label>Event Type</Label>
-                                        <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        )}/>
-                                    </div>
-                                     <div>
-                                        <Label>Meal Type</Label>
-                                        <Controller name={`items.${index}.mealType`} control={form.control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        )}/>
-                                    </div>
-                                    <div>
-                                      <Label>Event Date</Label>
-                                      <Controller name={`items.${index}.date`} control={form.control} render={({ field }) => (
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                          </Popover>
-                                      )} />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                    <div><Label>No. of People</Label><Controller name={`items.${index}.pax`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />} /></div>
-                                    <div><Label>Unit Price</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />} /></div>
-                                    <div><Label>Total</Label><Controller name={`items.${index}.total`} control={form.control} render={({ field }) => <Input type="number" {...field} readOnly />} /></div>
-                                    <div>
-                                        <Label>VAT</Label>
-                                        <Controller name={`items.${index}.vatType`} control={form.control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="inclusive">Inclusive</SelectItem>
-                                                    <SelectItem value="exclusive">Exclusive</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        )}/>
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Particulars Display</Label>
-                                    <Controller
-                                        name={`items.${index}.particularType`}
-                                        control={form.control}
-                                        render={({ field }) => (
-                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="event" id={`event-${index}`} />
-                                                    <Label htmlFor={`event-${index}`}>Event Type</Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="meal" id={`meal-${index}`} />
-                                                    <Label htmlFor={`meal-${index}`}>Meal Type</Label>
-                                                </div>
-                                            </RadioGroup>
-                                        )}
-                                    />
-                                </div>
-
-
-                                <div className="absolute top-1 right-1 flex flex-col gap-1">
-                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="h-7 w-7 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                                     <Button type="button" variant="outline" size="icon" onClick={() => handleSaveAndCreateOrder(index)} className="h-7 w-7"><Save className="h-4 w-4 text-primary" /></Button>
-                                </div>
-                            </div>
-                        ))}
-                        </div>
+                        <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
+                            {fields.map((item, index) => {
+                                const orderId = form.getValues(`items.${index}.id`);
+                                const isSaved = orders.some(o => o.id === orderId);
+                                return (
+                                <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
+                                    <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
+                                        <div className="flex items-center gap-2">
+                                            {isSaved && <CheckCircle className="h-5 w-5 text-green-500"/>}
+                                            <span className="font-semibold">Order Item #{index + 1}</span>
+                                            <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.eventType`)}</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="p-4 pt-2 space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
+                                            <div>
+                                                <Label>Event Type</Label>
+                                                <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                                        <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                                    </Select>
+                                                )}/>
+                                            </div>
+                                            <div>
+                                                <Label>Meal Type</Label>
+                                                <Controller name={`items.${index}.mealType`} control={form.control} render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                                        <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                                    </Select>
+                                                )}/>
+                                            </div>
+                                            <div>
+                                            <Label>Event Date</Label>
+                                            <Controller name={`items.${index}.date`} control={form.control} render={({ field }) => (
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                    </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                </Popover>
+                                            )} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                            <div><Label>No. of People</Label><Controller name={`items.${index}.pax`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />} /></div>
+                                            <div><Label>Unit Price</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />} /></div>
+                                            <div><Label>Total</Label><Controller name={`items.${index}.total`} control={form.control} render={({ field }) => <Input type="number" {...field} readOnly />} /></div>
+                                            <div>
+                                                <Label>VAT</Label>
+                                                <Controller name={`items.${index}.vatType`} control={form.control} render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="inclusive">Inclusive</SelectItem>
+                                                            <SelectItem value="exclusive">Exclusive</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}/>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label>Particulars Display</Label>
+                                            <Controller
+                                                name={`items.${index}.particularType`}
+                                                control={form.control}
+                                                render={({ field }) => (
+                                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
+                                                        <div className="flex items-center space-x-2">
+                                                            <RadioGroupItem value="event" id={`event-${index}`} />
+                                                            <Label htmlFor={`event-${index}`}>Event Type</Label>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <RadioGroupItem value="meal" id={`meal-${index}`} />
+                                                            <Label htmlFor={`meal-${index}`}>Meal Type</Label>
+                                                        </div>
+                                                    </RadioGroup>
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2 border-t">
+                                            <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="h-4 w-4 mr-2" />Remove</Button>
+                                            <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />Save as Order</Button>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                                );
+                            })}
+                        </Accordion>
                     </Card>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -582,5 +601,3 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         </Card>
     );
 }
-
-    
