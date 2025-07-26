@@ -167,9 +167,9 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '10%' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1 text-left" style={{ width: '35%' }}>PARTICULARS</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '20%' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '25%' }}>TOTAL (TSHS)</th>
+                                <th className="border border-gray-800 p-1 text-left" style={{ width: '40%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '25%' }}>UNIT PRICE (TSHS)</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '15%' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                         <tbody>

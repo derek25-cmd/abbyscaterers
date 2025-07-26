@@ -164,9 +164,9 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '10%' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1 text-left" style={{ width: '35%' }}>PARTICULARS</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '20%' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '25%' }}>TOTAL (TSHS)</th>
+                                <th className="border border-gray-800 p-1 text-left" style={{ width: '40%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '25%' }}>UNIT PRICE (TSHS)</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '15%' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                          <tbody>
@@ -192,7 +192,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 <td colSpan={4} rowSpan={8} className="p-1 align-middle border-t-2 border-black flex items-center justify-center">
                                     <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0"/>
                                 </td>
-                                <td className="p-1 text-right font-semibold border-t-2 border-l-2 border-black">Sub-Total (TSHS)</td>
+                                <td className="p-1 text-right font-semibold border-t-2 border-l-2 border-b border-black">Sub-Total (TSHS)</td>
                                 <td className="p-1 text-right font-semibold border-t-2 border-l-2 border-r-2 border-b border-black">{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
@@ -224,8 +224,8 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 <td className="p-1 text-right border-l-2 border-r-2 border-b border-black">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right font-bold bg-secondary/40 border-l-2 border-b-2 border-black">GRAND TOTAL (TSHS)</td>
-                                <td className="p-1 text-right font-bold bg-secondary/40 border-l-2 border-r-2 border-b-2 border-black text-accent">{formatCurrency(grandTotal)}</td>
+                                <td className="p-1 text-right font-bold bg-secondary/40 border-l-2 border-b-2 border-t-2 border-black">GRAND TOTAL (TSHS)</td>
+                                <td className="p-1 text-right font-bold bg-secondary/40 border-l-2 border-r-2 border-b-2 border-t-2 border-black text-accent">{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
                     </table>
