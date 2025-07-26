@@ -164,9 +164,9 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '10%' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '45%' }}>PARTICULARS</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '15%' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '20%' }}>TOTAL (TSHS)</th>
+                                <th className="border border-gray-800 p-1 text-left" style={{ width: '45%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '25%' }}>UNIT PRICE (TSHS)</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '10%' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                          <tbody>
@@ -175,7 +175,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                     <td className="border border-black p-1 text-center">{index + 1}</td>
                                     <td className="border border-black p-1 text-center">{item.pax || '{pax}'}</td>
                                     <td className="border border-black p-1 text-center font-mono text-xs">{item.id}</td>
-                                    <td className="border border-black p-1">
+                                    <td className="border border-black p-1 text-left">
                                         <div className="flex justify-between items-center">
                                             <span>{item.particularDescription || getParticularText(item)}</span>
                                             <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
@@ -192,39 +192,39 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 <td colSpan={4} rowSpan={8} className="p-1 align-middle border-t-2 border-black">
                                     <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0"/>
                                 </td>
-                                <td className="p-1 text-right font-semibold border-t-2 border-black">Sub-Total (TSHS)</td>
+                                <td className="p-1 text-right font-semibold border-t-2 border-l-2 border-black">Sub-Total (TSHS)</td>
                                 <td className="p-1 text-right font-semibold border-t-2 border-black">{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
                                 <>
                                 <tr>
-                                    <td className="p-1 text-right">No of days</td>
-                                    <td className="p-1 text-right">{numberOfDays || 1}</td>
+                                    <td className="p-1 text-right border-l-2 border-black">No of days</td>
+                                    <td className="p-1 text-right border-black">{numberOfDays || 1}</td>
                                 </tr>
                                 <tr>
-                                    <td className="p-1 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
-                                    <td className="p-1 text-right font-bold bg-secondary/20">{formatCurrency(totalForDays)}</td>
+                                    <td className="p-1 text-right font-bold bg-secondary/20 border-l-2 border-black">TOTAL (TSHS)</td>
+                                    <td className="p-1 text-right font-bold bg-secondary/20 border-black">{formatCurrency(totalForDays)}</td>
                                 </tr>
                                 </>
                             )}
                             <tr>
-                                <td className="p-1 text-right">Add Service Charge (TSHS)</td>
-                                <td className="p-1 text-right">{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
+                                <td className="p-1 text-right border-l-2 border-black">Add Service Charge (TSHS)</td>
+                                <td className="p-1 text-right border-black">{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right">Add Transportation Costs (TSHS)</td>
-                                <td className="p-1 text-right">{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
+                                <td className="p-1 text-right border-l-2 border-black">Add Transportation Costs (TSHS)</td>
+                                <td className="p-1 text-right border-black">{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right">Total Before VAT (TSHS)</td>
-                                <td className="p-1 text-right">{formatCurrency(totalBeforeVAT)}</td>
+                                <td className="p-1 text-right border-l-2 border-black">Total Before VAT (TSHS)</td>
+                                <td className="p-1 text-right border-black">{formatCurrency(totalBeforeVAT)}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right">Add VAT 18% (TSHS)</td>
-                                <td className="p-1 text-right">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
+                                <td className="p-1 text-right border-l-2 border-black">Add VAT 18% (TSHS)</td>
+                                <td className="p-1 text-right border-black">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right font-bold bg-secondary/40 border-t-2 border-black">GRAND TOTAL (TSHS)</td>
+                                <td className="p-1 text-right font-bold bg-secondary/40 border-l-2 border-t-2 border-black">GRAND TOTAL (TSHS)</td>
                                 <td className="p-1 text-right font-bold bg-secondary/40 border-t-2 border-black text-accent">{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
