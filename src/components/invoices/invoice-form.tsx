@@ -220,7 +220,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
             <div>
                  <div className="flex justify-end gap-4 mb-4">
                     <Button type="button" variant="outline" onClick={() => setShowPreview(false)}>Back to Edit</Button>
-                    <Button type="button" onClick={form.handleSubmit(handleSave)} disabled={isSubmitting}>
+                    <Button type="button" onClick={() => handleSave(formData)} disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
                         {isEditMode ? 'Update Invoice' : 'Save Invoice'}
                     </Button>
