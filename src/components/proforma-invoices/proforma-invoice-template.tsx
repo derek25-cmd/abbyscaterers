@@ -198,28 +198,28 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                             </tr>
                             {multiplyByDays && (
                             <tr>
-                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td colSpan={4} className="border-l border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">No of days</td>
                                 <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
                             </tr>
                             )}
                             <tr>
-                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td colSpan={4} className="border-l border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Service Charge (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td colSpan={4} className="border-l border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Transportation Costs (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td colSpan={4} className="border-l border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="border-r border-black p-1.5"></td>
+                                <td colSpan={4} className="border-l border-t border-black p-1.5"></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
