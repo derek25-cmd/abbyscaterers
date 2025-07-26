@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, Eye, ChevronsUpDown, Check } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -20,7 +20,6 @@ import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
 import { useInvoiceStorage } from '@/hooks/use-invoice-storage';
 import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
-import { InvoiceTemplate } from './invoice-template';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -72,7 +71,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
 
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPreview, setShowPreview] = useState(false);
 
     const form = useForm<FinalInvoiceFormData>({
         resolver: zodResolver(FinalInvoiceSchema),
@@ -185,7 +183,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         }
     }, [isEditMode, invoiceId, proformaId, getInvoiceById, getProformaById, form]);
 
-    async function handleSave(data: FinalInvoiceFormData) {
+    async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
@@ -213,23 +211,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
     };
     const calculateGrandTotal = () => calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0) + calculateVAT();
 
-    if (showPreview) {
-        const formData = form.getValues();
-        const selectedClient = clients.find(c => c.id === formData.clientId);
-        return (
-            <div>
-                 <div className="flex justify-end gap-4 mb-4">
-                    <Button type="button" variant="outline" onClick={() => setShowPreview(false)}>Back to Edit</Button>
-                    <Button type="button" onClick={() => handleSave(formData)} disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
-                        {isEditMode ? 'Update Invoice' : 'Save Invoice'}
-                    </Button>
-                </div>
-                <InvoiceTemplate invoiceData={formData} client={selectedClient} />
-            </div>
-        )
-    }
-
     return (
         <Card className="max-w-5xl mx-auto">
             <CardHeader>
@@ -237,7 +218,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                 <CardDescription>{proformaId ? `Creating invoice from Proforma #${proformaId}` : "Fill in the details for the final invoice."}</CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={form.handleSubmit(() => setShowPreview(true))} className="space-y-8">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller name="id" control={form.control} render={({ field }) => (
                             <div><Label>Invoice Number</Label><Input {...field} placeholder="e.g., INV-2024-001" /></div>
@@ -491,8 +472,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                     <div className="flex justify-end gap-4">
                         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" size="lg" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Eye className="w-5 h-5 mr-2" />}
-                            Preview Invoice
+                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+                             Save and View Invoice
                         </Button>
                     </div>
                 </form>
@@ -500,3 +481,4 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         </Card>
     );
 }
+

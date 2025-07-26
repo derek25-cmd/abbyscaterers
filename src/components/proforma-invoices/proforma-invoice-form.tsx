@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, Eye, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO, addDays } from 'date-fns';
@@ -20,7 +20,6 @@ import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from '@/lib/schemas';
-import { ProformaInvoiceTemplate } from './proforma-invoice-template';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -73,7 +72,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPreview, setShowPreview] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
 
     const form = useForm<ProformaInvoiceFormData>({
@@ -223,7 +221,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     }, [isEditMode, invoiceId, getProformaById, form]);
 
-    async function handleSave(data: ProformaInvoiceFormData) {
+    async function onSubmit(data: ProformaInvoiceFormData) {
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
@@ -255,24 +253,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     };
     const calculateGrandTotal = () => calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0) + calculateVAT();
 
-
-    if (showPreview) {
-        const formData = form.getValues();
-        const selectedClient = clients.find(c => c.id === formData.clientId);
-        return (
-            <div>
-                 <div className="flex justify-end gap-4 mb-4">
-                    <Button type="button" variant="outline" onClick={() => setShowPreview(false)}>Back to Edit</Button>
-                    <Button type="button" onClick={() => handleSave(formData)} disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
-                        {isEditMode ? 'Update Proforma' : 'Save Proforma'}
-                    </Button>
-                </div>
-                <ProformaInvoiceTemplate invoiceData={formData} client={selectedClient}/>
-            </div>
-        )
-    }
-
     return (
         <Card className="max-w-5xl mx-auto shadow-lg">
             <CardHeader>
@@ -280,7 +260,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 <CardDescription>Fill in the details for the proforma invoice.</CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={form.handleSubmit(() => setShowPreview(true))} className="space-y-6">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
                       <AccordionItem value="item-1">
                         <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Invoice Details</AccordionTrigger>
@@ -592,8 +572,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     <div className="flex justify-end gap-4 pt-4 border-t">
                         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" size="lg" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Eye className="w-5 h-5 mr-2" />}
-                            Preview Proforma
+                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+                            Save and View Invoice
                         </Button>
                     </div>
                 </form>
@@ -601,3 +581,4 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         </Card>
     );
 }
+
