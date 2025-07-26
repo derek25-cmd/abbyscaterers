@@ -187,9 +187,13 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                updateInvoice(invoiceId, data);
-                toast({ title: 'Success', description: 'Invoice updated successfully.' });
-                router.push(`/invoices/${data.id}`);
+                const updated = updateInvoice(invoiceId, data);
+                if (updated) {
+                    toast({ title: 'Success', description: 'Invoice updated successfully.' });
+                    router.push(`/invoices/${updated.id}`);
+                } else {
+                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
+                }
             } else {
                 const newInvoice = addInvoice(data);
                 toast({ title: 'Success', description: 'Invoice created successfully.' });
@@ -473,7 +477,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" size="lg" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
-                             Save and View Invoice
+                            {isEditMode ? 'Update Invoice' : 'Save and View Invoice'}
                         </Button>
                     </div>
                 </form>
@@ -481,4 +485,3 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         </Card>
     );
 }
-
