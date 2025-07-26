@@ -117,8 +117,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         const totalPax = items.reduce((sum, item) => sum + (item.pax || 0), 0)
         if (serviceFields.pax && totalPax > 0) desc += ` to ${totalPax}`;
         if (serviceFields.numberOfDays) desc += ` for ${numberOfDays || '{No. of days}'} day(s)`;
-        if (serviceFields.startDate && startDate) desc += ` from ${format(parseISO(startDate), 'dd/MM/yyyy')}`;
-        if (serviceFields.endDate && endDate) desc += ` to ${format(parseISO(endDate), 'dd/MM/yyyy')}`;
+        if (serviceFields.startDate && startDate && isValid(parseISO(startDate))) desc += ` from ${format(parseISO(startDate), 'dd/MM/yyyy')}`;
+        if (serviceFields.endDate && endDate && isValid(parseISO(endDate))) desc += ` to ${format(parseISO(endDate), 'dd/MM/yyyy')}`;
         if (serviceFields.location && location) desc += ` at ${location}`;
         return desc;
     }, [form]);
@@ -160,12 +160,11 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
             const proforma = getProformaById(proformaId);
             if (proforma) {
                 form.reset({
-                    ...proforma, // Spread proforma data
+                    ...proforma,
                     proformaId: proforma.id,
-                    id: '', // Clear final invoice ID
+                    id: '', 
                     status: 'outstanding',
-                    invoiceDate: new Date().toISOString(), // Set new date for final invoice
-                    // map proforma items to final invoice items
+                    invoiceDate: new Date().toISOString(),
                     items: proforma.items.map(pi => ({
                         id: pi.id,
                         particularType: pi.particularType,

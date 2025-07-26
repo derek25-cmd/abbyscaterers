@@ -121,7 +121,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         try {
             const orderData = {
                 id: itemData.id || `ORD-${Date.now()}`,
-                name: `Order for ${itemData.eventType} on ${format(parseISO(itemData.date!), 'PPP')}`,
+                name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
                 clientEvents: [{
                     clientId: client_id,
                     date: itemData.date || new Date().toISOString(),
@@ -141,7 +141,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 title: "Order Created",
                 description: `Order ${orderData.id} has been saved.`,
             });
-            setOpenAccordionItems([]); // Collapse the current item
+            setOpenAccordionItems([]);
         } catch (error) {
             console.error("Failed to create order:", error);
             let message = "An error occurred while saving the order.";
@@ -167,8 +167,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         if (serviceFields.pax && totalPax > 0) desc += ` to ${totalPax}`;
         
         if (serviceFields.numberOfDays) desc += ` for ${numberOfDays || '{No. of days}'} day(s)`;
-        if (serviceFields.startDate && startDate) desc += ` from ${format(parseISO(startDate), 'dd/MM/yyyy')}`;
-        if (serviceFields.endDate && endDate) desc += ` to ${format(parseISO(endDate), 'dd/MM/yyyy')}`;
+        if (serviceFields.startDate && startDate && isValid(parseISO(startDate))) desc += ` from ${format(parseISO(startDate), 'dd/MM/yyyy')}`;
+        if (serviceFields.endDate && endDate && isValid(parseISO(endDate))) desc += ` to ${format(parseISO(endDate), 'dd/MM/yyyy')}`;
         if (serviceFields.location && location) desc += ` at ${location}`;
         return desc;
     }, [form]);
@@ -196,9 +196,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     
                     if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date') {
                         if (item.particularType === 'event') {
-                            form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${format(parseISO(item.date!), 'PPP')}`)
+                            form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
                         } else {
-                            form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${format(parseISO(item.date!), 'PPP')}`)
+                            form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
                         }
                     }
                 }
