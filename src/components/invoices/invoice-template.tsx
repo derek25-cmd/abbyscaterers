@@ -167,8 +167,8 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                 <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
                                     <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
                                     <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
-                                    <th className="border border-gray-800 p-1" style={{ width: '15%' }}>Order ID</th>
-                                    <th className="border border-gray-800 p-1" style={{ width: '40%' }}>PARTICULARS</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '10%' }}>Order ID</th>
+                                    <th className="border border-gray-800 p-1" style={{ width: '45%' }}>PARTICULARS</th>
                                     <th className="border border-gray-800 p-1" style={{ width: '20%' }}>UNIT PRICE<br/>(TSHS)</th>
                                     <th className="border border-gray-800 p-1" style={{ width: '15%' }}>TOTAL (TSHS)</th>
                                 </tr>
@@ -192,7 +192,12 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                 </tr>
                                 ))}
                                 <tr>
-                                    <td rowSpan={summaryRowCount} colSpan={4} className="border-x border-black"></td>
+                                    <td rowSpan={summaryRowCount} colSpan={4} className="border-x border-black flex items-center justify-center">
+                                        <Textarea
+                                            placeholder="Notes concerning the order..."
+                                            className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none h-full w-full"
+                                        />
+                                    </td>
                                     <td className="border-y border-black p-1.5 text-right font-semibold">Sub-Total (TSHS)</td>
                                     <td className="border border-black p-1.5 text-right font-semibold">{formatCurrency(subtotal)}</td>
                                 </tr>

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -161,8 +162,8 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                             <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>S/No.</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '5%' }}>QTY</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '15%' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '40%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '10%' }}>Order ID</th>
+                                <th className="border border-gray-800 p-1" style={{ width: '45%' }}>PARTICULARS</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '20%' }}>UNIT PRICE<br/>(TSHS)</th>
                                 <th className="border border-gray-800 p-1" style={{ width: '15%' }}>TOTAL (TSHS)</th>
                             </tr>
@@ -186,12 +187,12 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 </tr>
                             ))}
                              <tr>
-                                <td rowSpan={summaryRowCount} colSpan={4} className="border-x border-black p-1.5 align-top">
+                                <td rowSpan={summaryRowCount} colSpan={4} className="border-x border-black p-1.5 align-middle flex items-center justify-center">
                                     <Textarea 
                                         placeholder="Notes concerning the order..." 
                                         value={notes} 
                                         onChange={(e) => setNotes(e.target.value)}
-                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none h-full"
+                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none h-full w-full"
                                     />
                                 </td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
