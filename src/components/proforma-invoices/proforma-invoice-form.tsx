@@ -97,7 +97,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             endDate: new Date().toISOString(),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() }],
+            items: [{ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
         }
     });
     
@@ -426,7 +426,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                             <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Order Items</h3>
                             <Button type="button" onClick={() => { 
                                 const newIndex = fields.length;
-                                append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() });
+                                append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
                                 setOpenAccordionItems([`item-${newIndex}`]);
                              }} size="sm">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item

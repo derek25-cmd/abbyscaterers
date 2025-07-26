@@ -97,7 +97,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
             endDate: new Date().toISOString(),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: '1', particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() }],
+            items: [{ id: '1', particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         }
@@ -121,7 +121,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         if (serviceFields.mealType && items[0]?.mealType) desc += ` ${items[0].mealType}`;
         const totalPax = items.reduce((sum, item) => sum + (item.pax || 0), 0)
         if (serviceFields.pax) desc += ` to ${totalPax || '{pax}'}`;
-        if (serviceFields.numberOfDays) desc += ` # day for ${numberOfDays || '{No. of days}'}`;
+        if (serviceFields.numberOfDays) desc += ` for ${numberOfDays || '{No. of days}'} day(s)`;
         if (serviceFields.startDate && startDate) desc += ` from ${format(parseISO(startDate), 'dd/MM/yyyy')}`;
         if (serviceFields.endDate && endDate) desc += ` to ${format(parseISO(endDate), 'dd/MM/yyyy')}`;
         if (serviceFields.location && location) desc += ` at ${location}`;
@@ -181,7 +181,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                         unitPrice: pi.unitPrice,
                         total: pi.total,
                         date: pi.date,
-                        particularDescription: pi.particularDescription
+                        particularDescription: pi.particularDescription,
+                        vatType: pi.vatType,
                     })),
                     signedAtDate: new Date().toISOString(),
                     signedAtLocation: 'Dar es Salaam'
@@ -379,7 +380,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                     <Card className="p-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold text-primary">Invoice Items</h3>
-                            <Button type="button" onClick={() => append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString() })} size="sm">
+                            <Button type="button" onClick={() => append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' })} size="sm">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item
                             </Button>
                         </div>
