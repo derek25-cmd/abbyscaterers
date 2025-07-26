@@ -62,7 +62,6 @@ const convertToWords = (amount: number): string => {
 
 const formatDate = (dateStr?: string) => {
     if (!dateStr || !isValid(parseISO(dateStr))) return '{Date}';
-    // Format: 10th July 2025
     return format(parseISO(dateStr), 'do MMMM yyyy');
 };
 
@@ -114,6 +113,8 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
     const vat = vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
     const grandTotal = totalBeforeVAT + vat;
 
+    const summaryRowCount = 6 + (multiplyByDays ? 1 : 0);
+
     return (
         <>
             <div style={{ marginLeft: '1cm' }}>
@@ -158,20 +159,20 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     <table className="w-full border-collapse border border-gray-800 text-sm">
                         <thead>
                             <tr style={{ fontWeight: 'bold' }}>
-                                <th className="border border-gray-800 p-1 text-center w-auto">S/No.</th>
-                                <th className="border border-gray-800 p-1 text-center w-auto">Order ID</th>
-                                <th className="border border-gray-800 p-1 text-center w-auto">QTY</th>
-                                <th className="border border-gray-800 p-1 text-center w-[40%]">PARTICULARS</th>
-                                <th className="border border-gray-800 p-1 text-center w-auto">UNIT PRICE<br/>(TSHS)</th>
-                                <th className="border border-gray-800 p-1 text-center w-auto">TOTAL (TSHS)</th>
+                                <th className="border border-gray-800 p-1 text-center" style={{ width: '5%' }}>S/No.</th>
+                                <th className="border border-gray-800 p-1 text-center" style={{ width: '5%' }}>QTY</th>
+                                <th className="border border-gray-800 p-1 text-center" style={{ width: '15%' }}>Order ID</th>
+                                <th className="border border-gray-800 p-1 text-center" style={{ width: '40%' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 p-1 text-center" style={{ width: '17.5%' }}>UNIT PRICE<br/>(TSHS)</th>
+                                <th className="border border-gray-800 p-1 text-center" style={{ width: '17.5%' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {localItems.map((item, index) => (
                                 <tr key={item.id}>
                                     <td className="border border-black p-1 text-center">{index + 1}</td>
-                                    <td className="border border-black p-1 text-center font-mono text-xs">{item.id}</td>
                                     <td className="border border-black p-1 text-center">{item.pax || '{pax}'}</td>
+                                    <td className="border border-black p-1 text-center font-mono text-xs">{item.id}</td>
                                     <td className="border border-black p-1">
                                         <div className="flex justify-between items-center">
                                             <span>{item.particularDescription || getParticularText(item)}</span>
@@ -185,41 +186,47 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 </tr>
                             ))}
                              <tr>
-                                <td colSpan={4} className="border-l border-b border-black p-1.5 align-top">
+                                <td rowSpan={summaryRowCount} className="border-x border-black p-1.5 align-top">
                                     <Textarea 
                                         placeholder="Notes concerning the order..." 
                                         value={notes} 
                                         onChange={(e) => setNotes(e.target.value)}
-                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none"
+                                        className="border-none focus-visible:ring-0 text-center placeholder:text-center bg-transparent resize-none h-full"
                                     />
                                 </td>
+                                <td colSpan={3} className="border-b border-black"></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/20">TOTAL (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right font-bold bg-secondary/20">{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                             {multiplyByDays && (
                             <tr>
-                                <td colSpan={4} className="border-l border-black p-1.5"></td>
+                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">No of days</td>
                                 <td className="border border-black p-1.5 text-right">{numberOfDays || 1}</td>
                             </tr>
                             )}
                             <tr>
-                                <td colSpan={4} className="border-l border-black p-1.5"></td>
+                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Service Charge (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{serviceCharge > 0 ? serviceCharge.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="border-l border-black p-1.5"></td>
+                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Add Transportation Costs (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{transportCosts > 0 ? transportCosts.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="border-l border-black p-1.5"></td>
+                                <td colSpan={3}></td>
+                                <td className="border-y border-black p-1.5 text-right">Total Before VAT (TSHS)</td>
+                                <td className="border border-black p-1.5 text-right">{totalBeforeVAT.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                            <tr>
+                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right">Add VAT 18% (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right">{vat > 0 ? vat.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td colSpan={4} className="border-l border-t border-black p-1.5"></td>
+                                <td colSpan={3}></td>
                                 <td className="border-y border-black p-1.5 text-right font-bold bg-secondary/40">GRAND TOTAL (TSHS)</td>
                                 <td className="border border-black p-1.5 text-right font-bold bg-secondary/40 text-accent">{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
