@@ -104,15 +104,10 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
     });
     
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
-    const watchedItems = form.watch("items");
-    const watchedStartDate = form.watch("startDate");
-    const watchedEndDate = form.watch("endDate");
-    const watchedServiceFields = form.watch("serviceFields");
-    const watchedLocation = form.watch("location");
-    const watchedSelectedEventType = form.watch("selectedEventType");
-    const watchedCustomEventType = form.watch("customEventType");
+    
+    const watchedFormValues = form.watch();
 
-     const buildServiceDesc = () => {
+     const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
         let desc = 'Provision of';
         if (serviceFields.eventType && (selectedEventType || customEventType)) {
@@ -120,17 +115,17 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         }
         if (serviceFields.mealType && items[0]?.mealType) desc += ` ${items[0].mealType}`;
         const totalPax = items.reduce((sum, item) => sum + (item.pax || 0), 0)
-        if (serviceFields.pax) desc += ` to ${totalPax || '{pax}'}`;
+        if (serviceFields.pax && totalPax > 0) desc += ` to ${totalPax}`;
         if (serviceFields.numberOfDays) desc += ` for ${numberOfDays || '{No. of days}'} day(s)`;
         if (serviceFields.startDate && startDate) desc += ` from ${format(parseISO(startDate), 'dd/MM/yyyy')}`;
         if (serviceFields.endDate && endDate) desc += ` to ${format(parseISO(endDate), 'dd/MM/yyyy')}`;
         if (serviceFields.location && location) desc += ` at ${location}`;
         return desc;
-    };
+    }, [form]);
     
     useEffect(() => {
         form.setValue("serviceDesc", buildServiceDesc());
-    }, [watchedServiceFields, watchedItems, form.watch("numberOfDays"), watchedStartDate, watchedEndDate, watchedLocation, watchedSelectedEventType, watchedCustomEventType]);
+    }, [watchedFormValues.serviceFields, watchedFormValues.items, watchedFormValues.numberOfDays, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.location, watchedFormValues.selectedEventType, watchedFormValues.customEventType, buildServiceDesc, form]);
 
 
     useEffect(() => {
@@ -146,7 +141,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
             }
              if (name === 'startDate' || name === 'endDate') {
                 const { startDate, endDate } = form.getValues();
-                if (startDate && endDate) {
+                if (startDate && endDate && isValid(parseISO(startDate)) && isValid(parseISO(endDate))) {
                     const diff = Math.max(1, Math.ceil((parseISO(endDate).getTime() - parseISO(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1);
                     form.setValue('numberOfDays', diff);
                 } else {
@@ -211,13 +206,13 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
         }
     }
 
-    const calculateSubtotal = () => form.getValues('items').reduce((sum, item) => sum + item.total, 0);
+    const calculateSubtotal = () => form.getValues('items').reduce((sum, item) => sum + (item.total || 0), 0);
     const calculateTotalDays = () => form.getValues('multiplyByDays') ? calculateSubtotal() * (form.getValues('numberOfDays') || 1) : calculateSubtotal();
     const calculateVAT = () => {
-        const total = calculateTotalDays() + form.getValues('serviceCharge') + form.getValues('transportCosts');
+        const total = calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0);
         return form.getValues('vatType') === 'exclusive' ? total * 0.18 : 0;
     };
-    const calculateGrandTotal = () => calculateTotalDays() + form.getValues('serviceCharge') + form.getValues('transportCosts') + calculateVAT();
+    const calculateGrandTotal = () => calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0) + calculateVAT();
 
     if (showPreview) {
         const formData = form.getValues();
@@ -226,7 +221,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
             <div>
                  <div className="flex justify-end gap-4 mb-4">
                     <Button type="button" variant="outline" onClick={() => setShowPreview(false)}>Back to Edit</Button>
-                    <Button type="button" onClick={() => form.handleSubmit(handleSave)()} disabled={isSubmitting}>
+                    <Button type="button" onClick={form.handleSubmit(handleSave)} disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="animate-spin mr-2"/> : <Save className="w-4 h-4 mr-2"/>}
                         {isEditMode ? 'Update Invoice' : 'Save Invoice'}
                     </Button>
