@@ -233,7 +233,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     </tbody>
                     </table>
 
-                    <div className="my-4 text-base p-2 bg-white rounded">
+                    <div className="mb-4 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
                     </div>
 

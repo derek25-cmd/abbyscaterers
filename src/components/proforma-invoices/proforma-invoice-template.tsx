@@ -165,8 +165,8 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 <th className="border border-black p-1" style={{ width: '5%' }}>QTY</th>
                                 <th className="border border-black p-1" style={{ width: '10%' }}>Order ID</th>
                                 <th className="border border-black p-1 text-left" style={{ width: '40%' }}>PARTICULARS</th>
-                                <th className="border-r-2 border-r-black border-y border-l border-black p-1 text-right" style={{ width: '20%' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-black p-1 text-right" style={{ width: '20%' }}>TOTAL (TSHS)</th>
+                                <th className="border-r-2 border-r-black border-y border-l border-black p-1 text-right" style={{ width: '25%' }}>UNIT PRICE (TSHS)</th>
+                                <th className="border border-black p-1 text-right" style={{ width: '15%' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                          <tbody>
@@ -188,50 +188,57 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                                 </tr>
                             ))}
                             {/* Summary Rows Start Here */}
-                             <tr>
-                                <td colSpan={4} rowSpan={8} className="p-1 align-top border-t-2 border-x-2 border-b-2 border-black flex items-center justify-center">
+                            <tr>
+                                <td colSpan={4} className="p-1 align-top border-t-2 border-x-2 border-b-2 border-black flex items-center justify-center">
                                     <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0 p-1"/>
                                 </td>
-                                <td className="p-1 text-right font-semibold border-t-2 border-b border-l border-r-2 border-r-black border-black">Sub-Total (TSHS)</td>
+                                <td className="p-1 text-right font-semibold border-t-2 border-b border-l border-r-2 border-black">Sub-Total (TSHS)</td>
                                 <td className="p-1 text-right font-semibold border-t-2 border-b border-r border-black">{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
                                 <>
                                 <tr>
-                                    <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">No of days</td>
+                                    <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                    <td className="p-1 text-right border-b border-l border-r-2 border-black">No of days</td>
                                     <td className="p-1 text-right border-b border-r border-black">{numberOfDays || 1}</td>
                                 </tr>
                                 <tr>
-                                    <td className="p-1 text-right font-bold bg-secondary/20 border-b border-l border-r-2 border-r-black border-black">TOTAL (TSHS)</td>
+                                    <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                    <td className="p-1 text-right font-bold bg-secondary/20 border-b border-l border-r-2 border-black">TOTAL (TSHS)</td>
                                     <td className="p-1 text-right font-bold bg-secondary/20 border-b border-r border-black">{formatCurrency(totalForDays)}</td>
                                 </tr>
                                 </>
                             )}
                             <tr>
-                                <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Add Service Charge (TSHS)</td>
+                                <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                <td className="p-1 text-right border-b border-l border-r-2 border-black">Add Service Charge (TSHS)</td>
                                 <td className="p-1 text-right border-b border-r border-black">{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Add Transportation Costs (TSHS)</td>
+                                <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                <td className="p-1 text-right border-b border-l border-r-2 border-black">Add Transportation Costs (TSHS)</td>
                                 <td className="p-1 text-right border-b border-r border-black">{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Total Before VAT (TSHS)</td>
+                                <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                <td className="p-1 text-right border-b border-l border-r-2 border-black">Total Before VAT (TSHS)</td>
                                 <td className="p-1 text-right border-b border-r border-black">{formatCurrency(totalBeforeVAT)}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Add VAT 18% (TSHS)</td>
+                                <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                <td className="p-1 text-right border-b border-l border-r-2 border-black">Add VAT 18% (TSHS)</td>
                                 <td className="p-1 text-right border-b border-r border-black">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right font-bold bg-secondary/40 border-b-2 border-l border-r-2 border-r-black border-black">GRAND TOTAL (TSHS)</td>
-                                <td className="p-1 text-right font-bold bg-secondary/40 border-b-2 border-r border-black text-accent">{formatCurrency(grandTotal)}</td>
+                                <td colSpan={4} className="p-1 align-top border-x-2 border-b-2 border-black"></td>
+                                <td className="p-1 text-right font-bold bg-secondary/40 border-b border-l border-r-2 border-black">GRAND TOTAL (TSHS)</td>
+                                <td className="p-1 text-right font-bold bg-secondary/40 border-b border-r border-black text-accent">{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div className="my-4 text-base p-2 bg-white rounded">
-                        <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
+                    <div className="mb-4 text-base p-2 bg-white rounded">
+                        <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
                     
                     <div className="flex-grow"></div>
