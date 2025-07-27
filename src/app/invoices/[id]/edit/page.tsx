@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from 'react';
 import { InvoiceForm } from "@/components/invoices/invoice-form";
 import { useParams } from 'next/navigation';
 
