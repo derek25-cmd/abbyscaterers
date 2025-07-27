@@ -129,65 +129,66 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     return (
         <>
         <div style={{ marginLeft: '1cm' }}>
-            <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
-                <div className="relative" style={{ paddingBottom: '80px' }}>
-                    {/* Header */}
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                             {/* Placeholder for a logo if needed */}
-                        </div>
-                        <div className="text-right">
-                        <h2 className="font-bold text-4xl" style={{letterSpacing: '0.1em'}}>INVOICE</h2>
-                        <div className="mt-1 text-base space-y-0">
-                            <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
-                            <p><strong>Invoice No.:</strong> {id || '{Invoice No.}'}</p>
-                        </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-end mb-3">
-                        <div className="flex-1">
-                            <div className="text-base">
-                                <p className="mb-1"><strong>To:</strong></p>
-                                {receiverName && <p className="mb-1 ml-6">{receiverName}</p>}
-                                {receiverPosition && <p className="mb-1 ml-6">{receiverPosition}</p>}
-                                {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
-                                {(client?.address1 || client?.address2) && <p className="mb-1 ml-6">{client.address1} {client.address2}</p>}
-                                {lpoNumber && <p className="mb-2 ml-6 pt-2 font-bold text-lg">LPO No.: {lpoNumber}</p>}
+             <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
+             <p style={{textIndent: '0pt', textAlign: 'left'}}><br/></p>
+             <table style={{borderCollapse:'collapse', marginLeft:'5.87726pt'}} cellSpacing="0">
+                <tbody>
+                    <tr style={{height:'29pt'}}>
+                        <td style={{width:'64pt', paddingTop: '5px', paddingLeft: '5px'}}>
+                            <p style={{fontWeight:'bold'}}>To:</p>
+                            {receiverName && <p className="mb-1">{receiverName}</p>}
+                            {receiverPosition && <p className="mb-1">{receiverPosition}</p>}
+                            {client?.companyName && <p className="mb-1">{client.companyName}</p>}
+                            {(client?.address1 || client?.address2) && <p className="mb-1">{client.address1} {client.address2}</p>}
+                            {lpoNumber && <p className="mb-2 pt-2 font-bold text-lg">LPO No.: {lpoNumber}</p>}
+                        </td>
+                        <td style={{width:'91pt'}}></td>
+                        <td style={{width:'325pt'}}></td>
+                        <td style={{width:'176pt', textAlign:'right', verticalAlign: 'top', paddingTop: '5px'}}>
+                            <h2 style={{fontWeight: 'bold', fontSize: '28px', letterSpacing: '0.1em'}}>INVOICE</h2>
+                        </td>
+                        <td style={{width:'148pt', textAlign: 'right', verticalAlign: 'top', paddingTop: '5px', paddingRight: '5px'}}>
+                            <div style={{marginTop: '0', marginBottom: '0'}}>
+                                <p style={{marginBottom: '0'}}><strong>Date:</strong> {formatDate(invoiceDate)}</p>
+                                <p style={{marginTop: '0'}}><strong>Invoice No.:</strong> {id || '{Invoice No.}'}</p>
                             </div>
-                        </div>
-                        <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-12px' }}>
-                            <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
-                                <div><strong>TIN: 151-209-696</strong></div>
-                                <div><strong>VRN: 40-050290-L</strong></div>
+                        </td>
+                    </tr>
+                    <tr style={{height:'26pt'}}>
+                        <td style={{width:'64pt'}}></td>
+                        <td style={{width:'91pt'}}></td>
+                        <td style={{width:'325pt'}}></td>
+                        <td style={{width:'176pt', textAlign:'right', verticalAlign: 'bottom'}}>
+                            <div style={{width: 220, position: "relative", zIndex: 10, marginBottom: '-12px', marginLeft: 'auto', marginRight: 0}}>
+                                <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
+                                    <div><strong>TIN: 151-209-696</strong></div>
+                                    <div><strong>VRN: 40-050290-L</strong></div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </td>
+                        <td style={{width:'148pt'}}></td>
+                    </tr>
+                    <tr style={{height:'30pt'}}>
+                        <td style={{width:'804pt', borderTop: '2px solid #323232', paddingTop: '10px', paddingBottom: '10px', fontStyle:'italic', textAlign:'center'}} colSpan={5}>
+                             <p>{serviceDescription}</p>
+                        </td>
+                    </tr>
                     
-                    <hr className="border-t-2 border-gray-800" />
-                    
-                    <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
-                        <p>{serviceDescription}</p>
-                    </div>
+                    {/* Table Header */}
+                     <tr style={{height:'25pt', fontWeight:'bold', textAlign:'center', backgroundColor:'#E9E9E9'}}>
+                        <td style={{width:'64pt', border:'2px solid #323232', padding:'5px'}}>S/No.</td>
+                        <td style={{width:'91pt', border:'2px solid #323232', padding:'5px'}}>QTY</td>
+                        <td style={{width:'325pt', border:'2px solid #323232', padding:'5px', textAlign:'left'}}>PARTICULARS</td>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>UNIT PRICE (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>TOTAL (TSHS)</td>
+                    </tr>
 
-                    <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed' }}>
-                         <thead>
-                            <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
-                                <th className="border border-black p-1" style={{ width: '5%' }}>S/No.</th>
-                                <th className="border border-black p-1" style={{ width: '5%' }}>QTY</th>
-                                <th className="border border-black p-1" style={{ width: '10%' }}>Order ID</th>
-                                <th className="border border-black p-1 text-left" style={{ width: '45%' }}>PARTICULARS</th>
-                                <th className="border-r-2 border-r-black border-y border-l border-black p-1 text-right" style={{ width: '15%' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-black p-1 text-right" style={{ width: '20%' }}>TOTAL (TSHS)</th>
-                            </tr>
-                        </thead>
-                       <tbody>
-                        {localItems.map((item, index) => (
-                            <tr key={item.id}>
-                            <td className="border border-black p-1 text-center">{index + 1}</td>
-                            <td className="border border-black p-1 text-center">{item.pax || '{pax}'}</td>
-                            <td className="border border-black p-1 text-center font-mono text-xs">{item.id}</td>
-                            <td className="border border-black p-1 text-left">
+                    {/* Table Body - Items */}
+                    {localItems.map((item, index) => (
+                         <tr key={item.id} style={{height:'26pt'}}>
+                            <td style={{width:'64pt', border:'2px solid #323232', padding:'5px', textAlign:'center'}}>{index + 1}</td>
+                            <td style={{width:'91pt', border:'2px solid #323232', padding:'5px', textAlign:'center'}}>{item.pax || '{pax}'}</td>
+                            <td style={{width:'325pt', border:'2px solid #323232', padding:'5px'}}>
                                 <div className="flex justify-between items-center">
                                     <span>{item.particularDescription || getParticularText(item)}</span>
                                     <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden">
@@ -195,79 +196,78 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                                     </button>
                                 </div>
                             </td>
-                            <td className="border-r-2 border-r-black border-y border-l border-black p-1 text-right">{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
-                            <td className="border border-black p-1 text-right">{item.total ? formatCurrency(item.total) : '{Total}'}</td>
+                            <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
+                            <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{item.total ? formatCurrency(item.total) : '{Total}'}</td>
                         </tr>
-                        ))}
-                        {/* Summary Rows */}
-                        <tr>
-                            <td colSpan={4} rowSpan={8} className="p-1 align-top border border-black flex items-center justify-center">
-                                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0 p-1"/>
-                            </td>
-                            <td className="p-1 text-right font-semibold border-b border-l border-r-2 border-r-black border-black">Sub-Total (TSHS)</td>
-                            <td className="p-1 text-right font-semibold border-b border-r border-black">{formatCurrency(subtotal)}</td>
+                    ))}
+                    
+                    {/* Summary Section */}
+                    <tr style={{height:'25pt'}}>
+                        <td style={{width:'480pt', border:'2px solid #323232', padding:'5px', verticalAlign:'top'}} colSpan={3} rowSpan={8}>
+                             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0 p-1"/>
+                        </td>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right', fontWeight:'bold'}}>Sub-Total (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right', fontWeight:'bold'}}>{formatCurrency(subtotal)}</td>
+                    </tr>
+                    {multiplyByDays && (
+                        <>
+                        <tr style={{height:'24pt'}}>
+                            <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>No of days</td>
+                            <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{numberOfDays || 1}</td>
                         </tr>
-                        {multiplyByDays && (
-                            <>
-                            <tr>
-                                <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">No of days</td>
-                                <td className="p-1 text-right border-b border-r border-black">{numberOfDays || 1}</td>
-                            </tr>
-                            <tr>
-                                <td className="p-1 text-right font-bold bg-secondary/20 border-b border-l border-r-2 border-r-black border-black">TOTAL (TSHS)</td>
-                                <td className="p-1 text-right font-bold bg-secondary/20 border-b border-r border-black">{formatCurrency(totalForDays)}</td>
-                            </tr>
-                            </>
-                        )}
-                        <tr>
-                            <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Add Service Charge (TSHS)</td>
-                            <td className="p-1 text-right border-b border-r border-black">{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
+                         <tr style={{height:'24pt'}}>
+                            <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right', fontWeight:'bold', backgroundColor:'#E9E9E9'}}>TOTAL (TSHS)</td>
+                            <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right', fontWeight:'bold', backgroundColor:'#E9E9E9'}}>{formatCurrency(totalForDays)}</td>
                         </tr>
-                        <tr>
-                            <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Add Transportation Costs (TSHS)</td>
-                            <td className="p-1 text-right border-b border-r border-black">{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Total Before VAT (TSHS)</td>
-                            <td className="p-1 text-right border-b border-r border-black">{formatCurrency(totalBeforeVat)}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-1 text-right border-b border-l border-r-2 border-r-black border-black">Add VAT 18% (TSHS)</td>
-                            <td className="p-1 text-right border-b border-r border-black">{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-1 text-right font-bold bg-secondary/40 border-b border-l border-r-2 border-r-black border-black">GRAND TOTAL (TSHS)</td>
-                            <td className="p-1 text-right font-bold bg-secondary/40 border-b border-r border-black text-accent">{formatCurrency(grandTotal)}</td>
-                        </tr>
-                    </tbody>
-                    </table>
+                        </>
+                    )}
+                     <tr style={{height:'24pt'}}>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>Add Service Charge (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
+                    </tr>
+                     <tr style={{height:'24pt'}}>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>Add Transportation Costs (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
+                    </tr>
+                     <tr style={{height:'24pt'}}>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>Total Before VAT (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{formatCurrency(totalBeforeVat)}</td>
+                    </tr>
+                    <tr style={{height:'24pt'}}>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>Add VAT 18% (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right'}}>{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
+                    </tr>
+                     <tr style={{height:'24pt'}}>
+                        <td style={{width:'176pt', border:'2px solid #323232', padding:'5px', textAlign:'right', fontWeight:'bold', backgroundColor:'#E9E9E9'}}>GRAND TOTAL (TSHS)</td>
+                        <td style={{width:'148pt', border:'2px solid #323232', padding:'5px', textAlign:'right', fontWeight:'bold', backgroundColor:'#E9E9E9'}}>{formatCurrency(grandTotal)}</td>
+                    </tr>
+                </tbody>
+             </table>
+            <div className="my-4 text-base p-2 bg-white rounded">
+                <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
+            </div>
 
-                    <div className="my-4 text-base p-2 bg-white rounded">
-                        <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
+            <div className="flex justify-between items-end mt-4">
+                <div className="text-xs space-y-1">
+                    <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
+                    <p className="mt-1">For and on behalf of Abby's Legendary Caterers Limited</p>
+                    <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
+                    <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '10px'}}>
+                        <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
+                        <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
+                        <div>Account Number(TZS)</div><div>: 9120002502036</div>
+                        <div>Branch</div><div>: PENINSULA Branch</div>
+                        <div>Branch Code</div><div>: 121009</div>
+                        <div>Swift Code</div><div>: SBICTZTX</div>
                     </div>
-
-                    <div className="flex justify-between items-end mt-4">
-                        <div className="text-xs space-y-1">
-                            <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
-                            <p className="mt-1">For and on behalf of Abby's Legendary Caterers Limited</p>
-                            <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
-                            <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0 text-[10px]">
-                                <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
-                                <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
-                                <div>Account Number(TZS)</div><div>: 9120002502036</div>
-                                <div>Branch</div><div>: PENINSULA Branch</div>
-                                <div>Branch Code</div><div>: 121009</div>
-                                <div>Swift Code</div><div>: SBICTZTX</div>
-                            </div>
-                        </div>
-                        <div className="text-center text-sm">
-                        <img alt="Signature and Seal" className="h-24 w-auto block mx-auto mb-2" src="https://placehold.co/200x100.png" data-ai-hint="signature seal"/>
-                        </div>
-                    </div>
-
-                    <p className="text-center text-base mt-4 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
                 </div>
-            </Card>
+                <div className="text-center text-sm">
+                <img alt="Signature and Seal" className="h-24 w-auto block mx-auto mb-2" src="https://placehold.co/200x100.png" data-ai-hint="signature seal"/>
+                </div>
+            </div>
+
+            <p className="text-center text-base mt-4 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
+             </Card>
         </div>
         <Dialog open={editState.open} onOpenChange={(isOpen) => !isOpen && setEditState({ open: false, itemId: '', currentValue: '' })}>
             <DialogContent>
@@ -297,3 +297,4 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         </>
     );
 }
+
