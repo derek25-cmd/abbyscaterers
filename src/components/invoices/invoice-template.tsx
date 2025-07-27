@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { format, isValid, parseISO } from 'date-fns';
 import type { Invoice, Client, InvoiceItem } from '@/types';
@@ -62,7 +62,7 @@ const convertToWords = (amount: number): string => {
 
 const formatDate = (dateStr?: string) => {
     if (!dateStr || !isValid(parseISO(dateStr))) return '{Date}';
-    return format(parseISO(dateStr), 'dd/MM/yyyy');
+    return format(parseISO(dateStr), 'do MMMM yyyy');
 };
 
 interface EditParticularsState {
@@ -76,13 +76,22 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
     const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
+    const [serviceDescription, setServiceDescription] = useState(invoiceData.serviceDesc);
+
+    useEffect(() => {
+        if(invoiceData.serviceDesc?.startsWith('Provision of')) {
+            setServiceDescription(invoiceData.serviceDesc.replace('Provision of', 'Being Costs of'));
+        } else {
+            setServiceDescription(invoiceData.serviceDesc);
+        }
+    }, [invoiceData.serviceDesc]);
     
     const getParticularText = (item: any): string => {
         if (item.particularType === 'event') {
             const eventText = item.eventType === 'Custom' ? (item.customEventType || '{EventType}') : (item.eventType || '{EventType}');
-            return `${eventText}${item.date ? ` on ${formatDate(item.date)}` : ''}`;
+            return `${eventText}${item.date ? ` on ${format(parseISO(item.date), 'PPP')}` : ''}`;
         }
-        return `${item.mealType || '{MealType}'}${item.date ? ` on ${formatDate(item.date)}` : ''}`;
+        return `${item.mealType || '{MealType}'}${item.date ? ` on ${format(parseISO(item.date), 'PPP')}` : ''}`;
     }
 
     const handleOpenEditDialog = (item: any) => {
@@ -105,7 +114,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     };
 
 
-    const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceDesc, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation } = invoiceData;
+    const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation } = invoiceData;
 
     const subtotal = localItems.reduce((sum, item) => sum + item.total, 0);
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
@@ -158,7 +167,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     <hr className="border-t-2 border-gray-800" />
                     
                     <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
-                        <p>{serviceDesc}</p>
+                        <p>{serviceDescription}</p>
                     </div>
 
                     <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed' }}>
@@ -233,16 +242,16 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     </tbody>
                     </table>
 
-                    <div className="mb-4 text-base p-2 bg-white rounded">
+                    <div className="my-4 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
                     </div>
 
-                    <div className="flex justify-between items-end mt-8">
-                        <div className="text-base space-y-2">
+                    <div className="flex justify-between items-end mt-4">
+                        <div className="text-xs space-y-1">
                             <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                             <p className="mt-1">For and on behalf of Abby's Legendary Caterers Limited</p>
-                            <p className="font-bold pt-4">Please remit your payment to the below Bank details:</p>
-                            <div className="grid grid-cols-[max-content_auto] gap-x-4 gap-y-1">
+                            <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
+                            <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0 text-[10px]">
                                 <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
                                 <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
                                 <div>Account Number(TZS)</div><div>: 9120002502036</div>
@@ -256,7 +265,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                         </div>
                     </div>
 
-                    <p className="text-center text-base mt-6 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
+                    <p className="text-center text-base mt-4 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
                 </div>
             </Card>
         </div>
