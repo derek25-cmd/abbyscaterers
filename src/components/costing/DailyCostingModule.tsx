@@ -10,7 +10,7 @@ import EventIncomeTable from "./EventIncomeTable";
 import DateSelector from "./DateSelector";
 import CostingSummary from "./CostingSummary";
 import { useToast } from "@/hooks/use-toast";
-import { useDailyMenuStorage } from "@/hooks/use-daily-menu-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -18,7 +18,7 @@ import html2canvas from "html2canvas";
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
-  const { getEventsForDate } = useDailyMenuStorage();
+  const { getEventsForDate } = useOrderStorage();
   const { ingredients } = useIngredientStorage();
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);

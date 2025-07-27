@@ -125,14 +125,14 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                             {lpoNumber && <p className="mb-2 ml-6 pt-2 font-bold text-lg">LPO No.: {lpoNumber}</p>}
                         </div>
                     </div>
-                    <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '2px' }}>
-                        <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
-                            <div><strong>TIN: 151-209-696</strong></div>
-                            <div><strong>VRN: 40-050290-L</strong></div>
+                    <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-5px' }}>
+                            <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
+                                <div><strong>TIN: 151-209-696</strong></div>
+                                <div><strong>VRN: 40-050290-L</strong></div>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <hr className="border-t-2 border-gray-800" />
+                    <hr className="border-t-2 border-gray-800" />
                 
                 <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
                     <p>{serviceDescription}</p>
@@ -202,15 +202,15 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     </tbody>
                 </table>
                 <div className="my-4 text-base p-2 bg-white rounded">
-                    <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)}.</span>
+                    <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                 </div>
 
                 <div className="flex justify-between items-end mt-4">
-                    <div style={{fontSize: '11px'}}>
+                    <div style={{fontSize: '15px'}}>
                         <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                         <p className="mt-1">For and on behalf of Abby's Legendary Caterers Limited</p>
                         <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
-                        <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '10px'}}>
+                        <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
                             <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
                             <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
                             <div>Account Number(TZS)</div><div>: 9120002502036</div>
