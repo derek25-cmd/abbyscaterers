@@ -577,7 +577,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" size="lg" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
-                            {isEditMode ? 'Update Invoice' : 'Save and View Invoice'}
+                            {isEditMode ? 'Update and View Invoice' : 'Save and View Invoice'}
                         </Button>
                     </div>
                 </form>
