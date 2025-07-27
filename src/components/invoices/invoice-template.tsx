@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { format, isValid, parseISO } from 'date-fns';
 import type { Invoice, Client, InvoiceItem } from '@/types';
@@ -63,11 +63,11 @@ const formatDate = (dateStr?: string) => {
 
 export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     
-    const [localItems] = React.useState(invoiceData.items);
-    const [notes, setNotes] = React.useState("");
-    const [serviceDescription, setServiceDescription] = React.useState(invoiceData.serviceDesc);
+    const [localItems] = useState(invoiceData.items);
+    const [notes, setNotes] = useState("");
+    const [serviceDescription, setServiceDescription] = useState(invoiceData.serviceDesc);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if(invoiceData.serviceDesc?.startsWith('Provision of')) {
             setServiceDescription(invoiceData.serviceDesc.replace('Provision of', 'Being Costs of'));
         } else if (!invoiceData.serviceDesc?.startsWith('Being Costs of')) {
@@ -227,6 +227,5 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                 <p className="text-center text-base mt-4 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
              </Card>
         </div>
-        </>
     );
 }
