@@ -20,6 +20,19 @@ import { cn } from "@/lib/utils";
 
 type InvoiceWithClientName = Invoice & { clientName: string };
 
+const calculateGrandTotal = (invoice: Invoice): number => {
+    const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
+    const totalBeforeVat = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
+    const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
+    return totalBeforeVat + vat;
+};
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+}
+
+
 export const getInvoiceColumns = (
   onDelete: (invoiceId: string) => void
 ): ColumnDef<InvoiceWithClientName>[] => [
@@ -30,17 +43,33 @@ export const getInvoiceColumns = (
   },
   {
     accessorKey: "clientName",
-    header: "Client Name",
+    header: "Customer Name",
     cell: ({ row }) => <div className="font-medium">{row.getValue("clientName")}</div>,
   },
   {
+    accessorKey: "proformaId",
+    header: "Proforma No.",
+    cell: ({ row }) => {
+        const proformaId = row.getValue("proformaId") as string | undefined;
+        return <div className="font-mono text-xs">{proformaId || 'N/A'}</div>;
+    },
+  },
+  {
     accessorKey: "invoiceDate",
-    header: "Invoice Date",
+    header: "Date",
     cell: ({ row }) => {
         const dateStr = row.getValue("invoiceDate") as string | undefined;
         if (!dateStr) return 'N/A';
         const date = parseISO(dateStr);
         return isValid(date) ? format(date, 'PPP') : 'Invalid Date';
+    },
+  },
+  {
+    id: "amount",
+    header: "Amount",
+    cell: ({ row }) => {
+        const amount = calculateGrandTotal(row.original);
+        return <div className="text-right font-medium">{formatCurrency(amount)}</div>;
     },
   },
   {
@@ -52,7 +81,7 @@ export const getInvoiceColumns = (
         <Badge
           className={cn(
             "capitalize",
-            status === 'paid' ? 'bg-success/20 text-success-foreground border-success/30' : 'bg-destructive/10 text-destructive-foreground border-destructive/20'
+            status === 'paid' ? 'bg-success/20 text-green-700 border-success/30' : 'bg-destructive/10 text-destructive border-destructive/20'
           )}
           variant="outline"
         >
