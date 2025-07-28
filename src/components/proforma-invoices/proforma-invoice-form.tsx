@@ -130,6 +130,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             const orderData = {
                 id: itemData.id || `ORD-${Date.now()}`,
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
+                description: `Order related to proforma ${proformaId}`,
                 proformaId: proformaId,
                 clientEvents: [{
                     clientId: client_id,
