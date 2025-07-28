@@ -24,6 +24,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES } from "@/types";
+import { Textarea } from "../ui/textarea";
 
 interface OrderFormProps {
   order?: Order;
@@ -105,6 +106,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
       : {
           id: "",
           name: "",
+          description: "",
+          proformaId: "",
           clientEvents: [{ 
               clientId: clientId || "", 
               date: new Date().toISOString(), 
@@ -178,7 +181,20 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                     <FormItem>
                         <FormLabel>Order Name</FormLabel>
                         <FormControl><Input placeholder="e.g. Wedding Weekend Special" {...field} /></FormControl>
-                        <FormDescription>A descriptive name for the order.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                <FormField control={form.control} name="proformaId" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Proforma No. (Optional)</FormLabel>
+                        <FormControl><Input placeholder="e.g. PI-2024-001" {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                 <FormField control={form.control} name="description" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl><Textarea placeholder="A brief summary of the order..." {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />

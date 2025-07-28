@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye, Users, Utensils } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,79 +14,94 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Order } from "@/types";
+import { useClientStorage } from "@/hooks/use-client-storage";
+
+type OrderWithClientName = Order & { customerName: string };
 
 export const getOrderColumns = (
-  onDelete: (menuId: string) => void
-): ColumnDef<Order>[] => [
-  {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Order ID
-      </Button>
-    ),
-    cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Order Name
-      </Button>
-    ),
-    cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
-  },
-   {
-    accessorKey: "clientEvents",
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-        Client Events
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const clientEvents = row.getValue("clientEvents") as any[];
-      return <div className="flex items-center gap-2"><Users className="h-4 w-4 text-muted-foreground"/> {clientEvents?.length ?? 0}</div>;
+  onDelete: (orderId: string) => void
+): ColumnDef<OrderWithClientName>[] => {
+  
+  // This is a 'hook' but used within the function scope that generates columns.
+  // It's safe because getOrderColumns is called inside the component body.
+  const { getClientById } = useClientStorage();
+
+  return [
+    {
+      accessorKey: "id",
+      header: "Order ID",
+      cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const order = row.original;
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href={`/orders/${order.id}`} className="flex items-center cursor-pointer">
-                <Eye className="mr-2 h-4 w-4" /> View Details
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/orders/${order.id}/edit`} className="flex items-center cursor-pointer">
-                <Edit className="mr-2 h-4 w-4" /> Edit Order
-              </Link>
-            </DropdownMenuItem>
-             <DropdownMenuItem asChild>
-              <Link href={`/menus/new?orderId=${order.id}`} className="flex items-center cursor-pointer">
-                <Utensils className="mr-2 h-4 w-4" /> Create Menu
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onDelete(order.id)}
-              className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center cursor-pointer"
-            >
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Order
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+    {
+      accessorKey: "proformaId",
+      header: "Proforma No.",
+      cell: ({ row }) => {
+        const proformaId = row.getValue("proformaId") as string;
+        return <div className="font-mono text-xs">{proformaId || 'N/A'}</div>;
+      },
     },
-  },
-];
+    {
+      accessorKey: "customerName",
+      header: "Customer Name",
+      cell: ({ row }) => {
+        const order = row.original;
+        const client = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId) : null;
+        return (
+          <div className="font-medium">
+            {client ? client.companyName : "N/A"}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => {
+        const description = row.getValue("description") as string;
+        const name = row.original.name;
+        return <div className="text-muted-foreground truncate" style={{maxWidth: '250px'}}>{description || name}</div>;
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const order = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href={`/orders/${order.id}`} className="flex items-center cursor-pointer">
+                  <Eye className="mr-2 h-4 w-4" /> View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/orders/${order.id}/edit`} className="flex items-center cursor-pointer">
+                  <Edit className="mr-2 h-4 w-4" /> Edit Order
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/menus/new?orderId=${order.id}`} className="flex items-center cursor-pointer">
+                  <Utensils className="mr-2 h-4 w-4" /> Create Menu
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(order.id)}
+                className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center cursor-pointer"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+};

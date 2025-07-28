@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -40,18 +41,26 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Order } from "@/types";
+import { useClientStorage } from "@/hooks/use-client-storage";
 
 export function OrderListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
   
-  const { orders, isLoading, deleteOrder: deleteOrderFromStore } = useOrderStorage();
+  const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore } = useOrderStorage();
+  const { clients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+
+  const getClientName = React.useCallback((clientId: string | null) => {
+    if (!clientId) return 'N/A';
+    const client = clients.find(c => c.id === clientId);
+    return client?.companyName || 'Unknown Client';
+  }, [clients]);
 
   const filteredOrders = React.useMemo(() => {
     if (!clientIdFilter) {
@@ -81,8 +90,16 @@ export function OrderListTable() {
   
   const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest), [handleDeleteRequest]);
 
+  const tableData = React.useMemo(() => filteredOrders.map(order => {
+      const client = order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId) : 'N/A';
+      return {
+          ...order,
+          customerName: client,
+      };
+  }), [filteredOrders, getClientName]);
+
   const table = useReactTable({
-    data: filteredOrders,
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -103,6 +120,8 @@ export function OrderListTable() {
     }
   });
 
+  const isLoading = ordersLoading || clientsLoading;
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="mr-2 h-8 w-8 animate-spin" />Loading orders...</div>;
   }
@@ -111,10 +130,10 @@ export function OrderListTable() {
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Input
-          placeholder="Filter by order name..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter by customer name..."
+          value={(table.getColumn("customerName")?.getFilterValue() as string) ?? ""}
           onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
+            table.getColumn("customerName")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
@@ -195,7 +214,7 @@ export function OrderListTable() {
           Next
         </Button>
       </div>
-      <AlertDialog open={!!itemToDelete} onOpenChange={(open: boolean) => !open && setItemToDelete(null)}>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

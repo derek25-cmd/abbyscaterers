@@ -1,5 +1,6 @@
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -120,6 +121,8 @@ export interface ClientEvent {
 export interface Order {
   id: string; // User-facing unique ID
   name: string;
+  description?: string;
+  proformaId?: string;
   clientEvents: ClientEvent[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string

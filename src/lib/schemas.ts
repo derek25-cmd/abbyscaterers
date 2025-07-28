@@ -148,6 +148,8 @@ export const ClientEventSchema = z.object({
 export const OrderSchema = z.object({
   id: z.string().min(1, "Menu ID is required"),
   name: z.string().min(1, "Menu name is required"),
+  description: z.string().optional(),
+  proformaId: z.string().optional(),
   clientEvents: z.array(ClientEventSchema).min(1, "At least one client event is required"),
 });
 export type OrderFormData = z.infer<typeof OrderSchema>;
