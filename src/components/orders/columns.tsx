@@ -13,19 +13,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Order } from "@/types";
-import { useClientStorage } from "@/hooks/use-client-storage";
+import type { Order, Client } from "@/types";
 
 type OrderWithClientName = Order & { customerName: string };
 
 export const getOrderColumns = (
-  onDelete: (orderId: string) => void
+  onDelete: (orderId: string) => void,
+  getClientById: (id: string) => Client | undefined
 ): ColumnDef<OrderWithClientName>[] => {
-  
-  // This is a 'hook' but used within the function scope that generates columns.
-  // It's safe because getOrderColumns is called inside the component body.
-  const { getClientById } = useClientStorage();
-
   return [
     {
       accessorKey: "id",

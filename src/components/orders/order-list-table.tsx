@@ -48,7 +48,7 @@ export function OrderListTable() {
   const clientIdFilter = searchParams.get('clientId');
   
   const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore } = useOrderStorage();
-  const { clients, isLoading: clientsLoading } = useClientStorage();
+  const { clients, isLoading: clientsLoading, getClientById } = useClientStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -88,7 +88,7 @@ export function OrderListTable() {
     }
   }, [itemToDelete, deleteOrderFromStore, toast]);
   
-  const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest), [handleDeleteRequest]);
+  const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest, getClientById), [handleDeleteRequest, getClientById]);
 
   const tableData = React.useMemo(() => filteredOrders.map(order => {
       const client = order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId) : 'N/A';
