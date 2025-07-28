@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
+import { SalesChart } from "@/components/dashboard/sales-chart";
 
 export default function DashboardPage() {
   const { orders: menus, isLoading: menusLoading } = useOrderStorage();
@@ -131,6 +132,10 @@ export default function DashboardPage() {
           icon={Package}
           description="Inventory status (demo)"
         />
+      </div>
+
+      <div>
+        <SalesChart />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
