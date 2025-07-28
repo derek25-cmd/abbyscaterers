@@ -57,6 +57,11 @@ export function useInvoiceStorage() {
   const getInvoiceById = useCallback((id: string) => {
     return getByIdFromStorage(id);
   }, []);
+  
+  const getInvoiceByProformaId = useCallback((proformaId: string) => {
+    const allInvoices = getAllFromStorage();
+    return allInvoices.find(invoice => invoice.proformaId === proformaId);
+  }, []);
 
   return { 
     invoices, 
@@ -65,6 +70,7 @@ export function useInvoiceStorage() {
     updateInvoice, 
     deleteInvoice, 
     getInvoiceById,
+    getInvoiceByProformaId,
     refreshInvoices 
   };
 }
