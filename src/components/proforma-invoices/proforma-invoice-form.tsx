@@ -106,6 +106,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const handleSaveAndCreateOrder = (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
         const client_id = form.getValues('clientId');
+        const proformaId = form.getValues('id');
 
         if (!client_id) {
             toast({
@@ -115,11 +116,21 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             });
             return;
         }
+        
+        if (!proformaId) {
+            toast({
+                variant: "destructive",
+                title: "Proforma ID Missing",
+                description: "Cannot create an order without a proforma invoice ID."
+            });
+            return;
+        }
 
         try {
             const orderData = {
                 id: itemData.id || `ORD-${Date.now()}`,
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
+                proformaId: proformaId,
                 clientEvents: [{
                     clientId: client_id,
                     date: itemData.date || new Date().toISOString(),
