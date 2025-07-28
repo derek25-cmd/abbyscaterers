@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns"
 
 import {
@@ -107,28 +107,45 @@ export function SalesChart() {
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig}>
-          <BarChart accessibilityLayer data={salesData}>
+          <LineChart
+            accessibilityLayer
+            data={salesData}
+            margin={{
+              left: 12,
+              right: 12,
+            }}
+          >
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
               tickLine={false}
-              tickMargin={10}
               axisLine={false}
+              tickMargin={8}
               tickFormatter={(value) => value}
             />
-            <YAxis 
-               tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent 
-                labelKey="date" 
-                formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-                indicator="dot"
-              />}
+              content={
+                <ChartTooltipContent
+                  indicator="dot"
+                  formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+                />
+              }
             />
-            <Bar dataKey="sales" fill="var(--color-sales)" radius={4} />
-          </BarChart>
+            <Line
+              dataKey="sales"
+              type="monotone"
+              stroke="var(--color-sales)"
+              strokeWidth={2}
+              dot={true}
+            />
+          </LineChart>
         </ChartContainer>
       </CardContent>
     </Card>
