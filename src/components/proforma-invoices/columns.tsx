@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ProformaInvoice } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
+import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
+
 
 type ProformaInvoiceWithClientName = ProformaInvoice & { clientName: string };
 
@@ -42,6 +45,22 @@ export const getProformaInvoiceColumns = (
     },
   },
   {
+    accessorKey: "isInvoiced",
+    header: "Status",
+    cell: ({ row }) => {
+      const isInvoiced = row.getValue("isInvoiced");
+      return (
+        <Badge
+          variant={isInvoiced ? "destructive" : "secondary"}
+          className={cn(isInvoiced && "bg-amber-100 text-amber-800 border-amber-300")}
+        >
+          {isInvoiced ? <Lock className="mr-1 h-3 w-3"/> : null}
+          {isInvoiced ? 'Invoiced' : 'Open'}
+        </Badge>
+      );
+    }
+  },
+  {
     id: "actions",
     cell: ({ row }) => {
       const invoice = row.original;
@@ -61,7 +80,7 @@ export const getProformaInvoiceColumns = (
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/proforma-invoices/${invoice.id}/edit`} className="flex items-center cursor-pointer">
+              <Link href={`/proforma-invoices/${invoice.id}/edit`} className={cn("flex items-center cursor-pointer", invoice.isInvoiced && "text-muted-foreground pointer-events-none")}>
                 <Edit className="mr-2 h-4 w-4" /> Edit Proforma
               </Link>
             </DropdownMenuItem>

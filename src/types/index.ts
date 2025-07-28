@@ -163,6 +163,7 @@ export interface ProformaInvoice {
   items: InvoiceItem[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  isInvoiced?: boolean; // New status flag
 }
 
 

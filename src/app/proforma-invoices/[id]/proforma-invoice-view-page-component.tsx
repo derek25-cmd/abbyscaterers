@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,10 +11,22 @@ import type { ProformaInvoice, Client } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Edit, Download, Trash2, FileCheck } from "lucide-react";
+import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -26,8 +39,12 @@ export function ProformaInvoiceViewPageComponent() {
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passcode, setPasscode] = useState("");
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
+  
+  const isLocked = invoice?.isInvoiced && !isUnlocked;
 
   useEffect(() => {
     if (proformasLoading || clientsLoading) return;
@@ -48,6 +65,17 @@ export function ProformaInvoiceViewPageComponent() {
         setError("Proforma invoice not found.");
     }
   }, [invoiceId, getProformaById, getClientById, proformasLoading, clientsLoading]);
+  
+  const handleUnlock = () => {
+      if (passcode === "Abbys") {
+          setIsUnlocked(true);
+          toast({ title: "Unlocked", description: "Proforma invoice is now available for editing." });
+      } else {
+          toast({ variant: "destructive", title: "Incorrect Passcode", description: "The passcode you entered is incorrect." });
+      }
+      setPasscode("");
+  };
+
 
   const handleExportPDF = async () => {
     setExporting(true);
@@ -75,7 +103,7 @@ export function ProformaInvoiceViewPageComponent() {
     if(invoiceId) {
         deleteProformaInvoice(invoiceId);
         toast({ title: "Proforma Invoice Deleted", description: "The proforma invoice has been successfully deleted." });
-        router.push('/proforma-invoices');
+        router.push('/invoicing/proforma-invoices');
     }
   }
 
@@ -94,7 +122,7 @@ export function ProformaInvoiceViewPageComponent() {
         <h2 className="text-2xl font-semibold text-destructive mb-4">Error</h2>
         <p className="text-muted-foreground mb-6">{error}</p>
         <Button asChild>
-          <Link href="/proforma-invoices">Go to Proforma Invoices</Link>
+          <Link href="/invoicing/proforma-invoices">Go to Proforma Invoices</Link>
         </Button>
       </div>
     );
@@ -106,7 +134,7 @@ export function ProformaInvoiceViewPageComponent() {
         <h2 className="text-2xl font-semibold text-destructive mb-4">Proforma Invoice Not Found</h2>
         <p className="text-muted-foreground mb-6">The requested proforma invoice could not be found.</p>
         <Button asChild>
-          <Link href="/proforma-invoices">Go to Proforma Invoices</Link>
+          <Link href="/invoicing/proforma-invoices">Go to Proforma Invoices</Link>
         </Button>
       </div>
     );
@@ -118,7 +146,36 @@ export function ProformaInvoiceViewPageComponent() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-primary">Proforma Invoice Preview</h1>
           <div className="space-x-2 flex flex-wrap">
-            <Button variant="outline" onClick={() => router.push(`/proforma-invoices/${invoiceId}/edit`)}>
+            
+            {isLocked && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700">
+                           <Lock className="w-4 h-4 mr-2" /> Unlock for Editing
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Enter Passcode to Edit</AlertDialogTitle>
+                            <AlertDialogDescription>
+                               This proforma has been invoiced and is locked. Please enter the admin passcode to make changes.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <Input 
+                            type="password" 
+                            placeholder="Enter passcode..."
+                            value={passcode}
+                            onChange={(e) => setPasscode(e.target.value)}
+                         />
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setPasscode('')}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleUnlock}>Unlock</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+            
+            <Button variant="outline" onClick={() => router.push(`/proforma-invoices/${invoiceId}/edit`)} disabled={isLocked}>
               <Edit className="w-4 h-4 mr-2" /> Edit
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
@@ -128,8 +185,9 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={() => router.push(`/invoices/new?fromProforma=${invoiceId}`)}>
-                <FileCheck className="w-4 h-4 mr-2" /> Create Final Invoice
+             <Button onClick={() => router.push(`/invoices/new?fromProforma=${invoiceId}`)} disabled={!!invoice.isInvoiced}>
+                <FileCheck className="w-4 h-4 mr-2" /> 
+                {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
           </div>
         </div>

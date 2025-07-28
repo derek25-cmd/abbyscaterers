@@ -1,8 +1,10 @@
 
+
 "use client";
 
 import type { Invoice } from "@/types";
 import type { FinalInvoiceFormData } from "@/lib/schemas";
+import { updateProformaInvoice } from "./proforma-invoice-data";
 
 const INVOICES_STORAGE_KEY = "caterSmartFinalInvoices";
 
@@ -36,6 +38,25 @@ function saveInvoicesToStorage(invoices: Invoice[]): void {
   }
 }
 
+function markProformaAsInvoiced(proformaId: string) {
+    const PROFORMA_KEY = "caterSmartProformaInvoices";
+    if (typeof window === "undefined") return;
+
+    try {
+        const proformasData = localStorage.getItem(PROFORMA_KEY);
+        if (proformasData) {
+            let proformas = JSON.parse(proformasData);
+            const proformaIndex = proformas.findIndex((p: any) => p.id === proformaId);
+            if (proformaIndex !== -1) {
+                proformas[proformaIndex].isInvoiced = true;
+                localStorage.setItem(PROFORMA_KEY, JSON.stringify(proformas));
+            }
+        }
+    } catch (error) {
+        console.error("Failed to mark proforma as invoiced:", error);
+    }
+}
+
 export function getAllInvoices(): Invoice[] {
   return getInvoicesFromStorage();
 }
@@ -60,6 +81,12 @@ export function addInvoice(invoiceData: FinalInvoiceFormData): Invoice {
   };
   const updatedList = [...allInvoices, newInvoice];
   saveInvoicesToStorage(updatedList);
+  
+  // If this invoice was created from a proforma, mark it as invoiced.
+  if (invoiceData.proformaId) {
+      markProformaAsInvoiced(invoiceData.proformaId);
+  }
+
   return newInvoice;
 }
 
