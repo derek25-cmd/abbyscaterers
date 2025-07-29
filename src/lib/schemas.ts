@@ -217,9 +217,7 @@ export const FinalInvoiceSchema = z.object({
     id: z.string().min(1, "Invoice number is required"),
     proformaId: z.string().optional(),
     status: z.enum(['outstanding', 'paid']),
-    invoiceDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-        message: "A valid date is required",
-    }),
+    invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
     clientId: z.string().nullable(),
     receiverName: z.string(),
     receiverPosition: z.string(),
@@ -232,13 +230,22 @@ export const FinalInvoiceSchema = z.object({
     vatType: z.enum(['inclusive', 'exclusive']),
     selectedEventType: z.string(),
     customEventType: z.string(),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
+    startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
+    endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
     serviceFields: z.record(z.boolean()),
     serviceDesc: z.string(),
     items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
+}).refine(data => {
+    if (!data.startDate || !data.endDate) return true;
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return end >= start;
+}, {
+    message: "End date cannot be before start date",
+    path: ["endDate"],
 });
+
 
 export type FinalInvoiceFormData = z.infer<typeof FinalInvoiceSchema>;

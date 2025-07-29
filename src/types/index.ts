@@ -1,6 +1,7 @@
 
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",

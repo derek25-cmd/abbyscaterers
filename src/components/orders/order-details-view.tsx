@@ -34,6 +34,10 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
         return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
     };
 
+    const formatCurrency = (amount: number) => {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+    }
+
     return (
         <Card className="bg-card/50 shadow-md">
             <CardHeader className="border-b">
@@ -61,8 +65,8 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                  <div className="border-l border-border pl-6">
                      <h4 className="font-semibold text-foreground mb-2 flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary"/>Pricing</h4>
                      <div className="text-sm space-y-2 text-muted-foreground">
-                        <p>Unit Price: <span className="font-medium text-foreground">${event.unitPrice.toFixed(2)}</span></p>
-                        <p>Total Price: <span className="font-medium text-foreground">${totalPrice.toFixed(2)}</span></p>
+                        <p>Unit Price: <span className="font-medium text-foreground">{formatCurrency(event.unitPrice)}</span></p>
+                        <p>Total Price: <span className="font-medium text-foreground">{formatCurrency(totalPrice)}</span></p>
                         <p>VAT: <Badge variant="outline">{event.vatType}</Badge></p>
                      </div>
                  </div>
