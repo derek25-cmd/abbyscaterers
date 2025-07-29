@@ -67,7 +67,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const router = useRouter();
     const { clients, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
-    const { orders, addOrder } = useOrderStorage();
+    const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
     const { toast } = useToast();
 
     const isEditMode = !!invoiceId;
@@ -95,7 +95,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             endDate: new Date().toISOString(),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
+            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
         }
     });
     
@@ -109,26 +109,18 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         const proformaId = form.getValues('id');
 
         if (!client_id) {
-            toast({
-                variant: "destructive",
-                title: "Client Not Selected",
-                description: "Please select a client before creating an order."
-            });
+            toast({ variant: "destructive", title: "Client Not Selected", description: "Please select a client before creating or updating an order." });
             return;
         }
-        
         if (!proformaId) {
-            toast({
-                variant: "destructive",
-                title: "Proforma ID Missing",
-                description: "Cannot create an order without a proforma invoice ID."
-            });
+            toast({ variant: "destructive", title: "Proforma ID Missing", description: "Cannot create/update an order without a proforma invoice ID." });
             return;
         }
 
         try {
-            const orderData = {
-                id: itemData.id || `ORD-${Date.now()}`,
+            const existingOrder = getOrderById(itemData.id);
+            const orderPayload = {
+                id: itemData.id,
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
                 description: `Order related to proforma ${proformaId}`,
                 proformaId: proformaId,
@@ -139,28 +131,26 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
                     vatType: itemData.vatType,
-                    recipes: [],
+                    recipes: existingOrder?.clientEvents?.[0]?.recipes || [],
                 }],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
             };
 
-            addOrder(orderData as any); 
-
-            toast({
-                title: "Order Created",
-                description: `Order ${orderData.id} has been saved.`,
-            });
-            setOpenAccordionItems([]);
+            if (existingOrder) {
+                // Update existing order
+                updateOrder(itemData.id, orderPayload as any);
+                toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
+            } else {
+                // Add new order
+                addOrder(orderPayload as any); 
+                toast({ title: "Order Created", description: `Order ${itemData.id} has been saved.` });
+            }
+            // Visually confirm save by closing accordion
+            setOpenAccordionItems(prev => prev.filter(p => p !== `item-${itemIndex}`));
         } catch (error) {
-            console.error("Failed to create order:", error);
+            console.error("Failed to create/update order:", error);
             let message = "An error occurred while saving the order.";
             if (error instanceof Error) message = error.message;
-            toast({
-                variant: "destructive",
-                title: "Failed to Create Order",
-                description: message,
-            });
+            toast({ variant: "destructive", title: "Failed to Save Order", description: message });
         }
     };
 
@@ -422,7 +412,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                             <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Order Items</h3>
                             <Button type="button" onClick={() => { 
                                 const newIndex = fields.length;
-                                append({ id: Date.now().toString(), particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
+                                append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
                                 setOpenAccordionItems([`item-${newIndex}`]);
                              }} size="sm">
                                 <Plus className="w-4 h-4 mr-2" /> Add Item
@@ -443,7 +433,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4 pt-2 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
+                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} readOnly />} /></div>
                                             <div>
                                                 <Label>Event Type</Label>
                                                 <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
@@ -515,7 +505,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                         </div>
                                         <div className="flex justify-between items-center pt-2 border-t">
                                             <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="h-4 w-4 mr-2" />Remove</Button>
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />Save as Order</Button>
+                                            <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />{isSaved ? 'Update Order' : 'Save as Order'}</Button>
                                         </div>
                                     </AccordionContent>
                                 </AccordionItem>

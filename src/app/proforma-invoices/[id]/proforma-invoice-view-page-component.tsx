@@ -27,12 +27,14 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
   const router = useRouter();
   const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading } = useProformaInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { addInvoice } = useInvoiceStorage();
   const { toast } = useToast();
 
   const [invoice, setInvoice] = useState<ProformaInvoice | undefined>(undefined);
@@ -41,6 +43,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [exporting, setExporting] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passcode, setPasscode] = useState("");
+  const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
@@ -104,6 +107,52 @@ export function ProformaInvoiceViewPageComponent() {
         deleteProformaInvoice(invoiceId);
         toast({ title: "Proforma Invoice Deleted", description: "The proforma invoice has been successfully deleted." });
         router.push('/invoicing/proforma-invoices');
+    }
+  }
+
+  const handleCreateFinalInvoice = () => {
+    if (!invoice) return;
+    setIsCreatingInvoice(true);
+    try {
+        const newInvoiceData = {
+            id: `INV-${Date.now()}`,
+            proformaId: invoice.id,
+            status: 'outstanding' as const,
+            invoiceDate: new Date().toISOString(),
+            clientId: invoice.clientId,
+            receiverName: invoice.receiverName,
+            receiverPosition: invoice.receiverPosition,
+            lpoNumber: invoice.lpoNumber,
+            location: invoice.location,
+            numberOfDays: invoice.numberOfDays,
+            multiplyByDays: invoice.multiplyByDays,
+            serviceCharge: invoice.serviceCharge,
+            transportCosts: invoice.transportCosts,
+            vatType: invoice.vatType,
+            selectedEventType: invoice.selectedEventType,
+            customEventType: invoice.customEventType,
+            startDate: invoice.startDate,
+            endDate: invoice.endDate,
+            serviceFields: invoice.serviceFields,
+            serviceDesc: invoice.serviceDesc,
+            items: invoice.items.map(item => ({ ...item })),
+            signedAtDate: new Date().toISOString(),
+            signedAtLocation: 'Dar es Salaam'
+        };
+        const newInvoice = addInvoice(newInvoiceData);
+        toast({
+            title: "Final Invoice Created",
+            description: `Invoice ${newInvoice.id} has been generated successfully.`
+        });
+        router.push(`/invoices/${newInvoice.id}`);
+    } catch(error) {
+        console.error("Failed to create final invoice:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "An error occurred while creating the final invoice."
+        });
+        setIsCreatingInvoice(false);
     }
   }
 
@@ -185,9 +234,9 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={() => router.push(`/invoices/new?fromProforma=${invoiceId}`)} disabled={!!invoice.isInvoiced}>
-                <FileCheck className="w-4 h-4 mr-2" /> 
-                {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
+             <Button onClick={handleCreateFinalInvoice} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+                {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
+                {isCreatingInvoice ? "Creating..." : invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
           </div>
         </div>
