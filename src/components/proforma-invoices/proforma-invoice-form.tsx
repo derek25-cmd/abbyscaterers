@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO, addDays } from 'date-fns';
@@ -65,7 +65,7 @@ const serviceFieldsList = [
 
 export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceFormProps) {
     const router = useRouter();
-    const { clients, isLoading: clientsLoading } = useClientStorage();
+    const { clients, isLoading: clientsLoading, getClientById: getClientDetails } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
     const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
     const { toast } = useToast();
@@ -102,6 +102,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
+    const selectedClientId = form.watch('clientId');
+    const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
 
     const handleSaveAndCreateOrder = (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
@@ -262,8 +264,18 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     return (
         <Card className="max-w-5xl mx-auto shadow-lg">
             <CardHeader>
-                <CardTitle className="text-3xl font-bold text-primary">{isEditMode ? "Edit Proforma Invoice" : "Create New Proforma Invoice"}</CardTitle>
-                <CardDescription>Fill in the details for the proforma invoice.</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle className="text-3xl font-bold text-primary">{isEditMode ? "Edit Proforma Invoice" : "Create New Proforma Invoice"}</CardTitle>
+                        <CardDescription>Fill in the details for the proforma invoice.</CardDescription>
+                    </div>
+                    {selectedClient && (
+                         <div className="text-right p-2 rounded-md bg-muted/50 border">
+                            <p className="text-sm text-muted-foreground">Client</p>
+                            <p className="text-lg font-bold text-primary flex items-center gap-2"><Building className="h-5 w-5" />{selectedClient.companyName}</p>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

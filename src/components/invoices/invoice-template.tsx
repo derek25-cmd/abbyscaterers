@@ -68,15 +68,19 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     const [serviceDescription, setServiceDescription] = useState(invoiceData.serviceDesc);
 
     useEffect(() => {
-        if(invoiceData.serviceDesc?.startsWith('Provision of')) {
-            setServiceDescription(invoiceData.serviceDesc.replace('Provision of', 'Being Costs of'));
-        } else if (!invoiceData.serviceDesc?.startsWith('Being Costs of')) {
-             setServiceDescription(`Being Costs of ${invoiceData.serviceDesc}`);
+        let finalDesc = invoiceData.serviceDesc || '';
+        if (finalDesc.startsWith('Provision of')) {
+            finalDesc = finalDesc.replace('Provision of', 'Being Costs for Provision of');
+        } else if (!finalDesc.startsWith('Being Costs for')) {
+            finalDesc = `Being Costs for ${finalDesc}`;
         }
-        else {
-            setServiceDescription(invoiceData.serviceDesc);
+        
+        if(invoiceData.proformaId) {
+            finalDesc += ` as per Proforma Invoice No. ${invoiceData.proformaId}.`;
         }
-    }, [invoiceData.serviceDesc]);
+
+        setServiceDescription(finalDesc);
+    }, [invoiceData.serviceDesc, invoiceData.proformaId]);
     
     const getParticularText = (item: InvoiceItem): string => {
         if (item.particularType === 'event') {
@@ -100,7 +104,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     
     return (
         <div style={{ marginLeft: '1cm' }}>
-                             <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
+             <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
                 <p style={{textIndent: '0pt', textAlign: 'left'}}><br/></p>
                 <div className="flex justify-between items-start mb-2 relative">
                     <div className="flex-1"></div>
@@ -131,7 +135,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                             </div>
                         </div>
                     </div>
- <hr className="border-t-2 border-gray-800" />
+                <hr className="border-t-2 border-gray-800" />
                 
                 <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
                     <p>{serviceDescription}</p>

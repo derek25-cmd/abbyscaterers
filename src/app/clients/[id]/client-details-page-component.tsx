@@ -10,6 +10,13 @@ import { Button } from '@/components/ui/button';
 import Link from "next/link";
 import { LoadingPage } from '@/components/layout/loading-page';
 import { ClientActionCenter } from '@/components/clients/client-action-center';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+
 
 export function ClientDetailsPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -18,6 +25,7 @@ export function ClientDetailsPageComponent() {
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [componentLoading, setComponentLoading] = useState(true); // Renamed from isLoading to avoid conflict
   const [error, setError] = useState<string | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(true);
 
   const clientId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -92,7 +100,23 @@ export function ClientDetailsPageComponent() {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in space-y-6">
-      <ClientDetailsView client={client} />
+      <Collapsible open={isDetailsOpen} onOpenChange={setIsDetailsOpen} className="space-y-2">
+        <div className="flex justify-between items-center border-b pb-2">
+          <h2 className="text-xl font-semibold text-foreground">
+            Client Details
+          </h2>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-9 p-0">
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDetailsOpen ? '' : '-rotate-90'}`} />
+              <span className="sr-only">Toggle Details</span>
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="CollapsibleContent">
+            <ClientDetailsView client={client} />
+        </CollapsibleContent>
+      </Collapsible>
+
       <ClientActionCenter client={client} />
     </div>
   );
