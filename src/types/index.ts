@@ -1,11 +1,9 @@
 
 
-
-
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
-  "Legal", "Military", "Governmental", "Religious", "NGO"
+  "Legal", "Military", "Governmental", "Religious", "NGO", "Public Health"
 ] as const;
 export type OrganizationType = (typeof ORGANIZATION_TYPES)[number];
 
@@ -24,8 +22,8 @@ export interface Contact {
 export interface Client {
   id: string; // Customer Registration Number
   companyName: string;
-  companyEmail: string;
-  phoneNumber: string;
+  companyEmail?: string;
+  phoneNumber?: string;
   address1: string;
   address2?: string;
   postalCode?: string;

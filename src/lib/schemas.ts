@@ -26,17 +26,20 @@ export const ContactSchema = z.object({
 export const ClientSchema = z.object({
   id: z.string().min(1, "Customer Registration Number is required"),
   companyName: z.string().min(1, "Company name is required"),
-  companyEmail: z.string().email().min(1, "A valid company email is required"),
-  phoneNumber: z.string().min(1, "Company phone number is required"),
+  companyEmail: z.string().email("Invalid email address").optional().or(z.literal('')),
+  phoneNumber: z.string().optional(),
   address1: z.string().min(1, "Address 1 is required"),
-  address2: z.string().optional(),
+  address2: z.string().optional().refine(
+    (val) => !val || val.toUpperCase().startsWith("P.O.BOX"),
+    { message: "Address 2 must start with 'P.O.BOX'" }
+  ),
   primaryLocation: z.string().min(1, "Primary location is required"),
   typeOfOrganization: z.enum(ORGANIZATION_TYPES),
   postalCode: z.string().optional(),
   lastContacted: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: "Invalid ISO date string",
   }),
-  contacts: z.array(ContactSchema).min(1, "At least one contact is required."),
+  contacts: z.array(ContactSchema).optional(),
 });
 
 export type ClientFormData = z.infer<typeof ClientSchema>;
@@ -180,43 +183,8 @@ const isValidDate = (dateString?: string) => {
     return !isNaN(Date.parse(dateString));
 };
 
-export const ProformaInvoiceSchema = z.object({
-  id: z.string().min(1, "Invoice number is required"),
-  invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
-  clientId: z.string().nullable(),
-  receiverName: z.string(),
-  receiverPosition: z.string(),
-  lpoNumber: z.string(),
-  location: z.string(),
-  numberOfDays: z.number().min(1),
-  multiplyByDays: z.boolean(),
-  serviceCharge: z.number().min(0),
-  transportCosts: z.number().min(0),
-  vatType: z.enum(['inclusive', 'exclusive']),
-  selectedEventType: z.string(),
-  customEventType: z.string(),
-  startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
-  endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
-  serviceFields: z.record(z.boolean()),
-  serviceDesc: z.string(),
-  items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
-}).refine(data => {
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    return end >= start;
-}, {
-    message: "End date cannot be before start date",
-    path: ["endDate"],
-});
-
-export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
-
-
-// Final Invoice Schema
-export const FinalInvoiceSchema = z.object({
+const baseInvoiceSchema = z.object({
     id: z.string().min(1, "Invoice number is required"),
-    proformaId: z.string().optional(),
-    status: z.enum(['outstanding', 'paid']),
     invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
     clientId: z.string().nullable(),
     receiverName: z.string(),
@@ -235,16 +203,53 @@ export const FinalInvoiceSchema = z.object({
     serviceFields: z.record(z.boolean()),
     serviceDesc: z.string(),
     items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
+});
+
+export const ProformaInvoiceSchema = baseInvoiceSchema.refine(data => {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    if(start > end) return false;
+
+    // Check if each item date is within the range
+    for (const item of data.items) {
+        if (!item.date) return false; // Date is required for items
+        const itemDate = new Date(item.date);
+        if (itemDate < start || itemDate > end) {
+            return false;
+        }
+    }
+    return true;
+}, {
+    message: "End date cannot be before start date, and all item dates must be within the start and end date range.",
+    path: ["endDate"], 
+});
+
+export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
+
+
+// Final Invoice Schema
+export const FinalInvoiceSchema = baseInvoiceSchema.extend({
+    proformaId: z.string().optional(),
+    status: z.enum(['outstanding', 'paid']),
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
 }).refine(data => {
-    if (!data.startDate || !data.endDate) return true;
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
-    return end >= start;
+    if(start > end) return false;
+
+    // Check if each item date is within the range
+    for (const item of data.items) {
+        if (!item.date) return false;
+        const itemDate = new Date(item.date);
+        if (itemDate < start || itemDate > end) {
+            return false;
+        }
+    }
+    return true;
 }, {
-    message: "End date cannot be before start date",
-    path: ["endDate"],
+    message: "End date cannot be before start date, and all item dates must be within the start and end date range.",
+    path: ["endDate"], 
 });
 
 

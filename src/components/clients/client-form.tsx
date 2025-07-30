@@ -70,7 +70,7 @@ export function ClientForm({ client }: ClientFormProps) {
           typeOfOrganization: undefined,
           postalCode: "",
           lastContacted: new Date().toISOString(),
-          contacts: [{ name: "", email: "", phone: "" }],
+          contacts: [],
         },
   });
 
@@ -84,7 +84,7 @@ export function ClientForm({ client }: ClientFormProps) {
       form.reset({
         ...client,
         lastContacted: client.lastContacted ? client.lastContacted : new Date().toISOString(),
-        contacts: client.contacts && client.contacts.length > 0 ? client.contacts : [{ name: "", email: "", phone: "" }]
+        contacts: client.contacts && client.contacts.length > 0 ? client.contacts : []
       });
     }
   }, [client, form]);
@@ -179,7 +179,7 @@ export function ClientForm({ client }: ClientFormProps) {
                 name="companyEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company Email Address</FormLabel>
+                    <FormLabel>Company Email Address (Optional)</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="e.g. contact@awesomecatering.com" {...field} />
                     </FormControl>
@@ -192,7 +192,7 @@ export function ClientForm({ client }: ClientFormProps) {
                 name="phoneNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Company Phone Number</FormLabel>
+                    <FormLabel>Company Phone Number (Optional)</FormLabel>
                     <FormControl>
                       <Input type="tel" placeholder="e.g. (555) 123-4567" {...field} />
                     </FormControl>
@@ -259,9 +259,9 @@ export function ClientForm({ client }: ClientFormProps) {
                     name="address2"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Address 2 (Optional)</FormLabel>
+                        <FormLabel>Address 2 (P.O.BOX)</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g. Suite 100, Apt B" {...field} />
+                            <Input placeholder="e.g. P.O.BOX 12345" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -287,17 +287,15 @@ export function ClientForm({ client }: ClientFormProps) {
 
         <Card>
             <CardHeader>
-                <CardTitle>Contact Persons</CardTitle>
+                <CardTitle>Contact Persons (Optional)</CardTitle>
                 <CardDescription>Add one or more contact people for this client.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
             {fields.map((item, index) => (
               <div key={item.id} className="border p-4 rounded-lg relative space-y-4">
-                 {fields.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive" onClick={() => remove(index)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                )}
+                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive" onClick={() => remove(index)}>
+                    <Trash2 className="h-4 w-4" />
+                 </Button>
                 <FormField
                   control={form.control}
                   name={`contacts.${index}.name`}

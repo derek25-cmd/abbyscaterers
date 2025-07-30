@@ -205,13 +205,17 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     }
                 }
             }
-            if (name === 'startDate' || name === 'endDate') {
+             if (name === 'startDate' || name === 'endDate') {
                 const { startDate, endDate } = form.getValues();
                 if (startDate && endDate && isValid(parseISO(startDate)) && isValid(parseISO(endDate))) {
                     const diff = Math.max(1, Math.ceil((parseISO(endDate).getTime() - parseISO(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1);
                     form.setValue('numberOfDays', diff);
                 } else {
                     form.setValue('numberOfDays', 1);
+                }
+
+                if(name === 'endDate' && endDate && isValid(parseISO(endDate))){
+                    form.setValue('invoiceDate', endDate);
                 }
             }
         });

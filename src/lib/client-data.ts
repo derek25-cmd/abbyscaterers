@@ -57,14 +57,14 @@ export function addClient(clientData: ClientFormData): Client {
     ...clientData,
     id: clientData.id,
     companyName: clientData.companyName,
-    companyEmail: clientData.companyEmail,
-    phoneNumber: clientData.phoneNumber,
+    companyEmail: clientData.companyEmail || "",
+    phoneNumber: clientData.phoneNumber || "",
     address1: clientData.address1,
     address2: clientData.address2 || "",
     primaryLocation: clientData.primaryLocation,
     typeOfOrganization: clientData.typeOfOrganization,
     postalCode: clientData.postalCode || "",
-    contacts: clientData.contacts.filter(c => c.name), // Only save contacts with a name
+    contacts: clientData.contacts ? clientData.contacts.filter(c => c.name) : [], // Only save contacts with a name
     lastContacted: clientData.lastContacted,
     createdAt: now,
     updatedAt: now,
@@ -87,7 +87,7 @@ export function updateClient(originalId: string, updates: ClientFormData): Clien
     ...clients[clientIndex],
     ...updates,
     id: updates.id,
-    contacts: updates.contacts.filter(c => c.name), // Filter out empty contacts
+    contacts: updates.contacts ? updates.contacts.filter(c => c.name) : [], // Filter out empty contacts
     updatedAt: new Date().toISOString(),
   };
   
