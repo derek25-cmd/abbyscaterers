@@ -103,10 +103,16 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
     }
     
     return (
-        <div style={{ marginLeft: '1cm' }}>
-             <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
+        <div style={{
+            backgroundImage: "url('/abby-letterhead.png')",
+            backgroundSize: 'contain',
+            backgroundPosition: 'top center',
+            backgroundRepeat: 'no-repeat',
+            padding: '1.5cm'
+        }}>
+             <Card id="invoice-pdf-content" className="p-8 bg-transparent text-black print:shadow-none shadow-none border-none" style={{ fontFamily: 'sans-serif', minHeight: '297mm', fontSize: '15px' }}>
                 <p style={{textIndent: '0pt', textAlign: 'left'}}><br/></p>
-                <div className="flex justify-between items-start mb-2 relative">
+                <div className="flex justify-between items-start mb-2 relative pt-20">
                     <div className="flex-1"></div>
                     <div className="text-right">
                         <h2 className="font-bold text-4xl text-primary">INVOICE</h2>
@@ -231,5 +237,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         </div>
     );
 }
+
+    
 
     
