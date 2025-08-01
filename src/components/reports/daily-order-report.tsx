@@ -5,8 +5,7 @@ import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Settings } from "lucide-react";
-import Link from "next/link";
+import { FileText, Loader2, Download } from "lucide-react";
 import DateSelector from "@/components/costing/DateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { useOrderStorage } from "@/hooks/use-order-storage";
@@ -43,7 +42,6 @@ export const DailyOrderReport = () => {
 
   const calculateGrandTotal = (event: ClientEvent) => {
     const total = event.unitPrice * event.numberOfPeople;
-    // Assuming VAT logic might be more complex, but for now, it's just a display field
     return total;
   };
   
@@ -97,6 +95,46 @@ export const DailyOrderReport = () => {
     }
   };
 
+  const handleCsvExport = () => {
+    const headers = ["S/No", "Order ID", "Customer Name", "Proforma No.", "Type of Meal", "No. of People", "Unit Price", "VAT", "Grand Total"];
+    const csvRows = [headers.join(',')];
+
+    dailyEvents.forEach((event, index) => {
+      const client = getClientById(event.clientId);
+      const row = [
+        index + 1,
+        event.orderId,
+        `"${client?.companyName.replace(/"/g, '""') || 'N/A'}"`,
+        event.proformaId || 'N/A',
+        event.mealType,
+        event.numberOfPeople,
+        event.unitPrice,
+        event.vatType,
+        calculateGrandTotal(event),
+      ];
+      csvRows.push(row.join(','));
+    });
+    
+    csvRows.push(['', '', '', '', '', '', '', 'Total Sales', totalSales].join(','));
+
+    const csvString = csvRows.join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Daily_Order_Report_${selectedDate.toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: "Export Successful", description: "Report exported to CSV." });
+    } else {
+       toast({ variant: "destructive", title: "Export Failed", description: "Your browser doesn't support this feature." });
+    }
+  };
+
   const isLoading = ordersLoading || clientsLoading;
 
   return (
@@ -108,6 +146,10 @@ export const DailyOrderReport = () => {
         </div>
         <div className="flex items-center space-x-3">
           <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+          <Button onClick={handleCsvExport} variant="outline" size="sm" disabled={isExporting}>
+             <Download className="mr-2 h-4 w-4" />
+             Export CSV
+          </Button>
           <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
              {isExporting ? 'Exporting...' : 'Export PDF'}
@@ -116,7 +158,7 @@ export const DailyOrderReport = () => {
       </div>
 
         <Card ref={printRef} className="bg-card p-4 rounded-lg">
-             <div className="text-center hidden print:block pt-8 mb-4">
+            <div className="text-center hidden print:block pt-8 mb-4">
                 <h1 className="text-2xl font-bold">Daily Order Report</h1>
                 <p className="text-lg">{selectedDate.toLocaleDateString()}</p>
             </div>

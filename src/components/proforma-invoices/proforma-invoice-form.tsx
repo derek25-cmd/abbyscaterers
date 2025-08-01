@@ -292,7 +292,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                     <div><Label>Proforma Invoice Number</Label><Input {...field} placeholder="e.g., PI-2024-001" /></div>
                                 )}/>
                                 <Controller name="invoiceDate" control={form.control} render={({ field }) => (
-                                    <div><Label>Invoice Date</Label>
+                                    <div><Label>Proforma Invoice Date</Label>
                                         <Popover><PopoverTrigger asChild>
                                             <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
                                             <CalendarIcon className="mr-2 h-4 w-4" />
