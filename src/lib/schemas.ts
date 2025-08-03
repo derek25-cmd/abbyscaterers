@@ -1,4 +1,5 @@
 
+
 import { z } from "zod";
 
 // DietaryClassification schema
@@ -254,3 +255,22 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
 
 
 export type FinalInvoiceFormData = z.infer<typeof FinalInvoiceSchema>;
+
+
+// HR Schemas
+export const DEPARTMENTS = ["Kitchen", "Service", "Management", "Logistics", "Sales"] as const;
+export const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"] as const;
+
+export const EmployeeSchema = z.object({
+  employeeId: z.string().min(1, "Employee ID is required"),
+  fullName: z.string().min(1, "Full name is required"),
+  position: z.string().min(1, "Position is required"),
+  department: z.enum(DEPARTMENTS),
+  employmentType: z.enum(EMPLOYMENT_TYPES),
+  dateOfBirth: z.string().optional(),
+  hireDate: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Invalid hire date" }),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().min(1, "Phone number is required"),
+  address: z.string().optional(),
+});
+export type EmployeeFormData = z.infer<typeof EmployeeSchema>;

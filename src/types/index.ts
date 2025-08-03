@@ -206,3 +206,25 @@ export interface DailyCosting {
     netProfitLoss: number;
     createdAt: string; // ISO string
 }
+
+// Human Resources Types
+export const DEPARTMENTS = ["Kitchen", "Service", "Management", "Logistics", "Sales"] as const;
+export type Department = (typeof DEPARTMENTS)[number];
+
+export const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"] as const;
+export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+
+export interface Employee {
+  employeeId: string;
+  fullName: string;
+  position: string;
+  department: Department;
+  employmentType: EmploymentType;
+  dateOfBirth?: string; // ISO date string
+  hireDate: string; // ISO date string
+  email: string;
+  phone: string;
+  address?: string;
+  createdAt: string;
+  updatedAt: string;
+}

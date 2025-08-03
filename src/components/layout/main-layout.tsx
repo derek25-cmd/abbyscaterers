@@ -19,7 +19,8 @@ import {
     DollarSign,
     Menu as MenuIcon,
     Calculator,
-    Utensils
+    Utensils,
+    Briefcase
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -70,6 +71,13 @@ const navItems = [
   },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
+  { 
+    label: "HR & Operations", 
+    icon: Briefcase,
+    subItems: [
+      { href: "/hr", label: "Human Resources" },
+    ]
+  },
 ];
 
 const managementItems = [
