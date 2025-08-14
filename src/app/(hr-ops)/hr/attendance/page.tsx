@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client'
 
-import AppLayout from "@/components/hr/AppLayout";
+import { AppLayout } from "@/components/hr/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import AppLayout from '@/components/hr/AppLayout';
+import { AppLayout } from '@/components/hr/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
