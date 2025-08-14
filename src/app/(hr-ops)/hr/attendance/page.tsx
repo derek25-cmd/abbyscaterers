@@ -1,7 +1,6 @@
 // @ts-nocheck
 'use client'
 
-import { AppLayout } from "@/components/hr/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,7 +104,6 @@ export default function AttendancePage() {
   }
 
   return (
-    <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
           <h1 className="font-headline text-2xl font-bold">Attendance Log</h1>
@@ -192,7 +190,7 @@ export default function AttendancePage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      
       {selectedRecord && (
         <EditAttendanceDialog
           isOpen={isEditDialogOpen}
@@ -214,6 +212,6 @@ export default function AttendancePage() {
         employees={employees.filter(e => e.status === 'Active')}
         onLogAttendance={handleLogAttendance}
       />
-    </AppLayout>
+    </main>
   );
 }

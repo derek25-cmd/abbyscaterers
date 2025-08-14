@@ -1,7 +1,6 @@
 // @ts-nocheck
 'use client';
 
-import { AppLayout } from '@/components/hr/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,7 +73,6 @@ export default function AssetsPage() {
   }
 
   return (
-    <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
           <h1 className="font-headline text-2xl font-bold">Asset Management</h1>
@@ -149,7 +147,7 @@ export default function AssetsPage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      
       <AddAssetDialog 
         isOpen={isAddAssetDialogOpen}
         setIsOpen={setIsAddAssetDialogOpen}
@@ -170,6 +168,6 @@ export default function AssetsPage() {
             asset={selectedAsset}
         />
       )}
-    </AppLayout>
+    </main>
   );
 }

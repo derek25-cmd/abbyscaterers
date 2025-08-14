@@ -1,7 +1,6 @@
 // @ts-nocheck
 'use client';
 
-import { AppLayout } from "@/components/hr/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,7 +122,6 @@ export default function IssuancePage() {
     };
 
   return (
-    <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
           <h1 className="font-headline text-2xl font-bold">Daily Issuance Log</h1>
@@ -197,7 +195,7 @@ export default function IssuancePage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      
       <NewIssuanceDialog
         isOpen={isIssuanceDialogOpen}
         setIsOpen={setIsIssuanceDialogOpen}
@@ -221,6 +219,6 @@ export default function IssuancePage() {
             logEntry={selectedLog}
         />
       )}
-    </AppLayout>
+    </main>
   );
 }

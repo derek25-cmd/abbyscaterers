@@ -1,7 +1,6 @@
 // @ts-nocheck
 'use client';
 
-import { AppLayout } from "@/components/hr/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -161,7 +160,6 @@ export default function StockLogsPage() {
   }, [logs, selectedDate, searchQuery, filterType]);
 
   return (
-    <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
           <h1 className="font-headline text-2xl font-bold">Stock Movement Logs</h1>
@@ -342,7 +340,7 @@ export default function StockLogsPage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      
       <LogStockMovementDialog
         isOpen={isLogDialogOpen}
         setIsOpen={setIsLogDialogOpen}
@@ -366,6 +364,6 @@ export default function StockLogsPage() {
             log={selectedLog}
         />
       )}
-    </AppLayout>
+    </main>
   );
 }

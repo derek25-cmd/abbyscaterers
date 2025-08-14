@@ -1,6 +1,5 @@
 // @ts-nocheck
 'use client';
-import { AppLayout } from "@/components/hr/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,7 +93,6 @@ export default function InventoryPage() {
   const outOfStockItems = stock.filter(item => item.quantity === 0).length;
 
   return (
-    <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
             <h1 className="font-headline text-2xl font-bold">Product Catalog</h1>
@@ -257,7 +255,7 @@ export default function InventoryPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      
       <AddProductDialog
         isOpen={isAddProductDialogOpen}
         setIsOpen={setIsAddProductDialogOpen}
@@ -278,6 +276,6 @@ export default function InventoryPage() {
             product={selectedProduct}
         />
       )}
-    </AppLayout>
+    </main>
   );
 }

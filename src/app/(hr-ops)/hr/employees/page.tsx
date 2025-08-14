@@ -1,6 +1,5 @@
 // @ts-nocheck
 'use client';
-import { AppLayout } from "@/components/hr/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,7 +58,6 @@ export default function EmployeesPage() {
   }
 
   return (
-    <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
             <h1 className="font-headline text-2xl font-bold">Employee Records</h1>
@@ -131,7 +129,7 @@ export default function EmployeesPage() {
             )}
           </CardContent>
         </Card>
-      </main>
+      
       <AddEmployeeDialog 
         isOpen={isAddEmployeeDialogOpen}
         setIsOpen={setIsAddEmployeeDialogOpen}
@@ -152,6 +150,6 @@ export default function EmployeesPage() {
             employee={selectedEmployee}
         />
       )}
-    </AppLayout>
+    </main>
   );
 }

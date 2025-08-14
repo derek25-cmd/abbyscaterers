@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -76,15 +77,14 @@ const navItems = [
 ];
 
 const hrOpsNavItems = [
-    { href: "/hr-ops/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/operations/inventory", label: "Product Catalog", icon: Package },
-    { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
-    { href: "/operations/assets", label: "Asset Management", icon: Truck },
-    { href: "/operations/issuance", label: "Daily Issuance", icon: ClipboardList },
     { href: "/hr/employees", label: "Employee Records", icon: Users },
     { href: "/hr/attendance", label: "Attendance", icon: CalendarCheck },
     { href: "/hr/recruitment", label: "Recruitment", icon: Briefcase },
     { href: "/hr/payroll", label: "Payroll", icon: CreditCard },
+    { href: "/operations/inventory", label: "Product Catalog", icon: Package },
+    { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
+    { href: "/operations/assets", label: "Asset Management", icon: Truck },
+    { href: "/operations/issuance", label: "Daily Issuance", icon: ClipboardList },
 ];
 
 
@@ -185,7 +185,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                 ))}
                  <SidebarMenuItem>
                     <SidebarMenuSub
-                        label="HR &amp; Operations"
+                        label="HR & Operations"
                         icon={<Briefcase />}
                         isActive={hrOpsNavItems.some(sub => currentPathname.startsWith(sub.href))}
                     >
