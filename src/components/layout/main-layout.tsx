@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -13,13 +12,11 @@ import {
     ChefHat, 
     FileText,
     Users,
-    BarChart3,
     Settings,
     Bell,
     DollarSign,
     Menu as MenuIcon,
     Calculator,
-    Utensils,
     Briefcase
 } from "lucide-react"; 
 import {
@@ -47,11 +44,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { BarChart3 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/orders", label: "Orders", icon: BookOpen },
-  { href: "/menus", label: "Menus", icon: Utensils },
   { 
     label: "Menu / Food Costing", 
     icon: UtensilsCrossed,
@@ -71,13 +68,7 @@ const navItems = [
   },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
-  { 
-    label: "HR & Operations", 
-    icon: Briefcase,
-    subItems: [
-      { href: "/hr", label: "Human Resources" },
-    ]
-  },
+  { href: "/hr-ops", label: "HR & Operations", icon: Briefcase },
 ];
 
 const managementItems = [
@@ -122,6 +113,10 @@ function UserProfile() {
 
 function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
   const { open } = useSidebar();
+
+  if (currentPathname.startsWith('/hr-ops')) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden">

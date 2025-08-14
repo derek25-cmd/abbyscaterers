@@ -1,0 +1,100 @@
+// @ts-nocheck
+'use client'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "./ui/badge";
+import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
+
+export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
+  if (!employee) return null;
+
+  const getFullName = (employee) => {
+    return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
+  }
+
+  const DetailRow = ({ label, value, isBadge, badgeVariant, badgeClass }) => (
+    <div className="grid grid-cols-3 items-center gap-4 py-2">
+      <Label className="text-right font-semibold">{label}</Label>
+      {isBadge ? (
+        <Badge variant={badgeVariant} className={`col-span-2 ${badgeClass}`}>
+          {value}
+        </Badge>
+      ) : (
+        <span className="col-span-2 text-sm">{value || 'N/A'}</span>
+      )}
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Employee Details</DialogTitle>
+            <DialogDescription>
+              Viewing details for {getFullName(employee)}.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh] p-4">
+            <div className="space-y-4">
+                <div>
+                    <h3 className="mb-2 text-lg font-medium text-primary">Personal Information</h3>
+                    <DetailRow label="Employee ID" value={employee.id} />
+                    <DetailRow label="Full Name" value={getFullName(employee)} />
+                    <DetailRow label="Date of Birth" value={employee.dob} />
+                    <DetailRow label="Gender" value={employee.gender} />
+                </div>
+                <Separator />
+                 <div>
+                    <h3 className="mb-2 text-lg font-medium text-primary">Identification</h3>
+                    <DetailRow label="Nationality" value={employee.nationality} />
+                    <DetailRow label="National ID / Passport" value={employee.nationalId} />
+                    <DetailRow label="TIN" value={employee.tin} />
+                </div>
+                <Separator />
+                <div>
+                    <h3 className="mb-2 text-lg font-medium text-primary">Contact Details</h3>
+                    <DetailRow label="Phone Number" value={employee.phone} />
+                    <DetailRow label="Email Address" value={employee.email} />
+                    <DetailRow label="Residential Address" value={employee.address} />
+                </div>
+                <Separator />
+                <div>
+                    <h3 className="mb-2 text-lg font-medium text-primary">Emergency Contact</h3>
+                    <DetailRow label="Name" value={employee.emergencyContactName} />
+                    <DetailRow label="Relationship" value={employee.emergencyContactRelationship} />
+                    <DetailRow label="Phone Number" value={employee.emergencyContactPhone} />
+                </div>
+                <Separator />
+                <div>
+                    <h3 className="mb-2 text-lg font-medium text-primary">Job Information</h3>
+                    <DetailRow label="Role" value={employee.role} />
+                    <DetailRow label="Department" value={employee.department} />
+                    <DetailRow 
+                        label="Status" 
+                        value={employee.status} 
+                        isBadge 
+                        badgeVariant={employee.status === 'Active' ? 'default' : 'outline'}
+                        badgeClass={employee.status === 'Active' ? 'bg-accent text-accent-foreground' : ''}
+                    />
+                </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Close</Button>
+            </DialogClose>
+          </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
