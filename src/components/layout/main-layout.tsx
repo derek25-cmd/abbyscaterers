@@ -17,7 +17,13 @@ import {
     DollarSign,
     Menu as MenuIcon,
     Calculator,
-    Briefcase
+    Briefcase,
+    LayoutDashboard,
+    Package,
+    History,
+    Truck,
+    CalendarCheck,
+    CreditCard
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -68,8 +74,20 @@ const navItems = [
   },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
-  { href: "/hr-ops", label: "HR & Operations", icon: Briefcase },
 ];
+
+const hrOpsNavItems = [
+    { href: "/hr-ops/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/hr-ops/inventory", label: "Product Catalog", icon: Package },
+    { href: "/hr-ops/stock-logs", label: "Stock Logs", icon: History },
+    { href: "/hr-ops/assets", label: "Asset Management", icon: Truck },
+    { href: "/hr-ops/issuance", label: "Daily Issuance", icon: ClipboardList },
+    { href: "/hr-ops/hr/employees", label: "Employee Records", icon: Users },
+    { href: "/hr-ops/hr/attendance", label: "Attendance", icon: CalendarCheck },
+    { href: "/hr-ops/hr/recruitment", label: "Recruitment", icon: Briefcase },
+    { href: "/hr-ops/hr/payroll", label: "Payroll", icon: CreditCard },
+];
+
 
 const managementItems = [
     { href: "#", label: "Finances", icon: DollarSign },
@@ -166,6 +184,23 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                     )}
                   </SidebarMenuItem>
                 ))}
+                 <SidebarMenuItem>
+                    <SidebarMenuSub
+                        label="HR & Operations"
+                        icon={<Briefcase />}
+                        isActive={hrOpsNavItems.some(sub => currentPathname.startsWith(sub.href))}
+                    >
+                        {hrOpsNavItems.map(subItem => (
+                            <SidebarMenuSubItem key={subItem.href}>
+                                <Link href={subItem.href}>
+                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                        {subItem.label}
+                                    </SidebarMenuSubButton>
+                                </Link>
+                            </SidebarMenuSubItem>
+                        ))}
+                    </SidebarMenuSub>
+                </SidebarMenuItem>
             </SidebarMenu>
         </SidebarBody>
          <SidebarFooter>
