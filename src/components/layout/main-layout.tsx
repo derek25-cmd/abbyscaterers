@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -78,20 +77,20 @@ const navItems = [
 
 const hrOpsNavItems = [
     { href: "/hr-ops/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/hr-ops/inventory", label: "Product Catalog", icon: Package },
-    { href: "/hr-ops/stock-logs", label: "Stock Logs", icon: History },
-    { href: "/hr-ops/assets", label: "Asset Management", icon: Truck },
-    { href: "/hr-ops/issuance", label: "Daily Issuance", icon: ClipboardList },
-    { href: "/hr-ops/hr/employees", label: "Employee Records", icon: Users },
-    { href: "/hr-ops/hr/attendance", label: "Attendance", icon: CalendarCheck },
-    { href: "/hr-ops/hr/recruitment", label: "Recruitment", icon: Briefcase },
-    { href: "/hr-ops/hr/payroll", label: "Payroll", icon: CreditCard },
+    { href: "/operations/inventory", label: "Product Catalog", icon: Package },
+    { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
+    { href: "/operations/assets", label: "Asset Management", icon: Truck },
+    { href: "/operations/issuance", label: "Daily Issuance", icon: ClipboardList },
+    { href: "/hr/employees", label: "Employee Records", icon: Users },
+    { href: "/hr/attendance", label: "Attendance", icon: CalendarCheck },
+    { href: "/hr/recruitment", label: "Recruitment", icon: Briefcase },
+    { href: "/hr/payroll", label: "Payroll", icon: CreditCard },
 ];
 
 
 const managementItems = [
     { href: "#", label: "Finances", icon: DollarSign },
-    { href: "#", label: "Reports", icon: BarChart3 },
+    { href: "/reports", label: "Reports", icon: BarChart3 },
     { href: "#", label: "Settings", icon: Settings }
 ];
 
@@ -132,7 +131,7 @@ function UserProfile() {
 function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
   const { open } = useSidebar();
 
-  if (currentPathname.startsWith('/hr-ops')) {
+  if (currentPathname.startsWith('/hr-ops') || currentPathname.startsWith('/hr/') || currentPathname.startsWith('/operations/')) {
     return <>{children}</>;
   }
 
@@ -186,7 +185,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                 ))}
                  <SidebarMenuItem>
                     <SidebarMenuSub
-                        label="HR & Operations"
+                        label="HR &amp; Operations"
                         icon={<Briefcase />}
                         isActive={hrOpsNavItems.some(sub => currentPathname.startsWith(sub.href))}
                     >

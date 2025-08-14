@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { 
   Box, 
   Briefcase, 
@@ -16,16 +15,14 @@ import {
   CreditCard,
 } from "lucide-react";
 import {
-  SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton
-} from "./ui/sidebar";
+} from "@/components/ui/sidebar";
 
 const mainNav = [
   {
-    href: "/",
+    href: "/hr-ops/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
   },
@@ -82,7 +79,7 @@ export function SidebarNav() {
 
   return (
     <div className="flex flex-col gap-2">
-      <SidebarGroup>
+      <div className="p-2">
         <SidebarMenu>
           {mainNav.map((item) => (
             <SidebarMenuItem key={item.href}>
@@ -95,10 +92,10 @@ export function SidebarNav() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-      </SidebarGroup>
+      </div>
 
-      <SidebarGroup>
-        <SidebarGroupLabel>Operations</SidebarGroupLabel>
+      <div className="p-2">
+        <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Operations</p>
         <SidebarMenu>
           {operationsNav.map((item) => (
             <SidebarMenuItem key={item.href}>
@@ -111,10 +108,10 @@ export function SidebarNav() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-      </SidebarGroup>
+      </div>
 
-      <SidebarGroup>
-        <SidebarGroupLabel>Human Resources</SidebarGroupLabel>
+      <div className="p-2">
+        <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Human Resources</p>
         <SidebarMenu>
           {hrNav.map((item) => (
             <SidebarMenuItem key={item.href}>
@@ -127,7 +124,7 @@ export function SidebarNav() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-      </SidebarGroup>
+      </div>
     </div>
   );
 }

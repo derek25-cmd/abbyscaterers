@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarFooter, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarNav } from "./sidebar-nav";
 import { Building } from "lucide-react";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar>
@@ -13,14 +13,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <h1 className="text-xl font-semibold font-headline">CaterEase</h1>
           </div>
         </SidebarHeader>
-        <SidebarContent>
+        <SidebarBody>
           <SidebarNav />
-        </SidebarContent>
+        </SidebarBody>
         <SidebarFooter>
           {/* Footer content if any */}
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      <main className="flex-1">
         <header className="sticky top-0 z-30 flex items-center h-14 gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
             <div className="md:hidden">
               <SidebarTrigger />
@@ -30,7 +30,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
         </header>
         {children}
-      </SidebarInset>
+      </main>
     </SidebarProvider>
   );
 }

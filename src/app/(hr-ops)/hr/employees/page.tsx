@@ -1,0 +1,157 @@
+// @ts-nocheck
+'use client';
+import AppLayout from "@/components/hr/AppLayout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MoreHorizontal, PlusCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
+import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
+import { ViewEmployeeDialog } from "@/components/hr/view-employee-dialog";
+import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeService";
+
+export default function EmployeesPage() {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
+  const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
+  const [isViewEmployeeDialogOpen, setIsViewEmployeeDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const employeesData = await getEmployees();
+      setEmployees(employeesData);
+      setLoading(false);
+    };
+    fetchEmployees();
+  }, []);
+
+  const handleAddEmployee = async (newEmployee) => {
+    const newId = await addEmployee(newEmployee);
+    setEmployees(prevEmployees => [{ id: newId, ...newEmployee }, ...prevEmployees]);
+  };
+  
+  const handleEditEmployee = async (updatedEmployee) => {
+    await updateEmployee(updatedEmployee.id, updatedEmployee);
+    setEmployees(prevEmployees => 
+        prevEmployees.map(employee => 
+            employee.id === updatedEmployee.id ? updatedEmployee : employee
+        )
+    );
+  };
+
+  const openEditDialog = (employee) => {
+    setSelectedEmployee(employee);
+    setIsEditEmployeeDialogOpen(true);
+  };
+  
+  const openViewDialog = (employee) => {
+    setSelectedEmployee(employee);
+    setIsViewEmployeeDialogOpen(true);
+  };
+
+  const getFullName = (employee) => {
+    return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
+  }
+
+  return (
+    <AppLayout>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+            <h1 className="font-headline text-2xl font-bold">Employee Records</h1>
+            <div className="ml-auto flex items-center gap-2">
+                <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddEmployeeDialogOpen(true)}>
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Add Employee
+                    </span>
+                </Button>
+            </div>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>All Employees</CardTitle>
+            <CardDescription>
+              Manage your company's employees and view their details.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+                <p>Loading employees...</p>
+            ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employees.map((employee) => (
+                  <TableRow key={employee.id}>
+                    <TableCell className="font-medium">{getFullName(employee)}</TableCell>
+                    <TableCell>{employee.role}</TableCell>
+                    <TableCell>{employee.department}</TableCell>
+                    <TableCell>
+                      <Badge variant={employee.status === 'Active' ? 'default' : 'outline'}
+                        className={employee.status === 'Active' ? 'bg-accent text-accent-foreground' : ''}>
+                        {employee.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => openViewDialog(employee)}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">Deactivate</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+      <AddEmployeeDialog 
+        isOpen={isAddEmployeeDialogOpen}
+        setIsOpen={setIsAddEmployeeDialogOpen}
+        onAddEmployee={handleAddEmployee}
+      />
+      {selectedEmployee && (
+        <EditEmployeeDialog
+            isOpen={isEditEmployeeDialogOpen}
+            setIsOpen={setIsEditEmployeeDialogOpen}
+            employee={selectedEmployee}
+            onEditEmployee={handleEditEmployee}
+        />
+      )}
+      {selectedEmployee && (
+        <ViewEmployeeDialog
+            isOpen={isViewEmployeeDialogOpen}
+            setIsOpen={setIsViewEmployeeDialogOpen}
+            employee={selectedEmployee}
+        />
+      )}
+    </AppLayout>
+  );
+}

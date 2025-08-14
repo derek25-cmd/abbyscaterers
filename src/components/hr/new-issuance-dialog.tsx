@@ -14,24 +14,28 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 
-export function LogAttendanceDialog({ isOpen, setIsOpen, employees, onLogAttendance }) {
+export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, onNewIssuance }) {
+  const [assetId, setAssetId] = useState('');
   const [employeeId, setEmployeeId] = useState('');
+
+  const getFullName = (employee) => {
+    return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!employeeId) {
-      alert("Please select an employee.");
+    if (!assetId || !employeeId) {
+      alert("Please select an asset and an employee.");
       return;
     }
-    
-    const employee = employees.find(e => e.id === employeeId);
 
-    onLogAttendance({
+    onNewIssuance({
+      assetId,
       employeeId,
-      employeeName: employee.name
     });
 
     // Reset form and close dialog
+    setAssetId('');
     setEmployeeId('');
     setIsOpen(false);
   };
@@ -41,12 +45,30 @@ export function LogAttendanceDialog({ isOpen, setIsOpen, employees, onLogAttenda
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Clock In / Clock Out</DialogTitle>
+            <DialogTitle>New Asset Issuance</DialogTitle>
             <DialogDescription>
-              Select your name to log your attendance. The system will automatically detect if you are clocking in or out.
+              Select an asset to issue and the employee receiving it.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="asset" className="text-right">
+                Asset
+              </Label>
+              <Select onValueChange={setAssetId} value={assetId}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select an asset" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assets.map(asset => (
+                    <SelectItem key={asset.id} value={asset.id}>
+                      {asset.name} ({asset.id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="employee" className="text-right">
                 Employee
@@ -58,7 +80,7 @@ export function LogAttendanceDialog({ isOpen, setIsOpen, employees, onLogAttenda
                 <SelectContent>
                   {employees.map(employee => (
                     <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name}
+                      {getFullName(employee)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -69,7 +91,7 @@ export function LogAttendanceDialog({ isOpen, setIsOpen, employees, onLogAttenda
             <DialogClose asChild>
               <Button type="button" variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit">Submit</Button>
+            <Button type="submit">Issue Asset</Button>
           </DialogFooter>
         </form>
       </DialogContent>
