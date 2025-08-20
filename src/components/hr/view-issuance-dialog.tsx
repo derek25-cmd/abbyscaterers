@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { useReactToPrint } from 'react-to-print';
 import { useRef } from 'react';
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -22,10 +21,17 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
 
   if (!logEntry) return null;
 
-  const handlePrint = useReactToPrint({
-    content: () => printRef.current,
-    documentTitle: `Issuance_Note_${logEntry.id}`,
-  });
+  const handlePrint = () => {
+    const printableArea = document.getElementById('printable-area');
+    if(printableArea) {
+      const originalContents = document.body.innerHTML;
+      const printContents = printableArea.innerHTML;
+      document.body.innerHTML = printContents;
+      window.print();
+      document.body.innerHTML = originalContents;
+      window.location.reload(); // To restore event listeners
+    }
+  };
   
   const getFullName = (emp) => {
     if (!emp) return 'N/A';
@@ -55,7 +61,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <ScrollArea className="max-h-[80vh]">
-          <div ref={printRef} className="p-6 print-only:p-0">
+          <div id="printable-area" ref={printRef} className="p-6">
             <DialogHeader>
               <DialogTitle className="text-2xl">Issuance Note</DialogTitle>
               <DialogDescription>
@@ -124,7 +130,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
             </div>
           </div>
         </ScrollArea>
-          <DialogFooter className="print:hidden p-6 pt-0">
+          <DialogFooter className="p-6 pt-0">
             <Button type="button" variant="outline" onClick={handlePrint}>Export as PDF</Button>
             <DialogClose asChild>
               <Button type="button">Close</Button>
