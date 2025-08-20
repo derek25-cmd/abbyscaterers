@@ -235,6 +235,8 @@ export default function IssuancePage() {
             isOpen={isViewDialogOpen}
             setIsOpen={setIsViewDialogOpen}
             logEntry={selectedLog}
+            employee={selectedLog.employee}
+            order={selectedLog.order}
         />
       )}
     </main>

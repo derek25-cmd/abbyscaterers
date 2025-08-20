@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client'
 import {
@@ -73,11 +74,11 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
                     </div>
                     <div>
                         <Label className="font-semibold">Issued To:</Label>
-                        <p>{getFullName(employee)}</p>
+                        <p>{logEntry.issuedTo}</p>
                     </div>
                     <div>
                         <Label className="font-semibold">Client Order:</Label>
-                        <p>{order?.name || 'N/A'} ({logEntry.orderId})</p>
+                        <p>{logEntry.order?.name || 'N/A'} ({logEntry.orderId})</p>
                     </div>
                      <div>
                         <Label className="font-semibold">Status:</Label>
@@ -96,7 +97,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {logEntry.items.map((item, index) => (
+                    {logEntry.items?.map((item, index) => (
                         <TableRow key={index}>
                             <TableCell>{item.name}</TableCell>
                             <TableCell>{item.type}</TableCell>
