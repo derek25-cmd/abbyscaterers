@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -14,12 +15,14 @@ import { ViewIssuanceDialog } from "@/components/hr/view-issuance-dialog";
 import { getIssuances, addIssuance, updateIssuance } from "@/services/issuanceService";
 import { getAssets, updateAsset } from "@/services/assetService";
 import { getEmployees } from "@/services/employeeService";
+import { getOrders } from "@/services/orderService";
 
 
 export default function IssuancePage() {
     const [log, setLog] = useState([]);
     const [assets, setAssets] = useState([]);
     const [employees, setEmployees] = useState([]);
+    const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isIssuanceDialogOpen, setIsIssuanceDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -29,14 +32,16 @@ export default function IssuancePage() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const [logsData, assetsData, employeesData] = await Promise.all([
+            const [logsData, assetsData, employeesData, ordersData] = await Promise.all([
                 getIssuances(),
                 getAssets(),
-                getEmployees()
+                getEmployees(),
+                getOrders()
             ]);
             setLog(logsData);
             setAssets(assetsData);
             setEmployees(employeesData);
+            setOrders(ordersData);
             setLoading(false);
         }
         fetchData();
@@ -48,43 +53,37 @@ export default function IssuancePage() {
             return <Badge className="bg-orange-500/20 text-orange-700 hover:bg-orange-500/30 dark:bg-orange-500/10 dark:text-orange-400">Issued</Badge>;
           case 'Returned':
             return <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30 dark:bg-green-500/10 dark:text-green-400">Returned</Badge>;
+          case 'Partially Returned':
+            return <Badge variant="destructive" className="bg-yellow-500/20 text-yellow-700">{status}</Badge>;
+        case 'Incomplete':
+            return <Badge variant="destructive">{status}</Badge>;
           default:
             return <Badge variant="outline">{status}</Badge>;
         }
     };
     
-    const handleNewIssuance = async (issuanceData: { assetId: string, employeeId: string }) => {
-        const asset = assets.find(a => a.id === issuanceData.assetId);
-        const employee = employees.find(e => e.id === issuanceData.employeeId);
-        
-        const employeeFullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
+    const handleNewIssuance = async (issuanceData) => {
+        const newId = await addIssuance(issuanceData);
 
-        if (asset && employee) {
-            if(asset.status !== 'Available') {
-                alert('Asset is not available to be issued.');
-                return;
+        // Update asset quantities
+        for (const item of issuanceData.items) {
+            const asset = assets.find(a => a.id === item.assetId);
+            if (asset) {
+                const updatedAsset = { ...asset, quantity: asset.quantity - item.quantityIssued };
+                 // Change status if quantity is 0 or it's not In Use already
+                if (updatedAsset.quantity === 0) {
+                    updatedAsset.status = 'In Use'; 
+                }
+                await updateAsset(asset.id, updatedAsset);
             }
-
-            const newLogEntry = {
-                assetId: asset.id,
-                name: asset.name,
-                issuedTo: employeeFullName,
-                type: asset.type,
-                unit: asset.unit,
-                unitPrice: asset.unitPrice,
-                quantity: 1, // Assets are issued one by one
-                date: new Date().toISOString().split('T')[0],
-                status: 'Issued'
-            };
-            
-            const newId = await addIssuance(newLogEntry);
-            setLog(prevLog => [{ id: newId, ...newLogEntry }, ...prevLog]);
-
-            const updatedAsset = { ...asset, status: 'In Use' };
-            await updateAsset(asset.id, updatedAsset);
-            setAssets(assets.map(a => a.id === asset.id ? updatedAsset : a));
         }
+        
+        // Refresh local data
+        const [logsData, assetsData] = await Promise.all([getIssuances(), getAssets()]);
+        setLog(logsData);
+        setAssets(assetsData);
     };
+
 
     const handleEditIssuance = async (updatedLog) => {
         await updateIssuance(updatedLog.id, updatedLog);
@@ -99,7 +98,17 @@ export default function IssuancePage() {
     };
 
     const openViewDialog = (logEntry) => {
-      setSelectedLog(logEntry);
+      const employee = employees.find(e => {
+        const fullName = [e.firstName, e.middleName, e.lastName].filter(Boolean).join(' ');
+        return fullName === logEntry.issuedTo;
+      });
+      const order = orders.find(o => o.id === logEntry.orderId);
+      
+      setSelectedLog({
+        ...logEntry,
+        employee,
+        order
+      });
       setIsViewDialogOpen(true);
     };
 
@@ -112,12 +121,19 @@ export default function IssuancePage() {
         setLog(log.map(l => l.id === logId ? updatedLogEntry : l));
 
         if (newStatus === 'Returned') {
-            const asset = assets.find(a => a.id === logEntry.assetId);
-            if (asset) {
-                const updatedAsset = { ...asset, status: 'Available' };
-                await updateAsset(asset.id, updatedAsset);
-                setAssets(assets.map(a => a.id === asset.id ? updatedAsset : a));
+            for (const item of logEntry.items) {
+                 const asset = assets.find(a => a.id === item.assetId);
+                 if (asset) {
+                    const updatedAsset = { ...asset, quantity: asset.quantity + item.quantityIssued };
+                    // If all items are back, set to available
+                    if (updatedAsset.quantity > 0) {
+                        updatedAsset.status = 'Available';
+                    }
+                    await updateAsset(asset.id, updatedAsset);
+                 }
             }
+            const assetsData = await getAssets();
+            setAssets(assetsData);
         }
     };
 
@@ -149,10 +165,10 @@ export default function IssuancePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Issue ID</TableHead>
-                  <TableHead>Asset Name</TableHead>
+                  <TableHead>Order</TableHead>
                   <TableHead>Issued To</TableHead>
-                  <TableHead>Type</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Total Value</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>
                     <span className="sr-only">Actions</span>
@@ -163,10 +179,10 @@ export default function IssuancePage() {
                 {log.map((logEntry) => (
                   <TableRow key={logEntry.id}>
                     <TableCell className="font-medium">{logEntry.id}</TableCell>
-                    <TableCell>{logEntry.name}</TableCell>
+                    <TableCell>{orders.find(o => o.id === logEntry.orderId)?.name || 'N/A'}</TableCell>
                     <TableCell>{logEntry.issuedTo}</TableCell>
-                    <TableCell>{logEntry.type}</TableCell>
                     <TableCell>{logEntry.date}</TableCell>
+                    <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(logEntry.totalValue).replace('TZS', 'TZS ')}</TableCell>
                     <TableCell>{getStatusBadge(logEntry.status)}</TableCell>
                     <TableCell>
                         <DropdownMenu>
@@ -201,6 +217,7 @@ export default function IssuancePage() {
         setIsOpen={setIsIssuanceDialogOpen}
         assets={assets.filter(a => a.status === 'Available')}
         employees={employees.filter(e => e.status === 'Active')}
+        orders={orders}
         onNewIssuance={handleNewIssuance}
       />
       {selectedLog && (
@@ -209,6 +226,7 @@ export default function IssuancePage() {
             setIsOpen={setIsEditDialogOpen}
             logEntry={selectedLog}
             employees={employees}
+            orders={orders}
             onEditIssuance={handleEditIssuance}
         />
       )}

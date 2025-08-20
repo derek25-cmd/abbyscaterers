@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client'
 import {
@@ -18,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders, onNewIssuance }) {
+export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders = [], onNewIssuance }) {
     const [orderId, setOrderId] = useState('');
     const [issuedTo, setIssuedTo] = useState('');
     const [items, setItems] = useState([{ assetId: '', quantityIssued: 1 }]);
@@ -26,6 +25,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
     const [totalValue, setTotalValue] = useState(0);
 
     const getFullName = (employee) => {
+        if (!employee) return '';
         return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
     }
 
@@ -47,20 +47,17 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
 
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];
-        newItems[index][field] = value;
-        
-        // Ensure quantity is not more than available
-        if (field === 'assetId') {
-            const asset = assets.find(a => a.id === value);
-            if (asset && newItems[index].quantityIssued > asset.quantity) {
-                newItems[index].quantityIssued = asset.quantity;
-            }
+        const numericValue = parseInt(value, 10);
+
+        if (field === 'quantityIssued' && isNaN(numericValue)) {
+            newItems[index][field] = 0;
+        } else {
+            newItems[index][field] = field === 'quantityIssued' ? numericValue : value;
         }
-        if (field === 'quantityIssued') {
-            const asset = assets.find(a => a.id === newItems[index].assetId);
-            if (asset && value > asset.quantity) {
-                 newItems[index].quantityIssued = asset.quantity;
-            }
+        
+        const asset = assets.find(a => a.id === newItems[index].assetId);
+        if (asset && newItems[index].quantityIssued > asset.quantity) {
+            newItems[index].quantityIssued = asset.quantity;
         }
         
         setItems(newItems);
@@ -80,10 +77,12 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
             alert("Please fill all required fields, including at least one valid item.");
             return;
         }
+        
+        const employee = employees.find(e => e.id === issuedTo);
 
         const issuanceDetails = {
             orderId,
-            issuedTo,
+            issuedTo: getFullName(employee),
             items: items.map(item => {
                 const asset = assets.find(a => a.id === item.assetId);
                 return {
@@ -150,7 +149,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
                         <Select value={item.assetId} onValueChange={(value) => handleItemChange(index, 'assetId', value)}>
                             <SelectTrigger><SelectValue placeholder="Select an asset" /></SelectTrigger>
                             <SelectContent>
-                                {assets.filter(a => a.status === 'Available' || (items.find(i => i.assetId === a.id) && a.status === 'Available' )).map(asset => (
+                                {assets.map(asset => (
                                     <SelectItem key={asset.id} value={asset.id}>{asset.name} (Qty: {asset.quantity})</SelectItem>
                                 ))}
                             </SelectContent>
@@ -161,7 +160,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
                         <Input
                             type="number"
                             value={item.quantityIssued}
-                            onChange={(e) => handleItemChange(index, 'quantityIssued', parseInt(e.target.value))}
+                            onChange={(e) => handleItemChange(index, 'quantityIssued', e.target.value)}
                             min="1"
                             max={assets.find(a => a.id === item.assetId)?.quantity || 1}
                         />
