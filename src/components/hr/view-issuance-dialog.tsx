@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client'
 import {
@@ -27,12 +25,31 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }) {
   const handlePrint = async () => {
     const printableArea = document.getElementById('printable-area');
     if(printableArea) {
-      const canvas = await html2canvas(printableArea, { scale: 2 });
+      const canvas = await html2canvas(printableArea, { 
+          scale: 2, 
+          useCORS: true,
+          logging: true,
+          windowWidth: printableArea.scrollWidth,
+          windowHeight: printableArea.scrollHeight
+       });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
       pdf.save(`issuance-note-${logEntry.id}.pdf`);
     }
   };

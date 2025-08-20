@@ -15,7 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useClientStorage } from "@/hooks/use-client-storage";
+import { format } from "date-fns";
+
 
 export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders = [], onNewIssuance }) {
     const [orderId, setOrderId] = useState('');
@@ -23,6 +26,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
     const [items, setItems] = useState([{ assetId: '', quantityIssued: 1 }]);
     const [notes, setNotes] = useState('');
     const [totalValue, setTotalValue] = useState(0);
+    const { getClientById } = useClientStorage();
 
     const getFullName = (employee) => {
         if (!employee) return '';
@@ -44,6 +48,14 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
         }, 0);
         setTotalValue(value);
     }, [items, assets]);
+    
+    const todaysOrders = useMemo(() => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        return orders.filter(order => 
+            order.clientEvents.some(event => event.date.startsWith(todayStr))
+        );
+    }, [orders]);
+
 
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];
@@ -79,9 +91,11 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
         }
         
         const employee = employees.find(e => e.id === issuedTo);
+        const order = orders.find(o => o.id === orderId);
 
         const issuanceDetails = {
             orderId,
+            order: order,
             issuedTo: getFullName(employee),
             items: items.map(item => {
                 const asset = assets.find(a => a.id === item.assetId);
@@ -111,7 +125,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
           <DialogHeader>
             <DialogTitle>New Asset Issuance</DialogTitle>
             <DialogDescription>
-              Select an order, employee, and the assets to be issued.
+              Select an order, employee, and the assets to be issued for today's events.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
@@ -119,11 +133,16 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
               <div>
                 <Label htmlFor="order">Client Order</Label>
                 <Select onValueChange={setOrderId} value={orderId}>
-                  <SelectTrigger><SelectValue placeholder="Select an order" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select an order for today" /></SelectTrigger>
                   <SelectContent>
-                    {orders.map(order => (
-                      <SelectItem key={order.id} value={order.id}>{order.name} ({order.id})</SelectItem>
-                    ))}
+                    {todaysOrders.map(order => {
+                      const client = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId) : null;
+                      return (
+                        <SelectItem key={order.id} value={order.id}>
+                            {client ? `${client.companyName} (${order.id})` : order.name}
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
