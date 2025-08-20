@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -13,23 +14,24 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { useRef } from 'react';
 import { ScrollArea } from "./ui/scroll-area";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, order }) {
-  const printRef = useRef();
 
   if (!logEntry) return null;
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const printableArea = document.getElementById('printable-area');
     if(printableArea) {
-      const originalContents = document.body.innerHTML;
-      const printContents = printableArea.innerHTML;
-      document.body.innerHTML = printContents;
-      window.print();
-      document.body.innerHTML = originalContents;
-      window.location.reload(); // To restore event listeners
+      const canvas = await html2canvas(printableArea, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`issuance-note-${logEntry.id}.pdf`);
     }
   };
   
@@ -61,7 +63,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <ScrollArea className="max-h-[80vh]">
-          <div id="printable-area" ref={printRef} className="p-6">
+          <div id="printable-area" className="p-6">
             <DialogHeader>
               <DialogTitle className="text-2xl">Issuance Note</DialogTitle>
               <DialogDescription>
