@@ -1,5 +1,3 @@
-
-
 // @ts-nocheck
 'use client'
 import {
@@ -17,6 +15,7 @@ import { Badge } from "./ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { useReactToPrint } from 'react-to-print';
 import { useRef } from 'react';
+import { ScrollArea } from "./ui/scroll-area";
 
 export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, order }) {
   const printRef = useRef();
@@ -55,7 +54,8 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
-          <div ref={printRef} className="p-4 print-only:p-0">
+        <ScrollArea className="max-h-[80vh]">
+          <div ref={printRef} className="p-6 print-only:p-0">
             <DialogHeader>
               <DialogTitle className="text-2xl">Issuance Note</DialogTitle>
               <DialogDescription>
@@ -78,7 +78,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
                     </div>
                     <div>
                         <Label className="font-semibold">Client Order:</Label>
-                        <p>{logEntry.order?.name || 'N/A'} ({logEntry.orderId})</p>
+                        <p>{order?.name || 'N/A'} ({logEntry.orderId})</p>
                     </div>
                      <div>
                         <Label className="font-semibold">Status:</Label>
@@ -123,7 +123,8 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
               )}
             </div>
           </div>
-          <DialogFooter className="print:hidden">
+        </ScrollArea>
+          <DialogFooter className="print:hidden p-6 pt-0">
             <Button type="button" variant="outline" onClick={handlePrint}>Export as PDF</Button>
             <DialogClose asChild>
               <Button type="button">Close</Button>
