@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { useState, useEffect } from "react";
 import { NewIssuanceDialog } from "@/components/hr/new-issuance-dialog";
 import { EditIssuanceDialog } from "@/components/hr/edit-issuance-dialog";
 import { ViewIssuanceDialog } from "@/components/hr/view-issuance-dialog";
+import { ReturnIssuanceDialog } from "@/components/hr/return-issuance-dialog";
 import { getIssuances, addIssuance, updateIssuance } from "@/services/issuanceService";
 import { getAssets, updateAsset } from "@/services/assetService";
 import { getEmployees } from "@/services/employeeService";
@@ -27,6 +28,7 @@ export default function IssuancePage() {
     const [isIssuanceDialogOpen, setIsIssuanceDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState(null);
 
     useEffect(() => {
@@ -92,6 +94,48 @@ export default function IssuancePage() {
         );
     };
 
+    const handleReturnIssuance = async (logId, returnedItems) => {
+        const logEntry = log.find(l => l.id === logId);
+        if (!logEntry) return;
+
+        let allReturned = true;
+        const updatedItems = logEntry.items.map(item => {
+            const returnedQty = returnedItems[item.assetId] || 0;
+            const newReturnedQty = (item.quantityReturned || 0) + returnedQty;
+            
+            if (newReturnedQty < item.quantityIssued) {
+                allReturned = false;
+            }
+
+            // Return stock
+            const asset = assets.find(a => a.id === item.assetId);
+            if (asset && returnedQty > 0) {
+                const updatedAsset = { 
+                    ...asset, 
+                    quantity: asset.quantity + returnedQty,
+                    status: asset.status === 'In Use' ? 'Available' : asset.status,
+                };
+                updateAsset(asset.id, updatedAsset);
+            }
+            
+            return {
+                ...item,
+                quantityReturned: newReturnedQty,
+            };
+        });
+
+        const newStatus = allReturned ? 'Returned' : 'Partially Returned';
+        const updatedLogEntry = { ...logEntry, items: updatedItems, status: newStatus };
+        
+        await updateIssuance(logId, updatedLogEntry);
+
+        // Refresh data
+        const [logsData, assetsData] = await Promise.all([getIssuances(), getAssets()]);
+        setLog(logsData);
+        setAssets(assetsData);
+    };
+
+
     const openEditDialog = (logEntry) => {
       setSelectedLog(logEntry);
       setIsEditDialogOpen(true);
@@ -111,30 +155,10 @@ export default function IssuancePage() {
       });
       setIsViewDialogOpen(true);
     };
-
-    const handleStatusChange = async (logId: string, newStatus: 'Returned') => {
-        const logEntry = log.find(l => l.id === logId);
-        if (!logEntry || logEntry.status === 'Returned') return;
-
-        const updatedLogEntry = { ...logEntry, status: newStatus };
-        await updateIssuance(logId, updatedLogEntry);
-        setLog(log.map(l => l.id === logId ? updatedLogEntry : l));
-
-        if (newStatus === 'Returned') {
-            for (const item of logEntry.items) {
-                 const asset = assets.find(a => a.id === item.assetId);
-                 if (asset) {
-                    const updatedAsset = { ...asset, quantity: asset.quantity + item.quantityIssued };
-                    // If all items are back, set to available
-                    if (updatedAsset.quantity > 0) {
-                        updatedAsset.status = 'Available';
-                    }
-                    await updateAsset(asset.id, updatedAsset);
-                 }
-            }
-            const assetsData = await getAssets();
-            setAssets(assetsData);
-        }
+    
+    const openReturnDialog = (logEntry) => {
+        setSelectedLog(logEntry);
+        setIsReturnDialogOpen(true);
     };
 
   return (
@@ -196,9 +220,12 @@ export default function IssuancePage() {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => openViewDialog(logEntry)}>View Details</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openEditDialog(logEntry)}>Edit</DropdownMenuItem>
-                            {logEntry.status === 'Issued' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(logEntry.id, 'Returned')}>
-                                    Mark as Returned
+                             {logEntry.status !== 'Returned' && (
+                                <DropdownMenuSeparator />
+                             )}
+                            {logEntry.status !== 'Returned' && (
+                                <DropdownMenuItem onClick={() => openReturnDialog(logEntry)}>
+                                    Return Items
                                 </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
@@ -215,7 +242,7 @@ export default function IssuancePage() {
       <NewIssuanceDialog
         isOpen={isIssuanceDialogOpen}
         setIsOpen={setIsIssuanceDialogOpen}
-        assets={assets.filter(a => a.status === 'Available')}
+        assets={assets.filter(a => a.quantity > 0)}
         employees={employees.filter(e => e.status === 'Active')}
         orders={orders}
         onNewIssuance={handleNewIssuance}
@@ -235,10 +262,17 @@ export default function IssuancePage() {
             isOpen={isViewDialogOpen}
             setIsOpen={setIsViewDialogOpen}
             logEntry={selectedLog}
-            employee={selectedLog.employee}
-            order={selectedLog.order}
+        />
+      )}
+      {selectedLog && (
+        <ReturnIssuanceDialog
+            isOpen={isReturnDialogOpen}
+            setIsOpen={setIsReturnDialogOpen}
+            logEntry={selectedLog}
+            onReturnIssuance={handleReturnIssuance}
         />
       )}
     </main>
   );
 }
+

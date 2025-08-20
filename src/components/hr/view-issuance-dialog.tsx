@@ -1,4 +1,5 @@
 
+
 // @ts-nocheck
 'use client'
 import {
@@ -17,8 +18,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { ScrollArea } from "./ui/scroll-area";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Separator } from "./ui/separator";
 
-export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, order }) {
+export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }) {
 
   if (!logEntry) return null;
 
@@ -43,6 +45,11 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
+  
+  const missingItems = logEntry.items?.filter(item => (item.quantityReturned || 0) < item.quantityIssued)
+    .map(item => ({...item, missingQty: item.quantityIssued - (item.quantityReturned || 0)}));
+    
+  const missingItemsValue = missingItems?.reduce((total, item) => total + (item.missingQty * item.unitPrice), 0);
 
   const getStatusBadge = (status) => {
       switch (status) {
@@ -86,7 +93,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
                     </div>
                     <div>
                         <Label className="font-semibold">Client Order:</Label>
-                        <p>{order?.name || 'N/A'} ({logEntry.orderId})</p>
+                        <p>{logEntry.order?.name || 'N/A'} ({logEntry.orderId})</p>
                     </div>
                      <div>
                         <Label className="font-semibold">Status:</Label>
@@ -127,6 +134,36 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, orde
                 <div>
                     <Label className="font-semibold">Notes:</Label>
                     <p className="text-sm p-2 border rounded-md bg-muted">{logEntry.notes}</p>
+                </div>
+              )}
+              {(logEntry.status === 'Partially Returned' || logEntry.status === 'Incomplete') && missingItems.length > 0 && (
+                <div className="mt-4 p-4 border-l-4 border-destructive bg-destructive/10">
+                    <h4 className="font-bold text-destructive mb-2">Discrepancy Report</h4>
+                    <p className="text-sm mb-2">The following items were not returned:</p>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Asset Name</TableHead>
+                                <TableHead className="text-right">Missing Qty</TableHead>
+                                <TableHead className="text-right">Value</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {missingItems.map(item => (
+                                <TableRow key={item.assetId}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell className="text-right">{item.missingQty}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.missingQty * item.unitPrice)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                        <TableFooter>
+                            <TableRow>
+                                <TableCell colSpan={2} className="text-right font-bold">Total Value of Missing Items</TableCell>
+                                <TableCell className="text-right font-bold">{formatCurrency(missingItemsValue)}</TableCell>
+                            </TableRow>
+                        </TableFooter>
+                    </Table>
                 </div>
               )}
             </div>
