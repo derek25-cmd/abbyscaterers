@@ -207,7 +207,33 @@ export interface DailyCosting {
     createdAt: string; // ISO string
 }
 
-// Human Resources Types
+// --- HR & OPERATIONS ---
+
+// Issuance Types
+export interface IssuedItem {
+  assetId: string;
+  name: string;
+  type: string;
+  unitPrice: number;
+  quantityIssued: number;
+  quantityReturned?: number;
+}
+
+export interface Issuance {
+    id: string;
+    orderId: string; // Link to a client order
+    issuedTo: string; // Employee ID
+    date: string; // ISO date string
+    status: 'Issued' | 'Partially Returned' | 'Returned' | 'Incomplete';
+    items: IssuedItem[];
+    totalValue: number;
+    notes?: string;
+    createdAt: string; // ISO date string
+    updatedAt: string; // ISO date string
+}
+
+
+// HR Schemas
 export const DEPARTMENTS = ["Kitchen", "Service", "Management", "Logistics", "Sales"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 

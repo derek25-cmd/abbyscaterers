@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -12,79 +13,119 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "./ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { useReactToPrint } from 'react-to-print';
+import { useRef } from 'react';
 
-export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }) {
+export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry, employee, order }) {
+  const printRef = useRef();
+
   if (!logEntry) return null;
+
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `Issuance_Note_${logEntry.id}`,
+  });
+  
+  const getFullName = (emp) => {
+    if (!emp) return 'N/A';
+    return [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(' ');
+  }
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status) => {
       switch (status) {
         case 'Issued':
-          return <Badge className="col-span-2 bg-orange-500/20 text-orange-700 hover:bg-orange-500/30 dark:bg-orange-500/10 dark:text-orange-400">Issued</Badge>;
+          return <Badge className="bg-orange-500/20 text-orange-700">{status}</Badge>;
         case 'Returned':
-          return <Badge className="col-span-2 bg-green-500/20 text-green-700 hover:bg-green-500/30 dark:bg-green-500/10 dark:text-green-400">Returned</Badge>;
+          return <Badge className="bg-green-500/20 text-green-700">{status}</Badge>;
+        case 'Partially Returned':
+            return <Badge variant="destructive" className="bg-yellow-500/20 text-yellow-700">{status}</Badge>;
+        case 'Incomplete':
+            return <Badge variant="destructive">{status}</Badge>;
         default:
-          return <Badge className="col-span-2" variant="outline">{status}</Badge>;
+          return <Badge variant="outline">{status}</Badge>;
       }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Issuance Details</DialogTitle>
-            <DialogDescription>
-              Viewing details for issuance {logEntry.id}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Issue ID</Label>
-              <span className="col-span-2">{logEntry.id}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Asset Name</Label>
-              <span className="col-span-2">{logEntry.name}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Asset ID</Label>
-              <span className="col-span-2 text-muted-foreground">{logEntry.assetId}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Issued To</Label>
-              <span className="col-span-2">{logEntry.issuedTo}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Type</Label>
-              <span className="col-span-2">{logEntry.type}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Unit</Label>
-              <span className="col-span-2">{logEntry.unit}</span>
-            </div>
-             <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Unit Price</Label>
-              <span className="col-span-2">{formatCurrency(logEntry.unitPrice)}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Quantity</Label>
-              <span className="col-span-2">{logEntry.quantity}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Date</Label>
-              <span className="col-span-2">{logEntry.date}</span>
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Status</Label>
-              {getStatusBadge(logEntry.status)}
+      <DialogContent className="sm:max-w-2xl">
+          <div ref={printRef} className="p-4 print-only:p-0">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Issuance Note</DialogTitle>
+              <DialogDescription>
+                Details for issuance {logEntry.id}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label className="font-semibold">Issue ID:</Label>
+                        <p>{logEntry.id}</p>
+                    </div>
+                    <div>
+                        <Label className="font-semibold">Date:</Label>
+                        <p>{logEntry.date}</p>
+                    </div>
+                    <div>
+                        <Label className="font-semibold">Issued To:</Label>
+                        <p>{getFullName(employee)}</p>
+                    </div>
+                    <div>
+                        <Label className="font-semibold">Client Order:</Label>
+                        <p>{order?.name || 'N/A'} ({logEntry.orderId})</p>
+                    </div>
+                     <div>
+                        <Label className="font-semibold">Status:</Label>
+                        <div>{getStatusBadge(logEntry.status)}</div>
+                    </div>
+                </div>
+              <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Asset Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Issued</TableHead>
+                        <TableHead className="text-right">Returned</TableHead>
+                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Total Value</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {logEntry.items.map((item, index) => (
+                        <TableRow key={index}>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>{item.type}</TableCell>
+                            <TableCell className="text-right">{item.quantityIssued}</TableCell>
+                            <TableCell className="text-right">{item.quantityReturned || 0}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice * item.quantityIssued)}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+                <TableFooter>
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-right font-bold text-lg">Grand Total Value</TableCell>
+                        <TableCell className="text-right font-bold text-lg">{formatCurrency(logEntry.totalValue)}</TableCell>
+                    </TableRow>
+                </TableFooter>
+              </Table>
+              {logEntry.notes && (
+                <div>
+                    <Label className="font-semibold">Notes:</Label>
+                    <p className="text-sm p-2 border rounded-md bg-muted">{logEntry.notes}</p>
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="print:hidden">
+            <Button type="button" variant="outline" onClick={handlePrint}>Export as PDF</Button>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Close</Button>
+              <Button type="button">Close</Button>
             </DialogClose>
           </DialogFooter>
       </DialogContent>
