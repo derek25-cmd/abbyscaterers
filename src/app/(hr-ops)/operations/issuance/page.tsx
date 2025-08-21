@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal } from "lucide-react";
-import { useState, useEffect } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { PlusCircle, MoreHorizontal, CalendarIcon, ListFilter, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { NewIssuanceDialog } from "@/components/hr/new-issuance-dialog";
 import { EditIssuanceDialog } from "@/components/hr/edit-issuance-dialog";
 import { ViewIssuanceDialog } from "@/components/hr/view-issuance-dialog";
@@ -17,6 +17,11 @@ import { getIssuances, addIssuance, updateIssuance } from "@/services/issuanceSe
 import { getAssets, updateAsset } from "@/services/assetService";
 import { getEmployees } from "@/services/employeeService";
 import { getOrders } from "@/services/orderService";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 
 export default function IssuancePage() {
@@ -30,6 +35,9 @@ export default function IssuancePage() {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState(null);
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterType, setFilterType] = useState("assetName");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -48,6 +56,30 @@ export default function IssuancePage() {
         }
         fetchData();
     }, []);
+
+    const filteredLog = useMemo(() => {
+        const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
+        return log.filter((entry) => {
+            const matchesDate = dateStr ? entry.date === dateStr : true;
+            if (!matchesDate) return false;
+
+            if (!searchQuery) return true;
+            const lowercasedQuery = searchQuery.toLowerCase();
+
+            switch (filterType) {
+                case 'id':
+                    return entry.id.toLowerCase().includes(lowercasedQuery);
+                case 'orderId':
+                    const orderName = orders.find(o => o.id === entry.orderId)?.name || '';
+                    return orderName.toLowerCase().includes(lowercasedQuery) || entry.orderId.toLowerCase().includes(lowercasedQuery);
+                case 'issuedTo':
+                    return entry.issuedTo.toLowerCase().includes(lowercasedQuery);
+                case 'assetName':
+                default:
+                    return entry.items.some(item => item.name.toLowerCase().includes(lowercasedQuery));
+            }
+        });
+    }, [log, selectedDate, searchQuery, filterType, orders]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -181,6 +213,58 @@ export default function IssuancePage() {
               Record and manage daily issuance of stock and equipment.
             </CardDescription>
           </CardHeader>
+          <div className="p-6 pt-0 flex items-center gap-2">
+              <div className="relative flex-1 md:grow-0">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={`Search by ${filterType}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                    <ListFilter className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Filter
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={filterType === 'assetName'} onCheckedChange={() => setFilterType('assetName')}>Asset Name</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>Issue ID</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'orderId'} onCheckedChange={() => setFilterType('orderId')}>Order</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'issuedTo'} onCheckedChange={() => setFilterType('issuedTo')}>Issued To</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal h-9",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+          </div>
           <CardContent>
             {loading ? (
                 <p>Loading issuance log...</p>
@@ -200,7 +284,7 @@ export default function IssuancePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {log.map((logEntry) => (
+                {filteredLog.map((logEntry) => (
                   <TableRow key={logEntry.id}>
                     <TableCell className="font-medium">{logEntry.id}</TableCell>
                     <TableCell>{orders.find(o => o.id === logEntry.orderId)?.name || 'N/A'}</TableCell>
@@ -275,4 +359,3 @@ export default function IssuancePage() {
     </main>
   );
 }
-

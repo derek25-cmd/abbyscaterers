@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search } from "lucide-react";
 import Link from "next/link";
 import { getOrderColumns } from "./columns"; 
 import { useOrderStorage } from "@/hooks/use-order-storage";
@@ -42,6 +42,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Order } from "@/types";
 import { useClientStorage } from "@/hooks/use-client-storage";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar } from "../ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 export function OrderListTable() {
   const searchParams = useSearchParams();
@@ -55,6 +60,10 @@ export function OrderListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [filterType, setFilterType] = React.useState("customerName");
+  const [searchQuery, setSearchQuery] = React.useState("");
+
 
   const getClientName = React.useCallback((clientId: string | null) => {
     if (!clientId) return 'N/A';
@@ -62,15 +71,45 @@ export function OrderListTable() {
     return client?.companyName || 'Unknown Client';
   }, [clients]);
 
-  const filteredOrders = React.useMemo(() => {
-    if (!clientIdFilter) {
-      return orders;
-    }
-    return orders.filter(order => 
-      order.clientEvents.some(event => event.clientId === clientIdFilter)
-    );
-  }, [orders, clientIdFilter]);
+  
+  const tableData = React.useMemo(() => {
+      let filtered = orders;
 
+      if (clientIdFilter) {
+          filtered = filtered.filter(order => 
+              order.clientEvents.some(event => event.clientId === clientIdFilter)
+          );
+      }
+      
+      const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+      if (dateStr) {
+          filtered = filtered.filter(order => 
+              order.clientEvents.some(event => event.date.startsWith(dateStr))
+          );
+      }
+      
+      if(searchQuery) {
+          const lowercasedQuery = searchQuery.toLowerCase();
+          filtered = filtered.filter(order => {
+              const clientName = order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId).toLowerCase() : '';
+              switch (filterType) {
+                  case 'id':
+                      return order.id.toLowerCase().includes(lowercasedQuery);
+                  case 'proformaId':
+                      return order.proformaId?.toLowerCase().includes(lowercasedQuery);
+                  case 'customerName':
+                  default:
+                      return clientName.includes(lowercasedQuery);
+              }
+          })
+      }
+      
+      return filtered.map(order => ({
+        ...order,
+        customerName: order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId) : 'N/A',
+      }));
+
+  }, [orders, clientIdFilter, selectedDate, searchQuery, filterType, getClientName]);
 
   const handleDeleteRequest = React.useCallback((orderId: string) => {
     setItemToDelete(orderId);
@@ -89,14 +128,6 @@ export function OrderListTable() {
   }, [itemToDelete, deleteOrderFromStore, toast]);
   
   const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest, getClientById), [handleDeleteRequest, getClientById]);
-
-  const tableData = React.useMemo(() => filteredOrders.map(order => {
-      const client = order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId) : 'N/A';
-      return {
-          ...order,
-          customerName: client,
-      };
-  }), [filteredOrders, getClientName]);
 
   const table = useReactTable({
     data: tableData,
@@ -129,14 +160,57 @@ export function OrderListTable() {
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Input
-          placeholder="Filter by customer name..."
-          value={(table.getColumn("customerName")?.getFilterValue() as string) ?? ""}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-            table.getColumn("customerName")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+        <div className="flex items-center gap-2">
+            <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder={`Search by ${filterType}...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                />
+            </div>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                    <ListFilter className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Filter By
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={filterType === 'customerName'} onCheckedChange={() => setFilterType('customerName')}>Customer</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>Order ID</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'proformaId'} onCheckedChange={() => setFilterType('proformaId')}>Proforma No.</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal h-9",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+        </div>
         <div className="flex gap-2">
           <Link href="/orders/new" passHref>
             <Button>
@@ -233,3 +307,4 @@ export function OrderListTable() {
     </div>
   );
 }
+
