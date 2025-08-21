@@ -28,15 +28,12 @@ import {
 import {
   SidebarProvider,
   Sidebar,
-  SidebarBody,
+  SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -55,36 +52,14 @@ import { BarChart3 } from "lucide-react";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/orders", label: "Orders", icon: BookOpen },
-  { 
-    label: "Menu / Food Costing", 
-    icon: UtensilsCrossed,
-    subItems: [
-      { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
-      { href: "/ingredients", label: "Ingredients", icon: ClipboardList }
-    ]
-  },
+  { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
+  { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
   { href: "/equipment", label: "Inventory", icon: ChefHat },
-  { 
-    label: "Invoicing", 
-    icon: FileText,
-    subItems: [
-      { href: "/invoicing/proforma-invoices", label: "Proforma Invoice" },
-      { href: "/invoicing/invoices", label: "Final Invoices" }
-    ]
-  },
+  { href: "/invoicing/proforma-invoices", label: "Proforma Invoices", icon: FileText },
+  { href: "/invoicing/invoices", label: "Final Invoices", icon: FileText },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
-];
-
-const hrOpsNavItems = [
-    { href: "/hr/employees", label: "Employee Records", icon: Users },
-    { href: "/hr/attendance", label: "Attendance", icon: CalendarCheck },
-    { href: "/hr/recruitment", label: "Recruitment", icon: Briefcase },
-    { href: "/hr/payroll", label: "Payroll", icon: CreditCard },
-    { href: "/operations/inventory", label: "Product Catalog", icon: Package },
-    { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
-    { href: "/operations/assets", label: "Asset Management", icon: Truck },
-    { href: "/operations/issuance", label: "Daily Issuance", icon: ClipboardList },
+  { href: "/hr-ops/dashboard", label: "HR & Operations", icon: Briefcase },
 ];
 
 
@@ -137,7 +112,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <Sidebar>
+      <Sidebar collapsible="icon">
         <SidebarHeader>
              <div className="flex items-center gap-2.5">
                <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center shadow-lg">
@@ -150,27 +125,10 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                 )}
              </div>
         </SidebarHeader>
-        <SidebarBody>
+        <SidebarContent>
             <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.label}>
-                    {item.subItems ? (
-                       <SidebarMenuSub
-                         label={item.label}
-                         icon={<item.icon />}
-                         isActive={item.subItems.some(sub => currentPathname.startsWith(sub.href))}
-                        >
-                            {item.subItems.map(subItem => (
-                               <SidebarMenuSubItem key={subItem.href}>
-                                  <Link href={subItem.href}>
-                                      <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                        {subItem.label}
-                                      </SidebarMenuSubButton>
-                                  </Link>
-                               </SidebarMenuSubItem>
-                            ))}
-                         </SidebarMenuSub>
-                    ) : (
                       <Link href={item.href}>
                         <SidebarMenuButton 
                             isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
@@ -180,28 +138,10 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                            {open && <span>{item.label}</span>}
                         </SidebarMenuButton>
                       </Link>
-                    )}
                   </SidebarMenuItem>
                 ))}
-                 <SidebarMenuItem>
-                    <SidebarMenuSub
-                        label="HR & Operations"
-                        icon={<Briefcase />}
-                        isActive={hrOpsNavItems.some(sub => currentPathname.startsWith(sub.href))}
-                    >
-                        {hrOpsNavItems.map(subItem => (
-                            <SidebarMenuSubItem key={subItem.href}>
-                                <Link href={subItem.href}>
-                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
-                                        {subItem.label}
-                                    </SidebarMenuSubButton>
-                                </Link>
-                            </SidebarMenuSubItem>
-                        ))}
-                    </SidebarMenuSub>
-                </SidebarMenuItem>
             </SidebarMenu>
-        </SidebarBody>
+        </SidebarContent>
          <SidebarFooter>
             <SidebarMenu>
                 {managementItems.map((item) => (
@@ -225,7 +165,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
           <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30 shrink-0">
               <div className="h-full px-4 sm:px-6 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <SidebarTrigger className="md:hidden"/>
+                  <SidebarTrigger />
                 </div>
                 
                 <div className="flex items-center gap-2">

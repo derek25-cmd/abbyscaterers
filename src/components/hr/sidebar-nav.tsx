@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -19,6 +20,8 @@ import {
   SidebarMenuItem,
   SidebarMenuButton
 } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
+
 
 const mainNav = [
   {
@@ -76,6 +79,7 @@ const hrNav = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { open } = useSidebar();
 
   return (
     <div className="flex flex-col gap-2">
@@ -84,9 +88,9 @@ export function SidebarNav() {
           {mainNav.map((item) => (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href}>
-                <SidebarMenuButton isActive={pathname === item.href}>
+                <SidebarMenuButton isActive={pathname === item.href} tooltip={{children: item.label, side: 'right'}}>
                   <item.icon />
-                  <span>{item.label}</span>
+                  {open && <span>{item.label}</span>}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -95,14 +99,14 @@ export function SidebarNav() {
       </div>
 
       <div className="p-2">
-        <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Operations</p>
+        {open && <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Operations</p>}
         <SidebarMenu>
           {operationsNav.map((item) => (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href}>
-                <SidebarMenuButton isActive={pathname.startsWith(item.href)}>
+                <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={{children: item.label, side: 'right'}}>
                   <item.icon />
-                  <span>{item.label}</span>
+                  {open && <span>{item.label}</span>}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
@@ -111,14 +115,14 @@ export function SidebarNav() {
       </div>
 
       <div className="p-2">
-        <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Human Resources</p>
+        {open && <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Human Resources</p>}
         <SidebarMenu>
           {hrNav.map((item) => (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href}>
-                <SidebarMenuButton isActive={pathname.startsWith(item.href)}>
+                <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={{children: item.label, side: 'right'}}>
                   <item.icon />
-                  <span>{item.label}</span>
+                  {open && <span>{item.label}</span>}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
