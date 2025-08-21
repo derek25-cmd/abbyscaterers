@@ -23,7 +23,8 @@ import {
     History,
     Truck,
     CalendarCheck,
-    CreditCard
+    CreditCard,
+    ChevronDown
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -36,6 +37,9 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -48,6 +52,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BarChart3 } from "lucide-react";
+import React from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -59,7 +65,20 @@ const navItems = [
   { href: "/invoicing/invoices", label: "Final Invoices", icon: FileText },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
-  { href: "/hr-ops/dashboard", label: "HR & Operations", icon: Briefcase },
+  { 
+    label: "HR & Operations", 
+    icon: Briefcase,
+    subItems: [
+        { href: "/hr/employees", label: "Employees", icon: Users },
+        { href: "/hr/attendance", label: "Attendance", icon: CalendarCheck },
+        { href: "/hr/payroll", label: "Payroll", icon: CreditCard },
+        { href: "/hr/recruitment", label: "Recruitment", icon: Briefcase },
+        { href: "/operations/inventory", label: "Product Catalog", icon: Package },
+        { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
+        { href: "/operations/assets", label: "Asset Management", icon: Truck },
+        { href: "/operations/issuance", label: "Daily Issuance", icon: ClipboardList },
+    ]
+  },
 ];
 
 
@@ -103,12 +122,62 @@ function UserProfile() {
   );
 }
 
+function NavItem({ item, currentPathname }: { item: any, currentPathname: string }) {
+    const { open } = useSidebar();
+    const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(false);
+
+    const isParentActive = item.subItems && item.subItems.some((sub: any) => currentPathname.startsWith(sub.href));
+
+    if (item.subItems) {
+        return (
+            <Collapsible open={isSubMenuOpen} onOpenChange={setIsSubMenuOpen}>
+                <CollapsibleTrigger asChild>
+                    <SidebarMenuButton 
+                        isActive={isParentActive}
+                        tooltip={{ children: item.label, side: "right" }}
+                        className="w-full justify-between"
+                    >
+                        <div className="flex items-center gap-2">
+                            <item.icon />
+                            {open && <span>{item.label}</span>}
+                        </div>
+                        {open && <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isSubMenuOpen ? 'rotate-180' : ''}`} />}
+                    </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                    <SidebarMenuSub>
+                        {item.subItems.map((subItem: any) => (
+                             <SidebarMenuSubItem key={subItem.label}>
+                                <Link href={subItem.href}>
+                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                         <subItem.icon />
+                                         {open && <span>{subItem.label}</span>}
+                                    </SidebarMenuSubButton>
+                                </Link>
+                             </SidebarMenuSubItem>
+                        ))}
+                    </SidebarMenuSub>
+                </CollapsibleContent>
+            </Collapsible>
+        )
+    }
+
+    return (
+        <Link href={item.href}>
+            <SidebarMenuButton 
+                isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
+                tooltip={{ children: item.label, side: "right" }}
+            >
+                <item.icon />
+                {open && <span>{item.label}</span>}
+            </SidebarMenuButton>
+        </Link>
+    )
+}
+
+
 function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
   const { open } = useSidebar();
-
-  if (currentPathname.startsWith('/hr-ops') || currentPathname.startsWith('/hr/') || currentPathname.startsWith('/operations/')) {
-    return <>{children}</>;
-  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -129,15 +198,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.label}>
-                      <Link href={item.href}>
-                        <SidebarMenuButton 
-                            isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
-                            tooltip={{ children: item.label, side: "right" }}
-                        >
-                            <item.icon />
-                           {open && <span>{item.label}</span>}
-                        </SidebarMenuButton>
-                      </Link>
+                      <NavItem item={item} currentPathname={currentPathname} />
                   </SidebarMenuItem>
                 ))}
             </SidebarMenu>
