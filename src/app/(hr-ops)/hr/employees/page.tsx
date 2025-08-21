@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 import { Badge } from "@/components/ui/badge";
@@ -5,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { MoreHorizontal, PlusCircle, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
 import { ViewEmployeeDialog } from "@/components/hr/view-employee-dialog";
 import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeService";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DEPARTMENTS } from "@/lib/schemas";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
@@ -19,6 +23,9 @@ export default function EmployeesPage() {
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isViewEmployeeDialogOpen, setIsViewEmployeeDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -28,6 +35,19 @@ export default function EmployeesPage() {
     };
     fetchEmployees();
   }, []);
+  
+  const getFullName = (employee) => {
+    return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
+  }
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(employee => {
+        const matchesSearch = searchQuery ? getFullName(employee).toLowerCase().includes(searchQuery.toLowerCase()) : true;
+        const matchesDept = departmentFilter !== 'all' ? employee.department === departmentFilter : true;
+        const matchesStatus = statusFilter !== 'all' ? employee.status === statusFilter : true;
+        return matchesSearch && matchesDept && matchesStatus;
+    });
+  }, [employees, searchQuery, departmentFilter, statusFilter]);
 
   const handleAddEmployee = async (newEmployee) => {
     const newId = await addEmployee(newEmployee);
@@ -53,9 +73,6 @@ export default function EmployeesPage() {
     setIsViewEmployeeDialogOpen(true);
   };
 
-  const getFullName = (employee) => {
-    return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
-  }
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -77,6 +94,37 @@ export default function EmployeesPage() {
               Manage your company's employees and view their details.
             </CardDescription>
           </CardHeader>
+           <div className="p-6 pt-0 flex flex-col md:flex-row items-center gap-2">
+              <div className="relative flex-1 md:grow-0 w-full md:w-auto">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8"
+                />
+              </div>
+               <Select onValueChange={setDepartmentFilter} value={departmentFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Filter by Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {DEPARTMENTS.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
+                </SelectContent>
+              </Select>
+               <Select onValueChange={setStatusFilter} value={statusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+          </div>
           <CardContent>
             {loading ? (
                 <p>Loading employees...</p>
@@ -94,7 +142,7 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.map((employee) => (
+                {filteredEmployees.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">{getFullName(employee)}</TableCell>
                     <TableCell>{employee.role}</TableCell>

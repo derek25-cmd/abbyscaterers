@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -25,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search, X } from "lucide-react";
 import Link from "next/link";
 import { getOrderColumns } from "./columns"; 
 import { useOrderStorage } from "@/hooks/use-order-storage";
@@ -60,7 +59,7 @@ export function OrderListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date | null>(new Date());
   const [filterType, setFilterType] = React.useState("customerName");
   const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -81,11 +80,11 @@ export function OrderListTable() {
           );
       }
       
-      const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
-      if (dateStr) {
-          filtered = filtered.filter(order => 
-              order.clientEvents.some(event => event.date.startsWith(dateStr))
-          );
+      if (selectedDate) {
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        filtered = filtered.filter(order => 
+            order.clientEvents.some(event => event.date.startsWith(dateStr))
+        );
       }
       
       if(searchQuery) {
@@ -210,6 +209,12 @@ export function OrderListTable() {
                   />
                 </PopoverContent>
               </Popover>
+              {selectedDate && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                  <X className="h-4 w-4 mr-1" />
+                  Show All
+                </Button>
+              )}
         </div>
         <div className="flex gap-2">
           <Link href="/orders/new" passHref>
@@ -263,7 +268,7 @@ export function OrderListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {clientIdFilter ? `No orders found for client ID: ${clientIdFilter}.` : 'No orders found.'}
+                  {clientIdFilter ? `No orders found for client ID: ${clientIdFilter}.` : 'No orders found for the selected criteria.'}
                 </TableCell>
               </TableRow>
             )}
@@ -307,4 +312,3 @@ export function OrderListTable() {
     </div>
   );
 }
-

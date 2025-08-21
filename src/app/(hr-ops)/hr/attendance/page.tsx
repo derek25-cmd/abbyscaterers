@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 
@@ -7,15 +8,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, MoreHorizontal, Clock } from "lucide-react";
+import { CalendarIcon, MoreHorizontal, Clock, Search, X } from "lucide-react";
 import { format, parse } from "date-fns";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { EditAttendanceDialog } from "@/components/hr/edit-attendance-dialog";
 import { ViewAttendanceDialog } from "@/components/hr/view-attendance-dialog";
 import { LogAttendanceDialog } from "@/components/hr/log-attendance-dialog";
 import { getAttendanceRecords, addAttendanceRecord, updateAttendanceRecord, findAttendanceRecord } from "@/services/attendanceService";
 import { getEmployees } from "@/services/employeeService";
+import { Input } from "@/components/ui/input";
 
 export default function AttendancePage() {
   const [records, setRecords] = useState([]);
@@ -26,6 +28,7 @@ export default function AttendancePage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,6 +43,26 @@ export default function AttendancePage() {
     }
     fetchData();
   }, []);
+  
+  const filteredRecords = useMemo(() => {
+    let dateFilteredRecords = [];
+    if (selectedDate) {
+        const dateStr = format(selectedDate, "yyyy-MM-dd");
+        dateFilteredRecords = records.filter(r => r.date === dateStr);
+    } else {
+        dateFilteredRecords = records;
+    }
+    
+    if (!searchQuery) {
+        return dateFilteredRecords;
+    }
+    
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return dateFilteredRecords.filter(record => 
+        record.employee.toLowerCase().includes(lowercasedQuery)
+    );
+  }, [records, selectedDate, searchQuery]);
+
 
   const handleEditRecord = async (updatedRecord) => {
     await updateAttendanceRecord(updatedRecord.id, updatedRecord);
@@ -114,37 +137,55 @@ export default function AttendancePage() {
                     Clock In / Out
                 </span>
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-[240px] justify-start text-left font-normal",
-                    !selectedDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
         <Card>
           <CardHeader>
             <CardTitle>Daily Attendance</CardTitle>
             <CardDescription>
-              Showing records for {selectedDate ? format(selectedDate, "MMMM dd, yyyy") : ''}.
+              {selectedDate ? `Showing records for ${format(selectedDate, "MMMM dd, yyyy")}` : "Showing all records"}.
             </CardDescription>
           </CardHeader>
+           <div className="p-6 pt-0 flex items-center gap-2">
+              <div className="relative flex-1 md:grow-0">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by employee..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                />
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal h-9",
+                      !selectedDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+               {selectedDate && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                  <X className="h-4 w-4 mr-1" />
+                  Show All
+                </Button>
+              )}
+          </div>
           <CardContent>
             {loading ? (
                 <p>Loading attendance records...</p>
@@ -162,7 +203,7 @@ export default function AttendancePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {records.filter(r => r.date === format(selectedDate, "yyyy-MM-dd")).map((record) => (
+                {filteredRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">{record.employee}</TableCell>
                     <TableCell>{record.clockIn}</TableCell>

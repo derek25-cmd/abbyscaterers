@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal, CalendarIcon, ListFilter, Search } from "lucide-react";
+import { PlusCircle, MoreHorizontal, CalendarIcon, ListFilter, Search, X } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { NewIssuanceDialog } from "@/components/hr/new-issuance-dialog";
 import { EditIssuanceDialog } from "@/components/hr/edit-issuance-dialog";
@@ -58,27 +58,32 @@ export default function IssuancePage() {
     }, []);
 
     const filteredLog = useMemo(() => {
-        const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
-        return log.filter((entry) => {
-            const matchesDate = dateStr ? entry.date === dateStr : true;
-            if (!matchesDate) return false;
+        let filteredData = log;
+    
+        if (selectedDate) {
+            const dateStr = format(selectedDate, "yyyy-MM-dd");
+            filteredData = filteredData.filter(entry => entry.date === dateStr);
+        }
 
-            if (!searchQuery) return true;
+        if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
-
-            switch (filterType) {
-                case 'id':
-                    return entry.id.toLowerCase().includes(lowercasedQuery);
-                case 'orderId':
-                    const orderName = orders.find(o => o.id === entry.orderId)?.name || '';
-                    return orderName.toLowerCase().includes(lowercasedQuery) || entry.orderId.toLowerCase().includes(lowercasedQuery);
-                case 'issuedTo':
-                    return entry.issuedTo.toLowerCase().includes(lowercasedQuery);
-                case 'assetName':
-                default:
-                    return entry.items.some(item => item.name.toLowerCase().includes(lowercasedQuery));
-            }
-        });
+            filteredData = filteredData.filter(entry => {
+                switch (filterType) {
+                    case 'id':
+                        return entry.id.toLowerCase().includes(lowercasedQuery);
+                    case 'orderId':
+                        const orderName = orders.find(o => o.id === entry.orderId)?.name || '';
+                        return orderName.toLowerCase().includes(lowercasedQuery) || (entry.orderId && entry.orderId.toLowerCase().includes(lowercasedQuery));
+                    case 'issuedTo':
+                        return entry.issuedTo.toLowerCase().includes(lowercasedQuery);
+                    case 'assetName':
+                    default:
+                        return entry.items.some(item => item.name.toLowerCase().includes(lowercasedQuery));
+                }
+            });
+        }
+        
+        return filteredData;
     }, [log, selectedDate, searchQuery, filterType, orders]);
 
     const getStatusBadge = (status: string) => {
@@ -210,7 +215,7 @@ export default function IssuancePage() {
           <CardHeader>
             <CardTitle>Issuance History</CardTitle>
             <CardDescription>
-              Record and manage daily issuance of stock and equipment.
+              {selectedDate ? `Showing records for ${format(selectedDate, "MMMM dd, yyyy")}`: "Showing all records"}.
             </CardDescription>
           </CardHeader>
           <div className="p-6 pt-0 flex items-center gap-2">
@@ -264,6 +269,12 @@ export default function IssuancePage() {
                   />
                 </PopoverContent>
               </Popover>
+               {selectedDate && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                  <X className="h-4 w-4 mr-1" />
+                  Show All
+                </Button>
+              )}
           </div>
           <CardContent>
             {loading ? (

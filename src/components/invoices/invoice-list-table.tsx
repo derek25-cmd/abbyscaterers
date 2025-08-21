@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search, X } from "lucide-react";
 import Link from "next/link";
 import { getInvoiceColumns } from "./columns"; 
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
@@ -45,6 +45,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Calendar } from "../ui/calendar";
+import { format } from 'date-fns';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 
 export function InvoiceListTable() {
@@ -64,6 +67,9 @@ export function InvoiceListTable() {
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
   const [popoverOpen, setPopoverOpen] = React.useState(false);
+  const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
+  const [filterType, setFilterType] = React.useState("clientName");
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const handleDeleteRequest = React.useCallback((invoiceId: string) => {
     setItemToDelete(invoiceId);
@@ -88,10 +94,27 @@ export function InvoiceListTable() {
   }, [clients]);
 
   const filteredInvoices = React.useMemo(() => {
-    return clientIdFilter
-      ? invoices.filter(inv => inv.clientId === clientIdFilter)
-      : invoices;
-  }, [invoices, clientIdFilter]);
+    let data = invoices;
+    if (clientIdFilter) {
+      data = data.filter(inv => inv.clientId === clientIdFilter);
+    }
+     if (selectedDate) {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      data = data.filter(inv => inv.invoiceDate?.startsWith(dateStr));
+    }
+    if(searchQuery){
+      const lowercasedQuery = searchQuery.toLowerCase();
+      data = data.filter(inv => {
+          switch(filterType){
+              case 'id': return inv.id.toLowerCase().includes(lowercasedQuery);
+              case 'proformaId': return inv.proformaId?.toLowerCase().includes(lowercasedQuery);
+              case 'clientName': return getClientName(inv.clientId).toLowerCase().includes(lowercasedQuery);
+              default: return true;
+          }
+      });
+    }
+    return data;
+  }, [invoices, clientIdFilter, selectedDate, searchQuery, filterType, getClientName]);
 
   const tableData = React.useMemo(() => filteredInvoices.map(inv => ({
     ...inv,
@@ -131,14 +154,47 @@ export function InvoiceListTable() {
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Input
-          placeholder="Filter by client name..."
-          value={(table.getColumn("clientName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("clientName")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+         <div className="flex items-center gap-2">
+            <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder={`Search...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                />
+            </div>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                    <ListFilter className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Filter By</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={filterType === 'clientName'} onCheckedChange={() => setFilterType('clientName')}>Client Name</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>Invoice No.</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'proformaId'} onCheckedChange={() => setFilterType('proformaId')}>Proforma No.</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal h-9", !selectedDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Filter by date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
+                </PopoverContent>
+            </Popover>
+            {selectedDate && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}><X className="h-4 w-4 mr-1"/>Show All</Button>
+            )}
+        </div>
         <div className="flex gap-2">
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
