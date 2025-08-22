@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
-import { ScrollArea } from "./ui/scroll-area";
+import { useState, useEffect } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 
 export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGeneratePayslip }) {
@@ -26,6 +26,17 @@ export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGenerate
     allowances: 0,
     deductions: 0,
   });
+
+  useEffect(() => {
+    if (formData.employeeId) {
+      const selectedEmployee = employees.find(e => e.id === formData.employeeId);
+      if (selectedEmployee && selectedEmployee.monthlySalary) {
+        setFormData(prev => ({ ...prev, basicSalary: selectedEmployee.monthlySalary }));
+      }
+    } else {
+        setFormData(prev => ({ ...prev, basicSalary: 0 }));
+    }
+  }, [formData.employeeId, employees]);
 
   const resetForm = () => {
     setFormData({

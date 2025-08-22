@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { ScrollArea } from "./ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { DEPARTMENTS } from "@/lib/schemas";
 
 export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
   const [formData, setFormData] = useState({
@@ -35,6 +36,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
     role: '',
     department: '',
     status: 'Active',
+    monthlySalary: 0,
   });
 
   const resetForm = () => {
@@ -56,6 +58,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
         role: '',
         department: '',
         status: 'Active',
+        monthlySalary: 0,
     });
   }
 
@@ -75,7 +78,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
         return;
     }
 
-    onAddEmployee(formData);
+    onAddEmployee({...formData, monthlySalary: Number(formData.monthlySalary)});
     resetForm();
     setIsOpen(false);
   };
@@ -188,13 +191,13 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
                             <SelectValue placeholder="Select a department" />
                             </SelectTrigger>
                             <SelectContent>
-                            <SelectItem value="Kitchen">Kitchen</SelectItem>
-                            <SelectItem value="Operations">Operations</SelectItem>
-                            <SelectItem value="Logistics">Logistics</SelectItem>
-                            <SelectItem value="Service Staff">Service Staff</SelectItem>
-                            <SelectItem value="Admin">Admin</SelectItem>
+                              {DEPARTMENTS.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="monthlySalary">Monthly Salary (TZS)</Label>
+                        <Input id="monthlySalary" type="number" value={formData.monthlySalary} onChange={handleChange} />
                     </div>
                     <div>
                         <Label htmlFor="status">Status</Label>

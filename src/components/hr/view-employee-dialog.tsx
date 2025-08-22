@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "./ui/badge";
-import { ScrollArea } from "./ui/scroll-area";
-import { Separator } from "./ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
   if (!employee) return null;
@@ -21,8 +21,13 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
   const getFullName = (employee) => {
     return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
   }
+  
+  const formatCurrency = (amount) => {
+    if (typeof amount !== 'number') return 'N/A';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
+  }
 
-  const DetailRow = ({ label, value, isBadge, badgeVariant, badgeClass }) => (
+  const DetailRow = ({ label, value, isBadge, badgeVariant, badgeClass, isCurrency }) => (
     <div className="grid grid-cols-3 items-center gap-4 py-2">
       <Label className="text-right font-semibold">{label}</Label>
       {isBadge ? (
@@ -30,7 +35,7 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
           {value}
         </Badge>
       ) : (
-        <span className="col-span-2 text-sm">{value || 'N/A'}</span>
+        <span className="col-span-2 text-sm">{isCurrency ? formatCurrency(value) : (value || 'N/A')}</span>
       )}
     </div>
   );
@@ -79,6 +84,7 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
                     <h3 className="mb-2 text-lg font-medium text-primary">Job Information</h3>
                     <DetailRow label="Role" value={employee.role} />
                     <DetailRow label="Department" value={employee.department} />
+                    <DetailRow label="Monthly Salary" value={employee.monthlySalary} isCurrency />
                     <DetailRow 
                         label="Status" 
                         value={employee.status} 

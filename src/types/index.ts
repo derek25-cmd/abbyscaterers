@@ -1,6 +1,5 @@
 
 
-
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -242,16 +241,25 @@ export const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"]
 export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
 
 export interface Employee {
-  employeeId: string;
-  fullName: string;
-  position: string;
-  department: Department;
-  employmentType: EmploymentType;
-  dateOfBirth?: string; // ISO date string
-  hireDate: string; // ISO date string
-  email: string;
-  phone: string;
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dob?: string;
+  gender?: string;
+  nationality?: string;
+  nationalId?: string;
+  tin?: string;
+  phone?: string;
+  email?: string;
   address?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
+  role: string;
+  department: Department;
+  status: 'Active' | 'Inactive';
+  monthlySalary?: number;
   createdAt: string;
   updatedAt: string;
 }

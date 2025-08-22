@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { PlusCircle, MoreHorizontal, DollarSign, CheckCircle } from "lucide-react";
-import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { PlusCircle, MoreHorizontal, Users, Wallet, AlertCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { format, isThisMonth, parseISO } from "date-fns";
 
 import { GeneratePayslipDialog } from "@/components/hr/generate-payslip-dialog";
 import { EditPayslipDialog } from "@/components/hr/edit-payslip-dialog";
@@ -106,6 +106,17 @@ export default function PayrollPage() {
         return <Badge variant="outline">Pending</Badge>;
     };
 
+    const payrollSummary = useMemo(() => {
+        const activeEmployees = employees.filter(e => e.status === 'Active');
+        const totalMonthlySalary = activeEmployees.reduce((sum, e) => sum + (e.monthlySalary || 0), 0);
+        
+        const thisMonthPayslips = payrolls.filter(p => isThisMonth(parseISO(p.payPeriodStart)));
+        const totalPaid = thisMonthPayslips.filter(p => p.status === 'Paid').reduce((sum, p) => sum + p.netSalary, 0);
+        const outstanding = thisMonthPayslips.filter(p => p.status === 'Pending').reduce((sum, p) => sum + p.netSalary, 0);
+
+        return { totalMonthlySalary, totalPaid, outstanding };
+    }, [employees, payrolls]);
+
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
@@ -119,6 +130,47 @@ export default function PayrollPage() {
             </Button>
           </div>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Monthly Payroll</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(payrollSummary.totalMonthlySalary)}</div>
+                    <p className="text-xs text-muted-foreground">
+                        For all active employees
+                    </p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Paid (This Month)</CardTitle>
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-green-600">{formatCurrency(payrollSummary.totalPaid)}</div>
+                     <p className="text-xs text-muted-foreground">
+                        Sum of all paid payslips
+                    </p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Outstanding Payments</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">{formatCurrency(payrollSummary.outstanding)}</div>
+                     <p className="text-xs text-muted-foreground">
+                        For pending payslips this month
+                    </p>
+                </CardContent>
+            </Card>
+        </div>
+
+
         <Card>
           <CardHeader>
             <CardTitle>Payslip History</CardTitle>
