@@ -8,10 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, MoreHorizontal, Clock, Search, X } from "lucide-react";
+import { CalendarIcon, MoreHorizontal, Clock, Search, X, Users, UserCheck, UserX } from "lucide-react";
 import { format, parse } from "date-fns";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from 'next/navigation';
 import { EditAttendanceDialog } from "@/components/hr/edit-attendance-dialog";
 import { ViewAttendanceDialog } from "@/components/hr/view-attendance-dialog";
 import { LogAttendanceDialog } from "@/components/hr/log-attendance-dialog";
@@ -20,6 +21,9 @@ import { getEmployees } from "@/services/employeeService";
 import { Input } from "@/components/ui/input";
 
 export default function AttendancePage() {
+  const searchParams = useSearchParams();
+  const employeeIdFilter = searchParams.get('employeeId');
+
   const [records, setRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,15 +57,24 @@ export default function AttendancePage() {
         dateFilteredRecords = records;
     }
     
+    let employeeFilteredRecords = dateFilteredRecords;
+    if (employeeIdFilter) {
+        const employee = employees.find(e => e.id === employeeIdFilter);
+        if (employee) {
+            const fullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
+            employeeFilteredRecords = dateFilteredRecords.filter(r => r.employee === fullName);
+        }
+    }
+    
     if (!searchQuery) {
-        return dateFilteredRecords;
+        return employeeFilteredRecords;
     }
     
     const lowercasedQuery = searchQuery.toLowerCase();
-    return dateFilteredRecords.filter(record => 
+    return employeeFilteredRecords.filter(record => 
         record.employee.toLowerCase().includes(lowercasedQuery)
     );
-  }, [records, selectedDate, searchQuery]);
+  }, [records, selectedDate, searchQuery, employeeIdFilter, employees]);
 
 
   const handleEditRecord = async (updatedRecord) => {
@@ -125,6 +138,17 @@ export default function AttendancePage() {
   const openLogDialog = () => {
     setIsLogDialogOpen(true);
   }
+  
+  const attendanceSummary = useMemo(() => {
+    const activeEmployees = employees.filter(e => e.status === 'Active');
+    const presentToday = new Set(filteredRecords.map(r => r.employee));
+    const absentCount = activeEmployees.length - presentToday.size;
+    return {
+        total: activeEmployees.length,
+        present: presentToday.size,
+        absent: absentCount < 0 ? 0 : absentCount,
+    }
+  }, [employees, filteredRecords]);
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -139,6 +163,38 @@ export default function AttendancePage() {
             </Button>
           </div>
         </div>
+
+         <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{attendanceSummary.total}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Present Today</CardTitle>
+                    <UserCheck className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-green-600">{attendanceSummary.present}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Absent Today</CardTitle>
+                    <UserX className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-red-600">{attendanceSummary.absent}</div>
+                </CardContent>
+            </Card>
+        </div>
+
+
         <Card>
           <CardHeader>
             <CardTitle>Daily Attendance</CardTitle>

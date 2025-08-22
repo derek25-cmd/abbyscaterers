@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -17,7 +18,7 @@ import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 
-export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGeneratePayslip }) {
+export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGeneratePayslip, preselectedEmployeeId }) {
   const [formData, setFormData] = useState({
     employeeId: '',
     payPeriodStart: '',
@@ -26,6 +27,13 @@ export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGenerate
     allowances: 0,
     deductions: 0,
   });
+
+   useEffect(() => {
+    if (preselectedEmployeeId) {
+        setFormData(prev => ({...prev, employeeId: preselectedEmployeeId}));
+    }
+   }, [preselectedEmployeeId, isOpen]);
+
 
   useEffect(() => {
     if (formData.employeeId) {

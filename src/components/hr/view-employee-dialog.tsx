@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { EmployeeActionCenter } from "./employee-action-center";
 
 export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
   if (!employee) return null;
@@ -42,15 +44,15 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Employee Details</DialogTitle>
             <DialogDescription>
               Viewing details for {getFullName(employee)}.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[60vh] p-4">
-            <div className="space-y-4">
+          <ScrollArea className="h-[70vh] p-4">
+            <div className="space-y-6">
                 <div>
                     <h3 className="mb-2 text-lg font-medium text-primary">Personal Information</h3>
                     <DetailRow label="Employee ID" value={employee.id} />
@@ -93,6 +95,8 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
                         badgeClass={employee.status === 'Active' ? 'bg-accent text-accent-foreground' : ''}
                     />
                 </div>
+                 <Separator />
+                 <EmployeeActionCenter employee={employee} />
             </div>
           </ScrollArea>
           <DialogFooter className="pt-4">

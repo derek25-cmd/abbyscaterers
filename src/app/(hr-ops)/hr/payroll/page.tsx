@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -9,14 +10,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { PlusCircle, MoreHorizontal, Users, Wallet, AlertCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { format, isThisMonth, parseISO } from "date-fns";
+import { useSearchParams } from 'next/navigation';
 
 import { GeneratePayslipDialog } from "@/components/hr/generate-payslip-dialog";
 import { EditPayslipDialog } from "@/components/hr/edit-payslip-dialog";
 import { ViewPayslipDialog } from "@/components/hr/view-payslip-dialog";
 import { getPayrolls, addPayroll, updatePayroll } from "@/services/payrollService";
 import { getEmployees } from "@/services/employeeService";
+import { Input } from "@/components/ui/input";
 
 export default function PayrollPage() {
+    const searchParams = useSearchParams();
+    const employeeIdFilter = searchParams.get('employeeId');
+
     const [payrolls, setPayrolls] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -24,6 +30,7 @@ export default function PayrollPage() {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [selectedPayslip, setSelectedPayslip] = useState(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -37,11 +44,32 @@ export default function PayrollPage() {
             setLoading(false);
         }
         fetchData();
-    }, []);
+        
+        const openPayslip = searchParams.get('createPayslipFor');
+        if(openPayslip) {
+            setIsGenerateDialogOpen(true);
+        }
+
+    }, [searchParams]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
     }
+
+    const filteredPayrolls = useMemo(() => {
+        let filtered = payrolls;
+        if (employeeIdFilter) {
+            const employee = employees.find(e => e.id === employeeIdFilter);
+            if(employee) {
+                const employeeName = [employee.firstName, employee.lastName].join(' ');
+                filtered = filtered.filter(p => p.employeeName === employeeName);
+            }
+        }
+        if (searchQuery) {
+            filtered = filtered.filter(p => p.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) || p.id.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        return filtered;
+    }, [payrolls, employees, employeeIdFilter, searchQuery]);
     
     const handleGeneratePayslip = async (payslipData) => {
         const employee = employees.find(e => e.id === payslipData.employeeId);
@@ -177,6 +205,14 @@ export default function PayrollPage() {
             <CardDescription>
               Manage and track all employee payslips.
             </CardDescription>
+             <div className="pt-4">
+                <Input 
+                    placeholder="Search by Employee Name or Payslip ID..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="max-w-sm"
+                />
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -197,7 +233,7 @@ export default function PayrollPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payrolls.map((p) => (
+                {filteredPayrolls.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.id}</TableCell>
                     <TableCell>{p.employeeName}</TableCell>
@@ -237,6 +273,7 @@ export default function PayrollPage() {
         setIsOpen={setIsGenerateDialogOpen}
         employees={employees.filter(e => e.status === 'Active')}
         onGeneratePayslip={handleGeneratePayslip}
+        preselectedEmployeeId={employeeIdFilter || searchParams.get('createPayslipFor')}
       />
       {selectedPayslip && (
           <EditPayslipDialog
