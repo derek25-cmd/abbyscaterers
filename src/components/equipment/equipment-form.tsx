@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { equipmentSchema, type EquipmentFormData } from "@/lib/schemas";
+import { EquipmentSchema, type EquipmentFormData } from "@/lib/schemas";
 import type { Equipment } from "@/types";
 import { useEquipmentStorage } from "@/hooks/use-equipment-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +35,7 @@ export function EquipmentForm({ equipment }: EquipmentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<EquipmentFormData>({
-    resolver: zodResolver(equipmentSchema),
+    resolver: zodResolver(EquipmentSchema),
     defaultValues: equipment
       ? { ...equipment, quantity: equipment.quantity || 1 } // Ensure quantity has a default if undefined
       : {
