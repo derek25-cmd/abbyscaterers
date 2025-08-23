@@ -1,6 +1,6 @@
+
 // @ts-nocheck
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
 import { isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
@@ -11,7 +11,7 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
   const { orders } = useOrderStorage();
 
   const { ingredientsUsedCount, totalCost } = useMemo(() => {
-    if (!request) return { ingredientsUsedCount: 0, totalCost: 0 };
+    if (!request || !stockLogs || !products) return { ingredientsUsedCount: 0, totalCost: 0 };
 
     const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
@@ -32,6 +32,8 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
       if (!isStockOut || !inInterval) return false;
 
       if (request.type === 'individual') {
+        if (!log.reason) return false;
+        // This logic assumes the order ID is in the reason string.
         const orderForLog = orders.find(o => log.reason.includes(o.id));
         return orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
       }

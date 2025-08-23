@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -68,14 +69,15 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         const isStockOut = log.type === "Stock Out";
         const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
         
+        if (!isStockOut || !inInterval) return false;
+
         if (request.type === 'individual') {
           // If individual, only include stock outs for orders associated with that client.
           const orderForLog = orders.find(o => log.reason.includes(o.id));
-          const isForClient = orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
-          return isStockOut && inInterval && isForClient;
+          return orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
         }
         
-        return isStockOut && inInterval;
+        return true;
       });
 
       ingredientCost = filteredLogs.reduce((sum, log) => {
