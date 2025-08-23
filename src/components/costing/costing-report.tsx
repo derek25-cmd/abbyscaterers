@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -44,13 +45,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         return { start: startOfMonth(date), end: endOfMonth(date) };
       });
       
-      const clientOrderIds = new Set(
-        orders
-          .filter(order => request.type === 'aggregate' || order.clientEvents.some(e => e.clientId === request.clientId))
-          .map(order => order.id)
-      );
-      
-      // Filter Orders and Events
+      // Filter Orders and Events based on request type
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
       filteredEvents = allClientEvents.filter(event => {
@@ -62,23 +57,12 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         return inInterval;
       });
 
-      // Filter Stock Logs
+      // Filter Stock Logs based *only* on date, not on client.
       const filteredLogs = stockLogs.filter(log => {
         const logDate = new Date(log.date);
         const isStockOut = log.type === "Stock Out";
         const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
-        
-        if (!isStockOut || !inInterval) return false;
-
-        if (request.type === 'individual') {
-          // For individual costing, only include logs for "Customer Order" reason
-          if (!log.reason.startsWith('Customer Order')) return false;
-          // Extract order ID from reason, e.g., "Customer Order: ORD-123"
-          const orderIdFromReason = log.reason.split(': ')[1];
-          return clientOrderIds.has(orderIdFromReason);
-        }
-        
-        return true;
+        return isStockOut && inInterval;
       });
 
       ingredientCost = filteredLogs.reduce((sum, log) => {
