@@ -13,6 +13,7 @@ import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { CostingForm } from "@/components/costing/costing-form";
 import { CostingReport } from "@/components/costing/costing-report";
+import { DailyCosting } from "@/types";
 
 export type CostingRequest = {
   type: 'individual' | 'aggregate';

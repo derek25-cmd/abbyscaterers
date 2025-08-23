@@ -34,14 +34,20 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
 
       const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
-          return { start: date, end: date };
+          const startOfDay = new Date(date);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(date);
+          endOfDay.setHours(23, 59, 59, 999);
+          return { start: startOfDay, end: endOfDay };
         }
         return { start: startOfMonth(date), end: endOfMonth(date) };
       });
       
       // Filter Orders
       const allClientEvents = orders.flatMap(order => 
-        (request.type === 'individual' && order.proformaId && orders.find(o => o.id === order.proformaId)?.clientEvents[0]?.clientId !== request.clientId) ? [] : order.clientEvents
+        (request.type === 'individual' && !order.clientEvents.some(e => e.clientId === request.clientId)) 
+        ? [] 
+        : order.clientEvents
       );
       
       filteredEvents = allClientEvents.filter(event => {
@@ -57,9 +63,6 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
       const filteredLogs = stockLogs.filter(log => {
         const logDate = new Date(log.date);
         const isStockOut = log.type === "Stock Out";
-        // How to link a stock-out to a client/order? This is a data model gap.
-        // For now, we assume all stock-out costs apply to aggregate, and for individual, we can't filter costs.
-        // This means individual costing will show ALL costs for the period, which might be inaccurate.
         const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
         return isStockOut && inInterval;
       });
@@ -103,7 +106,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
-      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+      toast({ variant: "destructive", title: "Error", description: "An error occurred while generating the PDF." });
     } finally {
       setIsExporting(false);
     }

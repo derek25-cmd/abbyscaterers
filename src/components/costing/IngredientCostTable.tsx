@@ -12,7 +12,11 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
 
     const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
-          return { start: date, end: date };
+          const startOfDay = new Date(date);
+          startOfDay.setHours(0, 0, 0, 0);
+          const endOfDay = new Date(date);
+          endOfDay.setHours(23, 59, 59, 999);
+          return { start: startOfDay, end: endOfDay };
         }
         return { start: startOfMonth(date), end: endOfMonth(date) };
     });
