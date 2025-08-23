@@ -4,11 +4,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
 import { isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { ShoppingCart } from "lucide-react";
 
 const IngredientCostTable = ({ stockLogs, products, request }) => {
   
-  const { ingredientsWithCost, totalCost } = useMemo(() => {
-    if(!request) return { ingredientsWithCost: [], totalCost: 0};
+  const { ingredientsUsedCount, totalCost } = useMemo(() => {
+    if(!request) return { ingredientsUsedCount: 0, totalCost: 0};
 
     const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
@@ -28,20 +29,13 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
       return isStockOut && inInterval;
     });
 
-    const ingredientsWithCost = relevantLogs.map(log => {
+    const ingredientsUsedCount = relevantLogs.length;
+    const totalCost = relevantLogs.reduce((sum, log) => {
         const product = products.find(p => p.id === log.productId);
-        return {
-            ...log,
-            productName: product?.name || "Unknown Product",
-            unit: product?.unit || "N/A",
-            cost: (product?.unitPrice || 0) * log.quantity,
-            unitPrice: product?.unitPrice || 0
-        };
-    });
+        return sum + ((product?.unitPrice || 0) * log.quantity);
+    }, 0);
     
-    const totalCost = ingredientsWithCost.reduce((sum, item) => sum + item.cost, 0);
-    
-    return { ingredientsWithCost, totalCost };
+    return { ingredientsUsedCount, totalCost };
   }, [stockLogs, products, request]);
 
 
@@ -53,49 +47,18 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <span>Ingredient Cost Breakdown</span>
-           <Badge variant="outline">{ingredientsWithCost.length} items used</Badge>
+          <ShoppingCart className="h-5 w-5 text-primary" />
+          <span>Total Ingredient Cost</span>
+           <Badge variant="outline">{ingredientsUsedCount} items used</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Ingredient</TableHead>
-              <TableHead>Qty Used</TableHead>
-              <TableHead>Unit Price</TableHead>
-              <TableHead className="text-right">Total Cost</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ingredientsWithCost.length > 0 ? ingredientsWithCost.map((ingredient, index) => (
-              <TableRow key={index}>
-                <TableCell className="font-medium">{ingredient.productName}</TableCell>
-                <TableCell>
-                    {ingredient.quantity} {ingredient.unit}
-                </TableCell>
-                <TableCell>{formatCurrency(ingredient.unitPrice)} / {ingredient.unit}</TableCell>
-                <TableCell className="text-right font-medium">
-                  <span className="text-destructive">
-                    {formatCurrency(ingredient.cost)}
-                  </span>
-                </TableCell>
-              </TableRow>
-            )) : (
-                <TableRow>
-                    <TableCell colSpan={4} className="text-center h-24">No stock out data for the selected period.</TableCell>
-                </TableRow>
-            )}
-            <TableRow className="border-t-2">
-              <TableCell colSpan={3} className="font-bold">
-                Total Ingredient Cost
-              </TableCell>
-              <TableCell className="text-right font-bold text-lg text-destructive">
-                {formatCurrency(totalCost)}
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+        <div className="p-4 text-center border rounded-lg bg-muted/30">
+          <p className="text-sm text-muted-foreground">Total value of all ingredients stocked out during this period.</p>
+          <div className="text-4xl font-bold text-destructive mt-2">
+            {formatCurrency(totalCost)}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
