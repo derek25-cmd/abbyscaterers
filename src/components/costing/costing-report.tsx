@@ -22,9 +22,9 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
     let title = "Costing Report";
     let dateRange = "";
     let filteredEvents = [];
-    let ingredientCost = 0;
+    let calculatedIngredientCost = 0;
 
-    if (request) {
+    if (request && stockLogs && products) {
       // Determine Date Range and Title
       if (request.periodType === 'daily') {
         dateRange = request.dates.map(d => format(d, "PPP")).join(', ');
@@ -64,14 +64,14 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
         return isStockOut && inInterval;
       });
-
-      ingredientCost = filteredLogs.reduce((sum, log) => {
+      
+      calculatedIngredientCost = filteredLogs.reduce((sum, log) => {
           const product = products.find(p => p.id === log.productId);
           return sum + ((product?.unitPrice || 0) * log.quantity);
       }, 0);
     }
     
-    return { title, dateRange, filteredEvents, ingredientCost };
+    return { title, dateRange, filteredEvents, ingredientCost: calculatedIngredientCost };
 
   }, [request, clients, orders, stockLogs, products]);
 
