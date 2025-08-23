@@ -30,7 +30,8 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
       } else {
         dateRange = request.dates.map(d => format(d, "MMMM yyyy")).join(', ');
       }
-      title = `${request.type === 'individual' ? clients.find(c => c.id === request.clientId)?.companyName + "'s" : 'Aggregate'} Costing Report for ${dateRange}`;
+      const clientName = request.type === 'individual' ? clients.find(c => c.id === request.clientId)?.companyName : 'Aggregate';
+      title = `${clientName} Costing Report for ${dateRange}`;
 
       const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
@@ -43,12 +44,14 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         return { start: startOfMonth(date), end: endOfMonth(date) };
       });
       
-      // Filter Orders
-      const allClientEvents = orders.flatMap(order => 
-        (request.type === 'individual' && !order.clientEvents.some(e => e.clientId === request.clientId)) 
-        ? [] 
-        : order.clientEvents
+      const clientOrderIds = new Set(
+        orders
+          .filter(order => request.type === 'aggregate' || order.clientEvents.some(e => e.clientId === request.clientId))
+          .map(order => order.id)
       );
+      
+      // Filter Orders and Events
+      const allClientEvents = orders.flatMap(order => order.clientEvents);
       
       filteredEvents = allClientEvents.filter(event => {
         const eventDate = new Date(event.date);
@@ -64,6 +67,14 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         const logDate = new Date(log.date);
         const isStockOut = log.type === "Stock Out";
         const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
+        
+        if (request.type === 'individual') {
+          // If individual, only include stock outs for orders associated with that client.
+          const orderForLog = orders.find(o => log.reason.includes(o.id));
+          const isForClient = orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
+          return isStockOut && inInterval && isForClient;
+        }
+        
         return isStockOut && inInterval;
       });
 

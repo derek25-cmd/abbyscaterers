@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
 import { isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { ShoppingCart } from "lucide-react";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 
 const IngredientCostTable = ({ stockLogs, products, request }) => {
-  
+  const { orders } = useOrderStorage();
+
   const { ingredientsUsedCount, totalCost } = useMemo(() => {
-    if(!request) return { ingredientsUsedCount: 0, totalCost: 0};
+    if (!request) return { ingredientsUsedCount: 0, totalCost: 0 };
 
     const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
@@ -26,7 +28,15 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
       const logDate = new Date(log.date);
       const isStockOut = log.type === "Stock Out";
       const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
-      return isStockOut && inInterval;
+      
+      if (!isStockOut || !inInterval) return false;
+
+      if (request.type === 'individual') {
+        const orderForLog = orders.find(o => log.reason.includes(o.id));
+        return orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
+      }
+      
+      return true;
     });
 
     const ingredientsUsedCount = relevantLogs.length;
@@ -36,7 +46,7 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
     }, 0);
     
     return { ingredientsUsedCount, totalCost };
-  }, [stockLogs, products, request]);
+  }, [stockLogs, products, request, orders]);
 
 
   const formatCurrency = (amount: number) => {
