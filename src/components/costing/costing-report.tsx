@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 
@@ -72,9 +71,11 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         if (!isStockOut || !inInterval) return false;
 
         if (request.type === 'individual') {
-          // If individual, only include stock outs for orders associated with that client.
-          const orderForLog = orders.find(o => log.reason.includes(o.id));
-          return orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
+          // For individual costing, only include logs for "Customer Order" reason
+          if (!log.reason.startsWith('Customer Order')) return false;
+          // Extract order ID from reason, e.g., "Customer Order: ORD-123"
+          const orderIdFromReason = log.reason.split(': ')[1];
+          return clientOrderIds.has(orderIdFromReason);
         }
         
         return true;
@@ -160,7 +161,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-          <IngredientCostTable stockLogs={stockLogs} products={products} request={request}/>
+          <IngredientCostTable stockLogs={stockLogs} products={products} request={request} ingredientCost={ingredientCost} />
           <EventIncomeTable events={filteredEvents} />
         </div>
       </div>

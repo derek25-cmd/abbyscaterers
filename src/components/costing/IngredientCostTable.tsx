@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,13 +6,12 @@ import { isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { ShoppingCart } from "lucide-react";
 import { useOrderStorage } from "@/hooks/use-order-storage";
 
-const IngredientCostTable = ({ stockLogs, products, request }) => {
+const IngredientCostTable = ({ stockLogs, products, request, ingredientCost }) => {
   const { orders } = useOrderStorage();
 
-  const { ingredientsUsedCount, totalCost } = useMemo(() => {
-    if (!request || !stockLogs || !products) return { ingredientsUsedCount: 0, totalCost: 0 };
-
-    const intervals = request.dates.map(date => {
+  const ingredientsUsedCount = useMemo(() => {
+    if (!request || !stockLogs) return 0;
+     const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
           const startOfDay = new Date(date);
           startOfDay.setHours(0, 0, 0, 0);
@@ -23,6 +21,12 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
         }
         return { start: startOfMonth(date), end: endOfMonth(date) };
     });
+    
+     const clientOrderIds = new Set(
+        orders
+          .filter(order => request.type === 'aggregate' || order.clientEvents.some(e => e.clientId === request.clientId))
+          .map(order => order.id)
+      );
 
     const relevantLogs = stockLogs.filter(log => {
       const logDate = new Date(log.date);
@@ -32,23 +36,16 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
       if (!isStockOut || !inInterval) return false;
 
       if (request.type === 'individual') {
-        if (!log.reason) return false;
-        // This logic assumes the order ID is in the reason string.
-        const orderForLog = orders.find(o => log.reason.includes(o.id));
-        return orderForLog ? orderForLog.clientEvents.some(e => e.clientId === request.clientId) : false;
+          if (!log.reason.startsWith('Customer Order')) return false;
+          const orderIdFromReason = log.reason.split(': ')[1];
+          return clientOrderIds.has(orderIdFromReason);
       }
       
       return true;
     });
 
-    const ingredientsUsedCount = relevantLogs.length;
-    const totalCost = relevantLogs.reduce((sum, log) => {
-        const product = products.find(p => p.id === log.productId);
-        return sum + ((product?.unitPrice || 0) * log.quantity);
-    }, 0);
-    
-    return { ingredientsUsedCount, totalCost };
-  }, [stockLogs, products, request, orders]);
+    return relevantLogs.length;
+  }, [stockLogs, request, orders]);
 
 
   const formatCurrency = (amount: number) => {
@@ -68,7 +65,7 @@ const IngredientCostTable = ({ stockLogs, products, request }) => {
         <div className="p-4 text-center border rounded-lg bg-muted/30">
           <p className="text-sm text-muted-foreground">Total value of all ingredients stocked out during this period.</p>
           <div className="text-4xl font-bold text-destructive mt-2">
-            {formatCurrency(totalCost)}
+            {formatCurrency(ingredientCost)}
           </div>
         </div>
       </CardContent>

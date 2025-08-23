@@ -13,14 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 
 export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [orderId, setOrderId] = useState('');
+  const { orders } = useOrderStorage();
   
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
   const stockOutReasons = ["Customer Order", "Internal Use", "Spoilage", "Breakage", "Stock Transfer"];
@@ -41,21 +44,32 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         setProductId('');
         setQuantity(1);
         setReason('');
+        setOrderId('');
         setSelectedProduct(null);
     }
   }, [isOpen]);
+  
+  const relevantOrders = useMemo(() => {
+      if(reason !== 'Customer Order') return [];
+      return orders; // In a real scenario, you might filter this more
+  }, [reason, orders]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if(!productId || !quantity || !reason) {
+    if(!productId || !quantity || !reason || (reason === 'Customer Order' && !orderId)) {
         alert("Please fill all fields");
         return;
+    }
+    
+    let finalReason = reason;
+    if (reason === 'Customer Order' && orderId) {
+        finalReason = `Customer Order: ${orderId}`;
     }
 
     onLogMovement({
       productId,
       type: logType,
-      reason,
+      reason: finalReason,
       quantity: Number(quantity),
     });
 
@@ -129,6 +143,23 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 </SelectContent>
               </Select>
             </div>
+             {reason === 'Customer Order' && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="order" className="text-right">
+                        Order
+                    </Label>
+                    <Select onValueChange={setOrderId} value={orderId}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select a customer order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {relevantOrders.map(o => (
+                                <SelectItem key={o.id} value={o.id}>{o.name} ({o.id})</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>

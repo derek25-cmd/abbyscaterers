@@ -13,15 +13,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 
 export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products }) {
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState('');
+  const [orderId, setOrderId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
-  
+  const { orders } = useOrderStorage();
+
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
   const stockOutReasons = ["Customer Order", "Internal Use", "Spoilage", "Breakage", "Stock Transfer"];
   const reasonOptions = log?.type === 'Stock In' ? stockInReasons : stockOutReasons;
@@ -30,7 +33,15 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
     if (log) {
       setProductId(log.productId);
       setQuantity(log.quantity);
-      setReason(log.reason);
+
+      if (log.reason.startsWith('Customer Order: ')) {
+        const parts = log.reason.split(': ');
+        setReason('Customer Order');
+        setOrderId(parts[1] || '');
+      } else {
+        setReason(log.reason);
+        setOrderId('');
+      }
     }
   }, [log]);
 
@@ -43,11 +54,21 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
     }
   }, [productId, products]);
 
+  const relevantOrders = useMemo(() => {
+    if (reason !== 'Customer Order') return [];
+    return orders;
+  }, [reason, orders]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    if(!productId || !quantity || !reason) {
+    if(!productId || !quantity || !reason || (reason === 'Customer Order' && !orderId)) {
         alert("Please fill all fields");
         return;
+    }
+
+    let finalReason = reason;
+    if (reason === 'Customer Order' && orderId) {
+        finalReason = `Customer Order: ${orderId}`;
     }
 
     const product = products.find(p => p.id === productId);
@@ -57,7 +78,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
       productId,
       productName: product ? product.name : log.productName,
       quantity: Number(quantity),
-      reason,
+      reason: finalReason,
       price: product ? product.unitPrice * Number(quantity) : log.price,
     });
 
@@ -131,6 +152,23 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                 </SelectContent>
               </Select>
             </div>
+             {reason === 'Customer Order' && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="order" className="text-right">
+                        Order
+                    </Label>
+                    <Select onValueChange={setOrderId} value={orderId}>
+                        <SelectTrigger className="col-span-3">
+                            <SelectValue placeholder="Select a customer order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {relevantOrders.map(o => (
+                                <SelectItem key={o.id} value={o.id}>{o.name} ({o.id})</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>
