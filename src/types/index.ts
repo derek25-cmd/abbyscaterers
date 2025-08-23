@@ -263,3 +263,33 @@ export interface Employee {
   createdAt: string;
   updatedAt: string;
 }
+
+// PRODUCT & STOCK
+export interface Product {
+    id: string;
+    sku: string;
+    name: string;
+    category: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    minStock: number;
+    maxStock: number;
+    expiryDate: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface StockLog {
+    id: string;
+    productId: string;
+    productName: string;
+    type: 'Stock In' | 'Stock Out';
+    quantity: number;
+    price: number;
+    reason: string;
+    date: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+}

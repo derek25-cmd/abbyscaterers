@@ -1,96 +1,293 @@
+export const ORGANIZATION_TYPES = [
+  "Industrial", "Commercial", "Financial", "Service", "Agricultural",
+  "Educational", "Medical", "Technological", "Entertainment and Media",
+  "Legal", "Military", "Governmental", "Religious", "NGO", "Public Health"
+] as const;
+export type OrganizationType = (typeof ORGANIZATION_TYPES)[number];
 
-"use client";
+export interface DietaryClassification {
+  restriction: string;
+  category: string;
+  isAmbiguous: boolean;
+}
 
-import { useState, useEffect } from "react";
-import IngredientInputForm from "@/components/costing/IngredientInputForm";
-import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import type { Ingredient } from "@/types";
+export interface Contact {
+  name: string;
+  email: string;
+  phone: string;
+}
 
-export type IngredientUsage = {
-  itemNumber: string;
+export interface Client {
+  id: string; // Customer Registration Number
+  companyName: string;
+  companyEmail?: string;
+  phoneNumber?: string;
+  address1: string;
+  address2?: string;
+  postalCode?: string;
+  primaryLocation: string;
+  typeOfOrganization: OrganizationType;
+  contacts: Contact[];
+  lastContacted: string; // ISO date string
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+export interface Equipment {
+  equipmentNumber: string; // User-facing "No." and unique ID
+  equipmentName: string;
+  oem?: string;
+  model?: string;
+  powerRating?: string;
   quantity: number;
-};
+  yearOfManufacture?: string;
+  equipmentSource?: string;
+  capacity?: string;
+  commitment?: string;
+  registrationNumber?: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
 
-export default function ManageIngredientsPage() {
-  const { ingredients, updateIngredient, isLoading, getIngredientById } = useIngredientStorage();
-  const { toast } = useToast();
-  const [usedIngredients, setUsedIngredients] = useState<IngredientUsage[]>([]);
+export const ITEM_CLASSIFICATIONS = [
+  "Herbes & Spices",
+  "Fruits",
+  "Vegetables",
+  "Starch",
+  "Protein",
+  "Ingredient",
+  "Cereal",
+] as const;
 
-  useEffect(() => {
-    // On mount, load ingredients that already have a quantityUsed from storage
-    const initialUsed: IngredientUsage[] = [];
-    ingredients.forEach(ing => {
-      const quantityUsed = (ing as any).quantityUsed;
-      if (quantityUsed && quantityUsed > 0) {
-        initialUsed.push({ itemNumber: ing.itemNumber, quantity: quantityUsed });
-      }
-    });
-    setUsedIngredients(initialUsed);
-  }, [ingredients]);
-  
-  const handleSaveChanges = () => {
-    // Persist the ephemeral `quantityUsed` on the main ingredient object
-    // This is a simplified approach. A real app might save this to a separate record.
-    const allIngredientIds = new Set(ingredients.map(i => i.itemNumber));
-    const usedIngredientIds = new Set(usedIngredients.map(i => i.itemNumber));
+export type ItemClassification = (typeof ITEM_CLASSIFICATIONS)[number];
 
-    // Update ingredients that were used
-    usedIngredients.forEach(({ itemNumber, quantity }) => {
-      const ingredient = getIngredientById(itemNumber);
-      if(ingredient) {
-          updateIngredient(itemNumber, { ...ingredient, quantityUsed: quantity } as any);
-      }
-    });
+export const UNITS_OF_MEASURE = ["kg", "gms", "bunch", "item"] as const;
+export type UnitOfMeasure = (typeof UNITS_OF_MEASURE)[number];
 
-    // Clear quantityUsed for ingredients that are no longer in the list
-    allIngredientIds.forEach(id => {
-      if (!usedIngredientIds.has(id)) {
-        const ingredient = getIngredientById(id);
-        if (ingredient && (ingredient as any).quantityUsed) {
-           updateIngredient(id, { ...ingredient, quantityUsed: 0 } as any);
-        }
-      }
-    });
+export interface UnitAndPrice {
+  unit: UnitOfMeasure;
+  price: number;
+}
 
-    toast({
-      title: "Quantities Recorded",
-      description: "Today's ingredient usage has been updated for costing calculations.",
-    });
-  };
+export interface Ingredient {
+  itemNumber: string; // User-facing "No." and unique ID
+  itemDescription: string;
+  itemClassification: ItemClassification;
+  units: UnitAndPrice[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  quantityUsed?: number; // Ephemeral property for costing
+}
 
-  const handleUsageChange = (updatedUsedIngredients: IngredientUsage[]) => {
-      setUsedIngredients(updatedUsedIngredients);
-  };
-  
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-       <div className="flex justify-between items-center">
-        <div>
-            <h1 className="text-3xl font-bold text-foreground">Ingredient Usage</h1>
-            <p className="text-muted-foreground">Input the quantity of each ingredient used today for cost analysis.</p>
-        </div>
-        <Button asChild variant="outline">
-            <Link href="/costing">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Costing Report
-            </Link>
-        </Button>
-      </div>
+export interface RecipeIngredientItem {
+  ingredientId: string; // References Ingredient.itemNumber
+  quantity: number;
+  unit: UnitOfMeasure;
+}
 
-      <IngredientInputForm
-        availableIngredients={ingredients}
-        usedIngredients={usedIngredients}
-        onUsageChange={handleUsageChange}
-        isLoading={isLoading}
-      />
+export interface Recipe {
+  recipeNumber: string; // User-facing unique ID
+  recipeName: string; // "Food created"
+  ingredients: RecipeIngredientItem[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
 
-       <div className="flex justify-end">
-        <Button onClick={handleSaveChanges}>Save Usage Data</Button>
-      </div>
-    </div>
-  );
+export const MEAL_TYPES = [
+    "Breakfast only", 
+    "Lunch only", 
+    "Dinner only", 
+    "Breakfast and lunch", 
+    "Brunch", 
+    "Breakfast, lunch and evening tea", 
+    "Breakfast, lunch and dinner", 
+    "Evening tea"
+] as const;
+export type MealType = (typeof MEAL_TYPES)[number];
+
+export interface ClientEvent {
+  clientId: string; // References Client.id
+  date: string; // ISO date string
+  numberOfPeople: number;
+  mealType: MealType;
+  recipes: { recipeId: string }[]; // References Recipe.recipeNumber
+  unitPrice: number;
+  vatType: 'inclusive' | 'exclusive';
+}
+
+export interface Order {
+  id: string; // User-facing unique ID
+  name: string;
+  description?: string;
+  proformaId?: string;
+  clientEvents: ClientEvent[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+// Shared Invoice Item Type
+export interface InvoiceItem {
+  id: string;
+  eventType: string;
+  customEventType?: string;
+  mealType: string;
+  pax: number;
+  unitPrice: number;
+  total: number;
+  date?: string; // ISO string
+  particularType: 'event' | 'meal';
+  particularDescription?: string;
+  vatType: 'inclusive' | 'exclusive';
+}
+
+// Proforma Invoice Types
+export interface ProformaInvoice {
+  id: string; // The invoice number
+  invoiceDate?: string; // ISO string
+  clientId: string | null;
+  receiverName: string;
+  receiverPosition: string;
+  lpoNumber: string;
+  location: string;
+  numberOfDays: number;
+  multiplyByDays: boolean;
+  serviceCharge: number;
+  transportCosts: number;
+  vatType: 'inclusive' | 'exclusive';
+  selectedEventType: string;
+  customEventType: string;
+  startDate?: string; // ISO string
+  endDate?: string; // ISO string
+  serviceFields: Record<string, boolean>;
+  serviceDesc: string;
+  items: InvoiceItem[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  isInvoiced?: boolean; // New status flag
+}
+
+
+// Final Invoice Types
+export interface Invoice {
+  id: string; // The final invoice number
+  proformaId?: string; // Optional link to the source proforma
+  status: 'outstanding' | 'paid';
+  invoiceDate: string; // ISO string
+  clientId: string | null;
+  receiverName: string;
+  receiverPosition: string;
+  lpoNumber: string;
+  location: string;
+  numberOfDays: number;
+  multiplyByDays: boolean;
+  serviceCharge: number;
+  transportCosts: number;
+  vatType: 'inclusive' | 'exclusive';
+  selectedEventType: string;
+  customEventType: string;
+  startDate?: string; // ISO string
+  endDate?: string; // ISO string
+  serviceFields: Record<string, boolean>;
+  serviceDesc: string;
+  items: InvoiceItem[];
+  signedAtDate?: string; // ISO string
+  signedAtLocation?: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+// Daily Costing Snapshot
+export interface DailyCosting {
+    date: string; // YYYY-MM-DD format
+    totalIngredientCost: number;
+    totalEventIncome: number;
+    netProfitLoss: number;
+    createdAt: string; // ISO string
+}
+
+// --- HR & OPERATIONS ---
+
+// Issuance Types
+export interface IssuedItem {
+  assetId: string;
+  name: string;
+  type: string;
+  unitPrice: number;
+  quantityIssued: number;
+  quantityReturned?: number;
+}
+
+export interface Issuance {
+    id: string;
+    orderId: string; // Link to a client order
+    issuedTo: string; // Employee ID
+    date: string; // ISO date string
+    status: 'Issued' | 'Partially Returned' | 'Returned' | 'Incomplete';
+    items: IssuedItem[];
+    totalValue: number;
+    notes?: string;
+    createdAt: string; // ISO date string
+    updatedAt: string; // ISO date string
+}
+
+
+// HR Schemas
+export const DEPARTMENTS = ["Kitchen", "Service", "Management", "Logistics", "Sales"] as const;
+export type Department = (typeof DEPARTMENTS)[number];
+
+export const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"] as const;
+export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number];
+
+export interface Employee {
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dob?: string;
+  gender?: string;
+  nationality?: string;
+  nationalId?: string;
+  tin?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  emergencyContactName?: string;
+  emergencyContactRelationship?: string;
+  emergencyContactPhone?: string;
+  role: string;
+  department: Department;
+  status: 'Active' | 'Inactive';
+  monthlySalary?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// PRODUCT & STOCK
+export interface Product {
+    id: string;
+    sku: string;
+    name: string;
+    category: string;
+    quantity: number;
+    unit: string;
+    unitPrice: number;
+    minStock: number;
+    maxStock: number;
+    expiryDate: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface StockLog {
+    id: string;
+    productId: string;
+    productName: string;
+    type: 'Stock In' | 'Stock Out';
+    quantity: number;
+    price: number;
+    reason: string;
+    date: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
 }
