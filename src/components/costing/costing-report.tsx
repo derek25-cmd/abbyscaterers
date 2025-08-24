@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 
@@ -25,15 +24,6 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
     let calculatedIngredientCost = 0;
 
     if (request && stockLogs && products) {
-      // Determine Date Range and Title
-      if (request.periodType === 'daily') {
-        dateRange = request.dates.map(d => format(d, "PPP")).join(', ');
-      } else {
-        dateRange = request.dates.map(d => format(d, "MMMM yyyy")).join(', ');
-      }
-      const clientName = request.type === 'individual' ? clients.find(c => c.id === request.clientId)?.companyName : 'Aggregate';
-      title = `${clientName} Costing Report for ${dateRange}`;
-
       const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
           const startOfDay = new Date(date);
@@ -44,8 +34,18 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         }
         return { start: startOfMonth(date), end: endOfMonth(date) };
       });
+
+      if (request.periodType === 'daily') {
+        dateRange = request.dates.map(d => format(d, "PPP")).join(', ');
+      } else {
+        dateRange = request.dates.map(d => format(d, "MMMM yyyy")).join(', ');
+      }
+
+      const clientName = request.type === 'individual' 
+        ? clients.find(c => c.id === request.clientId)?.companyName 
+        : 'Aggregate';
+      title = `${clientName} Costing Report for ${dateRange}`;
       
-      // Filter Orders and Events based on request type
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
       filteredEvents = allClientEvents.filter(event => {
@@ -57,7 +57,6 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         return inInterval;
       });
 
-      // Filter Stock Logs based *only* on date, not on client.
       const filteredLogs = stockLogs.filter(log => {
         const logDate = new Date(log.date);
         const isStockOut = log.type === "Stock Out";
@@ -65,10 +64,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         return isStockOut && inInterval;
       });
       
-      calculatedIngredientCost = filteredLogs.reduce((sum, log) => {
-          const product = products.find(p => p.id === log.productId);
-          return sum + ((product?.unitPrice || 0) * log.quantity);
-      }, 0);
+      calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
     }
     
     return { title, dateRange, filteredEvents, ingredientCost: calculatedIngredientCost };

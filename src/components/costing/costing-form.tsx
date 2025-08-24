@@ -6,11 +6,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, User, Users, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { DayPicker } from 'react-day-picker';
+import { Checkbox } from '@/components/ui/checkbox';
+import { User, Users, Loader2 } from 'lucide-react';
+import { format, startOfMonth, getMonth, getYear } from 'date-fns';
 
 export function CostingForm({ clients, onSubmit, isLoading }) {
   const [costingType, setCostingType] = useState('aggregate');
@@ -20,7 +18,7 @@ export function CostingForm({ clients, onSubmit, isLoading }) {
   
   const handleSubmit = () => {
     if (!periodType || dates.length === 0) {
-      alert("Please select a period type and at least one date.");
+      alert("Please select a period type and at least one date or month.");
       return;
     }
     if (costingType === 'individual' && !clientId) {
@@ -35,22 +33,20 @@ export function CostingForm({ clients, onSubmit, isLoading }) {
     });
   }
 
-  const handleDateSelect = (newDates) => {
-    if (periodType === 'daily') {
-        setDates(newDates);
+  const handleMonthSelect = (monthDate) => {
+    const isSelected = dates.some(d => d.getTime() === monthDate.getTime());
+    if (isSelected) {
+      setDates(dates.filter(d => d.getTime() !== monthDate.getTime()));
     } else {
-        // For monthly, we just take the month of the first selected date
-        if (newDates && newDates.length > 0) {
-           const monthStart = new Date(newDates[0].getFullYear(), newDates[0].getMonth(), 1);
-           const isAlreadySelected = dates.some(d => d.getTime() === monthStart.getTime());
-           if (isAlreadySelected) {
-               setDates(dates.filter(d => d.getTime() !== monthStart.getTime()));
-           } else {
-               setDates([...dates, monthStart]);
-           }
-        }
+      setDates([...dates, monthDate]);
     }
   }
+  
+  const availableMonths = Array.from({ length: 12 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(i);
+    return startOfMonth(date);
+  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -123,25 +119,40 @@ export function CostingForm({ clients, onSubmit, isLoading }) {
                 </div>
 
                 <div>
-                    <Label>{periodType === 'daily' ? 'Select Date(s)' : 'Select Month(s)'}</Label>
-                    <div className="p-2 border rounded-md">
-                       <Calendar
-                            mode="multiple"
-                            selected={dates}
-                            onSelect={handleDateSelect}
-                            month={periodType === 'monthly' ? dates[0] || new Date() : undefined}
-                            onMonthChange={periodType === 'monthly' ? (month) => handleDateSelect([month]) : undefined}
-                            footer={
-                                periodType === 'monthly' ? 
-                                <p className="text-center text-sm text-muted-foreground p-2">
-                                  Selected months: {dates.map(d => format(d, 'MMM yyyy')).join(', ')}
-                                </p> :
-                                <p className="text-center text-sm text-muted-foreground p-2">
-                                  You selected {dates.length} date(s).
-                                </p>
-                            }
-                       />
-                    </div>
+                    {periodType === 'daily' ? (
+                        <>
+                        <Label>Select Date(s)</Label>
+                        <div className="p-2 border rounded-md">
+                           <Calendar
+                                mode="multiple"
+                                selected={dates}
+                                onSelect={setDates}
+                                footer={<p className="text-center text-sm text-muted-foreground p-2">You selected {dates.length} date(s).</p>}
+                           />
+                        </div>
+                        </>
+                    ) : (
+                         <>
+                        <Label>Select Month(s)</Label>
+                        <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-4 gap-4">
+                           {availableMonths.map(month => (
+                               <div key={month.toString()} className="flex items-center space-x-2">
+                                   <Checkbox
+                                        id={month.toString()}
+                                        checked={dates.some(d => d.getTime() === month.getTime())}
+                                        onCheckedChange={() => handleMonthSelect(month)}
+                                   />
+                                   <label htmlFor={month.toString()} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                       {format(month, 'MMMM')}
+                                   </label>
+                               </div>
+                           ))}
+                        </div>
+                         <p className="text-center text-sm text-muted-foreground p-2">
+                            You selected {dates.length} month(s): {dates.map(d => format(d, 'MMM')).join(', ')}
+                        </p>
+                        </>
+                    )}
                 </div>
 
                 <Button onClick={handleSubmit} disabled={isLoading} className="w-full">

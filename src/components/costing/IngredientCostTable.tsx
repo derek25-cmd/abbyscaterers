@@ -7,7 +7,6 @@ import { ShoppingCart } from "lucide-react";
 import { useOrderStorage } from "@/hooks/use-order-storage";
 
 const IngredientCostTable = ({ stockLogs, products, request, ingredientCost }) => {
-  const { orders } = useOrderStorage();
 
   const ingredientsUsedCount = useMemo(() => {
     if (!request || !stockLogs) return 0;
@@ -22,30 +21,15 @@ const IngredientCostTable = ({ stockLogs, products, request, ingredientCost }) =
         return { start: startOfMonth(date), end: endOfMonth(date) };
     });
     
-     const clientOrderIds = new Set(
-        orders
-          .filter(order => request.type === 'aggregate' || order.clientEvents.some(e => e.clientId === request.clientId))
-          .map(order => order.id)
-      );
-
     const relevantLogs = stockLogs.filter(log => {
       const logDate = new Date(log.date);
       const isStockOut = log.type === "Stock Out";
       const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
-      
-      if (!isStockOut || !inInterval) return false;
-
-      if (request.type === 'individual') {
-          if (!log.reason.startsWith('Customer Order')) return false;
-          const orderIdFromReason = log.reason.split(': ')[1];
-          return clientOrderIds.has(orderIdFromReason);
-      }
-      
-      return true;
+      return isStockOut && inInterval;
     });
 
     return relevantLogs.length;
-  }, [stockLogs, request, orders]);
+  }, [stockLogs, request]);
 
 
   const formatCurrency = (amount: number) => {
