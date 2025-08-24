@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -10,7 +11,7 @@ import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
-import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO } from "date-fns";
 
 export const CostingReport = ({ request, clients, orders, stockLogs, products, onBack, isLoading }) => {
   const { toast } = useToast();
@@ -26,9 +27,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
     if (request && stockLogs && products && clients && orders) {
         const intervals = request.dates.map(date => {
             if (request.periodType === 'daily') {
-                const start = startOfDay(date);
-                const end = endOfDay(date);
-                return { start, end };
+                return { start: startOfDay(date), end: endOfDay(date) };
             }
             return { start: startOfMonth(date), end: endOfMonth(date) };
         });
@@ -56,7 +55,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
       });
 
       const filteredLogs = stockLogs.filter(log => {
-        const logDate = new Date(log.date);
+        const logDate = parseISO(log.date);
         const isStockOut = log.type === "Stock Out";
         if (!isStockOut) return false;
         
