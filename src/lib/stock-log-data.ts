@@ -30,7 +30,7 @@ export function getAllStockLogs(): StockLog[] {
   return getStockLogsFromStorage();
 }
 
-export function addStockLog(logData: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>): StockLog {
+export function addStockLog(logData: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>): StockLog {
   const allLogs = getStockLogsFromStorage();
   const now = new Date();
   

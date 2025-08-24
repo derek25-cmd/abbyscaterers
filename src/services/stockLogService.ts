@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import { stockLogs as mockStockLogs } from '@/lib/mock-data';
 
@@ -20,7 +21,7 @@ export const getStockLogs = async () => {
 export const addStockLog = async (log) => {
     if (typeof window === 'undefined') return;
     const logs = await getStockLogs();
-    const newLog = { ...log, id: `ISSUE${Date.now()}` };
+    const newLog = { ...log, id: `LOG${Date.now()}` };
     const updatedLogs = [newLog, ...logs];
     localStorage.setItem(STOCKLOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
     return Promise.resolve(newLog.id);

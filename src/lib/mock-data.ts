@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 // Mock Data for CaterEase HR & Operations Module
 
@@ -72,11 +73,11 @@ export const stockInventory = [
 
 // Operations: Stock Logs
 export const stockLogs = [
-  { id: "ISSUE001", productId: "PROD001", productName: "All-Purpose Flour", type: "Stock In", quantity: 20, price: 60000, reason: "Vendor Delivery", date: "2024-07-25", status: "Stock In" },
-  { id: "ISSUE002", productId: "PROD002", productName: "Granulated Sugar", type: "Stock Out", quantity: 5, price: 20000, reason: "Customer Order", date: "2024-07-25", status: "Stock Out" },
-  { id: "ISSUE003", productId: "PROD004", productName: "Napkins (Pack of 100)", type: "Stock In", quantity: 100, price: 250000, reason: "Vendor Delivery", date: "2024-07-24", status: "Stock In" },
-  { id: "ISSUE004", productId: "PROD005", productName: "Frozen Chicken Breast", type: "Stock Out", quantity: 2, price: 36000, reason: "Spoilage", date: "2024-07-23", status: "Stock Out" },
-  { id: "ISSUE005", productId: "PROD003", productName: "Olive Oil", type: "Stock In", quantity: 10, price: 120000, reason: "Internal Production", date: "2024-07-22", status: "Stock In" },
+  { id: "LOG001", productId: "PROD001", productName: "All-Purpose Flour", type: "Stock In", quantity: 20, price: 60000, reason: "Vendor Delivery", date: "2024-07-25", status: "Stock In" },
+  { id: "LOG002", productId: "PROD002", productName: "Granulated Sugar", type: "Stock Out", quantity: 5, price: 20000, reason: "Customer Order: ORD-2024-01", date: "2024-07-25", status: "Stock Out" },
+  { id: "LOG003", productId: "PROD004", productName: "Napkins (Pack of 100)", type: "Stock In", quantity: 100, price: 250000, reason: "Vendor Delivery", date: "2024-07-24", status: "Stock In" },
+  { id: "LOG004", productId: "PROD005", productName: "Frozen Chicken Breast", type: "Stock Out", quantity: 2, price: 36000, reason: "Spoilage", date: "2024-07-23", status: "Stock Out" },
+  { id: "LOG005", productId: "PROD003", productName: "Olive Oil", type: "Stock In", quantity: 10, price: 120000, reason: "Internal Production", date: "2024-07-22", status: "Stock In" },
 ];
 
 
