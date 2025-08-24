@@ -10,7 +10,7 @@ import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
-import { format, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay } from "date-fns";
 
 export const CostingReport = ({ request, clients, orders, stockLogs, products, onBack, isLoading }) => {
   const { toast } = useToast();
@@ -24,16 +24,15 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
     let calculatedIngredientCost = 0;
 
     if (request && stockLogs && products) {
-      const intervals = request.dates.map(date => {
-        if (request.periodType === 'daily') {
-          const startOfDay = new Date(date);
-          startOfDay.setHours(0, 0, 0, 0);
-          const endOfDay = new Date(date);
-          endOfDay.setHours(23, 59, 59, 999);
-          return { start: startOfDay, end: endOfDay };
-        }
-        return { start: startOfMonth(date), end: endOfMonth(date) };
-      });
+        const intervals = request.dates.map(date => {
+            if (request.periodType === 'daily') {
+                const start = startOfDay(date);
+                const end = new Date(date);
+                end.setHours(23, 59, 59, 999);
+                return { start, end };
+            }
+            return { start: startOfMonth(date), end: endOfMonth(date) };
+        });
 
       if (request.periodType === 'daily') {
         dateRange = request.dates.map(d => format(d, "PPP")).join(', ');
