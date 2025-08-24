@@ -30,12 +30,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let usedCount = 0;
 
     if (request && !isLoading) {
-        const intervals = request.dates.map(date => {
-            if (request.periodType === 'daily') {
-                return { start: startOfDay(date), end: endOfDay(date) };
-            }
-            return { start: startOfMonth(date), end: endOfMonth(date) };
-        });
+      const selectedDatesAsStrings = request.dates.map(d => format(d, 'yyyy-MM-dd'));
 
       if (request.periodType === 'daily') {
         dateRangeStr = request.dates.map(d => format(d, "PPP")).join(', ');
@@ -51,18 +46,22 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
       filteredEventsData = allClientEvents.filter(event => {
-        const eventDate = new Date(event.date);
-        const inInterval = intervals.some(interval => isWithinInterval(eventDate, interval));
+        const eventDateStr = format(new Date(event.date), 'yyyy-MM-dd');
+        const inDateRange = request.periodType === 'daily' 
+            ? selectedDatesAsStrings.includes(eventDateStr)
+            : request.dates.some(d => format(d, 'yyyy-MM') === format(new Date(event.date), 'yyyy-MM'));
+
         if (request.type === 'individual') {
-            return event.clientId === request.clientId && inInterval;
+            return event.clientId === request.clientId && inDateRange;
         }
-        return inInterval;
+        return inDateRange;
       });
 
       const filteredLogs = stockOutLogs.filter(log => {
-        // Correctly parse the "yyyy-MM-dd" date string without timezone issues
-        const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
-        return intervals.some(interval => isWithinInterval(logDate, interval));
+        const logDateStr = log.date; // Date is already in 'yyyy-MM-dd' string format
+        return request.periodType === 'daily'
+            ? selectedDatesAsStrings.includes(logDateStr)
+            : request.dates.some(d => format(d, 'yyyy-MM') === logDateStr.substring(0, 7));
       });
       
       calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
@@ -71,7 +70,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     
     return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, ingredientCost: calculatedIngredientCost, ingredientsUsedCount: usedCount };
 
-  }, [request, clients, orders, products, stockOutLogs, isLoading]);
+  }, [request, clients, orders, stockOutLogs, isLoading]);
 
 
   const totalIncome = filteredEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
