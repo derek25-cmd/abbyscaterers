@@ -30,14 +30,14 @@ export function getAllStockLogs(): StockLog[] {
   return getStockLogsFromStorage();
 }
 
-export function addStockLog(logData: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>): StockLog {
+export function addStockLog(logData: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>): StockLog {
   const allLogs = getStockLogsFromStorage();
   const now = new Date();
   
   const newLog: StockLog = {
     id: `LOG-${Date.now()}`,
     ...logData,
-    date: format(now, 'yyyy-MM-dd'), // Standardize date format
+    date: format(now, 'yyyy-MM-dd'), // Use local timezone to get correct date string
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };

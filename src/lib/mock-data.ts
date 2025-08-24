@@ -1,6 +1,9 @@
-
 // @ts-nocheck
-// Mock Data for CaterEase HR & Operations Module
+import { format } from 'date-fns';
+
+const today = format(new Date(), 'yyyy-MM-dd');
+const yesterday = format(new Date(new Date().setDate(new Date().getDate() - 1)), 'yyyy-MM-dd');
+const twoDaysAgo = format(new Date(new Date().setDate(new Date().getDate() - 2)), 'yyyy-MM-dd');
 
 // Operations: Asset Management
 export const assets = [
@@ -73,11 +76,11 @@ export const stockInventory = [
 
 // Operations: Stock Logs
 export const stockLogs = [
-  { id: "LOG001", productId: "PROD001", productName: "All-Purpose Flour", type: "Stock In", quantity: 20, price: 60000, reason: "Vendor Delivery", date: "2024-07-25", status: "Stock In" },
-  { id: "LOG002", productId: "PROD002", productName: "Granulated Sugar", type: "Stock Out", quantity: 5, price: 20000, reason: "Customer Order: ORD-2024-01", date: "2024-07-25", status: "Stock Out" },
-  { id: "LOG003", productId: "PROD004", productName: "Napkins (Pack of 100)", type: "Stock In", quantity: 100, price: 250000, reason: "Vendor Delivery", date: "2024-07-24", status: "Stock In" },
-  { id: "LOG004", productId: "PROD005", productName: "Frozen Chicken Breast", type: "Stock Out", quantity: 2, price: 36000, reason: "Spoilage", date: "2024-07-23", status: "Stock Out" },
-  { id: "LOG005", productId: "PROD003", productName: "Olive Oil", type: "Stock In", quantity: 10, price: 120000, reason: "Internal Production", date: "2024-07-22", status: "Stock In" },
+  { id: "LOG001", productId: "PROD001", productName: "All-Purpose Flour", type: "Stock In", quantity: 20, price: 60000, reason: "Vendor Delivery", date: today, status: "Stock In" },
+  { id: "LOG002", productId: "PROD002", productName: "Granulated Sugar", type: "Stock Out", quantity: 5, price: 20000, reason: "Customer Order: ORD-2024-01", date: today, status: "Stock Out" },
+  { id: "LOG003", productId: "PROD004", productName: "Napkins (Pack of 100)", type: "Stock In", quantity: 100, price: 250000, reason: "Vendor Delivery", date: yesterday, status: "Stock In" },
+  { id: "LOG004", productId: "PROD005", productName: "Frozen Chicken Breast", type: "Stock Out", quantity: 2, price: 36000, reason: "Spoilage", date: yesterday, status: "Stock Out" },
+  { id: "LOG005", productId: "PROD003", productName: "Olive Oil", type: "Stock In", quantity: 10, price: 120000, reason: "Internal Production", date: twoDaysAgo, status: "Stock In" },
 ];
 
 
@@ -92,7 +95,7 @@ export const issuanceLog = [
     unit: "pcs",
     unitPrice: 75000000,
     quantity: 1,
-    date: "2024-07-25",
+    date: today,
     status: "Issued"
   },
   {
@@ -104,7 +107,7 @@ export const issuanceLog = [
     unit: "pcs",
     unitPrice: 5000000,
     quantity: 1,
-    date: "2024-07-26",
+    date: today,
     status: "Issued"
   },
 ];
@@ -235,11 +238,11 @@ export const employees = [
 
 // HR: Attendance
 export const attendanceRecords = [
-  { id: "ATT001", employee: "John Smith", date: "2024-07-26", clockIn: "08:02 AM", clockOut: "05:05 PM", totalHours: "9h 3m" },
-  { id: "ATT002", employee: "Jane Doe", date: "2024-07-26", clockIn: "09:00 AM", clockOut: "06:15 PM", totalHours: "9h 15m" },
-  { id: "ATT003", employee: "Peter Jones", date: "2024-07-26", clockIn: "07:30 AM", clockOut: "04:30 PM", totalHours: "9h 0m" },
-  { id: "ATT004", employee: "Emily White", date: "2024-07-26", clockIn: "08:05 AM", clockOut: "05:10 PM", totalHours: "9h 5m" },
-  { id: "ATT005", employee: "Sarah Green", date: "2024-07-26", clockIn: "08:55 AM", clockOut: "05:30 PM", totalHours: "8h 35m" },
+  { id: "ATT001", employee: "John Smith", date: today, clockIn: "08:02 AM", clockOut: "05:05 PM", totalHours: "9h 3m" },
+  { id: "ATT002", employee: "Jane Doe", date: today, clockIn: "09:00 AM", clockOut: "06:15 PM", totalHours: "9h 15m" },
+  { id: "ATT003", employee: "Peter Jones", date: today, clockIn: "07:30 AM", clockOut: "04:30 PM", totalHours: "9h 0m" },
+  { id: "ATT004", employee: "Emily White", date: today, clockIn: "08:05 AM", clockOut: "05:10 PM", totalHours: "9h 5m" },
+  { id: "ATT005", employee: "Sarah Green", date: today, clockIn: "08:55 AM", clockOut: "05:30 PM", totalHours: "8h 35m" },
 ];
 
 // HR: Recruitment / Job Board
@@ -317,30 +320,30 @@ export const recentIssuances = [
     id: "ISS002",
     item: "Ford Transit Van",
     employee: { name: "John Smith", role: "Driver" },
-    date: "2024-07-26",
+    date: today,
   },
   {
     id: "ISS003",
     item: "Serving Spoons (x20)",
     employee: { name: "Emily White", role: "Sous Chef" },
-    date: "2024-07-26",
+    date: today,
   },
   {
     id: "ISS005",
     item: "Portable Bar Station",
     employee: { name: "Jane Doe", role: "Events Manager" },
-    date: "2024-07-26",
+    date: today,
   },
   {
     id: "ISS001",
     item: "Wine Glasses (x50)",
     employee: { name: "Jane Doe", role: "Events Manager" },
-    date: "2024-07-25",
+    date: yesterday,
   },
   {
     id: "ISS004",
     item: "Tablecloths (x20)",
     employee: { name: "Michael Brown", role: "Server" },
-    date: "2024-07-24",
+    date: twoDaysAgo,
   },
 ];

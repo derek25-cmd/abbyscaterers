@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 
 export default function StockLogsPage() {
   const [logs, setLogs] = useState([]);
@@ -63,12 +63,15 @@ export default function StockLogsPage() {
         ...movement,
         productName: product.name,
         price: product.unitPrice * movement.quantity,
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd'),
         status: movement.type,
     };
     
     const newId = await addStockLog(newLog);
-    setLogs(prevLogs => [{ id: newId, ...newLog }, ...prevLogs].sort((a,b) => new Date(b.date) - new Date(a.date)));
+    
+    // Optimistic UI update for logs
+    const tempNewLog = { id: newId, ...newLog };
+    setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a,b) => new Date(b.date) - new Date(a.date)));
 
     const updatedProduct = { ...product };
     if(movement.type === 'Stock In') {
@@ -76,18 +79,19 @@ export default function StockLogsPage() {
     } else {
         if(product.quantity < movement.quantity) {
             alert('Not enough stock to log out');
-            // Revert optimistic UI update if needed, but for now we just stop
+            // Revert optimistic UI update if needed
+            setLogs(prevLogs => prevLogs.filter(l => l.id !== newId));
             return;
         }
         updatedProduct.quantity -= movement.quantity;
     }
     
     await updateProduct(product.id, updatedProduct);
+    // Optimistic UI update for products
     setProducts(products.map(p => p.id === product.id ? updatedProduct : p));
   };
 
   const handleEditLog = async (updatedLog) => {
-    // Note: Editing logs does not revert stock changes in this simplified implementation.
     await updateStockLog(updatedLog.id, updatedLog);
     setLogs(prevLogs => 
         prevLogs.map(log => 
@@ -117,25 +121,30 @@ export default function StockLogsPage() {
     const dailyLogs = logs.filter(log => log.date === dateStr);
     
     const summary = dailyLogs.reduce((acc, log) => {
+      const price = Number(log.price) || 0;
+      const quantity = Number(log.quantity) || 0;
       if (log.type === 'Stock In') {
-        acc.stockedIn.items += log.quantity;
-        acc.stockedIn.value += log.price;
+        acc.stockedIn.items += quantity;
+        acc.stockedIn.value += price;
       } else {
-        acc.stockedOut.items += log.quantity;
-        acc.stockedOut.value += log.price;
+        acc.stockedOut.items += quantity;
+        acc.stockedOut.value += price;
       }
       return acc;
     }, { stockedIn: { items: 0, value: 0 }, stockedOut: { items: 0, value: 0 } });
-
-    // Calculate closing stock value at the end of the selected day
+    
     const currentTotalValue = products.reduce((total, p) => total + (p.quantity * p.unitPrice), 0);
-    const logsAfterDate = logs.filter(log => log.date > dateStr);
+    
+    const logsAfterDate = logs.filter(log => {
+      const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
+      return logDate > selectedDate;
+    });
     
     const valueOfFutureLogs = logsAfterDate.reduce((total, log) => {
         if (log.type === 'Stock In') {
-            return total - log.price; // Subtract value of stock that came in later
+            return total - log.price; 
         } else {
-            return total + log.price; // Add back value of stock that went out later
+            return total + log.price;
         }
     }, 0);
 
