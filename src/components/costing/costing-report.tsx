@@ -10,8 +10,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
-import EventIncomeTable from "./EventIncomeTable";
-import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO } from "date-fns";
+import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parse } from "date-fns";
 import { useStockOutLogs } from "@/hooks/use-stock-out-log-storage";
 
 export const CostingReport = ({ request, clients, orders, products, onBack, isLoading: externalLoading }) => {
@@ -60,7 +59,8 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       });
 
       const filteredLogs = stockOutLogs.filter(log => {
-        const logDate = parseISO(log.date);
+        // Correctly parse the "yyyy-MM-dd" date string without timezone issues
+        const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
         return intervals.some(interval => isWithinInterval(logDate, interval));
       });
       
