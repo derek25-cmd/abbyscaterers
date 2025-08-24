@@ -10,6 +10,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
+import EventIncomeTable from "./EventIncomeTable";
 import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parse } from "date-fns";
 import { useStockOutLogs } from "@/hooks/use-stock-out-log-storage";
 
