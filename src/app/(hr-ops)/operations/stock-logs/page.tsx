@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client';
 
@@ -28,11 +29,12 @@ export default function StockLogsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("productName");
 
   useEffect(() => {
+    setSelectedDate(new Date());
     const fetchData = async () => {
         setLoading(true);
         const [logsData, productsData] = await Promise.all([

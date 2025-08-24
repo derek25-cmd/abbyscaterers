@@ -35,11 +35,12 @@ export default function IssuancePage() {
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
     const [selectedLog, setSelectedLog] = useState(null);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("assetName");
 
     useEffect(() => {
+        setSelectedDate(new Date());
         const fetchData = async () => {
             setLoading(true);
             const [logsData, assetsData, employeesData, ordersData] = await Promise.all([
@@ -270,7 +271,7 @@ export default function IssuancePage() {
                 </PopoverContent>
               </Popover>
                {selectedDate && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}>
                   <X className="h-4 w-4 mr-1" />
                   Show All
                 </Button>
