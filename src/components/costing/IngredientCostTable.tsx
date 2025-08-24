@@ -2,21 +2,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
-import { isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
+import { isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 import { ShoppingCart } from "lucide-react";
-import { useOrderStorage } from "@/hooks/use-order-storage";
 
-const IngredientCostTable = ({ stockLogs, products, request, ingredientCost }) => {
+const IngredientCostTable = ({ stockLogs, request, ingredientCost }) => {
 
   const ingredientsUsedCount = useMemo(() => {
     if (!request || !stockLogs) return 0;
      const intervals = request.dates.map(date => {
         if (request.periodType === 'daily') {
-          const startOfDay = new Date(date);
-          startOfDay.setHours(0, 0, 0, 0);
-          const endOfDay = new Date(date);
-          endOfDay.setHours(23, 59, 59, 999);
-          return { start: startOfDay, end: endOfDay };
+          return { start: startOfDay(date), end: endOfDay(date) };
         }
         return { start: startOfMonth(date), end: endOfMonth(date) };
     });

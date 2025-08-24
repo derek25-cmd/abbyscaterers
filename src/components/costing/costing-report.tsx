@@ -10,7 +10,7 @@ import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
-import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay } from "date-fns";
+import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 
 export const CostingReport = ({ request, clients, orders, stockLogs, products, onBack, isLoading }) => {
   const { toast } = useToast();
@@ -19,35 +19,34 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
 
   const { title, dateRange, filteredEvents, ingredientCost } = useMemo(() => {
     let title = "Costing Report";
-    let dateRange = "";
-    let filteredEvents = [];
+    let dateRangeStr = "";
+    let filteredEventsData = [];
     let calculatedIngredientCost = 0;
 
-    if (request && stockLogs && products) {
+    if (request && stockLogs && products && clients && orders) {
         const intervals = request.dates.map(date => {
             if (request.periodType === 'daily') {
                 const start = startOfDay(date);
-                const end = new Date(date);
-                end.setHours(23, 59, 59, 999);
+                const end = endOfDay(date);
                 return { start, end };
             }
             return { start: startOfMonth(date), end: endOfMonth(date) };
         });
 
       if (request.periodType === 'daily') {
-        dateRange = request.dates.map(d => format(d, "PPP")).join(', ');
+        dateRangeStr = request.dates.map(d => format(d, "PPP")).join(', ');
       } else {
-        dateRange = request.dates.map(d => format(d, "MMMM yyyy")).join(', ');
+        dateRangeStr = request.dates.map(d => format(d, "MMMM yyyy")).join(', ');
       }
 
-      const clientName = request.type === 'individual' 
+      const clientName = request.type === 'individual' && request.clientId
         ? clients.find(c => c.id === request.clientId)?.companyName 
         : 'Aggregate';
-      title = `${clientName} Costing Report for ${dateRange}`;
+      title = `${clientName} Costing Report for ${dateRangeStr}`;
       
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
-      filteredEvents = allClientEvents.filter(event => {
+      filteredEventsData = allClientEvents.filter(event => {
         const eventDate = new Date(event.date);
         const inInterval = intervals.some(interval => isWithinInterval(eventDate, interval));
         if (request.type === 'individual') {
@@ -59,14 +58,15 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
       const filteredLogs = stockLogs.filter(log => {
         const logDate = new Date(log.date);
         const isStockOut = log.type === "Stock Out";
-        const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
-        return isStockOut && inInterval;
+        if (!isStockOut) return false;
+        
+        return intervals.some(interval => isWithinInterval(logDate, interval));
       });
       
       calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
     }
     
-    return { title, dateRange, filteredEvents, ingredientCost: calculatedIngredientCost };
+    return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, ingredientCost: calculatedIngredientCost };
 
   }, [request, clients, orders, stockLogs, products]);
 
