@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -16,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
+import { format } from "date-fns";
 
 export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products }) {
   const [productId, setProductId] = useState('');
@@ -23,6 +25,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
   const [reason, setReason] = useState('');
   const [orderId, setOrderId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [date, setDate] = useState('');
   const { orders } = useOrderStorage();
 
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
@@ -33,6 +36,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
     if (log) {
       setProductId(log.productId);
       setQuantity(log.quantity);
+      setDate(log.date);
 
       if (log.reason.startsWith('Customer Order: ')) {
         const parts = log.reason.split(': ');
@@ -80,6 +84,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
       quantity: Number(quantity),
       reason: finalReason,
       price: product ? product.unitPrice * Number(quantity) : log.price,
+      date,
     });
 
     setIsOpen(false);
@@ -96,6 +101,10 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="date" className="text-right">Date</Label>
+                <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="col-span-3"/>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="product" className="text-right">
                 Product
@@ -132,7 +141,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                 id="quantity"
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => setQuantity(Number(e.target.value))}
                 className="col-span-3"
                 min="1"
               />

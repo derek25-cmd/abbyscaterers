@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -123,7 +124,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 id="quantity"
                 type="number"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => setQuantity(Number(e.target.value))}
                 className="col-span-3"
                 min="1"
               />
