@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -9,7 +10,6 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useOrderStorage } from "@/hooks/use-order-storage";
-import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { CostingForm } from "@/components/costing/costing-form";
 import { CostingReport } from "@/components/costing/costing-report";
@@ -25,12 +25,11 @@ export type CostingRequest = {
 export default function CostingPage() {
     const { clients, isLoading: clientsLoading } = useClientStorage();
     const { orders, isLoading: ordersLoading } = useOrderStorage();
-    const { logs, isLoading: logsLoading } = useStockLogStorage();
     const { products, isLoading: productsLoading } = useProductStorage();
     
     const [request, setRequest] = useState<CostingRequest>(null);
 
-    const isLoading = clientsLoading || ordersLoading || logsLoading || productsLoading;
+    const isLoading = clientsLoading || ordersLoading || productsLoading;
 
     if (request) {
         return (
@@ -38,7 +37,6 @@ export default function CostingPage() {
                 request={request}
                 clients={clients}
                 orders={orders}
-                stockLogs={logs}
                 products={products}
                 onBack={() => setRequest(null)}
                 isLoading={isLoading}

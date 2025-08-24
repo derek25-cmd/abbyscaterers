@@ -12,19 +12,24 @@ import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
 import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO } from "date-fns";
+import { useStockOutLogs } from "@/hooks/use-stock-out-log-storage";
 
-export const CostingReport = ({ request, clients, orders, stockLogs, products, onBack, isLoading }) => {
+export const CostingReport = ({ request, clients, orders, products, onBack, isLoading: externalLoading }) => {
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const { stockOutLogs, isLoading: stockLogsLoading } = useStockOutLogs();
 
-  const { title, dateRange, filteredEvents, ingredientCost } = useMemo(() => {
+  const isLoading = externalLoading || stockLogsLoading;
+
+  const { title, dateRange, filteredEvents, ingredientCost, ingredientsUsedCount } = useMemo(() => {
     let title = "Costing Report";
     let dateRangeStr = "";
     let filteredEventsData = [];
     let calculatedIngredientCost = 0;
+    let usedCount = 0;
 
-    if (request && stockLogs && products && clients && orders) {
+    if (request && !isLoading) {
         const intervals = request.dates.map(date => {
             if (request.periodType === 'daily') {
                 return { start: startOfDay(date), end: endOfDay(date) };
@@ -54,20 +59,18 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         return inInterval;
       });
 
-      const filteredLogs = stockLogs.filter(log => {
+      const filteredLogs = stockOutLogs.filter(log => {
         const logDate = parseISO(log.date);
-        const isStockOut = log.type === "Stock Out";
-        if (!isStockOut) return false;
-        
         return intervals.some(interval => isWithinInterval(logDate, interval));
       });
       
       calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
+      usedCount = filteredLogs.length;
     }
     
-    return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, ingredientCost: calculatedIngredientCost };
+    return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, ingredientCost: calculatedIngredientCost, ingredientsUsedCount: usedCount };
 
-  }, [request, clients, orders, stockLogs, products]);
+  }, [request, clients, orders, products, stockOutLogs, isLoading]);
 
 
   const totalIncome = filteredEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
@@ -139,7 +142,7 @@ export const CostingReport = ({ request, clients, orders, stockLogs, products, o
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-          <IngredientCostTable stockLogs={stockLogs} products={products} request={request} ingredientCost={ingredientCost} />
+          <IngredientCostTable ingredientCost={ingredientCost} ingredientsUsedCount={ingredientsUsedCount} />
           <EventIncomeTable events={filteredEvents} />
         </div>
       </div>

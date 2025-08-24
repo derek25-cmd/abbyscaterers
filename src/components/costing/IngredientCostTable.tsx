@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -5,27 +6,7 @@ import { useMemo } from "react";
 import { isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 import { ShoppingCart } from "lucide-react";
 
-const IngredientCostTable = ({ stockLogs, request, ingredientCost }) => {
-
-  const ingredientsUsedCount = useMemo(() => {
-    if (!request || !stockLogs) return 0;
-     const intervals = request.dates.map(date => {
-        if (request.periodType === 'daily') {
-          return { start: startOfDay(date), end: endOfDay(date) };
-        }
-        return { start: startOfMonth(date), end: endOfMonth(date) };
-    });
-    
-    const relevantLogs = stockLogs.filter(log => {
-      const logDate = new Date(log.date);
-      const isStockOut = log.type === "Stock Out";
-      const inInterval = intervals.some(interval => isWithinInterval(logDate, interval));
-      return isStockOut && inInterval;
-    });
-
-    return relevantLogs.length;
-  }, [stockLogs, request]);
-
+const IngredientCostTable = ({ ingredientCost, ingredientsUsedCount }) => {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
