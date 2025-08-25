@@ -12,13 +12,13 @@ import CostingSummary from "./CostingSummary";
 import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
 import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parse } from "date-fns";
-import { useStockOutLogs } from "@/hooks/use-stock-out-log-storage";
+import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 
 export const CostingReport = ({ request, clients, orders, products, onBack, isLoading: externalLoading }) => {
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const { stockOutLogs, isLoading: stockLogsLoading } = useStockOutLogs();
+  const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
 
   const isLoading = externalLoading || stockLogsLoading;
 
@@ -30,8 +30,6 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let usedCount = 0;
 
     if (request && !isLoading) {
-      const selectedDatesAsStrings = request.dates.map(d => format(d, 'yyyy-MM-dd'));
-
       if (request.periodType === 'daily') {
         dateRangeStr = request.dates.map(d => format(d, "PPP")).join(', ');
       } else {
@@ -46,22 +44,31 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
       filteredEventsData = allClientEvents.filter(event => {
-        const eventDateStr = format(new Date(event.date), 'yyyy-MM-dd');
-        const inDateRange = request.periodType === 'daily' 
-            ? selectedDatesAsStrings.includes(eventDateStr)
-            : request.dates.some(d => format(d, 'yyyy-MM') === format(new Date(event.date), 'yyyy-MM'));
-
-        if (request.type === 'individual') {
-            return event.clientId === request.clientId && inDateRange;
-        }
-        return inDateRange;
+        const eventDate = new Date(event.date);
+        return request.dates.some(d => {
+           if (request.periodType === 'daily') {
+                return format(eventDate, 'yyyy-MM-dd') === format(d, 'yyyy-MM-dd');
+           } else { // monthly
+                return eventDate.getMonth() === d.getMonth() && eventDate.getFullYear() === d.getFullYear();
+           }
+        });
       });
-
+      
+      if(request.type === 'individual') {
+          filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
+      }
+      
+      const stockOutLogs = allLogs.filter(log => log.type === 'Stock Out');
+      
       const filteredLogs = stockOutLogs.filter(log => {
-        const logDateStr = log.date; // Date is already in 'yyyy-MM-dd' string format
-        return request.periodType === 'daily'
-            ? selectedDatesAsStrings.includes(logDateStr)
-            : request.dates.some(d => format(d, 'yyyy-MM') === logDateStr.substring(0, 7));
+        const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
+        return request.dates.some(d => {
+           if (request.periodType === 'daily') {
+                return format(logDate, 'yyyy-MM-dd') === format(d, 'yyyy-MM-dd');
+           } else { // monthly
+                return logDate.getMonth() === d.getMonth() && logDate.getFullYear() === d.getFullYear();
+           }
+        });
       });
       
       calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
@@ -70,7 +77,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     
     return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, ingredientCost: calculatedIngredientCost, ingredientsUsedCount: usedCount };
 
-  }, [request, clients, orders, stockOutLogs, isLoading]);
+  }, [request, clients, orders, allLogs, isLoading]);
 
 
   const totalIncome = filteredEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);

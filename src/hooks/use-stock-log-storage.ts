@@ -26,7 +26,7 @@ export function useStockLogStorage() {
     }
   }, []);
 
-  const addStockLog = useCallback((data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addStockLog = useCallback((data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>) => {
     const newItem = addToStorage(data);
     refreshLogs();
     return newItem;
