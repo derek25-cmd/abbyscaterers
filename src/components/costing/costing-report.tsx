@@ -9,8 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
-import IngredientCostTable from "./IngredientCostTable";
 import EventIncomeTable from "./EventIncomeTable";
+import StockLogTable from "./StockLogTable"; 
 import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parse } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 
@@ -22,12 +22,12 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
 
   const isLoading = externalLoading || stockLogsLoading;
 
-  const { title, dateRange, filteredEvents, ingredientCost, ingredientsUsedCount } = useMemo(() => {
+  const { title, dateRange, filteredEvents, filteredStockOutLogs, ingredientCost } = useMemo(() => {
     let title = "Costing Report";
     let dateRangeStr = "";
     let filteredEventsData = [];
+    let filteredLogsData = [];
     let calculatedIngredientCost = 0;
-    let usedCount = 0;
 
     if (request && !isLoading) {
       const dateIntervals = request.dates.map(d => {
@@ -61,18 +61,15 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       
       const stockOutLogs = allLogs.filter(log => log.type === 'Stock Out');
       
-      const filteredLogs = stockOutLogs.filter(log => {
-        // Correctly parse the "YYYY-MM-DD" string into a Date object for comparison.
-        // This avoids timezone issues.
+      filteredLogsData = stockOutLogs.filter(log => {
         const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
         return dateIntervals.some(interval => isWithinInterval(logDate, interval));
       });
       
-      calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
-      usedCount = filteredLogs.length;
+      calculatedIngredientCost = filteredLogsData.reduce((sum, log) => sum + (log.price || 0), 0);
     }
     
-    return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, ingredientCost: calculatedIngredientCost, ingredientsUsedCount: usedCount };
+    return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, filteredStockOutLogs: filteredLogsData, ingredientCost: calculatedIngredientCost };
 
   }, [request, clients, orders, allLogs, isLoading]);
 
@@ -146,7 +143,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-          <IngredientCostTable ingredientCost={ingredientCost} ingredientsUsedCount={ingredientsUsedCount} />
+          <StockLogTable logs={filteredStockOutLogs} />
           <EventIncomeTable events={filteredEvents} />
         </div>
       </div>
