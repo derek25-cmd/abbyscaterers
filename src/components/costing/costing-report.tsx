@@ -10,7 +10,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import StockLogTable from "./StockLogTable"; 
-import { format, isWithinInterval, startOfMonth, endOfMonth, parse } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import EventIncomeTable from "./EventIncomeTable";
 
@@ -30,19 +30,19 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let calculatedIngredientCost = 0;
 
     if (request && !isLoading) {
-      const dateIntervals = request.dates.map(d => {
-        if (request.periodType === 'daily') {
-           const parsedDate = parse(d, 'yyyy-MM-dd', new Date());
-          return { start: parsedDate, end: parsedDate };
-        }
-         const parsedMonth = parse(d, 'yyyy-MM', new Date());
-        return { start: startOfMonth(parsedMonth), end: endOfMonth(parsedMonth) };
-      });
-      
+      // Create a set of selected date strings in "yyyy-MM-dd" format for efficient lookup
+      const selectedDateStrings = new Set(request.dates.map(d => {
+          if (request.periodType === 'daily') {
+              return format(parseISO(d), 'yyyy-MM-dd');
+          }
+          // For monthly, this will need a more complex range check
+          return d;
+      }));
+
       if (request.periodType === 'daily') {
-        dateRangeStr = request.dates.map(d => format(parse(d, 'yyyy-MM-dd', new Date()), "PPP")).join(', ');
+        dateRangeStr = request.dates.map(d => format(parseISO(d), "PPP")).join(', ');
       } else {
-        dateRangeStr = request.dates.map(d => format(parse(d, 'yyyy-MM', new Date()), "MMMM yyyy")).join(', ');
+        dateRangeStr = request.dates.map(d => format(parseISO(d), "MMMM yyyy")).join(', ');
       }
 
       const clientName = request.type === 'individual' && request.clientId
@@ -52,25 +52,21 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
+      // Filter events based on the date strings
       filteredEventsData = allClientEvents.filter(event => {
-        const eventDate = parse(event.date.split('T')[0], 'yyyy-MM-dd', new Date());
-        return dateIntervals.some(interval => 
-            eventDate >= interval.start && eventDate <= interval.end
-        );
+        const eventDateStr = format(parseISO(event.date), 'yyyy-MM-dd');
+        return selectedDateStrings.has(eventDateStr);
       });
       
       if (request.type === 'individual' && request.clientId) {
           filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
       }
       
-      const logsInDateRange = allLogs.filter(log => {
-          const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
-          return dateIntervals.some(interval => 
-            logDate >= interval.start && logDate <= interval.end
-          );
+      // Filter logs based on date strings and type
+      filteredLogsData = allLogs.filter(log => {
+        const logDateStr = format(parseISO(log.date), 'yyyy-MM-dd');
+        return selectedDateStrings.has(logDateStr) && log.type === 'Stock Out';
       });
-      
-      filteredLogsData = logsInDateRange.filter(log => log.type === 'Stock Out');
       
       calculatedIngredientCost = filteredLogsData.reduce((sum, log) => sum + (log.price || 0), 0);
     }
