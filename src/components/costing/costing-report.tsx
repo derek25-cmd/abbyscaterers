@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 
@@ -22,7 +21,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
 
   const isLoading = externalLoading || stockLogsLoading;
 
-  const { title, dateRange, filteredEvents, filteredStockOutLogs, ingredientCost } = useMemo(() => {
+  const { title, dateRange, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
     let title = "Costing Report";
     let dateRangeStr = "";
     let filteredEventsData = [];
@@ -52,16 +51,17 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
           filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
       }
       
-      // Filter logs by date and type 'Stock Out'
+      // Filter all logs by date first
       filteredLogsData = allLogs.filter(log => {
         if (!log.date) return false;
         const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
-        const typeMatch = log.type?.toLowerCase() === 'stock out';
-        return typeMatch && selectedDateStrings.has(logDateStr);
+        return selectedDateStrings.has(logDateStr);
       });
 
-      // Recalculate cost based on filtered logs and master product data
-      calculatedIngredientCost = filteredLogsData.reduce((sum, log) => {
+      // Calculate cost based on 'Stock Out' logs from the date-filtered list
+      const stockOutLogs = filteredLogsData.filter(log => log.type?.toLowerCase() === 'stock out');
+      
+      calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
         const product = products.find(p => p.id === log.productId);
         const price = product ? product.unitPrice : 0;
         return sum + (price * (log.quantity || 0));
@@ -72,7 +72,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       title, 
       dateRange: dateRangeStr, 
       filteredEvents: filteredEventsData, 
-      filteredStockOutLogs: filteredLogsData.map(log => {
+      filteredStockLogs: filteredLogsData.map(log => {
         const product = products.find(p => p.id === log.productId);
         return {
           ...log,
@@ -154,7 +154,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-          <StockLogTable logs={filteredStockOutLogs} />
+          <StockLogTable logs={filteredStockLogs} />
           <EventIncomeTable events={filteredEvents} />
         </div>
       </div>
