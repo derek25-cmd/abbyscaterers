@@ -9,10 +9,10 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
-import EventIncomeTable from "./EventIncomeTable";
 import StockLogTable from "./StockLogTable"; 
 import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parse } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
+import EventIncomeTable from "./EventIncomeTable";
 
 export const CostingReport = ({ request, clients, orders, products, onBack, isLoading: externalLoading }) => {
   const { toast } = useToast();

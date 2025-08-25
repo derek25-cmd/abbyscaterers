@@ -13,16 +13,26 @@ export function useStockLogStorage() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setLogs(getAllFromStorage());
-      setIsLoading(false);
-    }
-  }, []);
+  const processLogs = (rawLogs: any[]): StockLog[] => {
+    return rawLogs.map(log => ({
+      ...log,
+      quantity: Number(log.quantity) || 0,
+      price: Number(log.price) || 0,
+    }));
+  };
 
   const refreshLogs = useCallback(() => {
     if (typeof window !== "undefined") {
-      setLogs(getAllFromStorage());
+      const rawLogs = getAllFromStorage();
+      setLogs(processLogs(rawLogs));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const rawLogs = getAllFromStorage();
+      setLogs(processLogs(rawLogs));
+      setIsLoading(false);
     }
   }, []);
 
