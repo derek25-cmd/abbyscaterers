@@ -10,7 +10,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import StockLogTable from "./StockLogTable"; 
-import { format, parseISO, startOfDay } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import EventIncomeTable from "./EventIncomeTable";
 
@@ -30,7 +30,6 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let calculatedIngredientCost = 0;
 
     if (request && !isLoading) {
-      // Create a set of selected date strings in "yyyy-MM-dd" format for efficient lookup
       const selectedDateStrings = new Set(request.dates);
 
       if (request.periodType === 'daily') {
@@ -46,7 +45,6 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
-      // Filter events based on the date strings
       filteredEventsData = allClientEvents.filter(event => {
         const eventDateStr = event.date.substring(0, 10);
         return selectedDateStrings.has(eventDateStr);
@@ -56,10 +54,10 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
           filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
       }
       
-      // Filter logs based on date strings and type
+      // Corrected Filtering Logic
       filteredLogsData = allLogs.filter(log => {
-        const logDateStr = log.date; // The date is already in "YYYY-MM-DD" string format
-        return selectedDateStrings.has(logDateStr) && log.type === 'Stock Out';
+        // Ensure log.date is a string in "YYYY-MM-DD" format and exists in the selection
+        return selectedDateStrings.has(log.date) && log.type === 'Stock Out';
       });
       
       calculatedIngredientCost = filteredLogsData.reduce((sum, log) => sum + (log.price || 0), 0);
