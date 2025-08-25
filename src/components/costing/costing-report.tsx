@@ -30,6 +30,13 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let usedCount = 0;
 
     if (request && !isLoading) {
+      const dateIntervals = request.dates.map(d => {
+        if (request.periodType === 'daily') {
+          return { start: startOfDay(d), end: endOfDay(d) };
+        }
+        return { start: startOfMonth(d), end: endOfMonth(d) };
+      });
+      
       if (request.periodType === 'daily') {
         dateRangeStr = request.dates.map(d => format(d, "PPP")).join(', ');
       } else {
@@ -45,30 +52,20 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       
       filteredEventsData = allClientEvents.filter(event => {
         const eventDate = new Date(event.date);
-        return request.dates.some(d => {
-           if (request.periodType === 'daily') {
-                return format(eventDate, 'yyyy-MM-dd') === format(d, 'yyyy-MM-dd');
-           } else { // monthly
-                return eventDate.getMonth() === d.getMonth() && eventDate.getFullYear() === d.getFullYear();
-           }
-        });
+        const matchesDate = dateIntervals.some(interval => isWithinInterval(eventDate, interval));
+        if (request.type === 'individual' && request.clientId) {
+          return matchesDate && event.clientId === request.clientId;
+        }
+        return matchesDate;
       });
-      
-      if(request.type === 'individual') {
-          filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
-      }
       
       const stockOutLogs = allLogs.filter(log => log.type === 'Stock Out');
       
       const filteredLogs = stockOutLogs.filter(log => {
+        // Correctly parse the "YYYY-MM-DD" string into a Date object for comparison.
+        // This avoids timezone issues.
         const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
-        return request.dates.some(d => {
-           if (request.periodType === 'daily') {
-                return format(logDate, 'yyyy-MM-dd') === format(d, 'yyyy-MM-dd');
-           } else { // monthly
-                return logDate.getMonth() === d.getMonth() && logDate.getFullYear() === d.getFullYear();
-           }
-        });
+        return dateIntervals.some(interval => isWithinInterval(logDate, interval));
       });
       
       calculatedIngredientCost = filteredLogs.reduce((sum, log) => sum + (log.price || 0), 0);
