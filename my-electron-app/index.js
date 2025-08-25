@@ -20,7 +20,7 @@ function createWindow() {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': ["script-src 'self' 'unsafe-inline'; object-src 'self'"]
+        'Content-Security-Policy': [ "script-src 'self' 'unsafe-inline' https://6000-firebase-studio-1747991866640.cluster-6frnii43o5blcu522sivebzpii.cloudworkstations.dev; object-src 'self'; worker-src blob:;" ]
       }
     });
   });
