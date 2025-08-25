@@ -1,6 +1,8 @@
 // my-electron-app/index.js
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
+const { installExtension, REACT_DEVELOPER_TOOLS } = require('electron-devtools-installer');
+
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -39,14 +41,21 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+    if (!app.isPackaged) {
+        installExtension(REACT_DEVELOPER_TOOLS)
+            .then((name) => console.log(`Added Extension:  ${name}`))
+            .catch((err) => console.log('An error occurred: ', err));
     }
-  });
+
+    createWindow();
+
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
 });
+
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
