@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,11 +26,17 @@ export function CostingForm({ clients, onSubmit, isLoading }) {
       alert("Please select a client for individual costing.");
       return;
     }
+
+    const formattedDates = dates.map(d => {
+      if(periodType === 'daily') return format(d, 'yyyy-MM-dd');
+      return format(d, 'yyyy-MM');
+    })
+
     onSubmit({
       type: costingType,
       clientId: costingType === 'individual' ? clientId : null,
       periodType,
-      dates
+      dates: formattedDates
     });
   }
 

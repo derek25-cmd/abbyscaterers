@@ -13,13 +13,12 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { CostingForm } from "@/components/costing/costing-form";
 import { CostingReport } from "@/components/costing/costing-report";
-import { DailyCosting } from "@/types";
 
 export type CostingRequest = {
   type: 'individual' | 'aggregate';
   clientId?: string | null;
   periodType: 'daily' | 'monthly';
-  dates: Date[];
+  dates: string[];
 } | null;
 
 export default function CostingPage() {

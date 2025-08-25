@@ -10,7 +10,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import CostingSummary from "./CostingSummary";
 import StockLogTable from "./StockLogTable"; 
-import { format, isWithinInterval, startOfMonth, endOfMonth, startOfDay, endOfDay, parse } from "date-fns";
+import { format, isWithinInterval, startOfMonth, endOfMonth, parse } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import EventIncomeTable from "./EventIncomeTable";
 
@@ -32,15 +32,17 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     if (request && !isLoading) {
       const dateIntervals = request.dates.map(d => {
         if (request.periodType === 'daily') {
-          return { start: startOfDay(d), end: endOfDay(d) };
+           const parsedDate = parse(d, 'yyyy-MM-dd', new Date());
+          return { start: parsedDate, end: parsedDate };
         }
-        return { start: startOfMonth(d), end: endOfMonth(d) };
+         const parsedMonth = parse(d, 'yyyy-MM', new Date());
+        return { start: startOfMonth(parsedMonth), end: endOfMonth(parsedMonth) };
       });
       
       if (request.periodType === 'daily') {
-        dateRangeStr = request.dates.map(d => format(d, "PPP")).join(', ');
+        dateRangeStr = request.dates.map(d => format(parse(d, 'yyyy-MM-dd', new Date()), "PPP")).join(', ');
       } else {
-        dateRangeStr = request.dates.map(d => format(d, "MMMM yyyy")).join(', ');
+        dateRangeStr = request.dates.map(d => format(parse(d, 'yyyy-MM', new Date()), "MMMM yyyy")).join(', ');
       }
 
       const clientName = request.type === 'individual' && request.clientId
@@ -51,20 +53,24 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       
       filteredEventsData = allClientEvents.filter(event => {
-        const eventDate = new Date(event.date);
-        const matchesDate = dateIntervals.some(interval => isWithinInterval(eventDate, interval));
-        if (request.type === 'individual' && request.clientId) {
-          return matchesDate && event.clientId === request.clientId;
-        }
-        return matchesDate;
+        const eventDate = parse(event.date.split('T')[0], 'yyyy-MM-dd', new Date());
+        return dateIntervals.some(interval => 
+            eventDate >= interval.start && eventDate <= interval.end
+        );
       });
       
-      const stockOutLogs = allLogs.filter(log => log.type === 'Stock Out');
+      if (request.type === 'individual' && request.clientId) {
+          filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
+      }
       
-      filteredLogsData = stockOutLogs.filter(log => {
-        const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
-        return dateIntervals.some(interval => isWithinInterval(logDate, interval));
+      const logsInDateRange = allLogs.filter(log => {
+          const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
+          return dateIntervals.some(interval => 
+            logDate >= interval.start && logDate <= interval.end
+          );
       });
+      
+      filteredLogsData = logsInDateRange.filter(log => log.type === 'Stock Out');
       
       calculatedIngredientCost = filteredLogsData.reduce((sum, log) => sum + (log.price || 0), 0);
     }
