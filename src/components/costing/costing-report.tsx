@@ -30,23 +30,24 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let calculatedIngredientCost = 0;
 
     if (request && !isLoading) {
+      // This is a set of date strings in "YYYY-MM-DD" or "YYYY-MM" format
       const selectedDateStrings = new Set(request.dates);
 
+      // --- Prepare Report Title & Date Range String ---
       if (request.periodType === 'daily') {
         dateRangeStr = request.dates.map(d => format(parseISO(d), "PPP")).join(', ');
-      } else {
-        dateRangeStr = request.dates.map(d => format(parseISO(d), "MMMM yyyy")).join(', ');
+      } else { // monthly
+        dateRangeStr = request.dates.map(d => format(parseISO(d + '-01'), "MMMM yyyy")).join(', ');
       }
-
       const clientName = request.type === 'individual' && request.clientId
         ? clients.find(c => c.id === request.clientId)?.companyName 
         : 'Aggregate';
       title = `${clientName} Costing Report for ${dateRangeStr}`;
       
+      // --- Filter Events (Working Logic) ---
       const allClientEvents = orders.flatMap(order => order.clientEvents);
-      
       filteredEventsData = allClientEvents.filter(event => {
-        const eventDateStr = event.date.substring(0, 10);
+        const eventDateStr = event.date.substring(0, request.periodType === 'daily' ? 10 : 7);
         return selectedDateStrings.has(eventDateStr);
       });
       
@@ -54,16 +55,28 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
           filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
       }
       
-      // Corrected Filtering Logic
+      // --- Filter Stock Logs (Rewritten Logic) ---
       filteredLogsData = allLogs.filter(log => {
-        // Ensure log.date is a string in "YYYY-MM-DD" format and exists in the selection
-        return selectedDateStrings.has(log.date) && log.type === 'Stock Out';
+        // 1. Filter by date using direct string comparison
+        const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
+        if (!selectedDateStrings.has(logDateStr)) {
+          return false;
+        }
+        // 2. Filter by type
+        return log.type === 'Stock Out';
       });
       
+      // --- Calculate Cost ---
       calculatedIngredientCost = filteredLogsData.reduce((sum, log) => sum + (log.price || 0), 0);
     }
     
-    return { title, dateRange: dateRangeStr, filteredEvents: filteredEventsData, filteredStockOutLogs: filteredLogsData, ingredientCost: calculatedIngredientCost };
+    return { 
+      title, 
+      dateRange: dateRangeStr, 
+      filteredEvents: filteredEventsData, 
+      filteredStockOutLogs: filteredLogsData, 
+      ingredientCost: calculatedIngredientCost 
+    };
 
   }, [request, clients, orders, allLogs, isLoading]);
 
