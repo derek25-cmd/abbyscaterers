@@ -30,13 +30,11 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let calculatedIngredientCost = 0;
 
     if (request && !isLoading) {
-      // This is a set of date strings in "YYYY-MM-DD" or "YYYY-MM" format
       const selectedDateStrings = new Set(request.dates);
 
-      // --- Prepare Report Title & Date Range String ---
       if (request.periodType === 'daily') {
         dateRangeStr = request.dates.map(d => format(parseISO(d), "PPP")).join(', ');
-      } else { // monthly
+      } else {
         dateRangeStr = request.dates.map(d => format(parseISO(d + '-01'), "MMMM yyyy")).join(', ');
       }
       const clientName = request.type === 'individual' && request.clientId
@@ -44,41 +42,47 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
         : 'Aggregate';
       title = `${clientName} Costing Report for ${dateRangeStr}`;
       
-      // --- Filter Events (Working Logic) ---
       const allClientEvents = orders.flatMap(order => order.clientEvents);
       filteredEventsData = allClientEvents.filter(event => {
-        const eventDateStr = event.date.substring(0, request.periodType === 'daily' ? 10 : 7);
-        return selectedDateStrings.has(eventDateStr);
+        const eventDateStr = event.date?.substring(0, request.periodType === 'daily' ? 10 : 7);
+        return eventDateStr && selectedDateStrings.has(eventDateStr);
       });
       
       if (request.type === 'individual' && request.clientId) {
           filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
       }
       
-      // --- Filter Stock Logs (Rewritten Logic) ---
+      // Filter logs by date and type 'Stock Out'
       filteredLogsData = allLogs.filter(log => {
-        // 1. Filter by date using direct string comparison
+        if (!log.date) return false;
         const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
-        if (!selectedDateStrings.has(logDateStr)) {
-          return false;
-        }
-        // 2. Filter by type
-        return log.type === 'Stock Out';
+        const typeMatch = log.type?.toLowerCase() === 'stock out';
+        return typeMatch && selectedDateStrings.has(logDateStr);
       });
-      
-      // --- Calculate Cost ---
-      calculatedIngredientCost = filteredLogsData.reduce((sum, log) => sum + (log.price || 0), 0);
+
+      // Recalculate cost based on filtered logs and master product data
+      calculatedIngredientCost = filteredLogsData.reduce((sum, log) => {
+        const product = products.find(p => p.id === log.productId);
+        const price = product ? product.unitPrice : 0;
+        return sum + (price * (log.quantity || 0));
+      }, 0);
     }
     
     return { 
       title, 
       dateRange: dateRangeStr, 
       filteredEvents: filteredEventsData, 
-      filteredStockOutLogs: filteredLogsData, 
+      filteredStockOutLogs: filteredLogsData.map(log => {
+        const product = products.find(p => p.id === log.productId);
+        return {
+          ...log,
+          price: product ? product.unitPrice * log.quantity : 0
+        }
+      }), 
       ingredientCost: calculatedIngredientCost 
     };
 
-  }, [request, clients, orders, allLogs, isLoading]);
+  }, [request, clients, orders, allLogs, isLoading, products]);
 
 
   const totalIncome = filteredEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);

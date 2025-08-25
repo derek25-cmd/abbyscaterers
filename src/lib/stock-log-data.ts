@@ -37,7 +37,7 @@ export function addStockLog(logData: Omit<StockLog, 'id' | 'createdAt' | 'update
   const newLog: StockLog = {
     id: `LOG-${Date.now()}`,
     ...logData,
-    date: format(now, 'yyyy-MM-dd'), // Use local timezone to get correct date string
+    date: format(now, 'yyyy-MM-dd'), // Always format date consistently
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };
