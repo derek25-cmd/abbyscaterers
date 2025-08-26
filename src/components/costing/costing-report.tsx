@@ -68,7 +68,7 @@ export const CostingReport = ({ request, onBack }) => {
     return { 
       title: reportTitle,
       filteredEvents: eventsForReport, 
-      filteredStockLogs: stockLogsForReport, 
+      filteredStockLogs: stockLogsForReport,
       ingredientCost: calculatedIngredientCost 
     };
 

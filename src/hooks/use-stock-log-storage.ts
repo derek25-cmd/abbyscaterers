@@ -4,45 +4,46 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { StockLog } from "@/types";
 import { 
-  getAllStockLogs as getAllFromStorage,
+  getStockLogs as getAllFromStorage,
   addStockLog as addToStorage,
   updateStockLog as updateInStorage,
-} from '@/lib/stock-log-data';
+} from '@/services/stockLogService';
 
 export function useStockLogStorage() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshLogs = useCallback(() => {
-    if (typeof window !== "undefined") {
-      const storedLogs = getAllFromStorage();
-      // Ensure quantity and price are numbers
+    const fetchAndSanitize = async () => {
+      setIsLoading(true);
+      const storedLogs = await getAllFromStorage();
       const sanitizedLogs = storedLogs.map(log => ({
         ...log,
         quantity: Number(log.quantity) || 0,
         price: Number(log.price) || 0,
       }));
-      setLogs(sanitizedLogs);
+      setLogs(sanitizedLogs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setIsLoading(false);
+    };
+
+    if (typeof window !== "undefined") {
+      fetchAndSanitize();
     }
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      refreshLogs();
-      setIsLoading(false);
-    }
-  }, [refreshLogs]);
-
-  const addStockLog = useCallback((data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>) => {
-    const newItem = addToStorage(data);
     refreshLogs();
-    return newItem;
   }, [refreshLogs]);
 
-  const updateStockLog = useCallback((id: string, updates: Partial<StockLog>) => {
-    const updatedItem = updateInStorage(id, updates);
+  const addStockLog = useCallback(async (data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>) => {
+    await addToStorage(data);
+    refreshLogs(); // Refresh after adding
+  }, [refreshLogs]);
+
+  const updateStockLog = useCallback(async (id: string, updates: Partial<StockLog>) => {
+    const updatedItem = await updateInStorage(id, updates);
     if (updatedItem) {
-      refreshLogs();
+      refreshLogs(); // Refresh after updating
     }
     return updatedItem;
   }, [refreshLogs]);
