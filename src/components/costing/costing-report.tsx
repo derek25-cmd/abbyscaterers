@@ -13,78 +13,66 @@ import StockLogTable from "./StockLogTable";
 import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import EventIncomeTable from "./EventIncomeTable";
+import { useOrderStorage } from "@/hooks/use-order-storage";
+import { useClientStorage } from "@/hooks/use-client-storage";
+import { useProductStorage } from "@/hooks/use-product-storage";
 
-export const CostingReport = ({ request, clients, orders, products, onBack, isLoading: externalLoading }) => {
+export const CostingReport = ({ request, onBack }) => {
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  
+  const { clients, isLoading: clientsLoading } = useClientStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage();
+  const { products, isLoading: productsLoading } = useProductStorage();
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
 
-  const isLoading = externalLoading || stockLogsLoading;
+  const isLoading = clientsLoading || ordersLoading || productsLoading || stockLogsLoading;
 
-  const { title, dateRange, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
-    let title = "Costing Report";
-    let dateRangeStr = "";
-    let filteredEventsData = [];
-    let displayedStockLogs = [];
-    let calculatedIngredientCost = 0;
+  const { title, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
+    if (!request || isLoading) {
+      return { title: "Loading Report...", filteredEvents: [], filteredStockLogs: [], ingredientCost: 0 };
+    }
 
-    if (request && !isLoading) {
-      const selectedDateStrings = new Set(request.dates);
+    const selectedDateStrings = new Set(request.dates);
+    const dateRangeStr = request.dates.map(d => format(parseISO(d), request.periodType === 'daily' ? "PPP" : "MMMM yyyy")).join(', ');
+    const clientName = request.type === 'individual' && request.clientId
+      ? clients.find(c => c.id === request.clientId)?.companyName 
+      : 'Aggregate';
+    const reportTitle = `${clientName} Costing Report for ${dateRangeStr}`;
 
-      if (request.periodType === 'daily') {
-        dateRangeStr = request.dates.map(d => format(parseISO(d), "PPP")).join(', ');
-      } else {
-        dateRangeStr = request.dates.map(d => format(parseISO(d + '-01'), "MMMM yyyy")).join(', ');
-      }
-      const clientName = request.type === 'individual' && request.clientId
-        ? clients.find(c => c.id === request.clientId)?.companyName 
-        : 'Aggregate';
-      title = `${clientName} Costing Report for ${dateRangeStr}`;
-      
-      const allClientEvents = orders.flatMap(order => order.clientEvents);
-      filteredEventsData = allClientEvents.filter(event => {
-        const eventDateStr = event.date?.substring(0, request.periodType === 'daily' ? 10 : 7);
-        return eventDateStr && selectedDateStrings.has(eventDateStr);
-      });
-      
-      if (request.type === 'individual' && request.clientId) {
-          filteredEventsData = filteredEventsData.filter(event => event.clientId === request.clientId);
-      }
-      
-      // Filter all logs by date first
-      displayedStockLogs = allLogs.filter(log => {
-        if (!log.date) return false;
-        const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
-        return selectedDateStrings.has(logDateStr);
-      });
+    const allClientEvents = orders.flatMap(order => order.clientEvents);
+    let eventsForReport = allClientEvents.filter(event => {
+      const eventDateStr = event.date?.substring(0, request.periodType === 'daily' ? 10 : 7);
+      return eventDateStr && selectedDateStrings.has(eventDateStr);
+    });
 
-      // Calculate cost based on 'Stock Out' logs from the date-filtered list
-      const stockOutLogs = displayedStockLogs.filter(log => log.type?.toLowerCase() === 'stock out');
-      
-      calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
+    if (request.type === 'individual' && request.clientId) {
+      eventsForReport = eventsForReport.filter(event => event.clientId === request.clientId);
+    }
+    
+    const stockLogsForReport = allLogs.filter(log => {
+      if (!log.date) return false;
+      const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
+      return selectedDateStrings.has(logDateStr);
+    });
+
+    const stockOutLogs = stockLogsForReport.filter(log => log.type?.toLowerCase() === 'stock out');
+    
+    const calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
         const product = products.find(p => p.id === log.productId);
         const price = product ? product.unitPrice : 0;
         return sum + (price * (log.quantity || 0));
-      }, 0);
-    }
+    }, 0);
     
     return { 
-      title, 
-      dateRange: dateRangeStr, 
-      filteredEvents: filteredEventsData, 
-      filteredStockLogs: displayedStockLogs.map(log => {
-        const product = products.find(p => p.id === log.productId);
-        return {
-          ...log,
-          price: product ? product.unitPrice * log.quantity : 0
-        }
-      }), 
+      title: reportTitle,
+      filteredEvents: eventsForReport, 
+      filteredStockLogs: stockLogsForReport, 
       ingredientCost: calculatedIngredientCost 
     };
 
-  }, [request, clients, orders, allLogs, isLoading, products]);
-
+  }, [request, clients, orders, products, allLogs, isLoading]);
 
   const totalIncome = filteredEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
   const netProfitLoss = totalIncome - ingredientCost;
