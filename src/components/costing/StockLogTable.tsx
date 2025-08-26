@@ -1,4 +1,5 @@
 
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,12 +9,10 @@ import { cn } from "@/lib/utils";
 
 interface StockLogTableProps {
   logs: StockLog[];
+  totalCost: number;
 }
 
-const StockLogTable = ({ logs }: StockLogTableProps) => {
-  const totalCost = logs
-    .filter(log => log.type?.toLowerCase() === 'stock out')
-    .reduce((sum, log) => sum + log.price, 0);
+const StockLogTable = ({ logs, totalCost }: StockLogTableProps) => {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
@@ -81,3 +80,4 @@ const StockLogTable = ({ logs }: StockLogTableProps) => {
 };
 
 export default StockLogTable;
+

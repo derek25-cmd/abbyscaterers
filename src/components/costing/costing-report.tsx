@@ -143,10 +143,11 @@ export const CostingReport = ({ request, onBack }) => {
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-          <StockLogTable logs={filteredStockLogs} />
+          <StockLogTable logs={filteredStockLogs} totalCost={ingredientCost} />
           <EventIncomeTable events={filteredEvents} />
         </div>
       </div>
     </div>
   );
 };
+
