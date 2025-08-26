@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -25,7 +26,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
     let title = "Costing Report";
     let dateRangeStr = "";
     let filteredEventsData = [];
-    let filteredLogsData = [];
+    let displayedStockLogs = [];
     let calculatedIngredientCost = 0;
 
     if (request && !isLoading) {
@@ -52,14 +53,14 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       }
       
       // Filter all logs by date first
-      filteredLogsData = allLogs.filter(log => {
+      displayedStockLogs = allLogs.filter(log => {
         if (!log.date) return false;
         const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
         return selectedDateStrings.has(logDateStr);
       });
 
       // Calculate cost based on 'Stock Out' logs from the date-filtered list
-      const stockOutLogs = filteredLogsData.filter(log => log.type?.toLowerCase() === 'stock out');
+      const stockOutLogs = displayedStockLogs.filter(log => log.type?.toLowerCase() === 'stock out');
       
       calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
         const product = products.find(p => p.id === log.productId);
@@ -72,7 +73,7 @@ export const CostingReport = ({ request, clients, orders, products, onBack, isLo
       title, 
       dateRange: dateRangeStr, 
       filteredEvents: filteredEventsData, 
-      filteredStockLogs: filteredLogsData.map(log => {
+      filteredStockLogs: displayedStockLogs.map(log => {
         const product = products.find(p => p.id === log.productId);
         return {
           ...log,
