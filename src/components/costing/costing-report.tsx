@@ -56,7 +56,7 @@ export const CostingReport = ({ request, onBack }) => {
       const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
       return selectedDateStrings.has(logDateStr);
     });
-
+    
     const stockOutLogs = stockLogsForReport.filter(log => log.type?.toLowerCase() === 'stock out');
     
     const calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
