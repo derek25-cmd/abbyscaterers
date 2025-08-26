@@ -60,9 +60,7 @@ export const CostingReport = ({ request, onBack }) => {
     const stockOutLogs = stockLogsForReport.filter(log => log.type?.toLowerCase() === 'stock out');
     
     const calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
-        const product = products.find(p => p.id === log.productId);
-        const price = product ? product.unitPrice : 0;
-        return sum + (price * (log.quantity || 0));
+        return sum + (log.price || 0);
     }, 0);
     
     return { 
@@ -150,4 +148,3 @@ export const CostingReport = ({ request, onBack }) => {
     </div>
   );
 };
-
