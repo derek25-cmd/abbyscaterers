@@ -1,7 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CostingSummaryProps {
@@ -12,7 +11,22 @@ interface CostingSummaryProps {
 
 const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: CostingSummaryProps) => {
   const isProfit = netProfitLoss >= 0;
-  const profitLossPercentage = totalIncome > 0 ? (netProfitLoss / totalIncome) * 100 : 0;
+  
+  const costingMargin = totalIncome > 0 ? (totalIngredientCost / totalIncome) * 100 : 0;
+
+  let marginStatusText = "";
+  let marginBadgeVariant: "destructive" | "secondary" | "default" = "secondary";
+
+  if (costingMargin > 30) {
+    marginStatusText = "Below break-even";
+    marginBadgeVariant = "destructive";
+  } else if (costingMargin >= 25 && costingMargin <= 30) {
+    marginStatusText = "Above break-even";
+    marginBadgeVariant = "secondary";
+  } else {
+    marginStatusText = "Healthy Margin";
+    marginBadgeVariant = "default";
+  }
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
@@ -43,7 +57,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold text-success">
+          <div className="text-xl font-bold text-green-600">
             {formatCurrency(totalIncome)}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -57,14 +71,14 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Net Profit/Loss</CardTitle>
           {isProfit ? 
-            <TrendingUp className="h-4 w-4 text-success" /> : 
-            <TrendingDown className="h-4 w-4 text-destructive" />
+            <TrendingUp className="h-4 w-4 text-green-500" /> : 
+            <TrendingDown className="h-4 w-4 text-red-500" />
           }
         </CardHeader>
         <CardContent>
           <div className={cn(
             "text-xl font-bold",
-            isProfit ? "text-success" : "text-destructive"
+            isProfit ? "text-green-600" : "text-destructive"
           )}>
             {isProfit ? '+' : ''}{formatCurrency(netProfitLoss)}
           </div>
@@ -74,20 +88,21 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         </CardContent>
       </Card>
 
-      {/* Profit Margin */}
+      {/* Costing Margin */}
       <Card className="p-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Profit Margin</CardTitle>
-          <Badge variant={isProfit ? "secondary" : "destructive"}>
-            {profitLossPercentage.toFixed(1)}%
-          </Badge>
+          <CardTitle className="text-sm font-medium">Costing Margin</CardTitle>
+          <Percent className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold">
-            {Math.abs(profitLossPercentage).toFixed(1)}%
+           <div className={cn(
+               "text-2xl font-bold",
+               costingMargin > 30 ? "text-destructive" : "text-foreground"
+            )}>
+            {costingMargin.toFixed(1)}%
           </div>
           <p className="text-xs text-muted-foreground">
-            {isProfit ? 'Above' : 'Below'} break-even
+            {marginStatusText}
           </p>
         </CardContent>
       </Card>
