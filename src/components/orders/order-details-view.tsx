@@ -44,11 +44,11 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                 {clientsLoading ? <Skeleton className="h-6 w-3/4" /> :
                 <CardTitle className="text-xl text-primary flex items-center">{client?.companyName || "Unknown Client"}</CardTitle>
                 }
-                <CardDescription className="flex items-center gap-4 pt-1 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-sm"><CalendarDays className="h-4 w-4 text-accent" /> {formatDateSafe(event.date)}</span>
-                    <span className="flex items-center gap-1.5 text-sm"><Users className="h-4 w-4 text-accent" /> {event.numberOfPeople} People</span>
+                <div className="flex items-center gap-4 pt-1 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><CalendarDays className="h-4 w-4 text-accent" /> {formatDateSafe(event.date)}</span>
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Users className="h-4 w-4 text-accent" /> {event.numberOfPeople} People</span>
                     <Badge variant="secondary">{event.mealType}</Badge>
-                </CardDescription>
+                </div>
             </CardHeader>
             <CardContent className="pt-4 grid md:grid-cols-2 gap-6">
                  <div>

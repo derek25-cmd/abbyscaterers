@@ -148,12 +148,12 @@ function NavItem({ item, currentPathname }: { item: any, currentPathname: string
                     <SidebarMenuSub>
                         {item.subItems.map((subItem: any) => (
                              <SidebarMenuSubItem key={subItem.label}>
-                                <Link href={subItem.href}>
-                                    <SidebarMenuSubButton isActive={currentPathname.startsWith(subItem.href)}>
+                                <SidebarMenuSubButton asChild isActive={currentPathname.startsWith(subItem.href)}>
+                                    <Link href={subItem.href}>
                                          <subItem.icon />
                                          {open && <span>{subItem.label}</span>}
-                                    </SidebarMenuSubButton>
-                                </Link>
+                                    </Link>
+                                </SidebarMenuSubButton>
                              </SidebarMenuSubItem>
                         ))}
                     </SidebarMenuSub>
