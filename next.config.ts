@@ -1,7 +1,6 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  //output: 'export', // Ensure this is active for static export
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -17,7 +16,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    unoptimized: true, // Recommended for Electron static exports
   },
 };
 
