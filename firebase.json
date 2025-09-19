@@ -1,5 +1,8 @@
 {
   "hosting": {
-    "source": "."
+    "source": ".",
+    "predeploy": [
+      "npm run build"
+    ]
   }
 }
