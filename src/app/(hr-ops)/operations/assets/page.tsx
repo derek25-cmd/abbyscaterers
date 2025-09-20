@@ -7,10 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, MoreHorizontal } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { AddAssetDialog } from '@/components/hr/add-asset-dialog';
-import { EditAssetDialog } from '@/components/hr/edit-asset-dialog';
+import { AddAssetDialog } from '@/components/operations/add-asset-dialog';
+import { EditAssetDialog } from '@/components/operations/edit-asset-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ViewAssetDialog } from '@/components/hr/view-asset-dialog';
+import { ViewAssetDialog } from '@/components/operations/view-asset-dialog';
 import { getAssets, addAsset, updateAsset } from '@/services/assetService';
 
 export default function AssetsPage() {

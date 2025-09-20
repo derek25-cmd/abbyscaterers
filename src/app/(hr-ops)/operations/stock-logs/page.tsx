@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client';
 
@@ -7,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { LogStockMovementDialog } from "@/components/hr/log-stock-movement-dialog";
+import { LogStockMovementDialog } from "@/components/operations/log-stock-movement-dialog";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { EditStockLogDialog } from "@/components/hr/edit-stock-log-dialog";
-import { ViewStockLogDialog } from "@/components/hr/view-stock-log-dialog";
+import { EditStockLogDialog } from "@/components/operations/edit-stock-log-dialog";
+import { ViewStockLogDialog } from "@/components/operations/view-stock-log-dialog";
 import { getStockLogs, addStockLog, updateStockLog } from "@/services/stockLogService";
 import { getProducts, updateProduct } from "@/services/productService";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AppLayout } from '@/components/hr/AppLayout';
+import { AppLayout } from '@/components/hr/app-layout';
 
 export default function HrOpsLayout({
   children,
