@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, MoreHorizontal, Search, Package, ListFilter, TrendingDown, PackageX, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
-import { AddProductDialog } from "@/components/operations/add-product-dialog";
-import { EditProductDialog } from "@/components/operations/edit-product-dialog";
+import { AddProductDialog } from "@/components/hr/add-product-dialog";
+import { EditProductDialog } from "@/components/hr/edit-product-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { ViewProductDialog } from "@/components/operations/view-product-dialog";
+import { ViewProductDialog } from "@/components/hr/view-product-dialog";
 import { Input } from "@/components/ui/input";
 import { getProducts, addProduct, updateProduct } from "@/services/productService";
 

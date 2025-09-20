@@ -8,10 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { PlusCircle, MoreHorizontal, CalendarIcon, ListFilter, Search, X } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
-import { NewIssuanceDialog } from "@/components/operations/new-issuance-dialog";
-import { EditIssuanceDialog } from "@/components/operations/edit-issuance-dialog";
-import { ViewIssuanceDialog } from "@/components/operations/view-issuance-dialog";
-import { ReturnIssuanceDialog } from "@/components/operations/return-issuance-dialog";
+import { NewIssuanceDialog } from "@/components/hr/new-issuance-dialog";
+import { EditIssuanceDialog } from "@/components/hr/edit-issuance-dialog";
+import { ViewIssuanceDialog } from "@/components/hr/view-issuance-dialog";
+import { ReturnIssuanceDialog } from "@/components/hr/return-issuance-dialog";
 import { getIssuances, addIssuance, updateIssuance } from "@/services/issuanceService";
 import { getAssets, updateAsset } from "@/services/assetService";
 import { getEmployees } from "@/services/employeeService";
