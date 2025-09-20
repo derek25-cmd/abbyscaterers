@@ -5,7 +5,7 @@ import type { Client } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Mail, Phone, MapPin, Edit, Users, Building, Fingerprint, Briefcase, User, Star } from "lucide-react";
+import { Mail, Phone, MapPin, Edit, Users, Building, Fingerprint, Briefcase, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 

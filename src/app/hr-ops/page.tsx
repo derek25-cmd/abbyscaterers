@@ -8,7 +8,7 @@ export default function HrOpsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/hr-ops/dashboard');
+    router.replace('/dashboard');
   }, [router]);
 
   return null; 

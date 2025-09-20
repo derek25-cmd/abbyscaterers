@@ -1,5 +1,5 @@
 
-import { DailyMenuEditPageComponent } from './daily-menu-edit-page-component';
+import { DailyMenuEditPageComponent } from '@/components/daily-menus/edit/daily-menu-edit-page-component';
 
 export async function generateStaticParams() {
   // For 'output: export', dynamic routes are handled client-side.
