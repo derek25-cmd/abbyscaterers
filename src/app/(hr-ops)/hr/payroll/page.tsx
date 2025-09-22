@@ -1,6 +1,4 @@
 
-'use client'
-
 import { Suspense } from 'react';
 import { PayrollPageComponent } from './PayrollPageComponent';
 import { LoadingPage } from '@/components/layout/loading-page';

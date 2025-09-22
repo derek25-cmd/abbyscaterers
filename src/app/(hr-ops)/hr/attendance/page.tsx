@@ -1,6 +1,4 @@
 
-'use client'
-
 import { Suspense } from 'react';
 import { AttendancePageComponent } from './AttendancePageComponent';
 import { LoadingPage } from '@/components/layout/loading-page';
