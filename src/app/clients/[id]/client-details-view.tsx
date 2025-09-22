@@ -5,8 +5,7 @@ import type { Client } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Mail, Phone, MapPin, CalendarDays, Edit, Users, Building, Fingerprint, Briefcase, User, Star } from "lucide-react";
-import { format, parseISO, isValid } from "date-fns";
+import { Mail, Phone, MapPin, Edit, Users, Building, Fingerprint, Briefcase, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -40,12 +39,6 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
     );
   };
 
-  const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy") => {
-    if (!dateString) return "N/A";
-    const parsedDate = parseISO(dateString);
-    return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
-  };
-
   return (
     <Card className="shadow-lg">
       <CardHeader className="border-b">
@@ -57,7 +50,7 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
                 {client.typeOfOrganization && <Badge variant="outline">{client.typeOfOrganization}</Badge>}
             </div>
           </div>
-          <Link href={`/clients/${client.id}/edit`} passHref>
+          <Link href={`/clients/${client.id}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" /> Edit Client
             </Button>
@@ -103,7 +96,7 @@ export function ClientDetailsView({ client }: ClientDetailsViewProps) {
         
       </CardContent>
       <CardFooter className="border-t pt-6 flex justify-end">
-         <Link href="/clients" passHref>
+         <Link href="/clients">
             <Button variant="ghost">Back to Client List</Button>
           </Link>
       </CardFooter>

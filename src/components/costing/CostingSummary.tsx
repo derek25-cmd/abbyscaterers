@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,17 +14,13 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
   const costingMargin = totalIncome > 0 ? (totalIngredientCost / totalIncome) * 100 : 0;
 
   let marginStatusText = "";
-  let marginBadgeVariant: "destructive" | "secondary" | "default" = "secondary";
 
   if (costingMargin > 30) {
     marginStatusText = "Below break-even";
-    marginBadgeVariant = "destructive";
   } else if (costingMargin >= 25 && costingMargin <= 30) {
     marginStatusText = "Above break-even";
-    marginBadgeVariant = "secondary";
   } else {
     marginStatusText = "Healthy Margin";
-    marginBadgeVariant = "default";
   }
   
   const formatCurrency = (amount: number) => {

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ProformaInvoice, Invoice } from "@/types";
+import type { ProformaInvoice } from "@/types";
 import type { ProformaInvoiceFormData } from "@/lib/schemas";
 import { 
   getAllProformaInvoices as getAllFromStorage,

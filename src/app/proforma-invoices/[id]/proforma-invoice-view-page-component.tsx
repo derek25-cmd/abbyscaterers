@@ -8,10 +8,9 @@ import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage"
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { ProformaInvoiceTemplate } from "@/components/proforma-invoices/proforma-invoice-template";
 import type { ProformaInvoice, Client } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Unlock } from "lucide-react";
+import { Loader2, Edit, Download, Trash2, FileCheck, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';

@@ -8,6 +8,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function EditDailyMenuPage({ params }: { params: { id: string } }) {
+export default function EditDailyMenuPage() {
   return <DailyMenuEditPageComponent />;
 }

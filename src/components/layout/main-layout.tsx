@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { 
     Home, 
     BookOpen, 
-    UtensilsCrossed, 
     ClipboardSignature, 
     ClipboardList, 
     ChefHat, 
@@ -15,10 +14,8 @@ import {
     Settings,
     Bell,
     DollarSign,
-    Menu as MenuIcon,
     Calculator,
     Briefcase,
-    LayoutDashboard,
     Package,
     History,
     Truck,
@@ -98,7 +95,7 @@ function UserProfile() {
             <AvatarFallback>AL</AvatarFallback>
           </Avatar>
            <div className="text-left hidden md:block">
-              <p className="text-sm font-medium leading-none">Abby's Legendary</p>
+              <p className="text-sm font-medium leading-none">Abby&apos;s Legendary</p>
               <p className="text-xs leading-none text-muted-foreground">Admin</p>
             </div>
         </Button>
@@ -106,7 +103,7 @@ function UserProfile() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Abby's Legendary</p>
+            <p className="text-sm font-medium leading-none">Abby&apos;s Legendary</p>
             <p className="text-xs leading-none text-muted-foreground">
               admin@abbyscatering.com
             </p>
@@ -122,7 +119,7 @@ function UserProfile() {
   );
 }
 
-function NavItem({ item, currentPathname }: { item: any, currentPathname: string }) {
+function NavItem({ item, currentPathname }: { item: {href?: string, label: string, icon: React.ElementType, subItems?: any[]}, currentPathname: string }) {
     const { open } = useSidebar();
     const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(false);
 
@@ -133,7 +130,7 @@ function NavItem({ item, currentPathname }: { item: any, currentPathname: string
             <Collapsible open={isSubMenuOpen} onOpenChange={setIsSubMenuOpen}>
                 <CollapsibleTrigger asChild>
                     <SidebarMenuButton 
-                        isActive={isParentActive}
+                        isActive={isParentActive || false}
                         tooltip={{ children: item.label, side: "right" }}
                         className="w-full justify-between"
                     >
@@ -165,9 +162,9 @@ function NavItem({ item, currentPathname }: { item: any, currentPathname: string
     }
 
     return (
-        <Link href={item.href}>
+        <Link href={item.href || ''}>
             <SidebarMenuButton 
-                isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href)}
+                isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href || '')}
                 tooltip={{ children: item.label, side: "right" }}
             >
                 <item.icon />

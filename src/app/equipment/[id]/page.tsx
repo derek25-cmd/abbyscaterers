@@ -8,6 +8,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function EquipmentDetailPage({ params }: { params: { id: string } }) {
+export default function EquipmentDetailPage() {
   return <EquipmentDetailsPageComponent />;
 }

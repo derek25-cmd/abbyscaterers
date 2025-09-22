@@ -11,7 +11,6 @@ import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
 import { Button } from "@/components/ui/button";
 import { 
   DollarSign, 
-  Users, 
   Calendar,
   Package,
   Plus,
@@ -56,9 +55,7 @@ export default function DashboardPage() {
         ).length;
     }, 0);
 
-    // Simplified: assuming low stock is quantityUsed > 0, which isn't a true stock system
-    // For a real app, this would compare stock level vs a reorder point.
-    const lowStockItems = ingredients.filter(i => (i as any).quantityUsed > 0 && (i as any).quantityUsed < 5).length;
+    const lowStockItems = ingredients.filter(i => (i.quantityUsed || 0) > 0 && (i.quantityUsed || 0) < 5).length;
 
 
     return {

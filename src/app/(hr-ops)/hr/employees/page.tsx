@@ -1,5 +1,3 @@
-
-// @ts-nocheck
 'use client';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,12 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DEPARTMENTS } from "@/lib/schemas";
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isViewEmployeeDialogOpen, setIsViewEmployeeDialogOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -36,7 +34,7 @@ export default function EmployeesPage() {
     fetchEmployees();
   }, []);
   
-  const getFullName = (employee) => {
+  const getFullName = (employee: any) => {
     return [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
   }
 
@@ -49,12 +47,12 @@ export default function EmployeesPage() {
     });
   }, [employees, searchQuery, departmentFilter, statusFilter]);
 
-  const handleAddEmployee = async (newEmployee) => {
+  const handleAddEmployee = async (newEmployee: any) => {
     const newId = await addEmployee(newEmployee);
     setEmployees(prevEmployees => [{ id: newId, ...newEmployee }, ...prevEmployees]);
   };
   
-  const handleEditEmployee = async (updatedEmployee) => {
+  const handleEditEmployee = async (updatedEmployee: any) => {
     await updateEmployee(updatedEmployee.id, updatedEmployee);
     setEmployees(prevEmployees => 
         prevEmployees.map(employee => 
@@ -63,12 +61,12 @@ export default function EmployeesPage() {
     );
   };
 
-  const openEditDialog = (employee) => {
+  const openEditDialog = (employee: any) => {
     setSelectedEmployee(employee);
     setIsEditEmployeeDialogOpen(true);
   };
   
-  const openViewDialog = (employee) => {
+  const openViewDialog = (employee: any) => {
     setSelectedEmployee(employee);
     setIsViewEmployeeDialogOpen(true);
   };
@@ -91,7 +89,7 @@ export default function EmployeesPage() {
           <CardHeader>
             <CardTitle>All Employees</CardTitle>
             <CardDescription>
-              Manage your company's employees and view their details.
+              Manage your company&apos;s employees and view their details.
             </CardDescription>
           </CardHeader>
            <div className="p-6 pt-0 flex flex-col md:flex-row items-center gap-2">

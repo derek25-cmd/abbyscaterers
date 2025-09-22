@@ -150,9 +150,9 @@ export function EquipmentListTable() {
         const newEquipmentData: EquipmentFormData[] = [];
         for (const [index, rowStr] of rows.entries()) {
             const values = rowStr.trim().split(',');
-            const equipmentObject: any = {};
+            const equipmentObject: Partial<EquipmentFormData> = {};
             expectedHeaders.forEach((header, i) => {
-                equipmentObject[header] = values[i] || "";
+                (equipmentObject as any)[header] = values[i] || "";
             });
             
             const parsed = EquipmentSchema.safeParse(equipmentObject);

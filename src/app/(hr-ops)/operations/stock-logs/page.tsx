@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -20,14 +19,14 @@ import { cn } from "@/lib/utils";
 import { format, parse } from "date-fns";
 
 export default function StockLogsPage() {
-  const [logs, setLogs] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [logType, setLogType] = useState<'Stock In' | 'Stock Out'>('Stock In');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [selectedLog, setSelectedLog] = useState(null);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("productName");
@@ -40,7 +39,7 @@ export default function StockLogsPage() {
             getStockLogs(),
             getProducts()
         ]);
-        setLogs(logsData.sort((a,b) => new Date(b.date) - new Date(a.date)));
+        setLogs(logsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setProducts(productsData);
         setLoading(false);
     }
@@ -52,7 +51,7 @@ export default function StockLogsPage() {
     setIsLogDialogOpen(true);
   };
   
-  const handleLogMovement = async (movement) => {
+  const handleLogMovement = async (movement: any) => {
     const product = products.find(p => p.id === movement.productId);
     
     if(!product) {
@@ -72,7 +71,7 @@ export default function StockLogsPage() {
     
     // Optimistic UI update for logs
     const tempNewLog = { id: newId, ...newLog };
-    setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a,b) => new Date(b.date) - new Date(a.date)));
+    setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
     const updatedProduct = { ...product };
     if(movement.type === 'Stock In') {
@@ -92,26 +91,26 @@ export default function StockLogsPage() {
     setProducts(products.map(p => p.id === product.id ? updatedProduct : p));
   };
 
-  const handleEditLog = async (updatedLog) => {
+  const handleEditLog = async (updatedLog: any) => {
     await updateStockLog(updatedLog.id, updatedLog);
     setLogs(prevLogs => 
         prevLogs.map(log => 
             log.id === updatedLog.id ? updatedLog : log
-        ).sort((a,b) => new Date(b.date) - new Date(a.date))
+        ).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     );
   };
 
-  const openEditDialog = (log) => {
+  const openEditDialog = (log: any) => {
     setSelectedLog(log);
     setIsEditDialogOpen(true);
   };
   
-  const openViewDialog = (log) => {
+  const openViewDialog = (log: any) => {
     setSelectedLog(log);
     setIsViewDialogOpen(true);
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
   
@@ -149,7 +148,7 @@ export default function StockLogsPage() {
         }
     }, 0);
 
-    summary.closingValue = currentTotalValue + valueOfFutureLogs;
+    (summary as any).closingValue = currentTotalValue + valueOfFutureLogs;
     
     return summary;
   }, [selectedDate, logs, products]);
@@ -164,7 +163,7 @@ export default function StockLogsPage() {
         if (!searchQuery) return true;
         const lowercasedQuery = searchQuery.toLowerCase();
         
-        const valueToFilter = log[filterType] || '';
+        const valueToFilter = log[filterType as keyof typeof log] || '';
         return valueToFilter.toString().toLowerCase().includes(lowercasedQuery);
     });
   }, [logs, selectedDate, searchQuery, filterType]);
@@ -220,7 +219,7 @@ export default function StockLogsPage() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(dailySummary.closingValue)}</div>
+                    <div className="text-2xl font-bold">{formatCurrency((dailySummary as any).closingValue)}</div>
                     <p className="text-xs text-muted-foreground">
                         Total value at end of day
                     </p>

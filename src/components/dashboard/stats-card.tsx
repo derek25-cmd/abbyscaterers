@@ -11,7 +11,7 @@ interface StatsCardProps {
   description?: string;
 }
 
-export function StatsCard({ title, value, change, changeType = "neutral", icon: Icon, description }: StatsCardProps) {
+export function StatsCard({ title, value, change, changeType = "neutral", icon: Icon }: StatsCardProps) {
   const getChangeColor = () => {
     switch (changeType) {
       case "positive":

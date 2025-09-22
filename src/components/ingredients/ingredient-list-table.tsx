@@ -148,9 +148,9 @@ export function IngredientListTable() {
         const newIngredientData: IngredientFormData[] = [];
         for (const [index, rowStr] of rows.entries()) {
             const values = rowStr.trim().split(',');
-            const ingredientObject: any = {};
+            const ingredientObject: Partial<IngredientFormData> = {};
             expectedHeaders.forEach((header, i) => {
-                ingredientObject[header] = values[i] || "";
+                (ingredientObject as any)[header] = values[i] || "";
             });
             
             const parsed = IngredientSchema.safeParse(ingredientObject);

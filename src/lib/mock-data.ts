@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { format } from 'date-fns';
 
 const today = format(new Date(), 'yyyy-MM-dd');

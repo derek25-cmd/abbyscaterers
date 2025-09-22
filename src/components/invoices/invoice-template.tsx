@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { format, isValid, parseISO } from 'date-fns';
 import type { Invoice, Client, InvoiceItem } from '@/types';
 import { Textarea } from '../ui/textarea';
+import Image from 'next/image';
 
 interface InvoiceTemplateProps {
     invoiceData: Invoice;
@@ -41,9 +42,9 @@ const convertToWords = (amount: number): string => {
     let chunkCount = 0;
     let result = '';
     while (numStr.length > 0) {
-        let chunk = numStr.slice(-3);
+        const chunk = numStr.slice(-3);
         numStr = numStr.slice(0, -3);
-        let chunkNum = parseInt(chunk);
+        const chunkNum = parseInt(chunk);
         if (chunkNum !== 0) {
             let chunkWords = convertChunk(chunkNum);
             if (chunkCount > 0) {
@@ -218,10 +219,10 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                 <div className="flex justify-between items-end mt-4">
                     <div style={{fontSize: '15px'}}>
                         <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
-                        <p className="mt-1">For and on behalf of Abby's Legendary Caterers Limited</p>
+                        <p className="mt-1">For and on behalf of Abby&apos;s Legendary Caterers Limited</p>
                         <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
                         <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
-                            <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
+                            <div>Account Name</div><div>: ABBY&apos;S LEGENDARY CATERERS LIMITED</div>
                             <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
                             <div>Account Number(TZS)</div><div>: 9120002502036</div>
                             <div>Branch</div><div>: PENINSULA Branch</div>
@@ -230,7 +231,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                         </div>
                     </div>
                     <div className="text-center text-sm">
-                        <img alt="Signature and Seal" className="h-24 w-auto block mx-auto mb-2" src="https://placehold.co/200x100.png" data-ai-hint="signature seal"/>
+                        <Image alt="Signature and Seal" height={100} width={200} className="h-24 w-auto block mx-auto mb-2" src="https://placehold.co/200x100.png" data-ai-hint="signature seal"/>
                     </div>
                 </div>
                 <p className="text-center text-base mt-4 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
@@ -239,5 +240,3 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         </div>
     );
 }
-
-    

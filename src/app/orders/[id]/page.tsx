@@ -8,6 +8,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function OrderDetailPage({ params }: { params: { id: string } }) {
+export default function OrderDetailPage() {
   return <OrderDetailsPageComponent />;
 }

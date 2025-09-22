@@ -1,5 +1,3 @@
-
-// @ts-nocheck
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,13 +7,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { User, Users, Loader2 } from 'lucide-react';
-import { format, startOfMonth, getMonth, getYear } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
+import { Client } from '@/types';
 
-export function CostingForm({ clients, onSubmit, isLoading }) {
+type CostingFormProps = {
+    clients: Client[];
+    onSubmit: (request: any) => void;
+    isLoading: boolean;
+}
+
+export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) {
   const [costingType, setCostingType] = useState('aggregate');
-  const [clientId, setClientId] = useState(null);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState('daily');
-  const [dates, setDates] = useState([]);
+  const [dates, setDates] = useState<Date[]>([]);
   
   const handleSubmit = () => {
     if (!periodType || dates.length === 0) {
@@ -40,7 +45,7 @@ export function CostingForm({ clients, onSubmit, isLoading }) {
     });
   }
 
-  const handleMonthSelect = (monthDate) => {
+  const handleMonthSelect = (monthDate: Date) => {
     const isSelected = dates.some(d => d.getTime() === monthDate.getTime());
     if (isSelected) {
       setDates(dates.filter(d => d.getTime() !== monthDate.getTime()));
@@ -133,7 +138,7 @@ export function CostingForm({ clients, onSubmit, isLoading }) {
                            <Calendar
                                 mode="multiple"
                                 selected={dates}
-                                onSelect={setDates}
+                                onSelect={(d) => setDates(d || [])}
                                 footer={<p className="text-center text-sm text-muted-foreground p-2">You selected {dates.length} date(s).</p>}
                            />
                         </div>

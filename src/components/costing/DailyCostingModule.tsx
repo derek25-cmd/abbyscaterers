@@ -14,6 +14,7 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { ClientEvent } from "@/types";
 
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -27,7 +28,7 @@ export const DailyCostingModule = () => {
     return getEventsForDate(selectedDate);
   }, [selectedDate, getEventsForDate]);
 
-  const totalIncome = dailyEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  const totalIncome = dailyEvents.reduce((sum: number, event: ClientEvent) => sum + (event.unitPrice * event.numberOfPeople), 0);
   
   const totalIngredientCost = ingredients.reduce((sum, item) => {
     const quantityUsed = (item as any).quantityUsed || 0;

@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar"
 import {
   Form,
   FormControl,
@@ -16,19 +15,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClientSchema, type ClientFormData } from "@/lib/schemas";
 import type { Client } from "@/types";
 import { ORGANIZATION_TYPES } from "@/types";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarIcon, Loader2, Info, PlusCircle, Trash2 } from "lucide-react";
-import { format, parseISO, isValid } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Loader2, Info, PlusCircle, Trash2 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "../ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,

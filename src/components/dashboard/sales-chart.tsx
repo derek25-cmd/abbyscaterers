@@ -31,7 +31,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function SalesChart() {
-  const { orders, isLoading } = useOrderStorage()
+  const { orders } = useOrderStorage()
   const [timeUnit, setTimeUnit] = React.useState<TimeUnit>("monthly")
 
   const salesData = React.useMemo(() => {
@@ -44,7 +44,7 @@ export function SalesChart() {
         const date = parseISO(event.date)
         const saleAmount = event.unitPrice * event.numberOfPeople
 
-        let key: string
+        let key: string;
         switch (timeUnit) {
           case "daily":
             key = format(date, "yyyy-MM-dd")

@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { Badge } from "@/components/ui/badge";
@@ -24,16 +23,16 @@ import { format } from "date-fns";
 
 
 export default function IssuancePage() {
-    const [log, setLog] = useState([]);
-    const [assets, setAssets] = useState([]);
-    const [employees, setEmployees] = useState([]);
-    const [orders, setOrders] = useState([]);
+    const [log, setLog] = useState<any[]>([]);
+    const [assets, setAssets] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
+    const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isIssuanceDialogOpen, setIsIssuanceDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
-    const [selectedLog, setSelectedLog] = useState(null);
+    const [selectedLog, setSelectedLog] = useState<any>(null);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("assetName");
@@ -78,7 +77,7 @@ export default function IssuancePage() {
                         return entry.issuedTo.toLowerCase().includes(lowercasedQuery);
                     case 'assetName':
                     default:
-                        return entry.items.some(item => item.name.toLowerCase().includes(lowercasedQuery));
+                        return entry.items.some((item: any) => item.name.toLowerCase().includes(lowercasedQuery));
                 }
             });
         }
@@ -101,8 +100,8 @@ export default function IssuancePage() {
         }
     };
     
-    const handleNewIssuance = async (issuanceData) => {
-        const newId = await addIssuance(issuanceData);
+    const handleNewIssuance = async (issuanceData: any) => {
+        await addIssuance(issuanceData);
 
         // Update asset quantities
         for (const item of issuanceData.items) {
@@ -124,19 +123,19 @@ export default function IssuancePage() {
     };
 
 
-    const handleEditIssuance = async (updatedLog) => {
+    const handleEditIssuance = async (updatedLog: any) => {
         await updateIssuance(updatedLog.id, updatedLog);
         setLog(prevLog => 
             prevLog.map(l => l.id === updatedLog.id ? updatedLog : l)
         );
     };
 
-    const handleReturnIssuance = async (logId, returnedItems) => {
+    const handleReturnIssuance = async (logId: string, returnedItems: any) => {
         const logEntry = log.find(l => l.id === logId);
         if (!logEntry) return;
 
         let allReturned = true;
-        const updatedItems = logEntry.items.map(item => {
+        const updatedItems = logEntry.items.map((item: any) => {
             const returnedQty = returnedItems[item.assetId] || 0;
             const newReturnedQty = (item.quantityReturned || 0) + returnedQty;
             
@@ -173,12 +172,12 @@ export default function IssuancePage() {
     };
 
 
-    const openEditDialog = (logEntry) => {
+    const openEditDialog = (logEntry: any) => {
       setSelectedLog(logEntry);
       setIsEditDialogOpen(true);
     };
 
-    const openViewDialog = (logEntry) => {
+    const openViewDialog = (logEntry: any) => {
       const employee = employees.find(e => {
         const fullName = [e.firstName, e.middleName, e.lastName].filter(Boolean).join(' ');
         return fullName === logEntry.issuedTo;
@@ -193,7 +192,7 @@ export default function IssuancePage() {
       setIsViewDialogOpen(true);
     };
     
-    const openReturnDialog = (logEntry) => {
+    const openReturnDialog = (logEntry: any) => {
         setSelectedLog(logEntry);
         setIsReturnDialogOpen(true);
     };

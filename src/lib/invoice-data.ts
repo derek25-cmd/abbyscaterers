@@ -4,7 +4,6 @@
 
 import type { Invoice } from "@/types";
 import type { FinalInvoiceFormData } from "@/lib/schemas";
-import { updateProformaInvoice } from "./proforma-invoice-data";
 
 const INVOICES_STORAGE_KEY = "caterSmartFinalInvoices";
 
@@ -45,7 +44,7 @@ function markProformaAsInvoiced(proformaId: string) {
     try {
         const proformasData = localStorage.getItem(PROFORMA_KEY);
         if (proformasData) {
-            let proformas = JSON.parse(proformasData);
+            const proformas = JSON.parse(proformasData);
             const proformaIndex = proformas.findIndex((p: any) => p.id === proformaId);
             if (proformaIndex !== -1) {
                 proformas[proformaIndex].isInvoiced = true;

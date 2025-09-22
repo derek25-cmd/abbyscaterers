@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { stockLogs as mockStockLogs } from '@/lib/mock-data';
 import { format } from "date-fns";
 
 const STOCKLOGS_STORAGE_KEY = 'stockLogs';

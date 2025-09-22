@@ -5,6 +5,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function ViewInvoicePage({ params }: { params: { id: string } }) {
+export default function ViewInvoicePage() {
   return <InvoiceViewPageComponent />;
 }

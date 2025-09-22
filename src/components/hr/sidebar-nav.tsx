@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Box, 
   Briefcase, 
   ClipboardList, 
   LayoutDashboard, 
@@ -25,7 +24,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 const mainNav = [
   {
-    href: "/hr-ops/dashboard",
+    href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
   },

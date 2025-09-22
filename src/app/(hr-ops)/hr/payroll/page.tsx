@@ -1,5 +1,3 @@
-
-// @ts-nocheck
 'use client';
 
 import { Badge } from "@/components/ui/badge";
@@ -23,13 +21,13 @@ export default function PayrollPage() {
     const searchParams = useSearchParams();
     const employeeIdFilter = searchParams.get('employeeId');
 
-    const [payrolls, setPayrolls] = useState([]);
-    const [employees, setEmployees] = useState([]);
+    const [payrolls, setPayrolls] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-    const [selectedPayslip, setSelectedPayslip] = useState(null);
+    const [selectedPayslip, setSelectedPayslip] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
@@ -52,7 +50,7 @@ export default function PayrollPage() {
 
     }, [searchParams]);
 
-    const formatCurrency = (amount) => {
+    const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
     }
 
@@ -71,7 +69,7 @@ export default function PayrollPage() {
         return filtered;
     }, [payrolls, employees, employeeIdFilter, searchQuery]);
     
-    const handleGeneratePayslip = async (payslipData) => {
+    const handleGeneratePayslip = async (payslipData: any) => {
         const employee = employees.find(e => e.id === payslipData.employeeId);
         if (!employee) return;
 
@@ -90,7 +88,7 @@ export default function PayrollPage() {
         setPayrolls(prev => [{ id: newId, ...newPayslip }, ...prev]);
     };
 
-    const handleEditPayslip = async (updatedPayslip) => {
+    const handleEditPayslip = async (updatedPayslip: any) => {
         const grossSalary = updatedPayslip.basicSalary + updatedPayslip.allowances;
         const netSalary = grossSalary - updatedPayslip.deductions;
         const payload = {
@@ -104,7 +102,7 @@ export default function PayrollPage() {
         );
     };
 
-    const handleMarkAsPaid = async (payslipId) => {
+    const handleMarkAsPaid = async (payslipId: string) => {
         const payslip = payrolls.find(p => p.id === payslipId);
         if (payslip) {
             const updatedPayslip = { 
@@ -117,17 +115,17 @@ export default function PayrollPage() {
         }
     };
     
-    const openEditDialog = (payslip) => {
+    const openEditDialog = (payslip: any) => {
         setSelectedPayslip(payslip);
         setIsEditDialogOpen(true);
     };
 
-    const openViewDialog = (payslip) => {
+    const openViewDialog = (payslip: any) => {
         setSelectedPayslip(payslip);
         setIsViewDialogOpen(true);
     };
     
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status: string) => {
         if (status === 'Paid') {
             return <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30">Paid</Badge>;
         }

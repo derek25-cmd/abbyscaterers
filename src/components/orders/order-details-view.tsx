@@ -3,12 +3,11 @@
 
 import React, { useState } from "react";
 import type { Order, ClientEvent } from "@/types";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { BookOpen, Info, CalendarClock, Utensils, SquarePen, Users, FileText, Loader2, UtensilsCrossed, CalendarDays, User, DollarSign } from "lucide-react";
+import { BookOpen, CalendarDays, DollarSign, FileText, Loader2, SquarePen, Users, UtensilsCrossed } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-import { cn } from "@/lib/utils";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Skeleton } from "../ui/skeleton";

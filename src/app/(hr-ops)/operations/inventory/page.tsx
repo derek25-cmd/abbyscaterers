@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,12 +13,12 @@ import { Input } from "@/components/ui/input";
 import { getProducts, addProduct, updateProduct } from "@/services/productService";
 
 export default function InventoryPage() {
-  const [stock, setStock] = useState([]);
+  const [stock, setStock] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [isEditProductDialogOpen, setIsEditProductDialogOpen] = useState(false);
   const [isViewProductDialogOpen, setIsViewProductDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("name");
 
@@ -32,7 +31,7 @@ export default function InventoryPage() {
     fetchProducts();
   }, []);
   
-  const handleAddProduct = async (newProduct) => {
+  const handleAddProduct = async (newProduct: any) => {
     const productToAdd = {
         ...newProduct,
         sku: `SKU-${Date.now()}`, 
@@ -41,7 +40,7 @@ export default function InventoryPage() {
     setStock(prevStock => [{ id: newId, ...productToAdd }, ...prevStock]);
   };
 
-  const handleEditProduct = async (updatedProduct) => {
+  const handleEditProduct = async (updatedProduct: any) => {
     await updateProduct(updatedProduct.id, updatedProduct);
     setStock(prevStock => 
         prevStock.map(product => 
@@ -50,21 +49,21 @@ export default function InventoryPage() {
     );
   };
 
-  const openEditDialog = (product) => {
+  const openEditDialog = (product: any) => {
     setSelectedProduct(product);
     setIsEditProductDialogOpen(true);
   };
   
-  const openViewDialog = (product) => {
+  const openViewDialog = (product: any) => {
     setSelectedProduct(product);
     setIsViewProductDialogOpen(true);
   };
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
 
-  const getStatusText = (item) => {
+  const getStatusText = (item: any) => {
     if (item.quantity === 0) return 'out of stock';
     if (item.quantity < item.minStock) return 'low stock';
     return 'in stock';

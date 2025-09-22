@@ -1,5 +1,3 @@
-
-// @ts-nocheck
 'use client'
 
 import { Button } from "@/components/ui/button";
@@ -24,14 +22,14 @@ export default function AttendancePage() {
   const searchParams = useSearchParams();
   const employeeIdFilter = searchParams.get('employeeId');
 
-  const [records, setRecords] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  const [records, setRecords] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -78,7 +76,7 @@ export default function AttendancePage() {
   }, [records, selectedDate, searchQuery, employeeIdFilter, employees]);
 
 
-  const handleEditRecord = async (updatedRecord) => {
+  const handleEditRecord = async (updatedRecord: any) => {
     await updateAttendanceRecord(updatedRecord.id, updatedRecord);
     setRecords(prevRecords => 
         prevRecords.map(record => 
@@ -87,7 +85,7 @@ export default function AttendancePage() {
     );
   };
 
-  const handleLogAttendance = async (logData) => {
+  const handleLogAttendance = async (logData: any) => {
     const now = new Date();
     const time = format(now, 'hh:mm a'); // e.g., 05:30 PM
     const date = format(now, 'yyyy-MM-dd');
@@ -105,7 +103,7 @@ export default function AttendancePage() {
       const clockInTime = parse(`${existingRecord.date} ${existingRecord.clockIn}`, 'yyyy-MM-dd hh:mm a', new Date());
       const clockOutTime = parse(`${date} ${time}`, 'yyyy-MM-dd hh:mm a', new Date());
 
-      const diffMs = clockOutTime - clockInTime;
+      const diffMs = clockOutTime.getTime() - clockInTime.getTime();
       const diffHours = Math.floor(diffMs / 3600000);
       const diffMins = Math.floor((diffMs % 3600000) / 60000);
       updatedRecord.totalHours = `${diffHours}h ${diffMins}m`;
@@ -126,12 +124,12 @@ export default function AttendancePage() {
     }
   };
 
-  const openEditDialog = (record) => {
+  const openEditDialog = (record: any) => {
     setSelectedRecord(record);
     setIsEditDialogOpen(true);
   };
   
-  const openViewDialog = (record) => {
+  const openViewDialog = (record: any) => {
     setSelectedRecord(record);
     setIsViewDialogOpen(true);
   };

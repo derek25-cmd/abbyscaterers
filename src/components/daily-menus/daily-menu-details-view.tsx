@@ -3,12 +3,11 @@
 
 import React, { useState } from "react";
 import type { DailyMenu, ClientEvent } from "@/types";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { BookOpen, Info, CalendarClock, Utensils, SquarePen, Users, FileText, Loader2, UtensilsCrossed, CalendarDays, User, DollarSign } from "lucide-react";
+import { BookOpen, CalendarDays, DollarSign, FileText, Loader2, SquarePen, Users, UtensilsCrossed } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
-import { cn } from "@/lib/utils";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Skeleton } from "../ui/skeleton";
@@ -34,17 +33,21 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
         return isValid(parsedDate) ? format(parsedDate, formatString) : "N/A";
     };
 
+    const formatCurrency = (amount: number) => {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+    }
+
     return (
         <Card className="bg-card/50 shadow-md">
             <CardHeader className="border-b">
                 {clientsLoading ? <Skeleton className="h-6 w-3/4" /> :
                 <CardTitle className="text-xl text-primary flex items-center">{client?.companyName || "Unknown Client"}</CardTitle>
                 }
-                <CardDescription className="flex items-center gap-4 pt-1 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-sm"><CalendarDays className="h-4 w-4 text-accent" /> {formatDateSafe(event.date)}</span>
-                    <span className="flex items-center gap-1.5 text-sm"><Users className="h-4 w-4 text-accent" /> {event.numberOfPeople} People</span>
+                <div className="flex items-center gap-4 pt-1 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><CalendarDays className="h-4 w-4 text-accent" /> {formatDateSafe(event.date)}</span>
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Users className="h-4 w-4 text-accent" /> {event.numberOfPeople} People</span>
                     <Badge variant="secondary">{event.mealType}</Badge>
-                </CardDescription>
+                </div>
             </CardHeader>
             <CardContent className="pt-4 grid md:grid-cols-2 gap-6">
                  <div>
@@ -61,8 +64,8 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                  <div className="border-l border-border pl-6">
                      <h4 className="font-semibold text-foreground mb-2 flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary"/>Pricing</h4>
                      <div className="text-sm space-y-2 text-muted-foreground">
-                        <p>Unit Price: <span className="font-medium text-foreground">${event.unitPrice.toFixed(2)}</span></p>
-                        <p>Total Price: <span className="font-medium text-foreground">${totalPrice.toFixed(2)}</span></p>
+                        <p>Unit Price: <span className="font-medium text-foreground">{formatCurrency(event.unitPrice)}</span></p>
+                        <p>Total Price: <span className="font-medium text-foreground">{formatCurrency(totalPrice)}</span></p>
                         <p>VAT: <Badge variant="outline">{event.vatType}</Badge></p>
                      </div>
                  </div>

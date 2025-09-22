@@ -4,11 +4,11 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Eye, Download, Loader2, Save, Edit, Pencil } from 'lucide-react';
+import { Download, Loader2, Save, Edit, Pencil } from 'lucide-react';
 import { format, isValid, parseISO } from 'date-fns';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import type { InvoiceFormData, InvoiceItem } from '@/lib/schemas';
+import type { ProformaInvoiceFormData, InvoiceItem } from '@/lib/schemas';
 import type { Client } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import Image from 'next/image';
 
 interface InvoicePreviewProps {
-    formData: InvoiceFormData;
+    formData: ProformaInvoiceFormData;
     client: Client | undefined;
     onDismiss: () => void;
     onSave: () => void;
@@ -42,22 +43,22 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
     const [localItems, setLocalItems] = React.useState<InvoiceItem[]>([]);
     const [editState, setEditState] = React.useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
 
+    const getParticularText = React.useCallback((item: InvoiceItem): string => {
+        if (item.particularType === 'event') {
+            const eventText = item.eventType === 'Custom' ? (item.customEventType || '{EventType}') : (item.eventType || '{EventType}');
+            return `${eventText}${item.date ? ` on ${formatDate(item.date)}` : ''}`;
+        }
+        return `${item.mealType || '{MealType}'}${item.date ? ` on ${formatDate(item.date)}` : ''}`;
+    }, []);
+
     React.useEffect(() => {
         const initialItems = formData.items.map(item => ({
             ...item,
             particularDescription: item.particularDescription || getParticularText(item)
         }));
         setLocalItems(initialItems);
-    }, [formData.items]);
+    }, [formData.items, getParticularText]);
 
-
-    function getParticularText(item: InvoiceItem): string {
-        if (item.particularType === 'event') {
-            const eventText = item.eventType === 'Custom' ? (item.customEventType || '{EventType}') : (item.eventType || '{EventType}');
-            return `${eventText}${item.date ? ` on ${formatDate(item.date)}` : ''}`;
-        }
-        return `${item.mealType || '{MealType}'}${item.date ? ` on ${formatDate(item.date)}` : ''}`;
-    }
 
     const handleOpenEditDialog = (item: InvoiceItem) => {
         setEditState({
@@ -115,9 +116,9 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
         let chunkCount = 0;
         let result = '';
         while (numStr.length > 0) {
-            let chunk = numStr.slice(-3);
+            const chunk = numStr.slice(-3);
             numStr = numStr.slice(0, -3);
-            let chunkNum = parseInt(chunk);
+            const chunkNum = parseInt(chunk);
             if (chunkNum !== 0) {
                 let chunkWords = convertChunk(chunkNum);
                 if (chunkCount > 0) {
@@ -198,7 +199,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                           {formData.receiverPosition && <p className="mb-1 ml-6">{formData.receiverPosition}</p>}
                           {client?.companyName && <p className="mb-1 ml-6">{client.companyName}</p>}
                           {(client?.address1 || client?.address2) && <p className="mb-1 ml-6">{client.address1} {client.address2}</p>}
-                          {formData.lpoNumber && <p className="mb-2 ml-6">LPO No.: {formData.lpoNumber}</p>}
+                          {formData.lpoNumber && <p className="mb-2 ml-6 font-bold text-lg">LPO No.: {formData.lpoNumber}</p>}
                       </div>
                   </div>
                   <div style={{ width: 220, position: "relative", zIndex: 10 }}>
@@ -283,16 +284,16 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
               <div className="flex justify-end mb-6">
                 <div className="text-center text-xs">
                   <p className="mb-1">For and on behalf of:-</p>
-                  <p className="mb-2 font-semibold">Abby's Legendary Caterers Limited</p>
-                  <img alt="Signature and Seal" className="h-20 w-auto block mx-auto mb-2" src="https://placehold.co/200x80.png" data-ai-hint="signature seal"/>
+                  <p className="mb-2 font-semibold">Abby&apos;s Legendary Caterers Limited</p>
+                  <Image alt="Signature and Seal" height={80} width={200} className="h-20 w-auto block mx-auto mb-2" src="https://placehold.co/200x80.png" data-ai-hint="signature seal"/>
                   <p>Signature: ___________________</p>
                 </div>
               </div>
 
               <div className="text-sm">
-                <p className="font-bold mb-1">Terms & Conditions:</p>
+                <p className="font-bold mb-1">Terms &amp; Conditions:</p>
                 <ul className="space-y-0.5 list-disc list-inside text-xs">
-                  <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
+                  <li>Purchaser&apos;s LPO or Company Purchase Order Letter must be issued.</li>
                   <li>Payments shall be by Bank transfer or by Cheque.</li>
                   <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
                   <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>

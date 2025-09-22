@@ -8,6 +8,6 @@ export async function generateStaticParams() {
   return [];
 }
 
-export default function EditClientPage({ params }: { params: { id: string } }) {
+export default function EditClientPage() {
   return <ClientEditPageComponent />;
 }

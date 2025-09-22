@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,12 +11,12 @@ import { ViewJobDialog } from "@/components/hr/view-job-dialog";
 import { getPositions, addPosition, updatePosition } from "@/services/recruitmentService";
 
 export default function RecruitmentPage() {
-  const [positions, setPositions] = useState([]);
+  const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddJobDialogOpen, setIsAddJobDialogOpen] = useState(false);
   const [isEditJobDialogOpen, setIsEditJobDialogOpen] = useState(false);
   const [isViewJobDialogOpen, setIsViewJobDialogOpen] = useState(false);
-  const [selectedPosition, setSelectedPosition] = useState(null);
+  const [selectedPosition, setSelectedPosition] = useState<any>(null);
 
   useEffect(() => {
     const fetchPositions = async () => {
@@ -28,7 +27,7 @@ export default function RecruitmentPage() {
     fetchPositions();
   }, []);
 
-  const handleAddJob = async (newPosition) => {
+  const handleAddJob = async (newPosition: any) => {
     const positionToAdd = {
       ...newPosition,
       applicants: 0,
@@ -37,19 +36,19 @@ export default function RecruitmentPage() {
     setPositions(prevPositions => [{ id: newId, ...positionToAdd }, ...prevPositions]);
   };
 
-  const handleEditJob = async (updatedPosition) => {
+  const handleEditJob = async (updatedPosition: any) => {
     await updatePosition(updatedPosition.id, updatedPosition);
     setPositions(prevPositions => 
       prevPositions.map(p => p.id === updatedPosition.id ? updatedPosition : p)
     );
   };
 
-  const openEditDialog = (position) => {
+  const openEditDialog = (position: any) => {
     setSelectedPosition(position);
     setIsEditJobDialogOpen(true);
   };
 
-  const openViewDialog = (position) => {
+  const openViewDialog = (position: any) => {
     setSelectedPosition(position);
     setIsViewJobDialogOpen(true);
   };

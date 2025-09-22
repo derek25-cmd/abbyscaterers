@@ -178,7 +178,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
 
 
     useEffect(() => {
-        const subscription = form.watch((value, { name, type }) => {
+        const subscription = form.watch((value, { name }) => {
             if (name?.startsWith('items')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');

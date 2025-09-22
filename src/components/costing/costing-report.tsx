@@ -1,5 +1,4 @@
 
-// @ts-nocheck
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
@@ -13,21 +12,23 @@ import StockLogTable from "./StockLogTable";
 import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import EventIncomeTable from "./EventIncomeTable";
-import { useOrderStorage } from "@/hooks/use-order-storage";
-import { useClientStorage } from "@/hooks/use-client-storage";
-import { useProductStorage } from "@/hooks/use-product-storage";
 
-export const CostingReport = ({ request, onBack }) => {
+type CostingReportProps = {
+    request: any;
+    onBack: () => void;
+    clients: any[];
+    orders: any[];
+    isLoading: boolean;
+}
+
+export const CostingReport = ({ request, onBack, clients, orders, isLoading: parentLoading }: CostingReportProps) => {
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   
-  const { clients, isLoading: clientsLoading } = useClientStorage();
-  const { orders, isLoading: ordersLoading } = useOrderStorage();
-  const { products, isLoading: productsLoading } = useProductStorage();
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
 
-  const isLoading = clientsLoading || ordersLoading || productsLoading || stockLogsLoading;
+  const isLoading = parentLoading || stockLogsLoading;
 
   const { title, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
     if (!request || isLoading) {
@@ -35,7 +36,7 @@ export const CostingReport = ({ request, onBack }) => {
     }
 
     const selectedDateStrings = new Set(request.dates);
-    const dateRangeStr = request.dates.map(d => format(parseISO(d), request.periodType === 'daily' ? "PPP" : "MMMM yyyy")).join(', ');
+    const dateRangeStr = request.dates.map((d: string) => format(parseISO(d), request.periodType === 'daily' ? "PPP" : "MMMM yyyy")).join(', ');
     const clientName = request.type === 'individual' && request.clientId
       ? clients.find(c => c.id === request.clientId)?.companyName 
       : 'Aggregate';
@@ -48,7 +49,7 @@ export const CostingReport = ({ request, onBack }) => {
     });
 
     if (request.type === 'individual' && request.clientId) {
-      eventsForReport = eventsForReport.filter(event => event.clientId === request.clientId);
+      eventsForReport = eventsForReport.filter((event: any) => event.clientId === request.clientId);
     }
     
     const stockLogsForReport = allLogs.filter(log => {
@@ -70,9 +71,9 @@ export const CostingReport = ({ request, onBack }) => {
       ingredientCost: calculatedIngredientCost 
     };
 
-  }, [request, clients, orders, products, allLogs, isLoading]);
+  }, [request, clients, orders, allLogs, isLoading]);
 
-  const totalIncome = filteredEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  const totalIncome = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
   const netProfitLoss = totalIncome - ingredientCost;
 
   const handlePdfExport = async () => {

@@ -4,7 +4,7 @@
 import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, Users, Loader2, BookOpen } from "lucide-react";
+import { Calendar, Users, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import type { ClientEvent } from "@/types";

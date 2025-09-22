@@ -40,7 +40,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { DailyMenu } from "@/types";
 
 export function DailyMenuListTable() {
   const searchParams = useSearchParams();

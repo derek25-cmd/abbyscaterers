@@ -41,8 +41,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Calendar } from "../ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
@@ -62,10 +64,10 @@ export function ProformaInvoiceListTable() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
   
+  const [popoverOpen, setPopoverOpen] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [filterType, setFilterType] = React.useState("clientName");
   const [searchQuery, setSearchQuery] = React.useState("");
-
 
   const handleDeleteRequest = React.useCallback((invoiceId: string) => {
     setItemToDelete(invoiceId);

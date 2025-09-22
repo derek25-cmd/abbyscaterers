@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { Badge } from '@/components/ui/badge';
@@ -14,12 +13,12 @@ import { ViewAssetDialog } from '@/components/hr/view-asset-dialog';
 import { getAssets, addAsset, updateAsset } from '@/services/assetService';
 
 export default function AssetsPage() {
-  const [assets, setAssets] = useState([]);
+  const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false);
   const [isEditAssetDialogOpen, setIsEditAssetDialogOpen] = useState(false);
   const [isViewAssetDialogOpen, setIsViewAssetDialogOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [selectedAsset, setSelectedAsset] = useState<any>(null);
   
   useEffect(() => {
     const fetchAssets = async () => {

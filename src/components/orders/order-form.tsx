@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { format, parseISO, isValid } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES } from "@/types";

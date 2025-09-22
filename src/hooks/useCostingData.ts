@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { initialIngredients, eventsDatabase, getEventsForDate as getEvents } from '@/lib/costing-data';
+import { initialIngredients, eventsDatabase } from '@/lib/costing-data';
 import type { Ingredient, Event } from '@/lib/costing-data';
 
 const INGREDIENTS_STORAGE_KEY = "caterSmartCostingIngredients";
