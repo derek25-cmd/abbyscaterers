@@ -1,8 +1,7 @@
 
 "use client";
 
-import { useState }
-from "react";
+import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -11,6 +10,7 @@ import { useProductStorage } from "@/hooks/use-product-storage";
 import { CostingForm } from "@/components/costing/costing-form";
 import { CostingReport } from "@/components/costing/costing-report";
 import { Button } from "@/components/ui/button";
+import { Client, Order, Product } from "@/types";
 
 export type CostingRequest = {
   type: 'individual' | 'aggregate';
@@ -32,9 +32,8 @@ export default function CostingPage() {
         return (
             <CostingReport 
                 request={request}
-                clients={clients}
-                orders={orders}
-                products={products}
+                clients={clients as Client[]}
+                orders={orders as Order[]}
                 onBack={() => setRequest(null)}
                 isLoading={isLoading}
             />
@@ -60,3 +59,5 @@ export default function CostingPage() {
         </div>
     );
 }
+
+    

@@ -58,7 +58,7 @@ export function OrderListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = React.useState<Date | null>(new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [filterType, setFilterType] = React.useState("customerName");
   const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -209,7 +209,7 @@ export function OrderListTable() {
                 </PopoverContent>
               </Popover>
               {selectedDate && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}>
                   <X className="h-4 w-4 mr-1" />
                   Show All
                 </Button>
@@ -311,3 +311,5 @@ export function OrderListTable() {
     </div>
   );
 }
+
+    

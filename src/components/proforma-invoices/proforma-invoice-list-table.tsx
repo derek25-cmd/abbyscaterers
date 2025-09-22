@@ -65,7 +65,7 @@ export function ProformaInvoiceListTable() {
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
   
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined);
   const [filterType, setFilterType] = React.useState("clientName");
   const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -182,11 +182,11 @@ export function ProformaInvoiceListTable() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
+                  <Calendar mode="single" selected={selectedDate || undefined} onSelect={setSelectedDate} initialFocus />
                 </PopoverContent>
             </Popover>
             {selectedDate && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}><X className="h-4 w-4 mr-1"/>Show All</Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}><X className="h-4 w-4 mr-1"/>Show All</Button>
             )}
         </div>
         <div className="flex gap-2">
@@ -285,3 +285,5 @@ export function ProformaInvoiceListTable() {
     </div>
   );
 }
+
+    

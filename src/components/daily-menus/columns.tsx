@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
@@ -13,11 +14,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { DailyMenu } from "@/types";
+import type { Order } from "@/types";
 
 export const getDailyMenuColumns = (
   onDelete: (menuId: string) => void
-): ColumnDef<DailyMenu>[] => [
+): ColumnDef<Order>[] => [
   {
     accessorKey: "id",
     header: ({ column }) => (
@@ -85,3 +86,5 @@ export const getDailyMenuColumns = (
     },
   },
 ];
+
+    

@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Employee } from "@/types";
-import type { EmployeeFormData } from "@/lib/schemas";
 import { 
   getAllEmployees as getAllFromStorage,
   getEmployeeById as getByIdFromStorage,
@@ -11,6 +10,7 @@ import {
   updateEmployee as updateInStorage,
   deleteEmployee as deleteFromStorage 
 } from '@/lib/employee-data';
+import { EmployeeFormData } from '@/lib/schemas';
 
 export function useEmployeeStorage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -38,7 +38,7 @@ export function useEmployeeStorage() {
   const updateEmployee = useCallback((employeeId: string, updates: EmployeeFormData) => {
     const updatedItem = updateInStorage(employeeId, updates);
     if (updatedItem) {
-      setEmployees(prev => prev.map(item => item.employeeId === employeeId ? updatedItem : item));
+      setEmployees(prev => prev.map(item => item.id === employeeId ? updatedItem : item));
     }
     return updatedItem;
   }, []);
@@ -46,7 +46,7 @@ export function useEmployeeStorage() {
   const deleteEmployee = useCallback((id: string) => {
     const success = deleteFromStorage(id);
     if (success) {
-      setEmployees(prev => prev.filter(item => item.employeeId !== id));
+      setEmployees(prev => prev.filter(item => item.id !== id));
     }
     return success;
   }, []);
@@ -65,3 +65,5 @@ export function useEmployeeStorage() {
     refreshEmployees 
   };
 }
+
+    

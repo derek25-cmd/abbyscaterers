@@ -2,10 +2,10 @@
 "use client";
 
 import { DailyMenuDetailsView } from "@/components/daily-menus/daily-menu-details-view";
-import { useOrderStorage as useDailyMenuStorage } from "@/hooks/use-order-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { DailyMenu } from "@/types";
+import type { Order } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { LoadingPage } from "@/components/layout/loading-page";
@@ -13,8 +13,8 @@ import { LoadingPage } from "@/components/layout/loading-page";
 export function DailyMenuDetailsPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
-  const { getOrderById: getMenuById, isLoading: storageLoading } = useDailyMenuStorage();
-  const [menu, setMenu] = useState<DailyMenu | undefined>(undefined);
+  const { getOrderById: getMenuById, isLoading: storageLoading } = useOrderStorage();
+  const [menu, setMenu] = useState<Order | undefined>(undefined);
   const [componentLoading, setComponentLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,3 +94,5 @@ export function DailyMenuDetailsPageComponent() {
     </div>
   );
 }
+
+    

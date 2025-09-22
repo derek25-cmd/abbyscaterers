@@ -208,9 +208,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                     <SidebarMenuItem key={item.label}>
                        <Link href={item.href}>
                         <SidebarMenuButton 
-                          variant="ghost" 
-                          isActive={false} 
-                          tooltip={{children: item.label, side: 'right'}}
+                           tooltip={{children: item.label, side: 'right'}}
                         >
                            <item.icon />
                            {open && <span>{item.label}</span>}
@@ -256,3 +254,5 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

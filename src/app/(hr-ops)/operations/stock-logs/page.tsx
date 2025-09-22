@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -17,22 +18,22 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, parse } from "date-fns";
+import { StockLog, Product } from "@/types";
 
 export default function StockLogsPage() {
-  const [logs, setLogs] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [logs, setLogs] = useState<StockLog[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [logType, setLogType] = useState<'Stock In' | 'Stock Out'>('Stock In');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [selectedLog, setSelectedLog] = useState<any>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedLog, setSelectedLog] = useState<StockLog | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("productName");
 
   useEffect(() => {
-    setSelectedDate(new Date());
     const fetchData = async () => {
         setLoading(true);
         const [logsData, productsData] = await Promise.all([
@@ -70,7 +71,7 @@ export default function StockLogsPage() {
     const newId = await addStockLog(newLog);
     
     // Optimistic UI update for logs
-    const tempNewLog = { id: newId, ...newLog };
+    const tempNewLog = { id: newId, ...newLog } as StockLog;
     setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
     const updatedProduct = { ...product };
@@ -100,12 +101,12 @@ export default function StockLogsPage() {
     );
   };
 
-  const openEditDialog = (log: any) => {
+  const openEditDialog = (log: StockLog) => {
     setSelectedLog(log);
     setIsEditDialogOpen(true);
   };
   
-  const openViewDialog = (log: any) => {
+  const openViewDialog = (log: StockLog) => {
     setSelectedLog(log);
     setIsViewDialogOpen(true);
   };
@@ -376,3 +377,5 @@ export default function StockLogsPage() {
     </main>
   );
 }
+
+    

@@ -12,8 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { OrderSchema, type OrderFormData } from "@/lib/schemas";
-import type { DailyMenu } from "@/types";
-import { useOrderStorage as useDailyMenuStorage } from "@/hooks/use-order-storage";
+import type { Order } from "@/types";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { MEAL_TYPES } from "@/types";
 
 interface DailyMenuFormProps {
-  menu?: DailyMenu;
+  menu?: Order;
   clientId?: string;
 }
 
@@ -93,7 +93,7 @@ const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, cont
 
 export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
   const router = useRouter();
-  const { addOrder: addDailyMenu, updateOrder: updateDailyMenu } = useDailyMenuStorage();
+  const { addOrder: addDailyMenu, updateOrder: updateDailyMenu } = useOrderStorage();
   const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -323,3 +323,5 @@ export function DailyMenuForm({ menu, clientId }: DailyMenuFormProps) {
     </Form>
   );
 }
+
+    

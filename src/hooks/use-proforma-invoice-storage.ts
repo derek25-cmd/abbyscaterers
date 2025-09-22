@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ProformaInvoice } from "@/types";
-import type { ProformaInvoiceFormData } from "@/lib/schemas";
+import type { ProformaInvoice, Invoice } from "@/types";
+import type { ProformaInvoiceFormData, FinalInvoiceFormData } from "@/lib/schemas";
 import { 
   getAllProformaInvoices as getAllFromStorage,
   getProformaInvoiceById as getByIdFromStorage,
@@ -70,7 +70,7 @@ export function useProformaInvoiceStorage() {
                 serviceFields: updatedItem.serviceFields,
                 serviceDesc: updatedItem.serviceDesc,
                 items: updatedItem.items,
-            };
+            } as FinalInvoiceFormData;
             updateInvoice(finalInvoice.id, invoiceUpdates);
         }
       }
@@ -100,3 +100,5 @@ export function useProformaInvoiceStorage() {
     refreshProformaInvoices 
   };
 }
+
+    

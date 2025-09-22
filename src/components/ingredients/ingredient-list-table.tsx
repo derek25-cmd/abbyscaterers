@@ -312,3 +312,5 @@ export function IngredientListTable() {
     </div>
   );
 }
+
+    

@@ -1,13 +1,13 @@
+
 // @ts-nocheck
 import { format } from "date-fns";
+import { stockLogs as mockStockLogs } from "@/lib/mock-data";
 
 const STOCKLOGS_STORAGE_KEY = 'stockLogs';
 
 const initializeStockLogs = () => {
-    // This function is now empty to prevent mock data from being loaded.
-    // The application will start with a clean state.
     if (typeof window !== 'undefined' && !localStorage.getItem(STOCKLOGS_STORAGE_KEY)) {
-        localStorage.setItem(STOCKLOGS_STORAGE_KEY, JSON.stringify([]));
+        localStorage.setItem(STOCKLOGS_STORAGE_KEY, JSON.stringify(mockStockLogs));
     }
 };
 
@@ -39,5 +39,7 @@ export const updateStockLog = async (id, updatedLog) => {
         log.id === id ? { ...log, ...updatedLog } : log
     );
     localStorage.setItem(STOCKLOGS_STORAGE_KEY, JSON.stringify(updatedLogs));
-    return Promise.resolve();
+    return Promise.resolve(updatedLog);
 };
+
+    

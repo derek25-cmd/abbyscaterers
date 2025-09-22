@@ -17,12 +17,12 @@ export function useStockLogStorage() {
     const fetchAndSanitize = async () => {
       setIsLoading(true);
       const storedLogs = await getAllFromStorage();
-      const sanitizedLogs = storedLogs.map(log => ({
+      const sanitizedLogs = storedLogs.map((log: StockLog) => ({
         ...log,
         quantity: Number(log.quantity) || 0,
         price: Number(log.price) || 0,
       }));
-      setLogs(sanitizedLogs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setLogs(sanitizedLogs.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setIsLoading(false);
     };
 
@@ -61,3 +61,5 @@ export function useStockLogStorage() {
     refreshLogs 
   };
 }
+
+    

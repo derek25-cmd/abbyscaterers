@@ -14,7 +14,8 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { ClientEvent } from "@/types";
+import { ClientEvent, Ingredient, StockLog } from "@/types";
+import StockLogTable from "./StockLogTable";
 
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -121,10 +122,12 @@ export const DailyCostingModule = () => {
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
-          <IngredientCostTable ingredients={ingredients} />
+          <StockLogTable logs={[] as StockLog[]} totalCost={0} />
           <EventIncomeTable events={dailyEvents} />
         </div>
       </div>
     </div>
   );
 };
+
+    

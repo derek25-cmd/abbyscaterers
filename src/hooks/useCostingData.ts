@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { initialIngredients, eventsDatabase } from '@/lib/costing-data';
-import type { Ingredient, Event } from '@/lib/costing-data';
+import type { Ingredient, ClientEvent } from '@/types';
 
 const INGREDIENTS_STORAGE_KEY = "caterSmartCostingIngredients";
 const EVENTS_STORAGE_KEY = "caterSmartCostingEvents";
@@ -11,17 +11,17 @@ const EVENTS_STORAGE_KEY = "caterSmartCostingEvents";
 
 export function useCostingData() {
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-    const [events, setEvents] = useState<Event[]>([]);
+    const [events, setEvents] = useState<ClientEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const getIngredientsFromStorage = (): Ingredient[] => {
-        if (typeof window === "undefined") return initialIngredients;
+        if (typeof window === "undefined") return [];
         const data = localStorage.getItem(INGREDIENTS_STORAGE_KEY);
-        return data ? JSON.parse(data) : initialIngredients;
+        return data ? JSON.parse(data) : [];
     };
     
-    const getEventsFromStorage = (): Event[] => {
-        if (typeof window === "undefined") return eventsDatabase;
+    const getEventsFromStorage = (): ClientEvent[] => {
+        if (typeof window === "undefined") return [];
         const data = localStorage.getItem(EVENTS_STORAGE_KEY);
          if (data) {
             try {
@@ -32,10 +32,10 @@ export function useCostingData() {
                 }));
             } catch (error) {
                 console.error("Error parsing events from localStorage", error);
-                return eventsDatabase;
+                return [];
             }
         }
-        return eventsDatabase;
+        return [];
     }
 
     useEffect(() => {
@@ -53,12 +53,12 @@ export function useCostingData() {
         }
     };
     
-    const getEventsForDate = useCallback((date: Date): Event[] => {
+    const getEventsForDate = useCallback((date: Date): ClientEvent[] => {
         const targetDate = new Date(date);
         targetDate.setHours(0, 0, 0, 0);
         
         return events.filter(event => {
-            const eventDate = new Date(event.event_date);
+            const eventDate = new Date(event.date);
             eventDate.setHours(0, 0, 0, 0);
             return eventDate.getTime() === targetDate.getTime();
         });
@@ -73,3 +73,5 @@ export function useCostingData() {
         getEventsForDate
     };
 }
+
+    

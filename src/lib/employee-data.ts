@@ -22,19 +22,20 @@ export function getAllEmployees(): Employee[] {
 }
 
 export function getEmployeeById(id: string): Employee | undefined {
-  return getEmployeesFromStorage().find(emp => emp.employeeId === id);
+  return getEmployeesFromStorage().find(emp => emp.id === id);
 }
 
 export function addEmployee(data: EmployeeFormData): Employee {
   const employees = getEmployeesFromStorage();
   const now = new Date().toISOString();
 
-  if (employees.some(emp => emp.employeeId === data.employeeId)) {
-    throw new Error(`Employee ID "${data.employeeId}" already exists.`);
+  if (employees.some(emp => emp.id === data.id)) {
+    throw new Error(`Employee ID "${data.id}" already exists.`);
   }
 
   const newEmployee: Employee = {
     ...data,
+    id: `EMP-${Date.now()}`,
     createdAt: now,
     updatedAt: now,
   };
@@ -45,7 +46,7 @@ export function addEmployee(data: EmployeeFormData): Employee {
 
 export function updateEmployee(id: string, updates: EmployeeFormData): Employee | undefined {
   const employees = getEmployeesFromStorage();
-  const index = employees.findIndex(emp => emp.employeeId === id);
+  const index = employees.findIndex(emp => emp.id === id);
   if (index === -1) return undefined;
 
   const updatedEmployee: Employee = {
@@ -62,7 +63,7 @@ export function updateEmployee(id: string, updates: EmployeeFormData): Employee 
 export function deleteEmployee(id: string): boolean {
   let employees = getEmployeesFromStorage();
   const initialLength = employees.length;
-  employees = employees.filter(emp => emp.employeeId !== id);
+  employees = employees.filter(emp => emp.id !== id);
 
   if (employees.length < initialLength) {
     saveEmployeesToStorage(employees);
@@ -70,3 +71,5 @@ export function deleteEmployee(id: string): boolean {
   }
   return false;
 }
+
+    

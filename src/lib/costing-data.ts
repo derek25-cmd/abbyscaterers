@@ -80,3 +80,8 @@ export function deleteCostingSnapshot(date: string): boolean {
   }
   return false;
 }
+
+export const initialIngredients = [];
+export const eventsDatabase = [];
+
+    

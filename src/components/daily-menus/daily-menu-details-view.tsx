@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import type { DailyMenu, ClientEvent } from "@/types";
+import type { Order, ClientEvent } from "@/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "../ui/badge";
 
 interface DailyMenuDetailsViewProps {
-  menu: DailyMenu;
+  menu: Order;
 }
 
 function ClientEventCard({ event }: { event: ClientEvent }) {
@@ -152,7 +152,7 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
       
       <div ref={printRef} className="space-y-6">
         {menu.clientEvents && menu.clientEvents.length > 0 ? (
-            menu.clientEvents.map((event, index) => (
+            menu.clientEvents.map((event: ClientEvent, index: number) => (
                 <ClientEventCard key={index} event={event} />
             ))
         ) : (
@@ -172,3 +172,5 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
     </>
   );
 }
+
+    

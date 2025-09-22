@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getDailyMenuColumns } from "./columns"; 
-import { useOrderStorage as useDailyMenuStorage } from "@/hooks/use-order-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -39,13 +39,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { DailyMenu } from "@/types";
+import type { Order } from "@/types";
 
 export function DailyMenuListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
   
-  const { orders: menus, isLoading, deleteOrder: deleteMenuFromStore } = useDailyMenuStorage();
+  const { orders: menus, isLoading, deleteOrder: deleteMenuFromStore } = useOrderStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -214,3 +214,5 @@ export function DailyMenuListTable() {
     </div>
   );
 }
+
+    

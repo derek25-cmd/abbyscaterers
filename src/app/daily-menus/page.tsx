@@ -1,5 +1,6 @@
 
-import { DailyMenusPageContent } from './daily-menus-page-content';
+
+import { DailyMenusPageContent } from '@/app/daily-menus/daily-menus-page-content';
 
 export default function OrdersPage() {
   return (
@@ -16,3 +17,5 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+    
