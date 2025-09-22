@@ -15,13 +15,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 
-export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance, employees }) {
+export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance, employees, orders }) {
   const [issuedTo, setIssuedTo] = useState('');
   const [date, setDate] = useState('');
 
   useEffect(() => {
     if (logEntry) {
-      const employee = employees.find(e => e.name === logEntry.issuedTo);
+      const employee = employees.find(e => {
+        const fullName = [e.firstName, e.middleName, e.lastName].filter(Boolean).join(' ');
+        return fullName === logEntry.issuedTo;
+      });
       setIssuedTo(employee ? employee.id : '');
       setDate(logEntry.date);
     }
@@ -35,10 +38,11 @@ export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance
     }
 
     const employee = employees.find(e => e.id === issuedTo);
+    const fullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
     
     onEditIssuance({
       ...logEntry,
-      issuedTo: employee ? employee.name : '',
+      issuedTo: fullName,
       date,
     });
 
@@ -57,8 +61,8 @@ export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="asset" className="text-right">Asset</Label>
-              <Input id="asset" value={logEntry?.name} disabled className="col-span-3" />
+              <Label htmlFor="asset" className="text-right">Order</Label>
+              <Input id="asset" value={logEntry?.order?.name || logEntry?.orderId} disabled className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="employee" className="text-right">Issued To</Label>
@@ -69,7 +73,7 @@ export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance
                 <SelectContent>
                   {employees.filter(e => e.status === 'Active').map(employee => (
                     <SelectItem key={employee.id} value={employee.id}>
-                      {employee.name}
+                      {[employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
