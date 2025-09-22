@@ -554,7 +554,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                             })}
                         </Accordion>
                     </Card>
-
+                    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                        <Controller name="serviceCharge" control={form.control} render={({ field }) => (
                              <div><Label>Service Charge (TSHS)</Label><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></div>
