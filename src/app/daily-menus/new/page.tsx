@@ -1,16 +1,12 @@
 
-"use client"; 
-
-import { DailyMenuForm } from "@/components/daily-menus/daily-menu-form";
-import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import { NewDailyMenuPageComponent } from './new-daily-menu-page-component';
+import { LoadingPage } from '@/components/layout/loading-page';
 
 export default function NewDailyMenuPage() {
-  const searchParams = useSearchParams();
-  const clientId = searchParams.get('clientId');
-
   return (
-    <div className="max-w-4xl mx-auto">
-      <DailyMenuForm clientId={clientId ?? undefined} />
-    </div>
+    <Suspense fallback={<LoadingPage title="Loading form..." />}>
+      <NewDailyMenuPageComponent />
+    </Suspense>
   );
 }
