@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -20,7 +21,7 @@ import { useClientStorage } from "@/hooks/use-client-storage";
 import { format } from "date-fns";
 
 
-export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders = [], onNewIssuance }) {
+export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders, onNewIssuance }) {
     const [orderId, setOrderId] = useState('');
     const [issuedTo, setIssuedTo] = useState('');
     const [items, setItems] = useState([{ assetId: '', quantityIssued: 1 }]);
@@ -125,7 +126,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
           <DialogHeader>
             <DialogTitle>New Asset Issuance</DialogTitle>
             <DialogDescription>
-              Select an order, employee, and the assets to be issued for today's events.
+              Select an order, employee, and the assets to be issued for today&apos;s events.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
