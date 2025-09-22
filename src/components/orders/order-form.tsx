@@ -10,7 +10,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "../ui/separator";
 import { OrderSchema, type OrderFormData } from "@/lib/schemas";
 import type { Order } from "@/types";
 import { useOrderStorage } from "@/hooks/use-order-storage";
