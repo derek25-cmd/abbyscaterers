@@ -142,7 +142,7 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                {isExporting ? 'Exporting...' : 'Export as PDF'}
             </Button>
-            <Link href={`/daily-menus/${menu.id}/edit`}>
+            <Link href={`/orders/${menu.id}/edit`}>
               <Button>
                 <SquarePen className="mr-2 h-4 w-4" /> Edit Menu
               </Button>
@@ -165,12 +165,10 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
       </div>
 
       <div className="mt-6 flex justify-end">
-         <Link href="/daily-menus">
+         <Link href="/orders">
             <Button variant="ghost">Back to Menu List</Button>
           </Link>
       </div>
     </>
   );
 }
-
-    

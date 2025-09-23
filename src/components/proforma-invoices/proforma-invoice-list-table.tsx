@@ -182,7 +182,7 @@ export function ProformaInvoiceListTable() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={selectedDate || undefined} onSelect={setSelectedDate} initialFocus />
+                  <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
                 </PopoverContent>
             </Popover>
             {selectedDate && (
@@ -285,5 +285,3 @@ export function ProformaInvoiceListTable() {
     </div>
   );
 }
-
-    

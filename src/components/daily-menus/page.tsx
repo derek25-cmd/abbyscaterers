@@ -1,5 +1,5 @@
 
-import { OrdersPageContent } from './orders-page-content';
+import { OrdersPageContent } from '@/app/orders/orders-page-content';
 
 export default function OrdersPage() {
   return (

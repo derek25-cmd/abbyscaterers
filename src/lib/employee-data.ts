@@ -2,7 +2,8 @@
 "use client";
 
 import type { Employee } from "@/types";
-import type { EmployeeFormData } from "@/lib/schemas";
+import { DEPARTMENTS, EMPLOYMENT_TYPES } from "@/lib/schemas";
+
 
 const EMPLOYEES_STORAGE_KEY = "caterSmartEmployees";
 
@@ -25,26 +26,27 @@ export function getEmployeeById(id: string): Employee | undefined {
   return getEmployeesFromStorage().find(emp => emp.id === id);
 }
 
-export function addEmployee(data: EmployeeFormData): Employee {
+export function addEmployee(data: Partial<Employee>): Employee {
   const employees = getEmployeesFromStorage();
   const now = new Date().toISOString();
 
-  if (employees.some(emp => emp.id === data.id)) {
-    throw new Error(`Employee ID "${data.id}" already exists.`);
-  }
-
   const newEmployee: Employee = {
-    ...data,
     id: `EMP-${Date.now()}`,
+    firstName: data.firstName || '',
+    lastName: data.lastName || '',
+    role: data.role || '',
+    department: data.department || DEPARTMENTS[0],
+    status: data.status || 'Active',
     createdAt: now,
     updatedAt: now,
+    ...data,
   };
 
   saveEmployeesToStorage([...employees, newEmployee]);
   return newEmployee;
 }
 
-export function updateEmployee(id: string, updates: EmployeeFormData): Employee | undefined {
+export function updateEmployee(id: string, updates: Partial<Employee>): Employee | undefined {
   const employees = getEmployeesFromStorage();
   const index = employees.findIndex(emp => emp.id === id);
   if (index === -1) return undefined;
@@ -71,5 +73,3 @@ export function deleteEmployee(id: string): boolean {
   }
   return false;
 }
-
-    

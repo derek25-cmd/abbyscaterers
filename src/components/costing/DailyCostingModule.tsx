@@ -5,8 +5,6 @@ import { useState, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { FileText, Settings, Loader2 } from "lucide-react";
 import Link from "next/link";
-import IngredientCostTable from "./IngredientCostTable";
-import EventIncomeTable from "./EventIncomeTable";
 import DateSelector from "./DateSelector";
 import CostingSummary from "./CostingSummary";
 import { useToast } from "@/hooks/use-toast";
@@ -14,8 +12,9 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import { ClientEvent, Ingredient, StockLog } from "@/types";
+import { ClientEvent, StockLog } from "@/types";
 import StockLogTable from "./StockLogTable";
+import EventIncomeTable from "./EventIncomeTable";
 
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -129,5 +128,3 @@ export const DailyCostingModule = () => {
     </div>
   );
 };
-
-    

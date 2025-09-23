@@ -50,7 +50,7 @@ export function useProformaInvoiceStorage() {
       if (updatedItem.isInvoiced) {
         const finalInvoice = getInvoiceByProformaId(originalId);
         if (finalInvoice) {
-            const invoiceUpdates = {
+            const invoiceUpdates: FinalInvoiceFormData = {
                 ...finalInvoice,
                 // Map relevant fields from proforma to final invoice
                 clientId: updatedItem.clientId,
@@ -70,7 +70,10 @@ export function useProformaInvoiceStorage() {
                 serviceFields: updatedItem.serviceFields,
                 serviceDesc: updatedItem.serviceDesc,
                 items: updatedItem.items,
-            } as FinalInvoiceFormData;
+                id: finalInvoice.id,
+                status: finalInvoice.status,
+                invoiceDate: finalInvoice.invoiceDate
+            };
             updateInvoice(finalInvoice.id, invoiceUpdates);
         }
       }
@@ -100,5 +103,3 @@ export function useProformaInvoiceStorage() {
     refreshProformaInvoices 
   };
 }
-
-    

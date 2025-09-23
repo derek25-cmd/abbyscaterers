@@ -40,7 +40,7 @@ export default function StockLogsPage() {
             getStockLogs(),
             getProducts()
         ]);
-        setLogs(logsData.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setLogs(logsData.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         setProducts(productsData);
         setLoading(false);
     }
@@ -72,7 +72,7 @@ export default function StockLogsPage() {
     
     // Optimistic UI update for logs
     const tempNewLog = { id: newId, ...newLog } as StockLog;
-    setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a: StockLog,b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
 
     const updatedProduct = { ...product };
     if(movement.type === 'Stock In') {
@@ -97,7 +97,7 @@ export default function StockLogsPage() {
     setLogs(prevLogs => 
         prevLogs.map(log => 
             log.id === updatedLog.id ? updatedLog : log
-        ).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        ).sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime())
     );
   };
 
@@ -377,5 +377,3 @@ export default function StockLogsPage() {
     </main>
   );
 }
-
-    

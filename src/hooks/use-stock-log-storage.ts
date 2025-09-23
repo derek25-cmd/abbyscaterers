@@ -61,5 +61,3 @@ export function useStockLogStorage() {
     refreshLogs 
   };
 }
-
-    

@@ -107,7 +107,7 @@ export function InvoiceListTable() {
       data = data.filter(inv => {
           switch(filterType){
               case 'id': return inv.id.toLowerCase().includes(lowercasedQuery);
-              case 'proformaId': return inv.proformaId?.toLowerCase().includes(lowercasedQuery);
+              case 'proformaId': return inv.proformaId?.toLowerCase().includes(lowercasedQuery) ?? false;
               case 'clientName': return getClientName(inv.clientId).toLowerCase().includes(lowercasedQuery);
               default: return true;
           }
@@ -188,11 +188,11 @@ export function InvoiceListTable() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={selectedDate || undefined} onSelect={setSelectedDate} initialFocus />
+                  <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
                 </PopoverContent>
             </Popover>
             {selectedDate && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}><X className="h-4 w-4 mr-1"/>Show All</Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}><X className="h-4 w-4 mr-1"/>Show All</Button>
             )}
         </div>
         <div className="flex gap-2">
@@ -323,5 +323,3 @@ export function InvoiceListTable() {
     </div>
   );
 }
-
-    

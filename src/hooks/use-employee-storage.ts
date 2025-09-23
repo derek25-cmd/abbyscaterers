@@ -35,7 +35,7 @@ export function useEmployeeStorage() {
     return newItem;
   }, []);
 
-  const updateEmployee = useCallback((employeeId: string, updates: EmployeeFormData) => {
+  const updateEmployee = useCallback((employeeId: string, updates: Partial<Employee>) => {
     const updatedItem = updateInStorage(employeeId, updates);
     if (updatedItem) {
       setEmployees(prev => prev.map(item => item.id === employeeId ? updatedItem : item));
@@ -65,5 +65,3 @@ export function useEmployeeStorage() {
     refreshEmployees 
   };
 }
-
-    

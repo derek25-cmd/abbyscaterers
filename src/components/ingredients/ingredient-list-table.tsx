@@ -146,7 +146,7 @@ export function IngredientListTable() {
         }
 
         const newIngredientData: IngredientFormData[] = [];
-        for (const [index, rowStr] of rows.entries()) {
+        for (const rowStr of rows) {
             const values = rowStr.trim().split(',');
             const ingredientObject: Partial<IngredientFormData> = {};
             expectedHeaders.forEach((header, i) => {
@@ -156,7 +156,7 @@ export function IngredientListTable() {
             const parsed = IngredientSchema.safeParse(ingredientObject);
             if (!parsed.success) {
                 const errorMessages = parsed.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
-                throw new Error(`Validation failed on row ${index + 2}: ${errorMessages}`);
+                throw new Error(`Validation failed on row: ${errorMessages}`);
             }
             newIngredientData.push(parsed.data);
         }
@@ -312,5 +312,3 @@ export function IngredientListTable() {
     </div>
   );
 }
-
-    
