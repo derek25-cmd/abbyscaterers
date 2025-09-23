@@ -1,4 +1,3 @@
-
 {
   "hosting": {
     "source": "studio",
@@ -6,15 +5,28 @@
       "npm run build"
     ]
   },
-  "apphosting": {
-    "backendId": "catersmart-1",
-    "rootDir": ".next/standalone",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions"
-    ]
-  }
+  "apphosting": [
+    {
+      "backendId": "catersmart-1",
+      "rootDir": ".next/standalone",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    },
+    {
+      "backendId": "catersmart-1",
+      "rootDir": "/.next/standalone",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    }
+  ]
 }
