@@ -16,6 +16,14 @@ import { format, parseISO, startOfMonth } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 
+const calculateTotal = (inv: Invoice) => {
+    const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
+    const totalBeforeVat = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
+    const vat = inv.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
+    return totalBeforeVat + vat;
+}
+
 export default function MonthlyInvoiceReportPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
   const { toast } = useToast();
@@ -39,14 +47,6 @@ export default function MonthlyInvoiceReportPage() {
   const summary = useMemo(() => {
     const paidInvoices = monthlyInvoices.filter(inv => inv.status === 'paid');
     const outstandingInvoices = monthlyInvoices.filter(inv => inv.status === 'outstanding');
-
-    const calculateTotal = (inv: Invoice) => {
-        const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-        const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-        const totalBeforeVat = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-        const vat = inv.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
-        return totalBeforeVat + vat;
-    }
 
     return {
         totalInvoiced: monthlyInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0),
