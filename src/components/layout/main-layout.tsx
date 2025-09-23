@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
     Home, 
     BookOpen, 
@@ -21,7 +20,8 @@ import {
     Truck,
     CalendarCheck,
     CreditCard,
-    ChevronDown
+    ChevronDown,
+    LogOut
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -51,6 +51,7 @@ import {
 import { BarChart3 } from "lucide-react";
 import React from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -86,6 +87,17 @@ const managementItems = [
 ];
 
 function UserProfile() {
+    const router = useRouter();
+    const { toast } = useToast();
+
+    const handleLogout = () => {
+        toast({
+            title: "Logged Out",
+            description: "You have been successfully logged out.",
+        });
+        router.push('/login');
+    }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -113,7 +125,10 @@ function UserProfile() {
         <DropdownMenuItem>Profile</DropdownMenuItem>
         <DropdownMenuItem>Settings</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>Log out</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -177,6 +192,11 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
 
 function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
   const { open } = useSidebar();
+
+  // Hide layout for login page
+  if (currentPathname === '/login') {
+    return <main className="w-full">{children}</main>;
+  }
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
