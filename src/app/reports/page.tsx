@@ -25,7 +25,7 @@ const reportCategories = [
        {
         title: "Monthly Invoice Report",
         description: "Track the status and totals of all invoices.",
-        href: "#",
+        href: "/reports/monthly-invoice",
         icon: FileText,
       },
       {
@@ -42,13 +42,13 @@ const reportCategories = [
       {
         title: "Daily Stock Log",
         description: "Track all inventory movements for a selected day.",
-        href: "#",
+        href: "/reports/daily-stock-log",
         icon: Box,
       },
       {
         title: "Daily Issuance Report",
         description: "View all assets and items issued on a specific day.",
-        href: "#",
+        href: "/reports/daily-issuance",
         icon: Truck,
       },
        {
@@ -65,13 +65,13 @@ const reportCategories = [
       {
         title: "Monthly Attendance Report",
         description: "Get a summary of employee attendance for the month.",
-        href: "#",
+        href: "/reports/monthly-attendance",
         icon: Users,
       },
       {
         title: "Monthly Payroll Report",
         description: "Review a summary of all payrolls processed in a month.",
-        href: "#",
+        href: "/reports/monthly-payroll",
         icon: DollarSign,
       },
     ],
