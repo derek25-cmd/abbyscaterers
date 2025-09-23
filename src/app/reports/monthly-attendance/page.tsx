@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,12 +24,15 @@ export default function MonthlyAttendanceReportPage() {
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
 
-  useMemo(async () => {
-    setIsLoading(true);
-    const [recs, emps] = await Promise.all([getAttendanceRecords(), getEmployees()]);
-    setRecords(recs);
-    setEmployees(emps);
-    setIsLoading(false);
+  useEffect(() => {
+    const fetchData = async () => {
+        setIsLoading(true);
+        const [recs, emps] = await Promise.all([getAttendanceRecords(), getEmployees()]);
+        setRecords(recs);
+        setEmployees(emps);
+        setIsLoading(false);
+    };
+    fetchData();
   }, []);
 
   const availableMonths = useMemo(() => {
