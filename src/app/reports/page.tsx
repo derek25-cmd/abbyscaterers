@@ -54,7 +54,7 @@ const reportCategories = [
        {
         title: "Monthly Stock Report",
         description: "A summary of stock levels and adjustments over the month.",
-        href: "#",
+        href: "/reports/monthly-stock",
         icon: Box,
       },
     ],
