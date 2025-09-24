@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/chart"
 import { useOrderStorage } from "@/hooks/use-order-storage"
 import { Button } from "@/components/ui/button"
+import { ChartDialog } from "./chart-dialog"
 
 type TimeUnit = "daily" | "weekly" | "monthly" | "yearly"
 
@@ -33,6 +34,8 @@ const chartConfig = {
 export function SalesChart() {
   const { orders } = useOrderStorage()
   const [timeUnit, setTimeUnit] = React.useState<TimeUnit>("monthly")
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
 
   const salesData = React.useMemo(() => {
     if (!orders) return []
@@ -91,13 +94,57 @@ export function SalesChart() {
 
   }, [orders, timeUnit])
 
+  const Chart = (
+     <LineChart
+        accessibilityLayer
+        data={salesData}
+        margin={{
+            left: 12,
+            right: 12,
+        }}
+        >
+        <CartesianGrid vertical={false} />
+        <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(value) => value}
+        />
+        <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+        />
+        <ChartTooltip
+            cursor={false}
+            content={
+            <ChartTooltipContent
+                indicator="dot"
+                formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+            />
+            }
+        />
+        <Line
+            dataKey="sales"
+            type="monotone"
+            stroke="var(--color-sales)"
+            strokeWidth={2}
+            dot={true}
+        />
+    </LineChart>
+  )
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sales Overview</CardTitle>
-        <CardDescription>
-          Showing total sales {timeUnit}.
-        </CardDescription>
+        <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+            <CardTitle>Sales Overview</CardTitle>
+            <CardDescription>
+            Showing total sales {timeUnit}.
+            </CardDescription>
+        </div>
         <div className="flex gap-2 pt-2">
             <Button size="sm" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('daily')}>Daily</Button>
             <Button size="sm" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('weekly')}>Weekly</Button>
@@ -106,48 +153,19 @@ export function SalesChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <LineChart
-            accessibilityLayer
-            data={salesData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => value}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-                />
-              }
-            />
-            <Line
-              dataKey="sales"
-              type="monotone"
-              stroke="var(--color-sales)"
-              strokeWidth={2}
-              dot={true}
-            />
-          </LineChart>
+        <ChartContainer config={chartConfig} className="h-64">
+          {Chart}
         </ChartContainer>
       </CardContent>
+       <ChartDialog
+        isOpen={isDialogOpen}
+        setIsOpen={setIsDialogOpen}
+        title="Sales Overview"
+        description={`Showing total sales ${timeUnit}.`}
+        chartConfig={chartConfig}
+      >
+        {Chart}
+      </ChartDialog>
     </Card>
   )
 }

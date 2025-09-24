@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/chart"
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage"
 import { Button } from "@/components/ui/button"
+import { ChartDialog } from "./chart-dialog"
+
 
 type TimeUnit = "daily" | "weekly" | "monthly" | "yearly"
 
@@ -33,6 +35,8 @@ const chartConfig = {
 export function ExpensesChart() {
   const { logs } = useStockLogStorage()
   const [timeUnit, setTimeUnit] = React.useState<TimeUnit>("monthly")
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
 
   const expensesData = React.useMemo(() => {
     if (!logs) return []
@@ -90,13 +94,55 @@ export function ExpensesChart() {
 
   }, [logs, timeUnit])
 
+  const Chart = (
+     <BarChart
+        accessibilityLayer
+        data={expensesData}
+        margin={{
+            left: 12,
+            right: 12,
+        }}
+        >
+        <CartesianGrid vertical={false} />
+        <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(value) => value}
+        />
+        <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+        />
+        <ChartTooltip
+            cursor={false}
+            content={
+            <ChartTooltipContent
+                indicator="dot"
+                formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+            />
+            }
+        />
+        <Bar
+            dataKey="expenses"
+            fill="var(--color-expenses)"
+            radius={4}
+        />
+    </BarChart>
+  )
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Expenses Overview</CardTitle>
-        <CardDescription>
-          Showing total expenses from stocked-out goods {timeUnit}.
-        </CardDescription>
+        <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+            <CardTitle>Expenses Overview</CardTitle>
+            <CardDescription>
+            Showing total expenses from stocked-out goods {timeUnit}.
+            </CardDescription>
+        </div>
         <div className="flex gap-2 pt-2">
             <Button size="sm" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('daily')}>Daily</Button>
             <Button size="sm" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('weekly')}>Weekly</Button>
@@ -105,46 +151,19 @@ export function ExpensesChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <BarChart
-            accessibilityLayer
-            data={expensesData}
-            margin={{
-              left: 12,
-              right: 12,
-            }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => value}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-                />
-              }
-            />
-            <Bar
-              dataKey="expenses"
-              fill="var(--color-expenses)"
-              radius={4}
-            />
-          </BarChart>
+        <ChartContainer config={chartConfig} className="h-64">
+          {Chart}
         </ChartContainer>
       </CardContent>
+       <ChartDialog
+        isOpen={isDialogOpen}
+        setIsOpen={setIsDialogOpen}
+        title="Expenses Overview"
+        description={`Showing total expenses from stocked-out goods ${timeUnit}.`}
+        chartConfig={chartConfig}
+      >
+        {Chart}
+      </ChartDialog>
     </Card>
   )
 }

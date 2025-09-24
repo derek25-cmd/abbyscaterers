@@ -21,6 +21,7 @@ import {
 import { useOrderStorage } from "@/hooks/use-order-storage"
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage"
 import { Button } from "@/components/ui/button"
+import { ChartDialog } from "./chart-dialog"
 
 type TimeUnit = "daily" | "weekly" | "monthly" | "yearly"
 
@@ -39,6 +40,8 @@ export function SalesVsExpensesChart() {
   const { orders } = useOrderStorage()
   const { logs: stockLogs } = useStockLogStorage()
   const [timeUnit, setTimeUnit] = React.useState<TimeUnit>("monthly")
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
 
   const combinedData = React.useMemo(() => {
     if (!orders || !stockLogs) return []
@@ -99,13 +102,55 @@ export function SalesVsExpensesChart() {
 
   }, [orders, stockLogs, timeUnit])
 
+  const Chart = (
+    <ComposedChart
+        accessibilityLayer
+        data={combinedData}
+        margin={{ left: 12, right: 12 }}
+    >
+        <CartesianGrid vertical={false} />
+        <XAxis
+        dataKey="date"
+        tickLine={false}
+        axisLine={false}
+        tickMargin={8}
+        tickFormatter={(value) => value}
+        />
+        <YAxis
+        tickLine={false}
+        axisLine={false}
+        tickMargin={8}
+        tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+        />
+        <ChartTooltip
+        cursor={false}
+        content={
+            <ChartTooltipContent
+            indicator="dot"
+            formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+            />
+        }
+        />
+        <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
+        <Line
+        dataKey="sales"
+        type="monotone"
+        stroke="var(--color-sales)"
+        strokeWidth={2}
+        dot={true}
+        />
+    </ComposedChart>
+  )
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sales vs. Expenses</CardTitle>
-        <CardDescription>
-          A comparative view of your income and costs over time.
-        </CardDescription>
+        <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+            <CardTitle>Sales vs. Expenses</CardTitle>
+            <CardDescription>
+            A comparative view of your income and costs over time.
+            </CardDescription>
+        </div>
         <div className="flex gap-2 pt-2">
             <Button size="sm" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('daily')}>Daily</Button>
             <Button size="sm" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('weekly')}>Weekly</Button>
@@ -114,46 +159,19 @@ export function SalesVsExpensesChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
-          <ComposedChart
-            accessibilityLayer
-            data={combinedData}
-            margin={{ left: 12, right: 12 }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => value}
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-                />
-              }
-            />
-            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={4} />
-            <Line
-              dataKey="sales"
-              type="monotone"
-              stroke="var(--color-sales)"
-              strokeWidth={2}
-              dot={true}
-            />
-          </ComposedChart>
+        <ChartContainer config={chartConfig} className="h-64">
+          {Chart}
         </ChartContainer>
       </CardContent>
+      <ChartDialog
+        isOpen={isDialogOpen}
+        setIsOpen={setIsDialogOpen}
+        title="Sales vs. Expenses"
+        description="A comparative view of your income and costs over time."
+        chartConfig={chartConfig}
+      >
+        {Chart}
+      </ChartDialog>
     </Card>
   )
 }

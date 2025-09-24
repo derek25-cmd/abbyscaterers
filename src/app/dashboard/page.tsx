@@ -8,22 +8,18 @@ import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { RecentOrders } from "@/components/dashboard/recent-orders";
 import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
-import { Button } from "@/components/ui/button";
 import { 
   DollarSign, 
   Calendar,
   Package,
-  Plus,
-  BarChart3,
-  BookOpen
 } from "lucide-react";
-import Link from "next/link";
 import { useMemo } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
 import { SalesChart } from "@/components/dashboard/sales-chart";
 import { ExpensesChart } from "@/components/dashboard/expenses-chart";
 import { SalesVsExpensesChart } from "@/components/dashboard/sales-vs-expenses-chart";
+import { WelcomeCard } from "@/components/dashboard/welcome-card";
 
 export default function DashboardPage() {
   const { orders: menus, isLoading: menusLoading } = useOrderStorage();
@@ -75,48 +71,55 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-                 <div className="grid gap-4 md:grid-cols-2">
-                    <StatsCard
-                    title="Bookings (This Month)"
-                    value={stats.totalBookingsThisMonth}
-                    change={`${clients.length} total clients`}
-                    changeType="neutral"
-                    icon={BookOpen}
-                    description="Monthly bookings created"
-                    />
-                    <StatsCard
-                    title="Outstanding Invoices"
-                    value={stats.totalOutstandingInvoices}
-                    change={`${stats.outstandingAmount.toLocaleString('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' })} unpaid`}
-                    changeType="negative"
-                    icon={DollarSign}
-                    description="Awaiting payment"
-                    />
-                    <StatsCard
-                    title="Upcoming Events"
-                    value={stats.upcomingEventsCount}
-                    change="In the next 7 days"
-                    changeType="neutral"
-                    icon={Calendar}
-                    description="Scheduled events"
-                    />
-                    <StatsCard
-                    title="Low Stock Items"
-                    value={stats.lowStockItems}
-                    change="Needs re-ordering"
-                    changeType="warning"
-                    icon={Package}
-                    description="Inventory status (demo)"
-                    />
-                </div>
+        <WelcomeCard />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatsCard
+                title="Bookings (This Month)"
+                value={stats.totalBookingsThisMonth}
+                change={`${clients.length} total clients`}
+                changeType="neutral"
+                icon={Calendar}
+                description="Monthly bookings created"
+                />
+                <StatsCard
+                title="Outstanding Invoices"
+                value={stats.totalOutstandingInvoices}
+                change={`${stats.outstandingAmount.toLocaleString('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' })} unpaid`}
+                changeType="negative"
+                icon={DollarSign}
+                description="Awaiting payment"
+                />
+                <StatsCard
+                title="Upcoming Events"
+                value={stats.upcomingEventsCount}
+                change="In the next 7 days"
+                changeType="neutral"
+                icon={Calendar}
+                description="Scheduled events"
+                />
+                <StatsCard
+                title="Low Stock Items"
+                value={stats.lowStockItems}
+                change="Needs re-ordering"
+                changeType="warning"
+                icon={Package}
+                description="Inventory status (demo)"
+                />
+            </div>
+            <div className="lg:col-span-4 space-y-6">
                 <SalesVsExpensesChart />
+            </div>
+            <div className="lg:col-span-4 space-y-6">
                 <SalesChart />
+            </div>
+            <div className="lg:col-span-4 space-y-6">
                 <ExpensesChart />
             </div>
-            <div className="space-y-6">
+             <div className="lg:col-span-2 space-y-6">
                 <RecentOrders />
+            </div>
+            <div className="lg:col-span-2 space-y-6">
                 <UpcomingEvents />
             </div>
         </div>
