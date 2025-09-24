@@ -202,14 +202,14 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
              <div className="flex items-center gap-2.5 p-2">
                 {open ? (
-                  <Image src="/logo.png" alt="Abby's Catersmart" width={150} height={40} />
+                  <Image src="/logo.png" alt="Abby's Catersmart" width={150} height={40} style={{ mixBlendMode: 'darken' }} />
                 ) : (
-                  <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center shadow-lg">
-                    <ChefHat className="h-5 w-5 text-sidebar-primary-foreground" />
+                  <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-lg">
+                    <ChefHat className="h-5 w-5 text-primary-foreground" />
                   </div>
                 )}
              </div>

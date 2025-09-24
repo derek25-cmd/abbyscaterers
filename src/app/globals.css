@@ -47,14 +47,14 @@
 
     --radius: 0.75rem;
     
-    --sidebar-background: 0 11% 21%; /* Dark Brown */
-    --sidebar-foreground: 45 100% 92%;
-    --sidebar-primary: 45 100% 95%; /* Creamy Yellow */
-    --sidebar-primary-foreground: 0 11% 21%;
-    --sidebar-accent: 0 11% 28%;
-    --sidebar-accent-foreground: 45 100% 95%;
-    --sidebar-border: 0 11% 28%;
-    --sidebar-ring: 45 100% 95%;
+    --sidebar-background: 0 0% 100%; /* White */
+    --sidebar-foreground: 0 11% 21%;
+    --sidebar-primary: 0 11% 21%; /* Dark Brown */
+    --sidebar-primary-foreground: 45 100% 95%;
+    --sidebar-accent: 45 30% 92%;
+    --sidebar-accent-foreground: 0 11% 21%;
+    --sidebar-border: 45 20% 88%;
+    --sidebar-ring: 0 11% 21%;
   }
 
   .dark {
@@ -86,7 +86,7 @@
     --input: 24 8% 20%;
     --ring: 40 90% 55%;
 
-    --sidebar-background: 24 10% 12%;
+    --sidebar-background: 24 8% 12%;
     --sidebar-foreground: 35 10% 80%;
     --sidebar-primary: 40 90% 55%;
     --sidebar-primary-foreground: 24 15% 10%;
