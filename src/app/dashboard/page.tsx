@@ -112,10 +112,8 @@ export default function DashboardPage() {
                     />
                 </div>
                 <SalesVsExpensesChart />
-                <div className="grid gap-6 md:grid-cols-2">
-                  <SalesChart />
-                  <ExpensesChart />
-                </div>
+                <SalesChart />
+                <ExpensesChart />
             </div>
             <div className="space-y-6">
                 <RecentOrders />
