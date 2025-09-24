@@ -48,7 +48,7 @@ export default function LoginPage() {
         <div className="mx-auto grid w-[350px] gap-6">
            <div className="grid gap-2 text-center">
              <div className="flex items-center justify-center gap-2 mb-4">
-                <Image src="/logo.png" alt="Abby's Catersmart Logo" width={200} height={50} />
+                <Image src="/logo.png" alt="Abby's Catersmart Logo" width={200} height={50} style={{ mixBlendMode: 'darken' }}/>
              </div>
             <p className="text-balance text-muted-foreground">
               Enter your credentials to access your dashboard
