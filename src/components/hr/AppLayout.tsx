@@ -4,7 +4,7 @@
 import type { ReactNode } from "react";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarNav } from "./sidebar-nav";
-import { Building } from "lucide-react";
+import Image from "next/image";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Button } from "../ui/button";
 
@@ -16,8 +16,7 @@ function AppLayoutContent({ children }: { children: ReactNode }) {
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2 p-2">
-            <Building className="w-8 h-8 text-primary" />
-            {open && <h1 className="text-xl font-semibold font-headline">CaterEase</h1>}
+             <Image src="/logo.png" alt="Abby's Catersmart" width={150} height={40} />
           </div>
         </SidebarHeader>
         <SidebarContent>

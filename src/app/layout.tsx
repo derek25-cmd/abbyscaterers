@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CaterSmart Client Manager',
+  title: 'Abby\'s Catersmart',
   description: 'Manage your catering clients with ease.',
 };
 

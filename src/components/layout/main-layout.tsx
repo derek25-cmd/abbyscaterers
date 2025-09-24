@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
     Home, 
     BookOpen, 
@@ -203,14 +204,13 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
     <div className="flex h-screen w-full overflow-hidden">
       <Sidebar collapsible="icon">
         <SidebarHeader>
-             <div className="flex items-center gap-2.5">
-               <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center shadow-lg">
-                 <ChefHat className="h-5 w-5 text-sidebar-primary-foreground" />
-               </div>
-                {open && (
-                  <div>
-                     <h1 className="text-lg font-bold text-sidebar-foreground">CaterSmart</h1>
-                 </div>
+             <div className="flex items-center gap-2.5 p-2">
+                {open ? (
+                  <Image src="/logo.png" alt="Abby's Catersmart" width={150} height={40} />
+                ) : (
+                  <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center shadow-lg">
+                    <ChefHat className="h-5 w-5 text-sidebar-primary-foreground" />
+                  </div>
                 )}
              </div>
         </SidebarHeader>
