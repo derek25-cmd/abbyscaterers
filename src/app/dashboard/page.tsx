@@ -22,6 +22,8 @@ import { useMemo } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
 import { SalesChart } from "@/components/dashboard/sales-chart";
+import { ExpensesChart } from "@/components/dashboard/expenses-chart";
+import { SalesVsExpensesChart } from "@/components/dashboard/sales-vs-expenses-chart";
 
 export default function DashboardPage() {
   const { orders: menus, isLoading: menusLoading } = useOrderStorage();
@@ -109,7 +111,11 @@ export default function DashboardPage() {
                     description="Inventory status (demo)"
                     />
                 </div>
-                <SalesChart />
+                <SalesVsExpensesChart />
+                <div className="grid gap-6 md:grid-cols-2">
+                  <SalesChart />
+                  <ExpensesChart />
+                </div>
             </div>
             <div className="space-y-6">
                 <RecentOrders />
