@@ -99,7 +99,7 @@ export function SalesChart() {
         accessibilityLayer
         data={salesData}
         margin={{
-            left: 12,
+            left: -20,
             right: 12,
         }}
         >

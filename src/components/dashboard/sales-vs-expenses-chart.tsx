@@ -106,7 +106,7 @@ export function SalesVsExpensesChart() {
     <ComposedChart
         accessibilityLayer
         data={combinedData}
-        margin={{ left: 12, right: 12 }}
+        margin={{ left: -20, right: 12 }}
     >
         <CartesianGrid vertical={false} />
         <XAxis

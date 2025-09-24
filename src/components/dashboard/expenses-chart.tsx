@@ -99,7 +99,7 @@ export function ExpensesChart() {
         accessibilityLayer
         data={expensesData}
         margin={{
-            left: 12,
+            left: -20,
             right: 12,
         }}
         >
