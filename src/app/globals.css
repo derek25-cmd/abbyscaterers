@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --background: 45 100% 95%;
-    --foreground: 0 11% 21%;
+    --background: 48 83% 94%; /* Creamy Yellow */
+    --foreground: 0 11% 21%; /* Dark Brown */
 
     --card: 45 100% 97%;
     --card-foreground: 0 11% 21%;
@@ -23,8 +23,8 @@
     --muted: 45 40% 94%;
     --muted-foreground: 0 10% 45%;
 
-    --accent: 45 80% 88%;
-    --accent-foreground: 0 11% 21%;
+    --accent: 0 11% 21%; /* Dark Brown */
+    --accent-foreground: 45 100% 95%;
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
