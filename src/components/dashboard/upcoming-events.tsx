@@ -34,7 +34,7 @@ export function UpcomingEvents() {
         .slice(0, 5);
 
     return (
-        <Card className="bg-gradient-card shadow-card">
+        <Card className="shadow-sm">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-primary" />
@@ -60,7 +60,7 @@ export function UpcomingEvents() {
                         {upcomingEvents.map((event, index) => {
                             const client = getClientById(event.clientId);
                             return (
-                                <Link href={`/orders/${event.orderId}`} key={`${event.orderId}-${index}`} className="block p-4 rounded-lg bg-background/50 hover:bg-accent/50 transition-smooth border border-border/50">
+                                <Link href={`/orders/${event.orderId}`} key={`${event.orderId}-${index}`} className="block p-4 rounded-lg bg-background/50 hover:bg-accent/50 transition-colors border">
                                     <div className="flex justify-between items-start mb-2">
                                         <h4 className="font-semibold text-foreground">{client?.companyName || 'Unknown Client'}</h4>
                                         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">

@@ -22,7 +22,7 @@ export function RecentOrders() {
         .slice(0, 5);
     
     return (
-        <Card className="bg-gradient-card shadow-card">
+        <Card className="shadow-sm">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-primary" />
@@ -50,7 +50,7 @@ export function RecentOrders() {
                              const createdDate = parseISO(order.createdAt);
 
                             return (
-                                <Link href={`/orders/${order.id}`} key={order.id} className="block p-3 rounded-lg bg-background/50 hover:bg-accent/50 transition-smooth">
+                                <Link href={`/orders/${order.id}`} key={order.id} className="block p-3 rounded-lg bg-background/50 hover:bg-accent/50 transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">

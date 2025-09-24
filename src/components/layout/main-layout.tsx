@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -203,12 +204,12 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
       <Sidebar collapsible="icon">
         <SidebarHeader>
              <div className="flex items-center gap-2.5">
-               <div className="h-9 w-9 rounded-lg bg-gradient-primary flex items-center justify-center shadow-lg">
-                 <ChefHat className="h-5 w-5 text-primary-foreground" />
+               <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center shadow-lg">
+                 <ChefHat className="h-5 w-5 text-sidebar-primary-foreground" />
                </div>
                 {open && (
                   <div>
-                     <h1 className="text-lg font-bold text-foreground">CaterSmart</h1>
+                     <h1 className="text-lg font-bold text-sidebar-foreground">CaterSmart</h1>
                  </div>
                 )}
              </div>
@@ -255,7 +256,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                 </div>
               </div>
             </header>
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-muted/40">
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-muted/20">
             {children}
           </main>
       </div>

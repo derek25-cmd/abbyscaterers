@@ -73,29 +73,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-        <div className="relative overflow-hidden rounded-xl bg-gradient-primary p-8 text-primary-foreground shadow-elegant">
-            <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.6))] dark:bg-grid-slate-700/25 dark:[mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.05))]"></div>
-            <div className="relative z-10">
-                <h1 className="text-4xl font-bold mb-2">Welcome to CaterSmart</h1>
-                <p className="text-xl text-primary-foreground/90 mb-6">Your all-in-one catering management solution.</p>
-                <div className="flex gap-4">
-                    <Button size="lg" variant="secondary" className="bg-primary-foreground/10 hover:bg-primary-foreground/20 border-primary-foreground/20" asChild>
-                        <Link href="/orders/new">
-                            <Plus className="h-5 w-5 mr-2" />
-                            New Booking
-                        </Link>
-                    </Button>
-                    <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
-                        <Link href="/reports">
-                            <BarChart3 className="h-5 w-5 mr-2" />
-                            View Reports
-                        </Link>
-                    </Button>
-                </div>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10"></div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

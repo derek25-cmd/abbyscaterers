@@ -4,34 +4,34 @@
 
 @layer base {
   :root {
-    --background: 35 33% 98%;
-    --foreground: 24 10% 10%;
+    --background: 45 100% 95%;
+    --foreground: 0 11% 21%;
 
-    --card: 40 50% 99%;
-    --card-foreground: 24 10% 10%;
+    --card: 45 100% 97%;
+    --card-foreground: 0 11% 21%;
 
-    --popover: 40 50% 99%;
-    --popover-foreground: 24 10% 10%;
+    --popover: 45 100% 97%;
+    --popover-foreground: 0 11% 21%;
 
-    --primary: 38 92% 50%;
-    --primary-foreground: 24 15% 15%;
-    --primary-glow: 45 92% 60%;
+    --primary: 0 11% 21%; /* Dark Brown */
+    --primary-foreground: 45 100% 95%;
+    --primary-glow: 0 11% 31%;
 
-    --secondary: 35 20% 92%;
-    --secondary-foreground: 24 10% 20%;
+    --secondary: 45 30% 92%;
+    --secondary-foreground: 0 11% 21%;
 
-    --muted: 35 20% 95%;
-    --muted-foreground: 24 5% 45%;
+    --muted: 45 40% 94%;
+    --muted-foreground: 0 10% 45%;
 
-    --accent: 38 92% 50%;
-    --accent-foreground: 24 15% 15%;
+    --accent: 45 80% 88%;
+    --accent-foreground: 0 11% 21%;
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 35 20% 88%; 
-    --input: 35 20% 92%;
-    --ring: 38 92% 50%;
+    --border: 45 20% 88%; 
+    --input: 45 20% 92%;
+    --ring: 0 11% 21%;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -40,21 +40,21 @@
     --warning-foreground: 20 14% 8%;
 
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(40 50% 97%));
-    --shadow-elegant: 0 4px 12px -4px hsl(var(--primary) / 0.25);
-    --shadow-card: 0 2px 8px -2px hsl(20 14% 8% / 0.08);
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(45 100% 96%));
+    --shadow-elegant: 0 4px 12px -4px hsl(var(--primary) / 0.15);
+    --shadow-card: 0 2px 8px -2px hsl(0 11% 21% / 0.05);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --radius: 0.75rem;
     
-    --sidebar-background: 35 15% 96%;
-    --sidebar-foreground: 24 10% 25%;
-    --sidebar-primary: 38 92% 50%;
-    --sidebar-primary-foreground: 24 15% 15%;
-    --sidebar-accent: 35 20% 90%;
-    --sidebar-accent-foreground: 24 10% 15%;
-    --sidebar-border: 35 20% 85%;
-    --sidebar-ring: 38 92% 50%;
+    --sidebar-background: 0 11% 21%; /* Dark Brown */
+    --sidebar-foreground: 45 100% 92%;
+    --sidebar-primary: 45 100% 95%; /* Creamy Yellow */
+    --sidebar-primary-foreground: 0 11% 21%;
+    --sidebar-accent: 0 11% 28%;
+    --sidebar-accent-foreground: 45 100% 95%;
+    --sidebar-border: 0 11% 28%;
+    --sidebar-ring: 45 100% 95%;
   }
 
   .dark {
