@@ -12,10 +12,20 @@ export const getProducts = async (): Promise<Product[]> => {
 };
 
 export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdAt' | 'updatedAt'>): Promise<Product | null> => {
+    const { name, category, quantity, unit, unitPrice, minStock, maxStock, expiryDate } = product;
+
     const productDataForSupabase = {
-      ...product,
+      name,
+      category,
+      quantity,
+      unit,
+      unitPrice,
+      minStock,
+      maxStock,
+      expiryDate,
       sku: `SKU-${Date.now()}`
     };
+
     const { data, error } = await supabase.from('products').insert([productDataForSupabase]).select();
     if (error) {
         console.error('Error adding product:', error);
@@ -31,4 +41,3 @@ export const updateProduct = async (id: string, updatedProduct: Partial<Product>
     }
     return !error;
 };
-
