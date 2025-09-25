@@ -81,3 +81,5 @@ const StockLogTable = ({ logs, totalCost }: StockLogTableProps) => {
 
 export default StockLogTable;
 
+
+    

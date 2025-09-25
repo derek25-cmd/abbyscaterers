@@ -17,12 +17,20 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { format, parse } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { StockLog, Product } from "@/types";
+import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
+import { useProductStorage } from "@/hooks/use-product-storage";
+import CostingSummary from "@/components/costing/CostingSummary";
+import EventIncomeTable from "@/components/costing/EventIncomeTable";
+import { useOrderStorage } from "@/hooks/use-order-storage";
+import StockLogTable from "@/components/costing/StockLogTable";
+
 
 export default function StockLogsPage() {
-  const [logs, setLogs] = useState<StockLog[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const { logs, isLoading: logsLoading, addStockLog, updateStockLog } = useStockLogStorage();
+  const { products, isLoading: productsLoading, updateProduct: updateProductInStore } = useProductStorage();
+
   const [loading, setLoading] = useState(true);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [logType, setLogType] = useState<'Stock In' | 'Stock Out'>('Stock In');
@@ -34,18 +42,8 @@ export default function StockLogsPage() {
   const [filterType, setFilterType] = useState("productName");
 
   useEffect(() => {
-    const fetchData = async () => {
-        setLoading(true);
-        const [logsData, productsData] = await Promise.all([
-            getStockLogs(),
-            getProducts()
-        ]);
-        setLogs(logsData.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-        setProducts(productsData);
-        setLoading(false);
-    }
-    fetchData();
-  }, []);
+    setLoading(logsLoading || productsLoading);
+  }, [logsLoading, productsLoading]);
 
   const handleOpenLogDialog = (type: 'Stock In' | 'Stock Out') => {
     setLogType(type);
@@ -60,19 +58,7 @@ export default function StockLogsPage() {
         return;
     }
 
-    const newLog = {
-        ...movement,
-        productName: product.name,
-        price: product.unitPrice * movement.quantity,
-        date: format(new Date(), 'yyyy-MM-dd'),
-        status: movement.type,
-    };
-    
-    const newId = await addStockLog(newLog);
-    
-    // Optimistic UI update for logs
-    const tempNewLog = { id: newId, ...newLog } as StockLog;
-    setLogs(prevLogs => [tempNewLog, ...prevLogs].sort((a: StockLog,b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    await addStockLog(movement);
 
     const updatedProduct = { ...product };
     if(movement.type === 'Stock In') {
@@ -80,25 +66,16 @@ export default function StockLogsPage() {
     } else {
         if(product.quantity < movement.quantity) {
             alert('Not enough stock to log out');
-            // Revert optimistic UI update if needed
-            setLogs(prevLogs => prevLogs.filter(l => l.id !== newId));
             return;
         }
         updatedProduct.quantity -= movement.quantity;
     }
     
-    await updateProduct(product.id, updatedProduct);
-    // Optimistic UI update for products
-    setProducts(products.map(p => p.id === product.id ? updatedProduct : p));
+    await updateProductInStore(product.id, updatedProduct);
   };
 
   const handleEditLog = async (updatedLog: any) => {
     await updateStockLog(updatedLog.id, updatedLog);
-    setLogs(prevLogs => 
-        prevLogs.map(log => 
-            log.id === updatedLog.id ? updatedLog : log
-        ).sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    );
   };
 
   const openEditDialog = (log: StockLog) => {
@@ -137,7 +114,8 @@ export default function StockLogsPage() {
     const currentTotalValue = products.reduce((total, p) => total + (p.quantity * p.unitPrice), 0);
     
     const logsAfterDate = logs.filter(log => {
-      const logDate = parse(log.date, 'yyyy-MM-dd', new Date());
+      if(!log.date) return false;
+      const logDate = parseISO(log.date);
       return logDate > selectedDate;
     });
     
@@ -158,6 +136,7 @@ export default function StockLogsPage() {
   const filteredLogs = useMemo(() => {
      const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
      return logs.filter((log) => {
+        if (!log.date) return false;
         const matchesDate = dateStr ? log.date === dateStr : true;
         if (!matchesDate) return false;
 
@@ -377,3 +356,5 @@ export default function StockLogsPage() {
     </main>
   );
 }
+
+    
