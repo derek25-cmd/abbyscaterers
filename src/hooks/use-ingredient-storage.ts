@@ -1,74 +1,67 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Ingredient } from "@/types";
-import type { IngredientFormData } from "@/lib/schemas"; // Corrected import path
+import type { IngredientFormData } from "@/lib/schemas";
 import { 
-  getAllIngredients as getAllIngredientsFromStorage,
-  getIngredientById as getIngredientByIdFromStorage,
-  addIngredient as addIngredientToStorage,
-  updateIngredient as updateIngredientInStorage,
-  deleteIngredient as deleteIngredientFromStorage,
-  addMultipleIngredients as addMultipleIngredientsToStorage
-} from '@/lib/ingredient-data';
+  getIngredients as getAllFromStorage,
+  getIngredientById as getByIdFromStorage,
+  addIngredient as addToStorage,
+  updateIngredient as updateInStorage,
+  deleteIngredient as deleteFromStorage,
+  addBulkIngredients as addBulkToStorage
+} from '@/services/ingredientService';
 
 export function useIngredientStorage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshIngredients = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getAllFromStorage();
+    setIngredients(data);
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIngredients(getAllIngredientsFromStorage());
-      setIsLoading(false);
-    }
-  }, []);
+    refreshIngredients();
+  }, [refreshIngredients]);
 
-  const refreshIngredients = useCallback(() => {
-    if (typeof window !== "undefined") {
-      setIngredients(getAllIngredientsFromStorage());
+  const addIngredient = useCallback(async (ingredientData: IngredientFormData) => {
+    const newIngredient = await addToStorage(ingredientData);
+    if(newIngredient) {
+      refreshIngredients();
     }
-  }, []);
-
-  const addIngredient = useCallback((ingredientData: IngredientFormData) => {
-    const newIngredient = addIngredientToStorage(ingredientData);
-    setIngredients(prevIngredients => [...prevIngredients, newIngredient]);
     return newIngredient;
-  }, []);
-
-  const addBulkIngredients = useCallback((ingredientDataList: IngredientFormData[]) => {
-    const newItems = addMultipleIngredientsToStorage(ingredientDataList);
-    setIngredients(prev => [...prev, ...newItems]);
-    refreshIngredients(); // Refresh to ensure correct state
-    return newItems;
   }, [refreshIngredients]);
 
-  const updateIngredient = useCallback((originalId: string, updates: IngredientFormData) => {
-    const updatedItem = updateIngredientInStorage(originalId, updates);
-    if (updatedItem) {
-      setIngredients(prevIngredients => 
-        prevIngredients.map(ing => ing.itemNumber === originalId ? updatedItem : ing)
-      );
-      // No full refresh needed if ID doesn't change, but it's safer if it might
-       if (originalId !== updatedItem.itemNumber) {
-         refreshIngredients();
-       }
-    }
-    return updatedItem;
-  }, [refreshIngredients]);
-
-  const deleteIngredient = useCallback((itemNumber: string) => {
-    const success = deleteIngredientFromStorage(itemNumber);
+  const addBulkIngredients = useCallback(async (ingredientDataList: IngredientFormData[]) => {
+    const success = await addBulkToStorage(ingredientDataList);
     if (success) {
-      setIngredients(prevIngredients => prevIngredients.filter(ing => ing.itemNumber !== itemNumber));
+      refreshIngredients();
     }
     return success;
-  }, []);
+  }, [refreshIngredients]);
+
+  const updateIngredient = useCallback(async (originalId: string, updates: IngredientFormData) => {
+    const success = await updateInStorage(originalId, updates);
+    if (success) {
+      refreshIngredients();
+    }
+    return success;
+  }, [refreshIngredients]);
+
+  const deleteIngredient = useCallback(async (itemNumber: string) => {
+    const success = await deleteFromStorage(itemNumber);
+    if (success) {
+      refreshIngredients();
+    }
+    return success;
+  }, [refreshIngredients]);
   
   const getIngredientById = useCallback((itemNumber: string) => {
-    // Read from state for performance, as it's expected to be in sync.
-    return ingredients.find(ing => ing.itemNumber === itemNumber) || getIngredientByIdFromStorage(itemNumber);
+    return ingredients.find(ing => ing.itemNumber === itemNumber);
   }, [ingredients]);
 
   return { 

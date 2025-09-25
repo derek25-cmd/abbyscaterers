@@ -1,11 +1,50 @@
 
 import { supabase } from '@/lib/supabase-client';
+import type { Order } from '@/types';
+import type { OrderFormData } from '@/lib/schemas';
 
-export const getOrders = async () => {
+export const getOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase.from('orders').select('*');
     if (error) {
         console.error('Error fetching orders:', error);
         return [];
     }
-    return data;
+    return data as Order[];
+};
+
+export const getOrderById = async (id: string): Promise<Order | null> => {
+    const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
+    if (error) {
+        console.error('Error fetching order by id:', error);
+        return null;
+    }
+    return data as Order;
+};
+
+export const addOrder = async (orderData: OrderFormData): Promise<Order | null> => {
+    const now = new Date().toISOString();
+    const newOrderData = { ...orderData, createdAt: now, updatedAt: now };
+
+    const { data, error } = await supabase.from('orders').insert([newOrderData]).select();
+    if (error) {
+        console.error('Error adding order:', error);
+        return null;
+    }
+    return data?.[0] as Order;
+};
+
+export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
+    const { error } = await supabase.from('orders').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id);
+    if (error) {
+        console.error('Error updating order:', error);
+    }
+    return !error;
+};
+
+export const deleteOrder = async (id: string): Promise<boolean> => {
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) {
+        console.error('Error deleting order:', error);
+    }
+    return !error;
 };

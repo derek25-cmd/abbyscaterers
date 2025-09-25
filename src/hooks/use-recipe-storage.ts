@@ -5,59 +5,55 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Recipe } from "@/types";
 import type { RecipeFormData } from "@/lib/schemas";
 import { 
-  getAllRecipes as getAllRecipesFromStorage,
-  getRecipeById as getRecipeByIdFromStorage,
-  addRecipe as addRecipeToStorage,
-  updateRecipe as updateRecipeInStorage,
-  deleteRecipe as deleteRecipeFromStorage 
-} from '@/lib/recipe-data';
+  getRecipes as getAllFromStorage,
+  getRecipeById as getByIdFromStorage,
+  addRecipe as addToStorage,
+  updateRecipe as updateInStorage,
+  deleteRecipe as deleteFromStorage 
+} from '@/services/recipeService';
 
 export function useRecipeStorage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshRecipes = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getAllFromStorage();
+    setRecipes(data);
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setRecipes(getAllRecipesFromStorage());
-      setIsLoading(false);
-    }
-  }, []);
-
-  const refreshRecipes = useCallback(() => {
-    if (typeof window !== "undefined") {
-      setRecipes(getAllRecipesFromStorage());
-    }
-  }, []);
-
-  const addRecipe = useCallback((recipeData: RecipeFormData) => {
-    const newRecipe = addRecipeToStorage(recipeData);
-    setRecipes(prevRecipes => [...prevRecipes, newRecipe]);
-    return newRecipe;
-  }, []);
-
-  const updateRecipe = useCallback((originalRecipeNumber: string, updates: RecipeFormData) => {
-    const updatedItem = updateRecipeInStorage(originalRecipeNumber, updates);
-    if (updatedItem) {
-      setRecipes(prevRecipes => 
-        prevRecipes.map(rec => rec.recipeNumber === originalRecipeNumber ? updatedItem : rec)
-      );
-      refreshRecipes(); // In case the ID changed, refresh the whole list
-    }
-    return updatedItem;
+    refreshRecipes();
   }, [refreshRecipes]);
 
-  const deleteRecipe = useCallback((recipeNumber: string) => {
-    const success = deleteRecipeFromStorage(recipeNumber);
+  const addRecipe = useCallback(async (recipeData: RecipeFormData) => {
+    const newRecipe = await addToStorage(recipeData);
+    if(newRecipe) {
+      refreshRecipes();
+    }
+    return newRecipe;
+  }, [refreshRecipes]);
+
+  const updateRecipe = useCallback(async (originalRecipeNumber: string, updates: RecipeFormData) => {
+    const success = await updateInStorage(originalRecipeNumber, updates);
     if (success) {
-      setRecipes(prevRecipes => prevRecipes.filter(rec => rec.recipeNumber !== recipeNumber));
+      refreshRecipes();
     }
     return success;
-  }, []);
+  }, [refreshRecipes]);
+
+  const deleteRecipe = useCallback(async (recipeNumber: string) => {
+    const success = await deleteFromStorage(recipeNumber);
+    if (success) {
+      refreshRecipes();
+    }
+    return success;
+  }, [refreshRecipes]);
   
   const getRecipeById = useCallback((recipeNumber: string) => {
-    // Re-fetch from storage to ensure we have the latest data, especially after potential ID changes.
-    return getRecipeByIdFromStorage(recipeNumber);
-  }, []);
+    return recipes.find(rec => rec.recipeNumber === recipeNumber);
+  }, [recipes]);
 
   return { 
     recipes, 
