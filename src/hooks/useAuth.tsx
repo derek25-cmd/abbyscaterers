@@ -10,7 +10,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  loginWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<any>;
+  signUpWithEmail: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
 }
 
@@ -36,6 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (event === 'SIGNED_IN') {
+        router.push('/dashboard');
+      }
       if (event === 'SIGNED_OUT') {
         router.push('/login');
       }
@@ -45,13 +49,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authListener.subscription.unsubscribe();
     };
   }, [router]);
+  
+  const signInWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    return data;
+  }
 
-  const loginWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+  const signUpWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
     });
-    if (error) console.error('Error logging in with Google:', error);
-  };
+    if(error) throw error;
+    // The onAuthStateChange listener will handle the user state update
+    // A confirmation email will be sent by Supabase.
+    return data;
+  }
 
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -62,7 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     session,
     loading,
-    loginWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     logout,
   };
 
