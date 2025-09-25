@@ -3,69 +3,56 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Client } from '@/types';
-import type { ClientFormData } from '@/lib/schemas'; // Import ClientFormData
+import type { ClientFormData } from '@/lib/schemas'; 
 import { 
-  getAllClients as getAllClientsFromStorage,
-  getClientById as getClientByIdFromStorage,
-  addClient as addClientToStorage,
-  updateClient as updateClientInStorage,
-  deleteClient as deleteClientFromStorage 
-} from '@/lib/client-data';
+  getClients as getFromStorage,
+  getClientById as getByIdFromStorage,
+  addClient as addToStorage,
+  updateClient as updateInStorage,
+  deleteClient as deleteFromStorage 
+} from '@/services/clientService';
 
 export function useClientStorage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshClients = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getFromStorage();
+    setClients(data);
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    // Initial load from localStorage
-    if (typeof window !== "undefined") {
-      setClients(getAllClientsFromStorage());
-      setIsLoading(false);
-    }
-  }, []);
+    refreshClients();
+  }, [refreshClients]);
 
-  const refreshClients = useCallback(() => {
-    if (typeof window !== "undefined") {
-      setClients(getAllClientsFromStorage());
+  const addClient = useCallback(async (clientData: ClientFormData) => {
+    const newClient = await addToStorage(clientData);
+    if(newClient) {
+      refreshClients();
     }
-  }, []);
-
-  const addClient = useCallback((clientData: ClientFormData) => { // Changed type here
-    const newClient = addClientToStorage(clientData);
-    setClients(prevClients => [...prevClients, newClient]);
     return newClient;
-  }, []);
+  }, [refreshClients]);
 
-  const updateClient = useCallback((id: string, updates: ClientFormData) => { // Ensure updates is ClientFormData
-    const updatedClient = updateClientInStorage(id, updates);
-    if (updatedClient) {
-      setClients(prevClients => 
-        // If ID can change, we need to handle replacing the old ID with the new one
-        // or simply refresh all clients to get the latest state.
-        // For simplicity, if ID changed, the list might briefly show both old & new ID
-        // until next full refresh, or we find by original ID for update, then filter by new ID.
-        // The current updateClientInStorage handles ID changes.
-        prevClients.map(c => c.id === (updatedClient.id === id ? id : updatedClient.id) ? updatedClient : c)
-                   .filter((c, index, self) => index === self.findIndex(t => t.id === c.id)) // Ensure unique IDs
-      );
-    }
-    return updatedClient;
-  }, []);
-
-  const deleteClient = useCallback((id: string) => {
-    const success = deleteClientFromStorage(id);
+  const updateClient = useCallback(async (id: string, updates: ClientFormData) => {
+    const success = await updateInStorage(id, updates);
     if (success) {
-      setClients(prevClients => prevClients.filter(c => c.id !== id));
+      refreshClients();
     }
     return success;
-  }, []);
+  }, [refreshClients]);
+
+  const deleteClient = useCallback(async (id: string) => {
+    const success = await deleteFromStorage(id);
+    if (success) {
+      refreshClients();
+    }
+    return success;
+  }, [refreshClients]);
   
   const getClientById = useCallback((id: string) => {
-     // Try to get from current state first for speed, then fallback to storage if needed
-     // This is useful if the state isn't perfectly in sync or for direct calls
-    const clientFromState = clients.find(c => c.id === id);
-    if (clientFromState) return clientFromState;
-    return getClientByIdFromStorage(id);
+    return clients.find(c => c.id === id);
   }, [clients]);
 
 
@@ -79,4 +66,3 @@ export function useClientStorage() {
     refreshClients 
   };
 }
-
