@@ -1,16 +1,17 @@
 
 import { supabase } from '@/lib/supabase-client';
+import { StockLog } from '@/types';
 
-export const getStockLogs = async () => {
+export const getStockLogs = async (): Promise<StockLog[]> => {
     const { data, error } = await supabase.from('stock_logs').select('*');
     if (error) {
         console.error('Error fetching stock logs:', error);
         return [];
     }
-    return data;
+    return data as StockLog[];
 };
 
-export const addStockLog = async (log: Omit<any, 'id'>) => {
+export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
     const { data, error } = await supabase.from('stock_logs').insert([log]).select();
     if (error) {
         console.error('Error adding stock log:', error);
@@ -19,7 +20,7 @@ export const addStockLog = async (log: Omit<any, 'id'>) => {
     return data?.[0]?.id;
 };
 
-export const updateStockLog = async (id: string, updatedLog: Partial<any>) => {
+export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>): Promise<boolean> => {
     const { error } = await supabase.from('stock_logs').update(updatedLog).eq('id', id);
     if (error) {
         console.error('Error updating stock log:', error);

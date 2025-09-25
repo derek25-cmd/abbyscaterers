@@ -1,21 +1,20 @@
 
 import { supabase } from '@/lib/supabase-client';
+import { Product } from '@/types';
 
-export const getProducts = async () => {
+export const getProducts = async (): Promise<Product[]> => {
     const { data, error } = await supabase.from('products').select('*');
     if (error) {
         console.error('Error fetching products:', error);
         return [];
     }
-    return data;
+    return data as Product[];
 };
 
-export const addProduct = async (product: Omit<any, 'id'>) => {
+export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
     const productDataForSupabase = {
-        ...product,
-        unitPrice: product.unitPrice,
-        minStock: product.minStock,
-        maxStock: product.maxStock,
+      ...product,
+      sku: `SKU-${Date.now()}` // Generate SKU server-side or here
     };
     const { data, error } = await supabase.from('products').insert([productDataForSupabase]).select();
     if (error) {
@@ -25,7 +24,7 @@ export const addProduct = async (product: Omit<any, 'id'>) => {
     return data?.[0]?.id;
 };
 
-export const updateProduct = async (id: string, updatedProduct: Partial<any>) => {
+export const updateProduct = async (id: string, updatedProduct: Partial<Product>): Promise<boolean> => {
     const { error } = await supabase.from('products').update(updatedProduct).eq('id', id);
     if (error) {
         console.error('Error updating product:', error);

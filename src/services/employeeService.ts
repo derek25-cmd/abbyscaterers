@@ -1,17 +1,18 @@
 
 import { supabase } from '@/lib/supabase-client';
+import { Employee } from '@/types';
 
-export const getEmployees = async () => {
+export const getEmployees = async (): Promise<Employee[]> => {
     const { data, error } = await supabase.from('employees').select('*');
     if (error) {
         console.error('Error fetching employees:', error);
         return [];
     }
-    return data;
+    return data as Employee[];
 };
 
-export const addEmployee = async (employee: Omit<any, 'id'>) => {
-    const { data, error } = await supabase.from('employees').insert([employee]).select();
+export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
+    const { data, error } = await supabase.from('employees').insert([employee]).select('id');
     if (error) {
         console.error('Error adding employee:', error);
         return null;
@@ -19,7 +20,7 @@ export const addEmployee = async (employee: Omit<any, 'id'>) => {
     return data?.[0]?.id;
 };
 
-export const updateEmployee = async (id: string, updatedEmployee: Partial<any>) => {
+export const updateEmployee = async (id: string, updatedEmployee: Partial<Employee>): Promise<boolean> => {
     const { error } = await supabase.from('employees').update(updatedEmployee).eq('id', id);
     if (error) {
         console.error('Error updating employee:', error);

@@ -1,16 +1,17 @@
 
 import { supabase } from '@/lib/supabase-client';
+import { Attendance } from '@/types';
 
-export const getAttendanceRecords = async () => {
-    const { data, error } = await supabase.from('attendance').select('*');
+export const getAttendanceRecords = async (): Promise<Attendance[]> => {
+    const { data, error } = await supabase.from('attendance').select('*').order('date', { ascending: false });
     if (error) {
         console.error('Error fetching attendance records:', error);
         return [];
     }
-    return data;
+    return data as Attendance[];
 };
 
-export const findAttendanceRecord = async (employeeName: string, date: string) => {
+export const findAttendanceRecord = async (employeeName: string, date: string): Promise<Attendance | null> => {
     const { data, error } = await supabase
         .from('attendance')
         .select('*')
@@ -23,11 +24,11 @@ export const findAttendanceRecord = async (employeeName: string, date: string) =
     if (error && error.code !== 'PGRST116') { // PGRST116: no rows found
         console.error('Error finding attendance record:', error);
     }
-    return data;
+    return data as Attendance | null;
 };
 
-export const addAttendanceRecord = async (record: Omit<any, 'id'>) => {
-    const { data, error } = await supabase.from('attendance').insert([record]).select();
+export const addAttendanceRecord = async (record: Omit<Attendance, 'id'>): Promise<string | null> => {
+    const { data, error } = await supabase.from('attendance').insert([record]).select('id');
     if (error) {
         console.error('Error adding attendance record:', error);
         return null;
@@ -35,7 +36,7 @@ export const addAttendanceRecord = async (record: Omit<any, 'id'>) => {
     return data?.[0]?.id;
 };
 
-export const updateAttendanceRecord = async (id: string, updatedRecord: Partial<any>) => {
+export const updateAttendanceRecord = async (id: string, updatedRecord: Partial<Attendance>): Promise<boolean> => {
     const { error } = await supabase.from('attendance').update(updatedRecord).eq('id', id);
     if (error) {
         console.error('Error updating attendance record:', error);

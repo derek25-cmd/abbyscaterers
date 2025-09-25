@@ -1,5 +1,4 @@
 
-
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -209,6 +208,21 @@ export interface DailyCosting {
 
 // --- HR & OPERATIONS ---
 
+export interface Asset {
+  id: string;
+  name: string;
+  type: string;
+  unit: string;
+  unitPrice: number;
+  quantity: number;
+  status: string;
+  lastMaintenance: string;
+  nextMaintenance: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 // Issuance Types
 export interface IssuedItem {
   assetId: string;
@@ -222,7 +236,7 @@ export interface IssuedItem {
 export interface Issuance {
     id: string;
     orderId: string; // Link to a client order
-    issuedTo: string; // Employee ID
+    issuedTo: string; // Employee Name
     date: string; // ISO date string
     status: 'Issued' | 'Partially Returned' | 'Returned' | 'Incomplete';
     items: IssuedItem[];
@@ -263,6 +277,46 @@ export interface Employee {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Attendance {
+    id: string;
+    employee: string;
+    date: string;
+    clockIn: string;
+    clockOut: string;
+    totalHours: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Position {
+    id: string;
+    title: string;
+    department: string;
+    location: string;
+    type: string;
+    applicants: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Payroll {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    payPeriodStart: string;
+    payPeriodEnd: string;
+    basicSalary: number;
+    allowances: number;
+    deductions: number;
+    grossSalary: number;
+    netSalary: number;
+    status: 'Paid' | 'Pending';
+    paymentDate: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 
 // PRODUCT & STOCK
 export interface Product {

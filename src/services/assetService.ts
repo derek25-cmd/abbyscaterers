@@ -1,17 +1,18 @@
 
 import { supabase } from '@/lib/supabase-client';
+import { Asset } from '@/types';
 
-export const getAssets = async () => {
+export const getAssets = async (): Promise<Asset[]> => {
     const { data, error } = await supabase.from('assets').select('*');
     if (error) {
         console.error('Error fetching assets:', error);
         return [];
     }
-    return data;
+    return data as Asset[];
 };
 
-export const addAsset = async (asset: Omit<any, 'id'>) => {
-    const { data, error } = await supabase.from('assets').insert([asset]).select();
+export const addAsset = async (asset: Omit<Asset, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
+    const { data, error } = await supabase.from('assets').insert([asset]).select('id');
     if (error) {
         console.error('Error adding asset:', error);
         return null;
@@ -19,7 +20,7 @@ export const addAsset = async (asset: Omit<any, 'id'>) => {
     return data?.[0]?.id;
 };
 
-export const updateAsset = async (id: string, updatedAsset: Partial<any>) => {
+export const updateAsset = async (id: string, updatedAsset: Partial<Asset>): Promise<boolean> => {
     const { error } = await supabase.from('assets').update(updatedAsset).eq('id', id);
     if (error) {
         console.error('Error updating asset:', error);
