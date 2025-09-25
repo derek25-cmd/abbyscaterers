@@ -48,7 +48,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BarChart3 } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -134,18 +134,20 @@ function UserProfile() {
 
 function NavItem({ item, currentPathname }: { item: {href?: string, label: string, icon: React.ElementType, subItems?: any[]}, currentPathname: string }) {
     const { open } = useSidebar();
-    const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(
-        item.subItems?.some(sub => currentPathname.startsWith(sub.href)) || false
-    );
+    const isParentActive = item.subItems?.some(sub => currentPathname.startsWith(sub.href)) || false;
+    const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(false);
 
-    const isParentActive = item.subItems && item.subItems.some((sub: any) => currentPathname.startsWith(sub.href));
+    useEffect(() => {
+        setIsSubMenuOpen(isParentActive);
+    }, [isParentActive]);
+
 
     if (item.subItems) {
         return (
             <Collapsible open={isSubMenuOpen} onOpenChange={setIsSubMenuOpen}>
                 <CollapsibleTrigger asChild>
                     <SidebarMenuButton 
-                        isActive={isParentActive || false}
+                        isActive={isParentActive}
                         tooltip={{ children: item.label, side: "right" }}
                         className="w-full justify-between"
                     >
@@ -161,11 +163,9 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
                         {item.subItems.map((subItem: any) => (
                              <SidebarMenuItem key={subItem.label}>
                                 <Link href={subItem.href} passHref>
-                                    <SidebarMenuButton asChild isActive={currentPathname.startsWith(subItem.href)}>
-                                        <a>
-                                            <subItem.icon />
-                                            {open && <span>{subItem.label}</span>}
-                                        </a>
+                                    <SidebarMenuButton isActive={currentPathname.startsWith(subItem.href)}>
+                                        <subItem.icon />
+                                        {open && <span>{subItem.label}</span>}
                                     </SidebarMenuButton>
                                 </Link>
                              </SidebarMenuItem>
