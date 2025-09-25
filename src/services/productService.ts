@@ -11,7 +11,13 @@ export const getProducts = async () => {
 };
 
 export const addProduct = async (product: Omit<any, 'id'>) => {
-    const { data, error } = await supabase.from('products').insert([product]).select();
+    const productDataForSupabase = {
+        ...product,
+        unitPrice: product.unitPrice,
+        minStock: product.minStock,
+        maxStock: product.maxStock,
+    };
+    const { data, error } = await supabase.from('products').insert([productDataForSupabase]).select();
     if (error) {
         console.error('Error adding product:', error);
         return null;
