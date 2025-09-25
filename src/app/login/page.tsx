@@ -1,95 +1,62 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
+  const { loginWithGoogle, user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("abbys.caterers@gmail.com");
-  const [password, setPassword] = useState("abbysltd2021");
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
+  const handleLogin = async () => {
     setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      if (email === "abbys.caterers@gmail.com" && password === "abbysltd2021") {
-        toast({
-          title: "Login Successful",
-          description: "Welcome back! Redirecting you to the dashboard.",
-        });
-        router.push('/dashboard');
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
-        });
-        setIsLoading(false);
-      }
-    }, 1000);
+    try {
+      await loginWithGoogle();
+      // The onAuthStateChange listener in useAuth will handle the redirect
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Could not log in with Google. Please try again.",
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
-           <div className="grid gap-2 text-center">
+        <div className="mx-auto grid w-[350px] gap-6 text-center">
+           <div className="grid gap-2">
              <div className="flex items-center justify-center gap-2 mb-4">
                 <Image src="/logo.png" alt="Abby's Catersmart Logo" width={200} height={50} style={{ mixBlendMode: 'darken' }}/>
              </div>
+            <h1 className="text-3xl font-bold">Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your credentials to access your dashboard
+              Sign in with your Google account to access your dashboard.
             </p>
           </div>
-          <form onSubmit={handleLogin} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="#"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-             <p className="text-xs text-center text-muted-foreground">(Demo credentials pre-filled)</p>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Login
-            </Button>
-          </form>
+          <Button onClick={handleLogin} disabled={isLoading} className="w-full">
+            {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 381.5 512 244 512 110.3 512 0 401.8 0 265.5S110.3 19 244 19c67.3 0 125.2 24.8 170.8 68.3l-64.3 62.5C314.5 118.5 282.8 100 244 100c-82.3 0-149.3 66.8-149.3 148.9s67 148.9 149.3 148.9c97.6 0 129.1-71.2 132.8-109.9H244V261.8h244z"></path></svg>
+            )}
+             {isLoading ? "Signing in..." : "Sign in with Google"}
+          </Button>
         </div>
       </div>
       <div className="hidden bg-muted lg:block">

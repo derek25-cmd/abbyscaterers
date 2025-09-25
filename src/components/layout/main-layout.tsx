@@ -36,9 +36,6 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
   useSidebar,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,6 +51,9 @@ import { BarChart3 } from "lucide-react";
 import React from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { PrivateRoute } from "./private-route";
+
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -61,8 +61,14 @@ const navItems = [
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
   { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
   { href: "/equipment", label: "Inventory", icon: ChefHat },
-  { href: "/invoicing/proforma-invoices", label: "Proforma Invoices", icon: FileText },
-  { href: "/invoicing/invoices", label: "Final Invoices", icon: FileText },
+  { 
+    label: "Invoicing", 
+    icon: FileText,
+    subItems: [
+        { href: "/invoicing/proforma-invoices", label: "Proforma Invoices", icon: FileText },
+        { href: "/invoicing/invoices", label: "Final Invoices", icon: FileText },
+    ]
+  },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
   { 
@@ -83,43 +89,33 @@ const navItems = [
 
 
 const managementItems = [
-    { href: "#", label: "Finances", icon: DollarSign },
     { href: "/reports", label: "Reports", icon: BarChart3 },
     { href: "#", label: "Settings", icon: Settings }
 ];
 
 function UserProfile() {
-    const router = useRouter();
-    const { toast } = useToast();
-
-    const handleLogout = () => {
-        toast({
-            title: "Logged Out",
-            description: "You have been successfully logged out.",
-        });
-        router.push('/login');
-    }
+    const { user, logout } = useAuth();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="https://placehold.co/100x100.png" alt="User avatar" data-ai-hint="user avatar" />
-            <AvatarFallback>AL</AvatarFallback>
+            <AvatarImage src={user?.user_metadata.avatar_url} alt={user?.user_metadata.name} />
+            <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
            <div className="text-left hidden md:block">
-              <p className="text-sm font-medium leading-none">Abby's Legendary</p>
-              <p className="text-xs leading-none text-muted-foreground">Admin</p>
+              <p className="text-sm font-medium leading-none">{user?.user_metadata.name}</p>
+              <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
             </div>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Abby's Legendary</p>
+            <p className="text-sm font-medium leading-none">{user?.user_metadata.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              admin@abbyscatering.com
+              {user?.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -127,7 +123,7 @@ function UserProfile() {
         <DropdownMenuItem>Profile</DropdownMenuItem>
         <DropdownMenuItem>Settings</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
+        <DropdownMenuItem onClick={logout}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
         </DropdownMenuItem>
@@ -138,7 +134,9 @@ function UserProfile() {
 
 function NavItem({ item, currentPathname }: { item: {href?: string, label: string, icon: React.ElementType, subItems?: any[]}, currentPathname: string }) {
     const { open } = useSidebar();
-    const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(false);
+    const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(
+        item.subItems?.some(sub => currentPathname.startsWith(sub.href)) || false
+    );
 
     const isParentActive = item.subItems && item.subItems.some((sub: any) => currentPathname.startsWith(sub.href));
 
@@ -159,20 +157,20 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
                     </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <SidebarMenuSub>
+                    <SidebarMenu>
                         {item.subItems.map((subItem: any) => (
-                             <SidebarMenuSubItem key={subItem.label}>
+                             <SidebarMenuItem key={subItem.label}>
                                 <Link href={subItem.href} passHref>
-                                    <SidebarMenuSubButton asChild isActive={currentPathname.startsWith(subItem.href)}>
+                                    <SidebarMenuButton asChild isActive={currentPathname.startsWith(subItem.href)}>
                                         <a>
                                             <subItem.icon />
                                             {open && <span>{subItem.label}</span>}
                                         </a>
-                                    </SidebarMenuSubButton>
+                                    </SidebarMenuButton>
                                 </Link>
-                             </SidebarMenuSubItem>
+                             </SidebarMenuItem>
                         ))}
-                    </SidebarMenuSub>
+                    </SidebarMenu>
                 </CollapsibleContent>
             </Collapsible>
         )
@@ -192,11 +190,11 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
 }
 
 
-function LayoutContentWrapper({ children, currentPathname }: { children: React.ReactNode; currentPathname: string }) {
+function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { open } = useSidebar();
 
-  // Hide layout for login page
-  if (currentPathname === '/login') {
+  if (pathname === '/login') {
     return <main className="w-full">{children}</main>;
   }
 
@@ -218,7 +216,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
             <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.label}>
-                      <NavItem item={item} currentPathname={currentPathname} />
+                      <NavItem item={item} currentPathname={pathname} />
                   </SidebarMenuItem>
                 ))}
             </SidebarMenu>
@@ -229,6 +227,7 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
                     <SidebarMenuItem key={item.label}>
                        <Link href={item.href}>
                         <SidebarMenuButton 
+                           isActive={pathname.startsWith(item.href)}
                            tooltip={{children: item.label, side: 'right'}}
                         >
                            <item.icon />
@@ -257,7 +256,9 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
               </div>
             </header>
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-muted/20">
-            {children}
+            <PrivateRoute>
+                {children}
+            </PrivateRoute>
           </main>
       </div>
     </div>
@@ -265,11 +266,9 @@ function LayoutContentWrapper({ children, currentPathname }: { children: React.R
 }
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname(); 
-
   return (
     <SidebarProvider defaultOpen> 
-      <LayoutContentWrapper currentPathname={pathname}> 
+      <LayoutContentWrapper> 
         {children}
       </LayoutContentWrapper>
     </SidebarProvider>

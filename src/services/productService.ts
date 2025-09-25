@@ -28,11 +28,12 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
 
     const { data, error } = await supabase.from('products').insert([productDataForSupabase]).select();
     if (error) {
-        console.error('Error adding product:', error);
+        console.error('Error adding product:', JSON.stringify(error, null, 2));
         return null;
     }
     return data?.[0] as Product;
 };
+
 
 export const updateProduct = async (id: string, updatedProduct: Partial<Product>): Promise<boolean> => {
     const { error } = await supabase.from('products').update(updatedProduct).eq('id', id);
