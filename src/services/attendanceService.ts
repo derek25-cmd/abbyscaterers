@@ -1,50 +1,44 @@
-// @ts-nocheck
-import { attendanceRecords as mockAttendance } from '@/lib/mock-data';
 
-const ATTENDANCE_STORAGE_KEY = 'attendanceRecords';
-
-const initializeAttendance = () => {
-    if (typeof window !== 'undefined' && !localStorage.getItem(ATTENDANCE_STORAGE_KEY)) {
-        localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(mockAttendance));
-    }
-};
-
-initializeAttendance();
-
+import { supabase } from '@/lib/supabase-client';
 
 export const getAttendanceRecords = async () => {
-    if (typeof window === 'undefined') return [];
-    const records = JSON.parse(localStorage.getItem(ATTENDANCE_STORAGE_KEY) || '[]');
-    return Promise.resolve(records);
+    const { data, error } = await supabase.from('attendance').select('*');
+    if (error) {
+        console.error('Error fetching attendance records:', error);
+        return [];
+    }
+    return data;
 };
 
-export const findAttendanceRecord = async (employeeName, date) => {
-    if (typeof window === 'undefined') return null;
-    const records = await getAttendanceRecords();
-    const record = records.find(r => 
-        r.employee === employeeName && 
-        r.date === date &&
-        r.clockOut === "—"
-    );
-    return Promise.resolve(record || null);
+export const findAttendanceRecord = async (employeeName: string, date: string) => {
+    const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('employee', employeeName)
+        .eq('date', date)
+        .eq('clockOut', '—')
+        .limit(1)
+        .single();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116: no rows found
+        console.error('Error finding attendance record:', error);
+    }
+    return data;
 };
 
-
-export const addAttendanceRecord = async (record) => {
-    if (typeof window === 'undefined') return;
-    const records = await getAttendanceRecords();
-    const newRecord = { ...record, id: `ATT${Date.now()}` };
-    const updatedRecords = [newRecord, ...records];
-    localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(updatedRecords));
-    return Promise.resolve(newRecord.id);
+export const addAttendanceRecord = async (record: Omit<any, 'id'>) => {
+    const { data, error } = await supabase.from('attendance').insert([record]).select();
+    if (error) {
+        console.error('Error adding attendance record:', error);
+        return null;
+    }
+    return data?.[0]?.id;
 };
 
-export const updateAttendanceRecord = async (id, updatedRecord) => {
-    if (typeof window === 'undefined') return;
-    const records = await getAttendanceRecords();
-    const updatedRecords = records.map(record => 
-        record.id === id ? { ...record, ...updatedRecord } : record
-    );
-    localStorage.setItem(ATTENDANCE_STORAGE_KEY, JSON.stringify(updatedRecords));
-    return Promise.resolve();
+export const updateAttendanceRecord = async (id: string, updatedRecord: Partial<any>) => {
+    const { error } = await supabase.from('attendance').update(updatedRecord).eq('id', id);
+    if (error) {
+        console.error('Error updating attendance record:', error);
+    }
+    return !error;
 };

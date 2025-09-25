@@ -1,37 +1,28 @@
-// @ts-nocheck
-import { openPositions as mockPositions } from '@/lib/mock-data';
 
-const POSITIONS_STORAGE_KEY = 'openPositions';
-
-const initializePositions = () => {
-    if (typeof window !== 'undefined' && !localStorage.getItem(POSITIONS_STORAGE_KEY)) {
-        localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(mockPositions));
-    }
-};
-
-initializePositions();
+import { supabase } from '@/lib/supabase-client';
 
 export const getPositions = async () => {
-    if (typeof window === 'undefined') return [];
-    const positions = JSON.parse(localStorage.getItem(POSITIONS_STORAGE_KEY) || '[]');
-    return Promise.resolve(positions);
+    const { data, error } = await supabase.from('positions').select('*');
+    if (error) {
+        console.error('Error fetching positions:', error);
+        return [];
+    }
+    return data;
 };
 
-export const addPosition = async (position) => {
-    if (typeof window === 'undefined') return;
-    const positions = await getPositions();
-    const newPosition = { ...position, id: `JOB${Date.now()}` };
-    const updatedPositions = [newPosition, ...positions];
-    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(updatedPositions));
-    return Promise.resolve(newPosition.id);
+export const addPosition = async (position: Omit<any, 'id'>) => {
+    const { data, error } = await supabase.from('positions').insert([position]).select();
+    if (error) {
+        console.error('Error adding position:', error);
+        return null;
+    }
+    return data?.[0]?.id;
 };
 
-export const updatePosition = async (id, updatedPosition) => {
-    if (typeof window === 'undefined') return;
-    const positions = await getPositions();
-    const updatedPositions = positions.map(p =>
-        p.id === id ? { ...p, ...updatedPosition } : p
-    );
-    localStorage.setItem(POSITIONS_STORAGE_KEY, JSON.stringify(updatedPositions));
-    return Promise.resolve();
+export const updatePosition = async (id: string, updatedPosition: Partial<any>) => {
+    const { error } = await supabase.from('positions').update(updatedPosition).eq('id', id);
+    if (error) {
+        console.error('Error updating position:', error);
+    }
+    return !error;
 };

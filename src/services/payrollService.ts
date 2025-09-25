@@ -1,37 +1,28 @@
-// @ts-nocheck
-import { payrolls as mockPayrolls } from '@/lib/mock-data';
 
-const PAYROLL_STORAGE_KEY = 'payrolls';
-
-const initializePayrolls = () => {
-    if (typeof window !== 'undefined' && !localStorage.getItem(PAYROLL_STORAGE_KEY)) {
-        localStorage.setItem(PAYROLL_STORAGE_KEY, JSON.stringify(mockPayrolls));
-    }
-};
-
-initializePayrolls();
+import { supabase } from '@/lib/supabase-client';
 
 export const getPayrolls = async () => {
-    if (typeof window === 'undefined') return [];
-    const payrolls = JSON.parse(localStorage.getItem(PAYROLL_STORAGE_KEY) || '[]');
-    return Promise.resolve(payrolls);
+    const { data, error } = await supabase.from('payroll').select('*');
+    if (error) {
+        console.error('Error fetching payrolls:', error);
+        return [];
+    }
+    return data;
 };
 
-export const addPayroll = async (payroll) => {
-    if (typeof window === 'undefined') return;
-    const payrolls = await getPayrolls();
-    const newPayroll = { ...payroll, id: `PAY${Date.now()}` };
-    const updatedPayrolls = [newPayroll, ...payrolls];
-    localStorage.setItem(PAYROLL_STORAGE_KEY, JSON.stringify(updatedPayrolls));
-    return Promise.resolve(newPayroll.id);
+export const addPayroll = async (payroll: Omit<any, 'id'>) => {
+    const { data, error } = await supabase.from('payroll').insert([payroll]).select();
+    if (error) {
+        console.error('Error adding payroll:', error);
+        return null;
+    }
+    return data?.[0]?.id;
 };
 
-export const updatePayroll = async (id, updatedPayroll) => {
-    if (typeof window === 'undefined') return;
-    const payrolls = await getPayrolls();
-    const updatedPayrolls = payrolls.map(p => 
-        p.id === id ? { ...p, ...updatedPayroll } : p
-    );
-    localStorage.setItem(PAYROLL_STORAGE_KEY, JSON.stringify(updatedPayrolls));
-    return Promise.resolve();
+export const updatePayroll = async (id: string, updatedPayroll: Partial<any>) => {
+    const { error } = await supabase.from('payroll').update(updatedPayroll).eq('id', id);
+    if (error) {
+        console.error('Error updating payroll:', error);
+    }
+    return !error;
 };

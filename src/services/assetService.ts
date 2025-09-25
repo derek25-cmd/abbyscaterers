@@ -1,37 +1,28 @@
-// @ts-nocheck
-import { assets as mockAssets } from '@/lib/mock-data';
 
-const ASSETS_STORAGE_KEY = 'assets';
-
-const initializeAssets = () => {
-    if (typeof window !== 'undefined' && !localStorage.getItem(ASSETS_STORAGE_KEY)) {
-        localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(mockAssets));
-    }
-};
-
-initializeAssets();
+import { supabase } from '@/lib/supabase-client';
 
 export const getAssets = async () => {
-    if (typeof window === 'undefined') return [];
-    const assets = JSON.parse(localStorage.getItem(ASSETS_STORAGE_KEY) || '[]');
-    return Promise.resolve(assets);
+    const { data, error } = await supabase.from('assets').select('*');
+    if (error) {
+        console.error('Error fetching assets:', error);
+        return [];
+    }
+    return data;
 };
 
-export const addAsset = async (asset) => {
-    if (typeof window === 'undefined') return;
-    const assets = await getAssets();
-    const newAsset = { ...asset, id: `ASSET${Date.now()}` };
-    const updatedAssets = [newAsset, ...assets];
-    localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(updatedAssets));
-    return Promise.resolve(newAsset.id);
+export const addAsset = async (asset: Omit<any, 'id'>) => {
+    const { data, error } = await supabase.from('assets').insert([asset]).select();
+    if (error) {
+        console.error('Error adding asset:', error);
+        return null;
+    }
+    return data?.[0]?.id;
 };
 
-export const updateAsset = async (id, updatedAsset) => {
-    if (typeof window === 'undefined') return;
-    const assets = await getAssets();
-    const updatedAssets = assets.map(asset => 
-        asset.id === id ? { ...asset, ...updatedAsset } : asset
-    );
-    localStorage.setItem(ASSETS_STORAGE_KEY, JSON.stringify(updatedAssets));
-    return Promise.resolve();
+export const updateAsset = async (id: string, updatedAsset: Partial<any>) => {
+    const { error } = await supabase.from('assets').update(updatedAsset).eq('id', id);
+    if (error) {
+        console.error('Error updating asset:', error);
+    }
+    return !error;
 };
