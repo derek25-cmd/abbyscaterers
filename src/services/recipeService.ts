@@ -1,0 +1,59 @@
+
+import { supabase } from '@/lib/supabase-client';
+import type { Recipe } from '@/types';
+import type { RecipeFormData } from '@/lib/schemas';
+
+export const getRecipes = async (): Promise<Recipe[]> => {
+    const { data, error } = await supabase.from('recipes').select('*');
+    if (error) {
+        console.error('Error fetching recipes:', error);
+        return [];
+    }
+    return data as Recipe[];
+};
+
+export const getRecipeById = async (recipeNumber: string): Promise<Recipe | null> => {
+    const { data, error } = await supabase.from('recipes').select('*').eq('recipeNumber', recipeNumber).single();
+    if (error) {
+        console.error('Error fetching recipe by id:', error);
+        return null;
+    }
+    return data as Recipe;
+}
+
+export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | null> => {
+    const now = new Date().toISOString();
+    const { recipeNumber, recipeName, ingredients } = recipeData;
+    
+    const newRecipeData = { 
+        recipeNumber,
+        recipeName,
+        ingredients,
+        createdAt: now, 
+        updatedAt: now 
+    };
+
+    const { data, error } = await supabase.from('recipes').insert([newRecipeData]).select();
+    if (error) {
+        console.error('Error adding recipe:', error);
+        return null;
+    }
+    return data?.[0] as Recipe;
+};
+
+
+export const updateRecipe = async (recipeNumber: string, updates: Partial<RecipeFormData>): Promise<boolean> => {
+    const { error } = await supabase.from('recipes').update({ ...updates, updatedAt: new Date().toISOString() }).eq('recipeNumber', recipeNumber);
+    if (error) {
+        console.error('Error updating recipe:', error);
+    }
+    return !error;
+};
+
+export const deleteRecipe = async (recipeNumber: string): Promise<boolean> => {
+    const { error } = await supabase.from('recipes').delete().eq('recipeNumber', recipeNumber);
+    if (error) {
+        console.error('Error deleting recipe:', error);
+    }
+    return !error;
+};
