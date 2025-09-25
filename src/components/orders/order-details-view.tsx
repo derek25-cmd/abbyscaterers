@@ -64,9 +64,9 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                  <div className="border-l border-border pl-6">
                      <h4 className="font-semibold text-foreground mb-2 flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary"/>Pricing</h4>
                      <div className="text-sm space-y-2 text-muted-foreground">
-                        <p>Unit Price: <span className="font-medium text-foreground">{formatCurrency(event.unitPrice)}</span></p>
-                        <p>Total Price: <span className="font-medium text-foreground">{formatCurrency(totalPrice)}</span></p>
-                        <p>VAT: <Badge variant="outline">{event.vatType}</Badge></p>
+                        <div className="flex justify-between"><span>Unit Price:</span> <span className="font-medium text-foreground">{formatCurrency(event.unitPrice)}</span></div>
+                        <div className="flex justify-between"><span>Total Price:</span> <span className="font-medium text-foreground">{formatCurrency(totalPrice)}</span></div>
+                        <div className="flex justify-between"><span>VAT:</span> <Badge variant="outline">{event.vatType}</Badge></div>
                      </div>
                  </div>
             </CardContent>
