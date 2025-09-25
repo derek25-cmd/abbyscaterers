@@ -11,13 +11,13 @@ export const getEmployees = async (): Promise<Employee[]> => {
     return data as Employee[];
 };
 
-export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
-    const { data, error } = await supabase.from('employees').insert([employee]).select('id');
+export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee | null> => {
+    const { data, error } = await supabase.from('employees').insert([employee]).select();
     if (error) {
         console.error('Error adding employee:', error);
         return null;
     }
-    return data?.[0]?.id;
+    return data?.[0] as Employee;
 };
 
 export const updateEmployee = async (id: string, updatedEmployee: Partial<Employee>): Promise<boolean> => {

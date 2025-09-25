@@ -11,17 +11,17 @@ export const getProducts = async (): Promise<Product[]> => {
     return data as Product[];
 };
 
-export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
+export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdAt' | 'updatedAt'>): Promise<Product | null> => {
     const productDataForSupabase = {
       ...product,
-      sku: `SKU-${Date.now()}` // Generate SKU server-side or here
+      sku: `SKU-${Date.now()}`
     };
     const { data, error } = await supabase.from('products').insert([productDataForSupabase]).select();
     if (error) {
         console.error('Error adding product:', error);
         return null;
     }
-    return data?.[0]?.id;
+    return data?.[0] as Product;
 };
 
 export const updateProduct = async (id: string, updatedProduct: Partial<Product>): Promise<boolean> => {
@@ -31,3 +31,4 @@ export const updateProduct = async (id: string, updatedProduct: Partial<Product>
     }
     return !error;
 };
+

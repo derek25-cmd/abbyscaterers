@@ -11,13 +11,13 @@ export const getStockLogs = async (): Promise<StockLog[]> => {
     return data as StockLog[];
 };
 
-export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<string | null> => {
+export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<StockLog | null> => {
     const { data, error } = await supabase.from('stock_logs').insert([log]).select();
     if (error) {
         console.error('Error adding stock log:', error);
         return null;
     }
-    return data?.[0]?.id;
+    return data?.[0] as StockLog;
 };
 
 export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>): Promise<boolean> => {

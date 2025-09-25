@@ -27,13 +27,13 @@ export const findAttendanceRecord = async (employeeName: string, date: string): 
     return data as Attendance | null;
 };
 
-export const addAttendanceRecord = async (record: Omit<Attendance, 'id'>): Promise<string | null> => {
-    const { data, error } = await supabase.from('attendance').insert([record]).select('id');
+export const addAttendanceRecord = async (record: Omit<Attendance, 'id' | 'createdAt' | 'updatedAt'>): Promise<Attendance | null> => {
+    const { data, error } = await supabase.from('attendance').insert([record]).select();
     if (error) {
         console.error('Error adding attendance record:', error);
         return null;
     }
-    return data?.[0]?.id;
+    return data?.[0] as Attendance;
 };
 
 export const updateAttendanceRecord = async (id: string, updatedRecord: Partial<Attendance>): Promise<boolean> => {

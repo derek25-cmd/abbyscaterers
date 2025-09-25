@@ -1,3 +1,4 @@
+
 'use client';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { ViewProductDialog } from "@/components/hr/view-product-dialog";
 import { Input } from "@/components/ui/input";
 import { getProducts, addProduct, updateProduct } from "@/services/productService";
+import type { Product } from "@/types";
 
 export default function InventoryPage() {
-  const [stock, setStock] = useState<any[]>([]);
+  const [stock, setStock] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [isEditProductDialogOpen, setIsEditProductDialogOpen] = useState(false);
   const [isViewProductDialogOpen, setIsViewProductDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("name");
 
@@ -31,16 +33,14 @@ export default function InventoryPage() {
     fetchProducts();
   }, []);
   
-  const handleAddProduct = async (newProduct: any) => {
-    const productToAdd = {
-        ...newProduct,
-        sku: `SKU-${Date.now()}`, 
+  const handleAddProduct = async (newProduct: Omit<Product, 'id' | 'sku' | 'createdAt' | 'updatedAt'>) => {
+    const addedProduct = await addProduct(newProduct);
+    if(addedProduct){
+        setStock(prevStock => [addedProduct, ...prevStock]);
     }
-    const newId = await addProduct(productToAdd);
-    setStock(prevStock => [{ id: newId, ...productToAdd }, ...prevStock]);
   };
 
-  const handleEditProduct = async (updatedProduct: any) => {
+  const handleEditProduct = async (updatedProduct: Product) => {
     await updateProduct(updatedProduct.id, updatedProduct);
     setStock(prevStock => 
         prevStock.map(product => 
@@ -49,12 +49,12 @@ export default function InventoryPage() {
     );
   };
 
-  const openEditDialog = (product: any) => {
+  const openEditDialog = (product: Product) => {
     setSelectedProduct(product);
     setIsEditProductDialogOpen(true);
   };
   
-  const openViewDialog = (product: any) => {
+  const openViewDialog = (product: Product) => {
     setSelectedProduct(product);
     setIsViewProductDialogOpen(true);
   };
@@ -63,7 +63,7 @@ export default function InventoryPage() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
 
-  const getStatusText = (item: any) => {
+  const getStatusText = (item: Product) => {
     if (item.quantity === 0) return 'out of stock';
     if (item.quantity < item.minStock) return 'low stock';
     return 'in stock';

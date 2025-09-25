@@ -11,13 +11,13 @@ export const getPayrolls = async (): Promise<Payroll[]> => {
     return data as Payroll[];
 };
 
-export const addPayroll = async (payroll: Omit<Payroll, 'id'>): Promise<string | null> => {
+export const addPayroll = async (payroll: Omit<Payroll, 'id' | 'createdAt' | 'updatedAt'>): Promise<Payroll | null> => {
     const { data, error } = await supabase.from('payroll').insert([payroll]).select();
     if (error) {
         console.error('Error adding payroll:', error);
         return null;
     }
-    return data?.[0]?.id;
+    return data?.[0] as Payroll;
 };
 
 export const updatePayroll = async (id: string, updatedPayroll: Partial<Payroll>): Promise<boolean> => {

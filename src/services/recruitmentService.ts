@@ -11,13 +11,13 @@ export const getPositions = async (): Promise<Position[]> => {
     return data as Position[];
 };
 
-export const addPosition = async (position: Omit<Position, 'id'>): Promise<string | null> => {
+export const addPosition = async (position: Omit<Position, 'id' | 'createdAt' | 'updatedAt'>): Promise<Position | null> => {
     const { data, error } = await supabase.from('positions').insert([position]).select();
     if (error) {
         console.error('Error adding position:', error);
         return null;
     }
-    return data?.[0]?.id;
+    return data?.[0] as Position;
 };
 
 export const updatePosition = async (id: string, updatedPosition: Partial<Position>): Promise<boolean> => {
