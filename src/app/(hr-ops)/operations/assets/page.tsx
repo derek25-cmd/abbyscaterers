@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { EditAssetDialog } from '@/components/hr/edit-asset-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ViewAssetDialog } from '@/components/hr/view-asset-dialog';
 import { getAssets, addAsset, updateAsset } from '@/services/assetService';
+import { format, parseISO, isValid } from 'date-fns';
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<any[]>([]);
@@ -43,9 +45,10 @@ export default function AssetsPage() {
   };
   
   const handleAddAsset = async (newAsset: any) => {
-    const assetToAdd = { ...newAsset };
-    const newId = await addAsset(assetToAdd);
-    setAssets(prevAssets => [{ id: newId, ...assetToAdd }, ...prevAssets]);
+    const addedAsset = await addAsset(newAsset);
+    if(addedAsset){
+      setAssets(prevAssets => [addedAsset, ...prevAssets]);
+    }
   };
   
   const handleEditAsset = async (updatedAsset: any) => {
@@ -68,7 +71,14 @@ export default function AssetsPage() {
   };
 
   const formatCurrency = (amount: number) => {
+    if(typeof amount !== 'number') return 'N/A';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
+  }
+  
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = parseISO(dateString);
+    return isValid(date) ? format(date, 'PPP') : 'N/A';
   }
 
   return (
@@ -122,8 +132,8 @@ export default function AssetsPage() {
                     <TableCell className="text-right">{formatCurrency(asset.unitPrice)}</TableCell>
                     <TableCell className="text-right">{asset.quantity}</TableCell>
                     <TableCell>{getStatusBadge(asset.status)}</TableCell>
-                    <TableCell>{asset.lastMaintenance}</TableCell>
-                    <TableCell>{asset.nextMaintenance}</TableCell>
+                    <TableCell>{formatDate(asset.lastMaintenance)}</TableCell>
+                    <TableCell>{formatDate(asset.nextMaintenance)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
