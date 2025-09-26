@@ -13,6 +13,7 @@ import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { ClientEvent, Order } from "@/types";
+import { format } from 'date-fns';
 
 interface DailyEventInfo extends ClientEvent {
   orderId: string;
@@ -27,7 +28,8 @@ export const DailyOrderReport = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const dailyEvents: DailyEventInfo[] = useMemo(() => {
-    const targetDateStr = selectedDate.toISOString().split('T')[0];
+    if (!selectedDate) return [];
+    const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
     return orders.flatMap((order: Order) => 
         order.clientEvents
             .filter(event => event.date.startsWith(targetDateStr))
@@ -55,37 +57,34 @@ export const DailyOrderReport = () => {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-        const doc = new jsPDF({ orientation: 'l' });
-        doc.text(`Daily Order Report - ${selectedDate.toLocaleDateString()}`, 14, 15);
+        const doc = new jsPDF();
+        doc.text(`Daily Order Report - ${format(selectedDate, "PPP")}`, 14, 15);
 
-        (doc as any).autoTable({
-            head: [['S/No', 'Order ID', 'Customer Name', 'Proforma No.', 'Type of Meal', 'No. of People', 'Unit Price', 'VAT', 'Grand Total']],
-            body: dailyEvents.map((event, index) => {
-                const client = getClientById(event.clientId);
-                return [
-                    index + 1,
-                    event.orderId,
-                    client?.companyName || 'N/A',
-                    event.proformaId || 'N/A',
-                    event.mealType,
-                    event.numberOfPeople,
-                    formatCurrency(event.unitPrice),
-                    event.vatType,
-                    formatCurrency(calculateGrandTotal(event)),
-                ]
-            }),
-            startY: 25,
-            styles: { halign: 'right' },
-            columnStyles: {
-                1: { halign: 'left' },
-                2: { halign: 'left' },
-                3: { halign: 'left' },
-                4: { halign: 'left' },
-                7: { halign: 'left' },
-            }
+        const tableColumn = ["S/No", "Order ID", "Customer Name", "Proforma No.", "Type of Meal", "No. of People", "Unit Price", "VAT", "Grand Total"];
+        const tableRows: (string | number)[][] = [];
+        
+        dailyEvents.forEach((event, index) => {
+          const client = getClientById(event.clientId);
+          tableRows.push([
+              index + 1,
+              event.orderId,
+              client?.companyName || 'N/A',
+              event.proformaId || 'N/A',
+              event.mealType,
+              event.numberOfPeople,
+              formatCurrency(event.unitPrice),
+              event.vatType,
+              formatCurrency(calculateGrandTotal(event)),
+          ]);
         });
         
-        doc.save(`Daily_Order_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+        (doc as any).autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 25,
+        });
+        
+        doc.save(`Daily_Order_Report_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
         toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
         console.error("Error exporting PDF:", error);
@@ -123,7 +122,7 @@ export const DailyOrderReport = () => {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `Daily_Order_Report_${selectedDate.toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `Daily_Order_Report_${format(selectedDate, 'yyyy-MM-dd')}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -155,7 +154,7 @@ export const DailyOrderReport = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Orders for: {selectedDate.toLocaleDateString()}</CardTitle>
+            <CardTitle>Orders for: {selectedDate ? format(selectedDate, 'PPP') : 'N/A'}</CardTitle>
           </CardHeader>
           <CardContent>
              <Table>

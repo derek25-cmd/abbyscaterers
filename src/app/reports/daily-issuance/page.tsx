@@ -12,7 +12,7 @@ import { getIssuances } from "@/services/issuanceService";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { Issuance } from "@/types";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -34,7 +34,8 @@ export default function DailyIssuanceReportPage() {
   }, []);
 
   const dailyIssuances = useMemo(() => {
-    const targetDateStr = selectedDate.toISOString().split('T')[0];
+    if(!selectedDate) return [];
+    const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
     return logs.filter(log => log.date === targetDateStr);
   }, [selectedDate, logs]);
 
@@ -49,29 +50,37 @@ export default function DailyIssuanceReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF({ orientation: 'l' });
-      doc.text(`Daily Issuance Report - ${selectedDate.toLocaleDateString()}`, 14, 15);
+      const doc = new jsPDF();
+      const reportTitle = `Daily Issuance Report - ${format(selectedDate, "PPP")}`;
+      doc.text(reportTitle, 14, 15);
+
+      const tableColumn = ["Issue ID", "Issued To", "Order ID", "Status", "Total Value"];
+      const tableRows: (string | number)[][] = [];
+
+      dailyIssuances.forEach(log => {
+        const logData = [
+          log.id,
+          log.issuedTo,
+          log.orderId,
+          log.status,
+          formatCurrency(log.totalValue)
+        ];
+        tableRows.push(logData);
+      });
       
+      tableRows.push(["", "", "", "Total", formatCurrency(totalValueIssued)]);
+
       (doc as any).autoTable({
-        head: [['Issue ID', 'Issued To', 'Order ID', 'Status', 'Total Value']],
-        body: dailyIssuances.map(log => [
-            log.id,
-            log.issuedTo,
-            log.orderId,
-            log.status,
-            formatCurrency(log.totalValue)
-        ]),
+        head: [tableColumn],
+        body: tableRows,
         startY: 25,
-        styles: { halign: 'right' },
-        columnStyles: {
-            0: { halign: 'left' },
-            1: { halign: 'left' },
-            2: { halign: 'left' },
-            3: { halign: 'left' },
-        }
+        foot: [[
+            { content: `Total Value Issued: ${formatCurrency(totalValueIssued)}`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }
+        ]],
+        showFoot: 'lastPage'
       });
 
-      doc.save(`Daily_Issuance_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+      doc.save(`Daily_Issuance_Report_${format(selectedDate, "yyyy-MM-dd")}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -103,7 +112,7 @@ export default function DailyIssuanceReportPage() {
       <Card className="bg-card p-4 rounded-lg">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Issuances for: {selectedDate.toLocaleDateString()}</span>
+            <span>Issuances for: {selectedDate ? format(selectedDate, 'PPP') : 'N/A'}</span>
             <div className="text-right">
                 <p className="text-sm font-medium text-muted-foreground">Total Value Issued</p>
                 <p className="text-xl font-bold text-primary">{formatCurrency(totalValueIssued)}</p>

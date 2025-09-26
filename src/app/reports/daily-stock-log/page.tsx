@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,6 +13,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 export default function DailyStockLogReportPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -21,7 +22,8 @@ export default function DailyStockLogReportPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   const dailyLogs = useMemo(() => {
-    const targetDateStr = selectedDate.toISOString().split('T')[0];
+    if(!selectedDate) return [];
+    const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
     return logs.filter(log => log.date === targetDateStr);
   }, [selectedDate, logs]);
 
@@ -43,31 +45,31 @@ export default function DailyStockLogReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF({ orientation: 'l' });
-      doc.text(`Daily Stock Log Report - ${selectedDate.toLocaleDateString()}`, 14, 15);
+      const doc = new jsPDF();
+      doc.text(`Daily Stock Log Report - ${format(selectedDate, 'PPP')}`, 14, 15);
       
-      (doc as any).autoTable({
-        head: [['Log ID', 'Product', 'Type', 'Reason', 'Quantity', 'Total Value']],
-        body: dailyLogs.map(log => [
+      const tableColumn = ["Log ID", "Product", "Type", "Reason", "Quantity", "Total Value"];
+      const tableRows: (string | number)[][] = [];
+
+      dailyLogs.forEach(log => {
+        const logData = [
           log.id,
           log.productName,
           log.type,
           log.reason,
           log.quantity,
           formatCurrency(log.price)
-        ]),
+        ];
+        tableRows.push(logData);
+      });
+
+      (doc as any).autoTable({
+        head: [tableColumn],
+        body: tableRows,
         startY: 25,
-        styles: { halign: 'right' },
-        columnStyles: {
-            0: { halign: 'left' },
-            1: { halign: 'left' },
-            2: { halign: 'left' },
-            3: { halign: 'left' },
-            4: { halign: 'center' },
-        }
       });
       
-      doc.save(`Daily_Stock_Log_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+      doc.save(`Daily_Stock_Log_Report_${format(selectedDate, "yyyy-MM-dd")}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -103,7 +105,7 @@ export default function DailyStockLogReportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Stock Movements for: {selectedDate.toLocaleDateString()}</CardTitle>
+          <CardTitle>Stock Movements for: {selectedDate ? format(selectedDate, 'PPP') : 'N/A'}</CardTitle>
         </CardHeader>
         <CardContent>
            <Table>

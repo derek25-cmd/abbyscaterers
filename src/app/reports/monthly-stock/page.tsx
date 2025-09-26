@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, TrendingUp, Package, DollarSign } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft, TrendingUp, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -62,26 +62,39 @@ export default function MonthlyStockReportPage() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
   }
   
-  const handleCsvExport = () => {
+  const handlePdfExport = () => {
     setIsExporting(true);
-    const headers = ["Product Name", "Quantity Used", "Unit", "Total Value (TZS)"];
-    const csvRows = [headers.join(',')];
+    try {
+      const doc = new jsPDF();
+      const monthFormatted = format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy');
+      doc.text(`Monthly Stock Usage Report - ${monthFormatted}`, 14, 15);
+      
+      const tableColumn = ["Product Name", "Quantity Used", "Unit", "Total Value"];
+      const tableRows = reportData.map(d => [
+        d.productName,
+        d.quantity,
+        d.unit,
+        formatCurrency(d.value)
+      ]);
+      
+      (doc as any).autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 25,
+        foot: [[
+            { content: `Total Value: ${formatCurrency(summary.totalValue)}`, colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } }
+        ]],
+        showFoot: 'lastPage'
+      });
 
-    reportData.forEach(d => {
-      csvRows.push([`"${d.productName}"`, d.quantity, d.unit, d.value].join(','));
-    });
-    
-    csvRows.push(['', '', 'Total', summary.totalValue].join(','));
-    
-    const csvString = csvRows.join('\r\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Monthly_Stock_Usage_${selectedMonth}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    toast({ title: "Export Successful", description: "Report exported to CSV." });
-    setIsExporting(false);
+      doc.save(`Monthly_Stock_Usage_${selectedMonth}.pdf`);
+      toast({ title: "Export Successful", description: "Report exported to PDF." });
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast({ variant: "destructive", title: "Export Failed", description: "There was an error generating the PDF." });
+    } finally {
+      setIsExporting(false);
+    }
   };
   
   const isLoading = logsLoading || productsLoading;
@@ -98,9 +111,9 @@ export default function MonthlyStockReportPage() {
               <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
               <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
           </Select>
-          <Button onClick={handleCsvExport} variant="outline" size="sm" disabled={isExporting}>
+          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-             {isExporting ? 'Exporting...' : 'Export CSV'}
+             {isExporting ? 'Exporting...' : 'Export PDF'}
           </Button>
           <Button asChild variant="outline" size="sm"><Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link></Button>
         </div>
