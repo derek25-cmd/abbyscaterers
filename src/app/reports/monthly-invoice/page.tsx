@@ -1,18 +1,18 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, DollarSign, CheckCircle, AlertCircle } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import "jspdf-autotable";
 import type { Invoice } from "@/types";
-import { format, parseISO, startOfMonth } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 
@@ -29,7 +29,6 @@ export default function MonthlyInvoiceReportPage() {
   const { toast } = useToast();
   const { invoices, isLoading: invoicesLoading } = useInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const availableMonths = useMemo(() => {
@@ -59,28 +58,36 @@ export default function MonthlyInvoiceReportPage() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
   }
 
-  const handlePdfExport = async () => {
-    if (!printRef.current) return;
+  const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: null });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-      pdf.save(`Monthly_Invoice_Report_${selectedMonth}.pdf`);
+      const doc = new jsPDF({ orientation: 'l' });
+      const monthFormatted = format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy');
+      doc.text(`Monthly Invoice Report - ${monthFormatted}`, 14, 15);
+
+      (doc as any).autoTable({
+        head: [['Invoice No.', 'Client', 'Date', 'Status', 'Amount']],
+        body: monthlyInvoices.map(invoice => {
+          const client = getClientById(invoice.clientId || "");
+          return [
+            invoice.id,
+            client?.companyName || "N/A",
+            format(parseISO(invoice.invoiceDate), 'PPP'),
+            invoice.status,
+            formatCurrency(calculateTotal(invoice)),
+          ];
+        }),
+        startY: 25,
+        styles: { halign: 'right' },
+        columnStyles: {
+            0: { halign: 'left' },
+            1: { halign: 'left' },
+            2: { halign: 'left' },
+            3: { halign: 'left' },
+        }
+      });
+
+      doc.save(`Monthly_Invoice_Report_${selectedMonth}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -126,12 +133,8 @@ export default function MonthlyInvoiceReportPage() {
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Outstanding</CardTitle><AlertCircle className="h-4 w-4 text-orange-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalOutstanding)}</div></CardContent></Card>
       </div>
 
-      <Card ref={printRef} className="bg-card p-4 rounded-lg">
-          <div className="text-center hidden print:block pt-8 mb-4">
-              <h1 className="text-2xl font-bold">Monthly Invoice Report</h1>
-              <p className="text-lg">{format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</p>
-          </div>
-        <CardHeader>
+      <Card>
+          <CardHeader>
           <CardTitle>Invoices for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
         </CardHeader>
         <CardContent>

@@ -1,18 +1,18 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, Truck } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft } from "lucide-react";
 import DateSelector from "@/components/costing/DateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { getIssuances } from "@/services/issuanceService";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import "jspdf-autotable";
 import type { Issuance } from "@/types";
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -21,14 +21,16 @@ export default function DailyIssuanceReportPage() {
   const [logs, setLogs] = useState<Issuance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  useMemo(async () => {
-    setIsLoading(true);
-    const data = await getIssuances();
-    setLogs(data);
-    setIsLoading(false);
+  useEffect(() => {
+    const fetchIssuances = async () => {
+      setIsLoading(true);
+      const data = await getIssuances();
+      setLogs(data);
+      setIsLoading(false);
+    };
+    fetchIssuances();
   }, []);
 
   const dailyIssuances = useMemo(() => {
@@ -44,18 +46,32 @@ export default function DailyIssuanceReportPage() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
   }
 
-  const handlePdfExport = async () => {
-    if (!printRef.current) return;
+  const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: null });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
-      pdf.save(`Daily_Issuance_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+      const doc = new jsPDF({ orientation: 'l' });
+      doc.text(`Daily Issuance Report - ${selectedDate.toLocaleDateString()}`, 14, 15);
+      
+      (doc as any).autoTable({
+        head: [['Issue ID', 'Issued To', 'Order ID', 'Status', 'Total Value']],
+        body: dailyIssuances.map(log => [
+            log.id,
+            log.issuedTo,
+            log.orderId,
+            log.status,
+            formatCurrency(log.totalValue)
+        ]),
+        startY: 25,
+        styles: { halign: 'right' },
+        columnStyles: {
+            0: { halign: 'left' },
+            1: { halign: 'left' },
+            2: { halign: 'left' },
+            3: { halign: 'left' },
+        }
+      });
+
+      doc.save(`Daily_Issuance_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -84,11 +100,7 @@ export default function DailyIssuanceReportPage() {
         </div>
       </div>
 
-      <Card ref={printRef} className="bg-card p-4 rounded-lg">
-          <div className="text-center hidden print:block pt-8 mb-4">
-              <h1 className="text-2xl font-bold">Daily Issuance Report</h1>
-              <p className="text-lg">{selectedDate.toLocaleDateString()}</p>
-          </div>
+      <Card className="bg-card p-4 rounded-lg">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Issuances for: {selectedDate.toLocaleDateString()}</span>
@@ -124,6 +136,12 @@ export default function DailyIssuanceReportPage() {
                 <TableRow><TableCell colSpan={5} className="text-center h-24">No issuances found for this date.</TableCell></TableRow>
               )}
             </TableBody>
+            <TableFooter>
+                <TableRow>
+                    <TableCell colSpan={4} className="text-right font-bold">Total</TableCell>
+                    <TableCell className="text-right font-bold">{formatCurrency(totalValueIssued)}</TableCell>
+                </TableRow>
+            </TableFooter>
           </Table>
         </CardContent>
       </Card>

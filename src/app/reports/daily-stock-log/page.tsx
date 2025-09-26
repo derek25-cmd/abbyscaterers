@@ -1,18 +1,16 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FileText, Loader2, Download, ArrowLeft, ArrowUp, ArrowDown } from "lucide-react";
 import DateSelector from "@/components/costing/DateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import type { StockLog } from "@/types";
-import { format, parseISO } from 'date-fns';
+import "jspdf-autotable";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -20,7 +18,6 @@ export default function DailyStockLogReportPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const { logs, isLoading } = useStockLogStorage();
-  const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const dailyLogs = useMemo(() => {
@@ -43,28 +40,34 @@ export default function DailyStockLogReportPage() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
   }
 
-  const handlePdfExport = async () => {
-    if (!printRef.current) return;
+  const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: null });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-      pdf.save(`Daily_Stock_Log_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+      const doc = new jsPDF({ orientation: 'l' });
+      doc.text(`Daily Stock Log Report - ${selectedDate.toLocaleDateString()}`, 14, 15);
+      
+      (doc as any).autoTable({
+        head: [['Log ID', 'Product', 'Type', 'Reason', 'Quantity', 'Total Value']],
+        body: dailyLogs.map(log => [
+          log.id,
+          log.productName,
+          log.type,
+          log.reason,
+          log.quantity,
+          formatCurrency(log.price)
+        ]),
+        startY: 25,
+        styles: { halign: 'right' },
+        columnStyles: {
+            0: { halign: 'left' },
+            1: { halign: 'left' },
+            2: { halign: 'left' },
+            3: { halign: 'left' },
+            4: { halign: 'center' },
+        }
+      });
+      
+      doc.save(`Daily_Stock_Log_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -98,11 +101,7 @@ export default function DailyStockLogReportPage() {
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Value Stocked Out</CardTitle><ArrowUp className="h-4 w-4 text-red-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-red-600">{formatCurrency(summary.stockOutValue)}</div><p className="text-xs text-muted-foreground">{summary.stockOutItems} items</p></CardContent></Card>
       </div>
 
-      <Card ref={printRef} className="bg-card p-4 rounded-lg">
-          <div className="text-center hidden print:block pt-8 mb-4">
-              <h1 className="text-2xl font-bold">Daily Stock Log Report</h1>
-              <p className="text-lg">{selectedDate.toLocaleDateString()}</p>
-          </div>
+      <Card>
         <CardHeader>
           <CardTitle>Stock Movements for: {selectedDate.toLocaleDateString()}</CardTitle>
         </CardHeader>

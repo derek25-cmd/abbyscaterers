@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import "jspdf-autotable";
 import type { ClientEvent, Order } from "@/types";
 
 interface DailyEventInfo extends ClientEvent {
@@ -24,7 +24,6 @@ export const DailyOrderReport = () => {
   const { toast } = useToast();
   const { orders, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const dailyEvents: DailyEventInfo[] = useMemo(() => {
@@ -53,45 +52,46 @@ export const DailyOrderReport = () => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
   }
 
-  const handlePdfExport = async () => {
-    if (!printRef.current) return;
+  const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: null
-      });
-      const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-      
-      pdf.save(`Daily_Order_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
-      toast({ title: "Export Successful", description: "Report exported to PDF." });
+        const doc = new jsPDF({ orientation: 'l' });
+        doc.text(`Daily Order Report - ${selectedDate.toLocaleDateString()}`, 14, 15);
+
+        (doc as any).autoTable({
+            head: [['S/No', 'Order ID', 'Customer Name', 'Proforma No.', 'Type of Meal', 'No. of People', 'Unit Price', 'VAT', 'Grand Total']],
+            body: dailyEvents.map((event, index) => {
+                const client = getClientById(event.clientId);
+                return [
+                    index + 1,
+                    event.orderId,
+                    client?.companyName || 'N/A',
+                    event.proformaId || 'N/A',
+                    event.mealType,
+                    event.numberOfPeople,
+                    formatCurrency(event.unitPrice),
+                    event.vatType,
+                    formatCurrency(calculateGrandTotal(event)),
+                ]
+            }),
+            startY: 25,
+            styles: { halign: 'right' },
+            columnStyles: {
+                1: { halign: 'left' },
+                2: { halign: 'left' },
+                3: { halign: 'left' },
+                4: { halign: 'left' },
+                7: { halign: 'left' },
+            }
+        });
+        
+        doc.save(`Daily_Order_Report_${selectedDate.toISOString().split('T')[0]}.pdf`);
+        toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+        console.error("Error exporting PDF:", error);
+        toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
     } finally {
-      setIsExporting(false);
+        setIsExporting(false);
     }
   };
 
@@ -128,7 +128,7 @@ export const DailyOrderReport = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(link.href);
       toast({ title: "Export Successful", description: "Report exported to CSV." });
     } else {
        toast({ variant: "destructive", title: "Export Failed", description: "Your browser doesn't support this feature." });
@@ -138,14 +138,10 @@ export const DailyOrderReport = () => {
   const isLoading = ordersLoading || clientsLoading;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 print:hidden">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Daily Order Report</h1>
-          <p className="text-muted-foreground">Review all order events for a specific day.</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+         <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
         <div className="flex items-center space-x-3">
-          <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
           <Button onClick={handleCsvExport} variant="outline" size="sm" disabled={isExporting}>
              <Download className="mr-2 h-4 w-4" />
              Export CSV
@@ -157,11 +153,7 @@ export const DailyOrderReport = () => {
         </div>
       </div>
 
-        <Card ref={printRef} className="bg-card p-4 rounded-lg">
-            <div className="text-center hidden print:block pt-8 mb-4">
-                <h1 className="text-2xl font-bold">Daily Order Report</h1>
-                <p className="text-lg">{selectedDate.toLocaleDateString()}</p>
-            </div>
+        <Card>
           <CardHeader>
             <CardTitle>Orders for: {selectedDate.toLocaleDateString()}</CardTitle>
           </CardHeader>
