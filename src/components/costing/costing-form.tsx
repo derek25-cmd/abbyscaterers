@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -147,8 +148,8 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                          <>
                         <Label>Select Month(s)</Label>
                         <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-4 gap-4">
-                           {availableMonths.map(month => (
-                               <div key={month.toString()} className="flex items-center space-x-2">
+                           {availableMonths.map((month, i) => (
+                               <div key={`${month.toString()}-${i}`} className="flex items-center space-x-2">
                                    <Checkbox
                                         id={month.toString()}
                                         checked={dates.some(d => d.getTime() === month.getTime())}
