@@ -34,13 +34,15 @@ export default function MonthlyInvoiceReportPage() {
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
     invoices.forEach(invoice => {
-      months.add(format(parseISO(invoice.invoiceDate), 'yyyy-MM'));
+      if (invoice.invoiceDate) {
+        months.add(format(parseISO(invoice.invoiceDate), 'yyyy-MM'));
+      }
     });
     return Array.from(months).sort().reverse();
   }, [invoices]);
 
   const monthlyInvoices = useMemo(() => {
-    return invoices.filter(invoice => format(parseISO(invoice.invoiceDate), 'yyyy-MM') === selectedMonth);
+    return invoices.filter(invoice => invoice.invoiceDate && format(parseISO(invoice.invoiceDate), 'yyyy-MM') === selectedMonth);
   }, [selectedMonth, invoices]);
 
   const summary = useMemo(() => {
@@ -72,19 +74,18 @@ export default function MonthlyInvoiceReportPage() {
           return [
             invoice.id,
             client?.companyName || "N/A",
-            format(parseISO(invoice.invoiceDate), 'PPP'),
+            invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
             invoice.status,
             formatCurrency(calculateTotal(invoice)),
           ];
         }),
         startY: 25,
-        styles: { halign: 'right' },
-        columnStyles: {
-            0: { halign: 'left' },
-            1: { halign: 'left' },
-            2: { halign: 'left' },
-            3: { halign: 'left' },
-        }
+        foot: [
+            ['', '', '', 'Total Invoiced', formatCurrency(summary.totalInvoiced)],
+            ['', '', '', 'Total Paid', formatCurrency(summary.totalPaid)],
+            ['', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
+        ],
+        footStyles: { fontStyle: 'bold' }
       });
 
       doc.save(`Monthly_Invoice_Report_${selectedMonth}.pdf`);
@@ -157,7 +158,7 @@ export default function MonthlyInvoiceReportPage() {
                   <TableRow key={invoice.id}>
                     <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
                     <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
-                    <TableCell>{format(parseISO(invoice.invoiceDate), 'PPP')}</TableCell>
+                    <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
                     <TableCell>{invoice.status}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(calculateTotal(invoice))}</TableCell>
                   </TableRow>
