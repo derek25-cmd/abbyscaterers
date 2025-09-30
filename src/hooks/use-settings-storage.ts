@@ -1,0 +1,47 @@
+
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+
+const SETTINGS_STORAGE_KEY = 'caterSmartAppSettings';
+
+export interface AppSettings {
+    loginImageUrl?: string;
+    leftHeaderUrl?: string;
+    rightHeaderUrl?: string;
+    footerUrl?: string;
+}
+
+const defaultSettings: AppSettings = {
+    loginImageUrl: "https://picsum.photos/seed/catering/1200/1800",
+    leftHeaderUrl: "",
+    rightHeaderUrl: "",
+    footerUrl: ""
+}
+
+export function useSettingsStorage() {
+    const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+            if (storedSettings) {
+                setSettings(JSON.parse(storedSettings));
+            }
+            setIsLoading(false);
+        }
+    }, []);
+
+    const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
+        if (typeof window !== "undefined") {
+            setSettings(prevSettings => {
+                const updated = { ...prevSettings, ...newSettings };
+                localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+                return updated;
+            });
+        }
+    }, []);
+
+    return { settings, isLoading, updateSettings };
+}

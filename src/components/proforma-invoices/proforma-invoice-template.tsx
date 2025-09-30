@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -9,6 +10,9 @@ import { Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
+import { useSettingsStorage } from '@/hooks/use-settings-storage';
+import Image from 'next/image';
+
 
 interface ProformaInvoiceTemplateProps {
     invoiceData: ProformaInvoice;
@@ -76,6 +80,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
     const [editState, setEditState] = useState<EditParticularsState>({ open: false, itemId: '', currentValue: '' });
+    const { settings } = useSettingsStorage();
     
     const getParticularText = (item: InvoiceItem): string => {
         if (item.particularType === 'event') {
@@ -127,13 +132,15 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     fontFamily: 'sans-serif',
                     minHeight: '297mm',
                     fontSize: '15px',
-                    backgroundImage: "url('https://i.postimg.cc/WzSPg9tp/Abby-s-Word-Headed-Paper-2025.jpg')",
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
+                    position: 'relative'
                 }}
             >
-                <div className="flex flex-col h-full">
+                 <div className="absolute top-8 left-8 right-8 flex justify-between items-start">
+                    {settings.leftHeaderUrl && <Image src={settings.leftHeaderUrl} alt="Left Header" width={150} height={80} />}
+                    {settings.rightHeaderUrl && <Image src={settings.rightHeaderUrl} alt="Right Header" width={150} height={80} />}
+                </div>
+
+                <div className="flex flex-col h-full pt-32">
                     {/* HEADER SECTION */}
                     <div className="flex justify-end items-start mb-2 relative">
                         <div className="text-right">
@@ -266,6 +273,11 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                       </div>
                     </div>
                 </div>
+                 {settings.footerUrl && (
+                    <div className="absolute bottom-8 left-8 right-8">
+                        <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />
+                    </div>
+                 )}
               </Card>
             </div>
             <Dialog open={editState.open} onOpenChange={(isOpen) => !isOpen && setEditState({ open: false, itemId: '', currentValue: '' })}>

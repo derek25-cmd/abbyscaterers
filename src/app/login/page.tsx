@@ -11,11 +11,13 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useSettingsStorage } from '@/hooks/use-settings-storage';
 
 export default function LoginPage() {
   const { user, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { settings } = useSettingsStorage();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -110,14 +112,17 @@ export default function LoginPage() {
         </Card>
       </div>
       <div className="hidden bg-muted lg:block">
-        <Image
-          src="https://picsum.photos/seed/catering/1200/1800"
-          alt="A well-prepared catering dish"
-          data-ai-hint="catering dish"
-          width="1200"
-          height="1800"
-          className="h-full w-full object-cover dark:brightness-[0.3]"
-        />
+        {settings.loginImageUrl && (
+            <Image
+            src={settings.loginImageUrl}
+            alt="A well-prepared catering dish"
+            data-ai-hint="catering dish"
+            width="1200"
+            height="1800"
+            className="h-full w-full object-cover dark:brightness-[0.3]"
+            priority
+            />
+        )}
       </div>
     </div>
   );

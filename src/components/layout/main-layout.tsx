@@ -48,7 +48,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BarChart3 } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,7 +90,7 @@ const navItems = [
 
 const managementItems = [
     { href: "/reports", label: "Reports", icon: BarChart3 },
-    { href: "#", label: "Settings", icon: Settings }
+    { href: "/settings", label: "Settings", icon: Settings }
 ];
 
 function UserProfile() {
@@ -134,11 +134,14 @@ function UserProfile() {
 
 function NavItem({ item, currentPathname }: { item: {href?: string, label: string, icon: React.ElementType, subItems?: any[]}, currentPathname: string }) {
     const { open } = useSidebar();
+    const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
+    
     const isParentActive = item.subItems?.some(sub => currentPathname.startsWith(sub.href)) || false;
-    const [isSubMenuOpen, setIsSubMenuOpen] = React.useState(false);
 
     useEffect(() => {
-        setIsSubMenuOpen(isParentActive);
+        if (isParentActive) {
+            setIsSubMenuOpen(true);
+        }
     }, [isParentActive]);
 
 
@@ -161,8 +164,8 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
                 <CollapsibleContent>
                     <SidebarMenu>
                         {item.subItems.map((subItem: any) => (
-                             <SidebarMenuItem key={subItem.label}>
-                                <Link href={subItem.href} passHref>
+                             <SidebarMenuItem key={subItem.href}>
+                                <Link href={subItem.href}>
                                     <SidebarMenuButton isActive={currentPathname.startsWith(subItem.href)}>
                                         <subItem.icon />
                                         {open && <span>{subItem.label}</span>}
@@ -179,7 +182,7 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
     return (
         <Link href={item.href || ''}>
             <SidebarMenuButton 
-                isActive={item.href === '/' ? currentPathname === item.href : currentPathname.startsWith(item.href || '')}
+                isActive={item.href === '/' ? currentPathname === item.href : (item.href ? currentPathname.startsWith(item.href) : false)}
                 tooltip={{ children: item.label, side: "right" }}
             >
                 <item.icon />
@@ -225,15 +228,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
             <SidebarMenu>
                 {managementItems.map((item) => (
                     <SidebarMenuItem key={item.label}>
-                       <Link href={item.href}>
-                        <SidebarMenuButton 
-                           isActive={pathname.startsWith(item.href)}
-                           tooltip={{children: item.label, side: 'right'}}
-                        >
-                           <item.icon />
-                           {open && <span>{item.label}</span>}
-                         </SidebarMenuButton>
-                      </Link>
+                       <NavItem item={item} currentPathname={pathname} />
                     </SidebarMenuItem>
                 ))}
             </SidebarMenu>
