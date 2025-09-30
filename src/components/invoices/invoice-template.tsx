@@ -115,9 +115,8 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     position: 'relative'
                 }}
             >
-                <div className="absolute top-8 left-8 right-8 flex justify-between items-start">
-                    {settings.leftHeaderUrl && <Image src={settings.leftHeaderUrl} alt="Left Header" width={150} height={80} />}
-                    {settings.rightHeaderUrl && <Image src={settings.rightHeaderUrl} alt="Right Header" width={150} height={80} />}
+                <div className="absolute top-8 left-8 right-8 flex justify-center items-start">
+                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" width={500} height={100} />}
                 </div>
 
                 <div className="flex flex-col h-full pt-32">

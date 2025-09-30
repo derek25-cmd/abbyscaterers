@@ -7,15 +7,13 @@ const SETTINGS_STORAGE_KEY = 'caterSmartAppSettings';
 
 export interface AppSettings {
     loginImageUrl?: string;
-    leftHeaderUrl?: string;
-    rightHeaderUrl?: string;
+    headerUrl?: string;
     footerUrl?: string;
 }
 
 const defaultSettings: AppSettings = {
     loginImageUrl: "https://picsum.photos/seed/catering/1200/1800",
-    leftHeaderUrl: "",
-    rightHeaderUrl: "",
+    headerUrl: "",
     footerUrl: ""
 }
 

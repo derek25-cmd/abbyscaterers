@@ -12,7 +12,7 @@ import { useState, useRef, ChangeEvent } from "react";
 import Image from "next/image";
 import { Loader2, UploadCloud } from "lucide-react";
 
-type ImageKey = 'loginImageUrl' | 'leftHeaderUrl' | 'rightHeaderUrl' | 'footerUrl';
+type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl';
 
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
@@ -21,8 +21,7 @@ export function SettingsPageComponent() {
 
     const fileInputRefs = {
         loginImageUrl: useRef<HTMLInputElement>(null),
-        leftHeaderUrl: useRef<HTMLInputElement>(null),
-        rightHeaderUrl: useRef<HTMLInputElement>(null),
+        headerUrl: useRef<HTMLInputElement>(null),
         footerUrl: useRef<HTMLInputElement>(null),
     };
 
@@ -115,9 +114,8 @@ export function SettingsPageComponent() {
                     <CardTitle>Invoice & Proforma Customization</CardTitle>
                     <CardDescription>Upload images to be displayed on your generated PDF documents.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <ImageUploader imageKey="leftHeaderUrl" label="Left Header Image" />
-                    <ImageUploader imageKey="rightHeaderUrl" label="Right Header Image" />
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ImageUploader imageKey="headerUrl" label="Header Image" />
                     <ImageUploader imageKey="footerUrl" label="Footer Image" />
                 </CardContent>
             </Card>
