@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +102,9 @@ export default function IssuancePage() {
     };
     
     const handleNewIssuance = async (issuanceData: any) => {
-        await addIssuance(issuanceData);
+        // Create a shallow copy and remove the 'order' property before sending to Supabase
+        const { order, ...payload } = issuanceData;
+        await addIssuance(payload);
 
         // Update asset quantities
         for (const item of issuanceData.items) {
