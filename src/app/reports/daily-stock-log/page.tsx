@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, ArrowUp, ArrowDown } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft, ArrowUp, ArrowDown, Search, ListFilter } from "lucide-react";
 import DateSelector from "@/components/costing/DateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
@@ -14,18 +14,39 @@ import "jspdf-autotable";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 export default function DailyStockLogReportPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const { logs, isLoading } = useStockLogStorage();
   const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("productName");
+
 
   const dailyLogs = useMemo(() => {
-    if(!selectedDate) return [];
-    const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
-    return logs.filter(log => log.date === targetDateStr);
-  }, [selectedDate, logs]);
+    let filtered = logs;
+    if(selectedDate) {
+        const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
+        filtered = filtered.filter(log => log.date === targetDateStr);
+    }
+    
+    if(searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter(log => {
+            switch(filterType) {
+                case 'productName': return log.productName.toLowerCase().includes(lowercasedQuery);
+                case 'type': return log.type.toLowerCase().includes(lowercasedQuery);
+                case 'reason': return log.reason.toLowerCase().includes(lowercasedQuery);
+                default: return true;
+            }
+        });
+    }
+
+    return filtered;
+  }, [selectedDate, logs, searchQuery, filterType]);
 
   const summary = useMemo(() => {
     const stockIn = dailyLogs.filter(log => log.type === 'Stock In');
@@ -45,8 +66,8 @@ export default function DailyStockLogReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF();
-      doc.text(`Daily Stock Log Report - ${format(selectedDate, 'PPP')}`, 14, 15);
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.text(`Daily Stock Log Report - ${selectedDate ? format(selectedDate, 'PPP') : 'All Dates'}`, 14, 15);
       
       const tableColumn = ["Log ID", "Product", "Type", "Reason", "Quantity", "Total Value"];
       const tableRows: (string | number)[][] = [];
@@ -69,7 +90,7 @@ export default function DailyStockLogReportPage() {
         startY: 25,
       });
       
-      doc.save(`Daily_Stock_Log_Report_${format(selectedDate, "yyyy-MM-dd")}.pdf`);
+      doc.save(`Daily_Stock_Log_Report_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -87,14 +108,7 @@ export default function DailyStockLogReportPage() {
           <p className="text-muted-foreground">Track all inventory movements for a selected day.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
-          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
-             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-             {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link>
-          </Button>
+          <Button asChild variant="outline" size="sm"><Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link></Button>
         </div>
       </div>
 
@@ -106,6 +120,33 @@ export default function DailyStockLogReportPage() {
       <Card>
         <CardHeader>
           <CardTitle>Stock Movements for: {selectedDate ? format(selectedDate, 'PPP') : 'N/A'}</CardTitle>
+           <div className="flex items-center gap-2 pt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={`Search by ${filterType}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9 gap-1"><ListFilter className="h-3.5 w-3.5" /><span className="sr-only sm:not-sr-only">Filter</span></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={filterType === 'productName'} onCheckedChange={() => setFilterType('productName')}>Product</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'type'} onCheckedChange={() => setFilterType('type')}>Type</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'reason'} onCheckedChange={() => setFilterType('reason')}>Reason</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+              <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
+                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                 {isExporting ? 'Exporting...' : 'Export PDF'}
+              </Button>
+          </div>
         </CardHeader>
         <CardContent>
            <Table>

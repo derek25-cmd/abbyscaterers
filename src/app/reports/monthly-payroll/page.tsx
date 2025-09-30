@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, DollarSign } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft, DollarSign, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getPayrolls } from "@/services/payrollService";
 import jsPDF from "jspdf";
@@ -14,6 +14,7 @@ import type { ProformaInvoice as Payroll } from "@/types";
 import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
 
 export default function MonthlyPayrollReportPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
@@ -21,12 +22,16 @@ export default function MonthlyPayrollReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  useMemo(async () => {
-    setIsLoading(true);
-    const data = await getPayrolls();
-    setPayrolls(data);
-    setIsLoading(false);
+  useEffect(() => {
+    const fetchPayrolls = async () => {
+        setIsLoading(true);
+        const data = await getPayrolls();
+        setPayrolls(data);
+        setIsLoading(false);
+    };
+    fetchPayrolls();
   }, []);
 
   const availableMonths = useMemo(() => {
@@ -36,8 +41,12 @@ export default function MonthlyPayrollReportPage() {
   }, [payrolls]);
 
   const monthlyPayrolls = useMemo(() => {
-    return payrolls.filter(p => format(parseISO(p.payPeriodStart), 'yyyy-MM') === selectedMonth);
-  }, [selectedMonth, payrolls]);
+    let filtered = payrolls.filter(p => format(parseISO(p.payPeriodStart), 'yyyy-MM') === selectedMonth);
+    if(searchQuery){
+        filtered = filtered.filter(p => p.employeeName.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    return filtered;
+  }, [selectedMonth, payrolls, searchQuery]);
 
   const totalNetSalary = useMemo(() => {
     return monthlyPayrolls.reduce((sum, p) => sum + p.netSalary, 0);
@@ -49,12 +58,14 @@ export default function MonthlyPayrollReportPage() {
 
   const handlePdfExport = () => {
     setIsExporting(true);
-    const doc = new jsPDF({ orientation: 'l' });
+    const doc = new jsPDF({ orientation: 'landscape' });
     doc.text(`Monthly Payroll Report - ${format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}`, 14, 15);
     (doc as any).autoTable({
         head: [['Employee', 'Gross Salary', 'Deductions', 'Net Salary', 'Status']],
         body: monthlyPayrolls.map(p => [p.employeeName, formatCurrency(p.grossSalary), formatCurrency(p.deductions), formatCurrency(p.netSalary), p.status]),
         startY: 25,
+        foot: [[{ content: `Total Net Payroll: ${formatCurrency(totalNetSalary)}`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }]],
+        showFoot: 'lastPage'
     });
     doc.save(`Monthly_Payroll_Report_${selectedMonth}.pdf`);
     toast({ title: "Export Successful", description: "Report exported to PDF." });
@@ -69,20 +80,34 @@ export default function MonthlyPayrollReportPage() {
           <p className="text-muted-foreground">Review payroll summaries for a selected month.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-              <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
-              <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
-          </Select>
-          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
-             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-             {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
           <Button asChild variant="outline" size="sm"><Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link></Button>
         </div>
       </div>
       
       <Card>
-        <CardHeader><CardTitle>Payroll for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle></CardHeader>
+        <CardHeader>
+            <CardTitle>Payroll for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+             <div className="flex items-center gap-2 pt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by employee name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                />
+              </div>
+              <Select onValueChange={setSelectedMonth} value={selectedMonth}>
+                  <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
+                  <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
+              </Select>
+              <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
+                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                 {isExporting ? 'Exporting...' : 'Export PDF'}
+              </Button>
+            </div>
+        </CardHeader>
         <CardContent>
            <Table>
             <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead className="text-right">Gross Salary</TableHead><TableHead className="text-right">Deductions</TableHead><TableHead className="text-right">Net Salary</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>

@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, TrendingUp, DollarSign } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft, TrendingUp, DollarSign, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
+import { Input } from "@/components/ui/input";
 
 export default function MonthlyStockReportPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
@@ -21,6 +22,7 @@ export default function MonthlyStockReportPage() {
   const { logs, isLoading: logsLoading } = useStockLogStorage();
   const { products, isLoading: productsLoading } = useProductStorage();
   const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
@@ -45,12 +47,18 @@ export default function MonthlyStockReportPage() {
       current.value += log.price;
       usageMap.set(log.productName, current);
     });
-
-    return Array.from(usageMap.entries()).map(([productName, data]) => ({
+    
+    let data = Array.from(usageMap.entries()).map(([productName, data]) => ({
       productName,
       ...data
     })).sort((a,b) => b.value - a.value);
-  }, [selectedMonth, logs, products]);
+
+    if (searchQuery) {
+        data = data.filter(item => item.productName.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    
+    return data;
+  }, [selectedMonth, logs, products, searchQuery]);
   
   const summary = useMemo(() => {
       const totalValue = reportData.reduce((sum, item) => sum + item.value, 0);
@@ -65,7 +73,7 @@ export default function MonthlyStockReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: 'landscape' });
       const monthFormatted = format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy');
       doc.text(`Monthly Stock Usage Report - ${monthFormatted}`, 14, 15);
       
@@ -107,14 +115,6 @@ export default function MonthlyStockReportPage() {
           <p className="text-muted-foreground">Analyze product consumption for a selected month.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-              <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
-              <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
-          </Select>
-          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
-             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-             {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
           <Button asChild variant="outline" size="sm"><Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link></Button>
         </div>
       </div>
@@ -143,7 +143,29 @@ export default function MonthlyStockReportPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Stock Usage for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle></CardHeader>
+        <CardHeader>
+            <CardTitle>Stock Usage for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+            <div className="flex items-center gap-2 pt-4">
+                 <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder="Search by product name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                    />
+                  </div>
+                 <Select onValueChange={setSelectedMonth} value={selectedMonth}>
+                  <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
+                  <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
+                </Select>
+                <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
+                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    {isExporting ? 'Exporting...' : 'Export PDF'}
+                </Button>
+            </div>
+        </CardHeader>
         <CardContent>
            <Table>
             <TableHeader>

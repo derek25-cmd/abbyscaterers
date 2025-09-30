@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft, Search, ListFilter } from "lucide-react";
 import DateSelector from "@/components/costing/DateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { useOrderStorage } from "@/hooks/use-order-storage";
@@ -15,6 +15,8 @@ import "jspdf-autotable";
 import type { ClientEvent, Order } from "@/types";
 import { format } from 'date-fns';
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 interface DailyEventInfo extends ClientEvent {
   orderId: string;
@@ -27,20 +29,42 @@ export default function DailyOrderReportPage() {
   const { orders, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("customerName");
 
   const dailyEvents: DailyEventInfo[] = useMemo(() => {
-    if (!selectedDate) return [];
-    const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
-    return orders.flatMap((order: Order) => 
-        order.clientEvents
-            .filter(event => event.date.startsWith(targetDateStr))
-            .map(event => ({
-                ...event,
-                orderId: order.id,
-                proformaId: order.proformaId,
-            }))
-    );
-  }, [selectedDate, orders]);
+    let eventsForDate: DailyEventInfo[] = [];
+    if (selectedDate) {
+        const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
+        eventsForDate = orders.flatMap((order: Order) =>
+            order.clientEvents
+                .filter(event => event.date.startsWith(targetDateStr))
+                .map(event => ({
+                    ...event,
+                    orderId: order.id,
+                    proformaId: order.proformaId,
+                }))
+        );
+    }
+    
+    if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        return eventsForDate.filter(event => {
+            const client = getClientById(event.clientId);
+            const clientName = client?.companyName.toLowerCase() || "";
+            switch (filterType) {
+                case 'orderId': return event.orderId.toLowerCase().includes(lowercasedQuery);
+                case 'proformaId': return event.proformaId?.toLowerCase().includes(lowercasedQuery) ?? false;
+                case 'mealType': return event.mealType.toLowerCase().includes(lowercasedQuery);
+                case 'customerName':
+                default:
+                    return clientName.includes(lowercasedQuery);
+            }
+        })
+    }
+
+    return eventsForDate;
+  }, [selectedDate, orders, searchQuery, filterType, getClientById]);
 
   const calculateGrandTotal = (event: ClientEvent) => {
     const total = event.unitPrice * event.numberOfPeople;
@@ -59,7 +83,7 @@ export default function DailyOrderReportPage() {
     setIsExporting(true);
     try {
         const doc = new jsPDF({ orientation: 'landscape' });
-        doc.text(`Daily Order Report - ${format(selectedDate, "PPP")}`, 14, 15);
+        doc.text(`Daily Order Report - ${selectedDate ? format(selectedDate, "PPP") : 'All Dates'}`, 14, 15);
 
         const tableColumn = ["S/No", "Order ID", "Customer Name", "Proforma No.", "Type of Meal", "No. of People", "Unit Price", "VAT", "Grand Total"];
         const tableRows: (string | number)[][] = [];
@@ -83,9 +107,13 @@ export default function DailyOrderReportPage() {
             head: [tableColumn],
             body: tableRows,
             startY: 25,
+            foot: [[
+                { content: `Total Sales for the Day: ${formatCurrency(totalSales)}`, colSpan: 9, styles: { halign: 'right', fontStyle: 'bold' } }
+            ]],
+            showFoot: 'lastPage'
         });
         
-        doc.save(`Daily_Order_Report_${format(selectedDate, 'yyyy-MM-dd')}.pdf`);
+        doc.save(`Daily_Order_Report_${selectedDate ? format(selectedDate, 'yyyy-MM-dd') : 'all_dates'}.pdf`);
         toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
         console.error("Error exporting PDF:", error);
@@ -123,7 +151,7 @@ export default function DailyOrderReportPage() {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `Daily_Order_Report_${format(selectedDate, 'yyyy-MM-dd')}.csv`);
+      link.setAttribute('download', `Daily_Order_Report_${selectedDate ? format(selectedDate, 'yyyy-MM-dd'): 'all_dates'}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -151,23 +179,37 @@ export default function DailyOrderReportPage() {
                 </Link>
             </Button>
         </div>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-            <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
-            <div className="flex items-center space-x-3">
-            <Button onClick={handleCsvExport} variant="outline" size="sm" disabled={isExporting}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-            </Button>
-            <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
-                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                {isExporting ? 'Exporting...' : 'Export PDF'}
-            </Button>
-            </div>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle>Orders for: {selectedDate ? format(selectedDate, 'PPP') : 'N/A'}</CardTitle>
+            <div className="flex items-center gap-2 pt-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="search"
+                      placeholder={`Search by ${filterType}...`}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                    />
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9 gap-1"><ListFilter className="h-3.5 w-3.5" /><span className="sr-only sm:not-sr-only">Filter</span></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem checked={filterType === 'customerName'} onCheckedChange={() => setFilterType('customerName')}>Customer</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterType === 'orderId'} onCheckedChange={() => setFilterType('orderId')}>Order ID</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterType === 'proformaId'} onCheckedChange={() => setFilterType('proformaId')}>Proforma No.</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterType === 'mealType'} onCheckedChange={() => setFilterType('mealType')}>Meal Type</DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+                <div className="flex items-center space-x-2">
+                    <Button onClick={handleCsvExport} variant="outline" size="sm" disabled={isExporting}><Download className="mr-2 h-4 w-4" />CSV</Button>
+                    <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>{isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}{isExporting ? '...' : 'PDF'}</Button>
+                </div>
+            </div>
           </CardHeader>
           <CardContent>
              <Table>

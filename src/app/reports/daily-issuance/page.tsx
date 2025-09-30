@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft } from "lucide-react";
+import { FileText, Loader2, Download, ArrowLeft, Search, ListFilter } from "lucide-react";
 import DateSelector from "@/components/costing/DateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { getIssuances } from "@/services/issuanceService";
@@ -15,6 +15,8 @@ import type { Issuance } from "@/types";
 import { format, parseISO } from 'date-fns';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 export default function DailyIssuanceReportPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -22,6 +24,8 @@ export default function DailyIssuanceReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("issuedTo");
 
   useEffect(() => {
     const fetchIssuances = async () => {
@@ -34,10 +38,26 @@ export default function DailyIssuanceReportPage() {
   }, []);
 
   const dailyIssuances = useMemo(() => {
-    if(!selectedDate) return [];
-    const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
-    return logs.filter(log => log.date === targetDateStr);
-  }, [selectedDate, logs]);
+    let filteredLogs = logs;
+    if (selectedDate) {
+      const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
+      filteredLogs = filteredLogs.filter(log => log.date === targetDateStr);
+    }
+    
+    if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        filteredLogs = filteredLogs.filter(log => {
+            switch(filterType) {
+                case 'issuedTo': return log.issuedTo.toLowerCase().includes(lowercasedQuery);
+                case 'orderId': return log.orderId.toLowerCase().includes(lowercasedQuery);
+                case 'status': return log.status.toLowerCase().includes(lowercasedQuery);
+                default: return true;
+            }
+        });
+    }
+
+    return filteredLogs;
+  }, [selectedDate, logs, searchQuery, filterType]);
 
   const totalValueIssued = useMemo(() => {
     return dailyIssuances.reduce((sum, log) => sum + log.totalValue, 0);
@@ -50,8 +70,8 @@ export default function DailyIssuanceReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF();
-      const reportTitle = `Daily Issuance Report - ${format(selectedDate, "PPP")}`;
+      const doc = new jsPDF({ orientation: 'landscape' });
+      const reportTitle = `Daily Issuance Report - ${selectedDate ? format(selectedDate, "PPP") : 'All Dates'}`;
       doc.text(reportTitle, 14, 15);
 
       const tableColumn = ["Issue ID", "Issued To", "Order ID", "Status", "Total Value"];
@@ -68,8 +88,6 @@ export default function DailyIssuanceReportPage() {
         tableRows.push(logData);
       });
       
-      tableRows.push(["", "", "", "Total", formatCurrency(totalValueIssued)]);
-
       (doc as any).autoTable({
         head: [tableColumn],
         body: tableRows,
@@ -80,7 +98,7 @@ export default function DailyIssuanceReportPage() {
         showFoot: 'lastPage'
       });
 
-      doc.save(`Daily_Issuance_Report_${format(selectedDate, "yyyy-MM-dd")}.pdf`);
+      doc.save(`Daily_Issuance_Report_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -98,26 +116,53 @@ export default function DailyIssuanceReportPage() {
           <p className="text-muted-foreground">View all assets and items issued on a specific day.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
-          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
-             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-             {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link>
           </Button>
         </div>
       </div>
-
-      <Card className="bg-card p-4 rounded-lg">
+      
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Issuances for: {selectedDate ? format(selectedDate, 'PPP') : 'N/A'}</span>
+            <span>Issuances for: {selectedDate ? format(selectedDate, 'PPP') : 'All Dates'}</span>
             <div className="text-right">
                 <p className="text-sm font-medium text-muted-foreground">Total Value Issued</p>
                 <p className="text-xl font-bold text-primary">{formatCurrency(totalValueIssued)}</p>
             </div>
           </CardTitle>
+          <div className="flex items-center gap-2 pt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={`Search by ${filterType}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 gap-1">
+                    <ListFilter className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only">Filter</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={filterType === 'issuedTo'} onCheckedChange={() => setFilterType('issuedTo')}>Issued To</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'orderId'} onCheckedChange={() => setFilterType('orderId')}>Order ID</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'status'} onCheckedChange={() => setFilterType('status')}>Status</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+             <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+             <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
+                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                 {isExporting ? 'Exporting...' : 'Export PDF'}
+             </Button>
+          </div>
         </CardHeader>
         <CardContent>
            <Table>

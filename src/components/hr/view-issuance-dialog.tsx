@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client'
 import {
@@ -24,14 +23,14 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }) {
   if (!logEntry) return null;
 
   const handlePrint = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: 'landscape' });
     
     doc.text("Issuance Note", 14, 20);
     doc.setFontSize(10);
     doc.text(`Issue ID: ${logEntry.id}`, 14, 30);
     doc.text(`Date: ${logEntry.date}`, 14, 35);
-    doc.text(`Issued To: ${logEntry.issuedTo}`, 100, 30);
-    doc.text(`Client Order: ${logEntry.order?.name || 'N/A'} (${logEntry.orderId})`, 100, 35);
+    doc.text(`Issued To: ${logEntry.issuedTo}`, 150, 30);
+    doc.text(`Client Order: ${logEntry.order?.name || 'N/A'} (${logEntry.orderId})`, 150, 35);
     
     const tableColumn = ["Asset Name", "Type", "Issued", "Returned", "Unit Price", "Total Value"];
     const tableRows = logEntry.items.map(item => [

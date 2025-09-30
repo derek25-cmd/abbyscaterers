@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, Search, ListFilter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -15,6 +15,8 @@ import type { Invoice } from "@/types";
 import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 const calculateTotal = (inv: Invoice) => {
     const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -30,6 +32,9 @@ export default function MonthlyInvoiceReportPage() {
   const { invoices, isLoading: invoicesLoading } = useInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("clientName");
+
 
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
@@ -42,8 +47,23 @@ export default function MonthlyInvoiceReportPage() {
   }, [invoices]);
 
   const monthlyInvoices = useMemo(() => {
-    return invoices.filter(invoice => invoice.invoiceDate && format(parseISO(invoice.invoiceDate), 'yyyy-MM') === selectedMonth);
-  }, [selectedMonth, invoices]);
+    let filtered = invoices.filter(invoice => invoice.invoiceDate && format(parseISO(invoice.invoiceDate), 'yyyy-MM') === selectedMonth);
+    
+    if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
+        filtered = filtered.filter(inv => {
+            const clientName = getClientById(inv.clientId || "")?.companyName.toLowerCase() || "";
+            switch (filterType) {
+                case 'clientName': return clientName.includes(lowercasedQuery);
+                case 'id': return inv.id.toLowerCase().includes(lowercasedQuery);
+                case 'status': return inv.status.toLowerCase().includes(lowercasedQuery);
+                default: return true;
+            }
+        });
+    }
+
+    return filtered;
+  }, [selectedMonth, invoices, searchQuery, filterType, getClientById]);
 
   const summary = useMemo(() => {
     const paidInvoices = monthlyInvoices.filter(inv => inv.status === 'paid');
@@ -63,7 +83,7 @@ export default function MonthlyInvoiceReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-      const doc = new jsPDF({ orientation: 'l' });
+      const doc = new jsPDF({ orientation: 'landscape' });
       const monthFormatted = format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy');
       doc.text(`Monthly Invoice Report - ${monthFormatted}`, 14, 15);
 
@@ -108,20 +128,6 @@ export default function MonthlyInvoiceReportPage() {
           <p className="text-muted-foreground">Track financial status for a selected month.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-              <SelectTrigger className="w-[240px]">
-                  <SelectValue placeholder="Select a month" />
-              </SelectTrigger>
-              <SelectContent>
-                  {availableMonths.map(month => (
-                      <SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>
-                  ))}
-              </SelectContent>
-          </Select>
-          <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
-             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-             {isExporting ? 'Exporting...' : 'Export PDF'}
-          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/reports"><ArrowLeft className="mr-2 h-4 w-4" />Back to Reports</Link>
           </Button>
@@ -136,7 +142,43 @@ export default function MonthlyInvoiceReportPage() {
 
       <Card>
           <CardHeader>
-          <CardTitle>Invoices for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+            <CardTitle>Invoices for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+             <div className="flex items-center gap-2 pt-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder={`Search by ${filterType}...`}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-9 gap-1"><ListFilter className="h-3.5 w-3.5" /><span className="sr-only sm:not-sr-only">Filter</span></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={filterType === 'clientName'} onCheckedChange={() => setFilterType('clientName')}>Client Name</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>Invoice No.</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={filterType === 'status'} onCheckedChange={() => setFilterType('status')}>Status</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Select onValueChange={setSelectedMonth} value={selectedMonth}>
+                  <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder="Select a month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {availableMonths.map(month => (
+                          <SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+              <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
+                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                 {isExporting ? 'Exporting...' : 'Export PDF'}
+              </Button>
+            </div>
         </CardHeader>
         <CardContent>
            <Table>
