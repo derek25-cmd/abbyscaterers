@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import "jspdf-autotable";
 import CostingSummary from "./CostingSummary";
 import StockLogTable from "./StockLogTable"; 
 import { format, parseISO } from "date-fns";
@@ -23,7 +23,6 @@ type CostingReportProps = {
 
 export const CostingReport = ({ request, onBack, clients, orders, isLoading: parentLoading }: CostingReportProps) => {
   const { toast } = useToast();
-  const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
@@ -76,35 +75,55 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
   const totalIncome = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
   const netProfitLoss = totalIncome - ingredientCost;
 
-  const handlePdfExport = async () => {
-    if (!printRef.current) return;
+  const handlePdfExport = () => {
     setIsExporting(true);
-    try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: null });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-      pdf.save(`Costing_Report.pdf`);
-      toast({ title: "Export Successful", description: "Report exported to PDF." });
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast({ variant: "destructive", title: "Error", description: "An error occurred while generating the PDF." });
-    } finally {
-      setIsExporting(false);
-    }
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.text(title, 14, 15);
+
+    // Summary Cards
+    const summaryData = [
+        ["Total Ingredient Cost", `${ingredientCost.toLocaleString()} TZS`],
+        ["Total Income", `${totalIncome.toLocaleString()} TZS`],
+        ["Net Profit/Loss", `${netProfitLoss.toLocaleString()} TZS`],
+    ];
+    (doc as any).autoTable({
+        body: summaryData,
+        startY: 25,
+        theme: 'plain',
+        styles: { fontSize: 12 },
+        columnStyles: { 0: { fontStyle: 'bold' } }
+    });
+
+    // Stock Log Table
+    (doc as any).autoTable({
+        head: [['Product', 'Type', 'Qty', 'Total Value']],
+        body: filteredStockLogs.map(log => [
+            log.productName,
+            log.type,
+            log.quantity,
+            `${log.price.toLocaleString()} TZS`,
+        ]),
+        startY: (doc as any).autoTable.previous.finalY + 10,
+        headStyles: { fillColor: [22, 163, 74] },
+    });
+    
+     // Event Income Table
+    (doc as any).autoTable({
+        head: [['Client', 'Meal Type', 'Total Price']],
+        body: filteredEvents.map(event => {
+            const client = clients.find(c => c.id === event.clientId)
+            const totalPrice = event.unitPrice * event.numberOfPeople;
+            return [client?.companyName || "N/A", event.mealType, `${totalPrice.toLocaleString()} TZS`];
+        }),
+        startY: (doc as any).autoTable.previous.finalY + 10,
+        headStyles: { fillColor: [22, 163, 74] },
+    });
+
+
+    doc.save(`Costing_Report.pdf`);
+    toast({ title: "Export Successful", description: "Report exported to PDF." });
+    setIsExporting(false);
   };
   
   if (isLoading) {
@@ -130,11 +149,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         </div>
       </div>
 
-      <div ref={printRef} className="space-y-6 bg-background p-4 rounded-lg">
-        <div className="text-center hidden print:block pt-8">
-            <h1 className="text-2xl font-bold">{title}</h1>
-        </div>
-
+      <div className="space-y-6 bg-background p-4 rounded-lg">
         <CostingSummary 
           totalIngredientCost={ingredientCost}
           totalIncome={totalIncome}
@@ -149,5 +164,3 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     </div>
   );
 };
-
-    

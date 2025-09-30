@@ -37,22 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      if (event === 'SIGNED_IN') {
-        router.push('/dashboard');
-      }
-      if (event === 'SIGNED_OUT') {
-        router.push('/login');
-      }
     });
 
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [router]);
+  }, []);
   
   const signInWithEmail = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if(error) throw error;
+    router.push('/dashboard');
     return data;
   }
 
@@ -70,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Error logging out:', error);
+    router.push('/login');
   };
 
   const value = {

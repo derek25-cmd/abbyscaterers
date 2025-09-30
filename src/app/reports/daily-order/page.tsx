@@ -58,7 +58,7 @@ export default function DailyOrderReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     try {
-        const doc = new jsPDF();
+        const doc = new jsPDF({ orientation: 'landscape' });
         doc.text(`Daily Order Report - ${format(selectedDate, "PPP")}`, 14, 15);
 
         const tableColumn = ["S/No", "Order ID", "Customer Name", "Proforma No.", "Type of Meal", "No. of People", "Unit Price", "VAT", "Grand Total"];
