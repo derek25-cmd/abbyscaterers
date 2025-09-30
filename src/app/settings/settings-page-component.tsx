@@ -34,7 +34,7 @@ export function SettingsPageComponent() {
 
         try {
             const fileName = `${imageKey}-${Date.now()}-${file.name}`;
-            const publicUrl = await uploadFile('images', file, fileName);
+            const publicUrl = await uploadFile('abbys catersmart', file, fileName);
 
             if (publicUrl) {
                 updateSettings({ [imageKey]: publicUrl });
