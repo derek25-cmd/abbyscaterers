@@ -135,11 +135,11 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     position: 'relative'
                 }}
             >
-                 <div className="absolute top-8 left-8 right-8 flex justify-center items-start">
-                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" width={500} height={100} />}
+                 <div className="absolute top-8 left-8 right-8">
+                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
-                <div className="flex flex-col h-full pt-32">
+                <div className="flex flex-col h-full pt-32 pb-32">
                     {/* HEADER SECTION */}
                     <div className="flex justify-end items-start mb-2 relative">
                         <div className="text-right">
@@ -246,7 +246,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                             </tr>
                         </tbody>
                     </table>
-                    <div className="mb-4 text-base p-2 bg-white rounded">
+                    <div className="my-4 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
                     

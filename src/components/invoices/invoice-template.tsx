@@ -115,11 +115,11 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     position: 'relative'
                 }}
             >
-                <div className="absolute top-8 left-8 right-8 flex justify-center items-start">
-                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" width={500} height={100} />}
+                <div className="absolute top-8 left-8 right-8">
+                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
-                <div className="flex flex-col h-full pt-32">
+                <div className="flex flex-col h-full pt-32 pb-32">
                     <p style={{textIndent: '0pt', textAlign: 'left'}}><br/></p>
                     <div className="flex justify-between items-start mb-2 relative">
                         <div className="flex-1"></div>
