@@ -34,7 +34,7 @@ export function SettingsPageComponent() {
 
         try {
             const fileName = `${imageKey}-${Date.now()}-${file.name}`;
-            const publicUrl = await uploadFile('invoice_assets', file, fileName);
+            const publicUrl = await uploadFile('images', file, fileName);
 
             if (publicUrl) {
                 updateSettings({ [imageKey]: publicUrl });
