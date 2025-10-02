@@ -11,8 +11,6 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, Edit, Download, Trash2, FileCheck, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -83,6 +81,9 @@ export function ProformaInvoiceViewPageComponent() {
     const invoiceNode = document.getElementById('proforma-invoice-pdf-content');
     if (invoiceNode) {
         try {
+            const { default: jsPDF } = await import('jspdf');
+            const { default: html2canvas } = await import('html2canvas');
+            
             const canvas = await html2canvas(invoiceNode, { scale: 2, useCORS: true });
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
