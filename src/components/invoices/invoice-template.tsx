@@ -1,13 +1,21 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { format, isValid, parseISO } from 'date-fns';
 import type { Invoice, Client, InvoiceItem } from '@/types';
 import { Textarea } from '../ui/textarea';
 import Image from 'next/image';
 import { useSettingsStorage } from '@/hooks/use-settings-storage';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import type { UserOptions } from 'jspdf-autotable';
+
+// Extend the jsPDF type to include the autoTable method
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: UserOptions) => jsPDF;
+}
 
 
 interface InvoiceTemplateProps {
@@ -15,6 +23,7 @@ interface InvoiceTemplateProps {
     client: Client | undefined;
 }
 
+// ... (keep convertToWords function as is)
 const convertToWords = (amount: number): string => {
     if (amount < 0) return 'Negative amounts are not supported';
     if (amount === 0) return 'Zero';
@@ -59,20 +68,18 @@ const convertToWords = (amount: number): string => {
     return result.trim();
 };
 
+
 const formatDate = (dateStr?: string) => {
     if (!dateStr || !isValid(parseISO(dateStr))) return '{Date}';
     return format(parseISO(dateStr), 'do MMMM yyyy');
 };
 
 export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
-    
-    const [localItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
     const [serviceDescription, setServiceDescription] = useState(invoiceData.serviceDesc);
     const { settings } = useSettingsStorage();
-
-
-    useEffect(() => {
+    
+    React.useEffect(() => {
         if(invoiceData.serviceDesc?.startsWith('Provision of')) {
             setServiceDescription(invoiceData.serviceDesc.replace('Provision of', 'Being Costs of'));
         } else if (!invoiceData.serviceDesc?.startsWith('Being Costs of')) {
@@ -82,7 +89,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
             setServiceDescription(invoiceData.serviceDesc);
         }
     }, [invoiceData.serviceDesc]);
-    
+
     const getParticularText = (item: InvoiceItem): string => {
         if (item.particularType === 'event') {
             const eventText = item.eventType === 'Custom' ? (item.customEventType || '{EventType}') : (item.eventType || '{EventType}');
@@ -91,7 +98,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         return `${item.mealType || '{MealType}'}${item.date ? ` on ${format(parseISO(item.date), 'PPP')}` : ''}`;
     }
 
-    const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation } = invoiceData;
+    const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation, items: localItems } = invoiceData;
 
     const subtotal = localItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
@@ -120,11 +127,11 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                 </div>
 
                 <div className="flex flex-col h-full pt-32 pb-32">
-                    <p style={{textIndent: '0pt', textAlign: 'left'}}><br/></p>
+                    
                     <div className="flex justify-between items-start mb-2 relative">
                         <div className="flex-1"></div>
                         <div className="text-right">
-                            <h2 className="font-bold text-4xl text-primary">INVOICE</h2>
+                            <h2 className="font-bold text-4xl text-primary" style={{ marginTop: '-2px' }}>INVOICE</h2>
                             <div className="mt-1 text-base space-y-0">
                                 <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
                                 <p><strong>Invoice No.:</strong> {id || '{Invoice No.}'}</p>
@@ -219,35 +226,47 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                             </tr>
                         </tbody>
                     </table>
-                    <div className="my-4 text-base p-2 bg-white rounded">
+                    
+                    <div className="text-right my-2 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
-                    <div className="flex justify-between items-end mt-4">
-                        <div style={{fontSize: '15px'}}>
-                            <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
-                            <p className="mt-1">For and on behalf of Abby&apos;s Legendary Caterers Limited</p>
-                            <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
-                            <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
-                                <div>Account Name</div><div>: ABBY&apos;S LEGENDARY CATERERS LIMITED</div>
-                                <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
-                                <div>Account Number(TZS)</div><div>: 9120002502036</div>
-                                <div>Branch</div><div>: PENINSULA Branch</div>
-                                <div>Branch Code</div><div>: 121009</div>
-                                <div>Swift Code</div><div>: SBICTZTX</div>
-                            </div>
-                        </div>
-                        <div className="text-center text-sm">
-                            <Image alt="Signature and Seal" height={100} width={200} className="h-24 w-auto block mx-auto mb-2" src="https://placehold.co/200x100.png" data-ai-hint="signature seal"/>
-                        </div>
+
+                    <div className="text-left" style={{ fontSize: '15px' }}>
+                        <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                     </div>
-                    <p className="text-center text-base mt-4 p-2 bg-gray-200">We will issue EFD receipt once payment is received</p>
+
+                    <div className="flex-grow"></div>
+                    
+                    <div className="footer-sections" style={{ breakBefore: 'page', pageBreakBefore: 'always', marginBottom: '40px' }}>
+                      <div className="flex justify-between items-end mt-4">
+                           <div style={{fontSize: '14px'}}>
+                                <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
+                                <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
+                                    <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
+                                    <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
+                                    <div>Account Number(TZS)</div><div>: 9120002502036</div>
+                                    <div>Branch</div><div>: PENINSULA Branch</div>
+                                    <div>Branch Code</div><div>: 121009</div>
+                                    <div>Swift Code</div><div>: SBICTZTX</div>
+                                </div>
+                            </div>
+                           <div className="text-center" style={{ fontSize: '14px' }}>
+                            <p className="mb-1">For and on behalf of:-</p>
+                            <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
+                            {settings.signatureUrl && <Image alt="Signature and Seal" height={80} width={200} className="h-20 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
+                            <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                            </div>
+                      </div>
+                    </div>
                 </div>
-                {settings.footerUrl && (
+                 {settings.footerUrl && (
                     <div className="absolute bottom-8 left-8 right-8">
                         <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />
                     </div>
-                )}
+                 )}
              </Card>
         </div>
     );
 }
+
+      

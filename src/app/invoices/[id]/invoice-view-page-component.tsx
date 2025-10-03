@@ -11,6 +11,14 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, Edit, Download, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import type { UserOptions } from 'jspdf-autotable';
+import { useSettingsStorage } from "@/hooks/use-settings-storage";
+
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: UserOptions) => jsPDF;
+}
 
 export function InvoiceViewPageComponent() {
   const params = useParams();
@@ -18,6 +26,8 @@ export function InvoiceViewPageComponent() {
   const { getInvoiceById, deleteInvoice, isLoading: invoicesLoading } = useInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
+  const { settings } = useSettingsStorage();
+
 
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
   const [client, setClient] = useState<Client | undefined>(undefined);
@@ -47,28 +57,132 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
   const handleExportPDF = async () => {
-    setExporting(true);
-    const invoiceNode = document.getElementById('invoice-pdf-content');
-    if (invoiceNode) {
-        try {
-            const { default: jsPDF } = await import('jspdf');
-            const { default: html2canvas } = await import('html2canvas');
+      if (!invoice || !client) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Invoice data not loaded yet.' });
+          return;
+      }
+      setExporting(true);
+      try {
+          const { default: jsPDF } = await import('jspdf');
+          await import('jspdf-autotable');
 
-            const canvas = await html2canvas(invoiceNode, { scale: 2, useCORS: true });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = 210;
-            const imgProps = pdf.getImageProperties(imgData);
-            const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
-            pdf.save(`invoice_${invoice?.id || 'final'}.pdf`);
-            toast({ title: 'Success', description: 'Invoice exported as PDF.' });
-        } catch (error) {
-            console.error("PDF Export Error:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
-        }
-    }
-    setExporting(false);
+          const doc = new jsPDF() as jsPDFWithAutoTable;
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const margin = 20;
+
+          const addHeaderAndFooter = () => {
+              // Header
+              if (settings.headerUrl) {
+                  doc.addImage(settings.headerUrl, 'PNG', margin, 10, pageWidth - margin * 2, 20);
+              }
+              doc.setFontSize(22);
+              doc.setFont('helvetica', 'bold');
+              doc.text('INVOICE', pageWidth - margin, 45, { align: 'right' });
+
+
+              // Footer
+              if (settings.footerUrl) {
+                  doc.addImage(settings.footerUrl, 'PNG', margin, pageHeight - 30, pageWidth - margin * 2, 20);
+              }
+          };
+
+          addHeaderAndFooter();
+
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Date: ${format(parseISO(invoice.invoiceDate), 'do MMMM yyyy')}`, pageWidth - margin, 50, { align: 'right' });
+          doc.text(`Invoice No.: ${invoice.id}`, pageWidth - margin, 55, { align: 'right' });
+
+          doc.text(`To:`, margin, 65);
+          let toY = 70;
+          [invoice.receiverName, invoice.receiverPosition, client.companyName, client.address1, client.address2, invoice.lpoNumber ? `LPO No.: ${invoice.lpoNumber}` : ''].filter(Boolean).forEach(line => {
+              doc.text(line, margin, toY);
+              toY += 5;
+          });
+
+          if (invoice.serviceDesc) {
+              doc.setFont('helvetica', 'italic');
+              doc.text(invoice.serviceDesc, pageWidth / 2, toY + 10, { align: 'center', maxWidth: pageWidth - margin * 2 });
+              doc.setFont('helvetica', 'normal');
+          }
+
+          const tableBody = invoice.items.map((item, index) => [
+              index + 1,
+              item.pax,
+              item.id,
+              item.particularDescription || 'N/A',
+              formatCurrency(item.unitPrice),
+              formatCurrency(item.total)
+          ]);
+          
+          let finalY = 0;
+
+          doc.autoTable({
+              startY: toY + 20,
+              head: [['S/No.', 'QTY', 'Order ID', 'PARTICULARS', 'UNIT PRICE (TSHS)', 'TOTAL (TSHS)']],
+              body: tableBody,
+              theme: 'grid',
+              headStyles: { fillColor: [221, 221, 221], textColor: 20 },
+              didDrawPage: (data) => {
+                  addHeaderAndFooter();
+              },
+              didParseCell: (data) => {
+                  if (data.section === 'head') {
+                      if(data.column.index > 3) data.cell.styles.halign = 'right';
+                  } else if (data.section === 'body') {
+                      if(data.column.index > 3) data.cell.styles.halign = 'right';
+                      if(data.column.index === 0 || data.column.index === 1) data.cell.styles.halign = 'center';
+                  }
+              },
+              willDrawCell: (data) => {
+                if (data.section === 'body' && data.column.index === 3) {
+                  data.cell.styles.halign = 'left';
+                }
+              }
+          });
+
+          finalY = (doc as any).lastAutoTable.finalY;
+
+          // Calculation Summary
+          const summaryX = pageWidth - margin - 50;
+          doc.autoTable({
+            startY: finalY + 1,
+            body: [
+              ['Sub-Total (TSHS)', formatCurrency(subtotal)],
+              ...(multiplyByDays ? [['No of days', numberOfDays], ['TOTAL (TSHS)', formatCurrency(totalForDays)]] : []),
+              ['Add Service Charge (TSHS)', formatCurrency(serviceCharge)],
+              ['Add Transportation Costs (TSHS)', formatCurrency(transportCosts)],
+              ['Total Before VAT (TSHS)', formatCurrency(totalBeforeVat)],
+              ['Add VAT 18% (TSHS)', vat > 0 ? formatCurrency(vat) : 'Inclusive'],
+              [{ content: 'GRAND TOTAL (TSHS)', styles: { fontStyle: 'bold' } }, { content: formatCurrency(grandTotal), styles: { fontStyle: 'bold' } }]
+            ],
+            theme: 'grid',
+            columnStyles: { 0: { halign: 'right' }, 1: { halign: 'right' } },
+            margin: { left: summaryX },
+          });
+          
+          finalY = (doc as any).lastAutoTable.finalY;
+          
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'bold');
+          doc.text('Amount in Words:', margin, finalY + 10, { align: 'right' });
+          doc.setFont('helvetica', 'italic');
+          doc.text(`Tanzania Shillings ${convertToWords(grandTotal)} only.`, margin + 40, finalY + 10, { align: 'right'});
+
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.text(`Signed at ${signedAtLocation || 'Dar es Salaam'} on this ${signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of ${signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}`, margin, finalY + 20);
+
+
+          doc.save(`invoice_${invoice.id}.pdf`);
+          toast({ title: 'Success', description: 'Invoice exported as PDF.' });
+
+      } catch (error) {
+          console.error("PDF Export Error:", error);
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
+      }
+      setExporting(false);
   };
   
   const handleDelete = () => {
@@ -100,7 +214,7 @@ export function InvoiceViewPageComponent() {
     );
   }
 
-  if (!invoice) {
+  if (!invoice || !client) {
     return (
       <div className="text-center py-10 max-w-xl mx-auto">
         <h2 className="text-2xl font-semibold text-destructive mb-4">Invoice Not Found</h2>
@@ -112,6 +226,11 @@ export function InvoiceViewPageComponent() {
     );
   }
 
+    const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
+    const totalBeforeVat = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
+    const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
+    const grandTotal = totalBeforeVat + vat;
 
   return (
     <>
@@ -134,3 +253,5 @@ export function InvoiceViewPageComponent() {
     </>
   );
 }
+
+      
