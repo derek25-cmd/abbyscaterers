@@ -249,25 +249,11 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div className="text-left" style={{ fontSize: '15px' }}>
-                        <p>For and on behalf of Abby's Legendary Caterers Limited</p>
-                    </div>
-
                     <div className="flex-grow"></div>
 
                     <div className="footer-sections" style={{ breakBefore: 'page', pageBreakBefore: 'always', marginBottom: '40px' }}>
                       <div className="flex justify-between items-end mt-4">
-                           <div style={{fontSize: '14px'}}>
-                                <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
-                                <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
-                                    <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
-                                    <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
-                                    <div>Account Number(TZS)</div><div>: 9120002502036</div>
-                                    <div>Branch</div><div>: PENINSULA Branch</div>
-                                    <div>Branch Code</div><div>: 121009</div>
-                                    <div>Swift Code</div><div>: SBICTZTX</div>
-                                </div>
-                            </div>
+                           <div></div>
                            <div className="text-center" style={{ fontSize: '14px' }}>
                             <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
                             {settings.signatureUrl && <Image alt="Signature and Seal" height={80} width={200} className="h-20 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
@@ -276,7 +262,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                       </div>
                        <div className="text-sm mt-4">
                         <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
-                        <ul className="space-y-1 list-disc list-inside" style={{ fontFamily:'monospace', fontSize: '14px' }}>
+                        <ul className="space-y-1 list-disc list-inside" style={{ fontSize: '14px' }}>
                             <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
                             <li>Payments shall be by Bank transfer or by Cheque.</li>
                             <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
