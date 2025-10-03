@@ -8,14 +8,6 @@ import type { Invoice, Client, InvoiceItem } from '@/types';
 import { Textarea } from '../ui/textarea';
 import Image from 'next/image';
 import { useSettingsStorage } from '@/hooks/use-settings-storage';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import type { UserOptions } from 'jspdf-autotable';
-
-// Extend the jsPDF type to include the autoTable method
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: UserOptions) => jsPDF;
-}
 
 
 interface InvoiceTemplateProps {

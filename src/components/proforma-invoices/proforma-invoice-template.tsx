@@ -12,15 +12,6 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { useSettingsStorage } from '@/hooks/use-settings-storage';
 import Image from 'next/image';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import type { UserOptions } from 'jspdf-autotable';
-
-// Extend the jsPDF type to include the autoTable method
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: UserOptions) => jsPDF;
-}
-
 
 interface ProformaInvoiceTemplateProps {
     invoiceData: ProformaInvoice;
@@ -329,5 +320,3 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
         </>
     );
 }
-
-      
