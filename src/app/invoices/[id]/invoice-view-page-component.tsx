@@ -106,6 +106,12 @@ export function InvoiceViewPageComponent() {
           return;
       }
       setExporting(true);
+
+      const formatCurrency = (amount: number) => {
+        if (typeof amount !== 'number') return 'N/A';
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
+      }
+
       try {
           const { default: jsPDF } = await import('jspdf');
           await import('jspdf-autotable');
@@ -141,8 +147,10 @@ export function InvoiceViewPageComponent() {
           doc.text(`To:`, margin, 65);
           let toY = 70;
           [invoice.receiverName, invoice.receiverPosition, client.companyName, client.address1, client.address2, invoice.lpoNumber ? `LPO No.: ${invoice.lpoNumber}` : ''].filter(Boolean).forEach(line => {
-              doc.text(line, margin, toY);
-              toY += 5;
+              if (line) {
+                doc.text(line, margin, toY);
+                toY += 5;
+              }
           });
 
           if (invoice.serviceDesc) {
@@ -150,6 +158,12 @@ export function InvoiceViewPageComponent() {
               doc.text(invoice.serviceDesc, pageWidth / 2, toY + 10, { align: 'center', maxWidth: pageWidth - margin * 2 });
               doc.setFont('helvetica', 'normal');
           }
+
+          const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
+          const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
+          const totalBeforeVat = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
+          const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
+          const grandTotal = totalBeforeVat + vat;
 
           const tableBody = invoice.items.map((item, index) => [
               index + 1,
@@ -194,9 +208,9 @@ export function InvoiceViewPageComponent() {
             startY: finalY + 1,
             body: [
               ['Sub-Total (TSHS)', formatCurrency(subtotal)],
-              ...(multiplyByDays ? [['No of days', numberOfDays], ['TOTAL (TSHS)', formatCurrency(totalForDays)]] : []),
-              ['Add Service Charge (TSHS)', formatCurrency(serviceCharge)],
-              ['Add Transportation Costs (TSHS)', formatCurrency(transportCosts)],
+              ...(invoice.multiplyByDays ? [['No of days', invoice.numberOfDays], ['TOTAL (TSHS)', formatCurrency(totalForDays)]] : []),
+              ['Add Service Charge (TSHS)', formatCurrency(invoice.serviceCharge || 0)],
+              ['Add Transportation Costs (TSHS)', formatCurrency(invoice.transportCosts || 0)],
               ['Total Before VAT (TSHS)', formatCurrency(totalBeforeVat)],
               ['Add VAT 18% (TSHS)', vat > 0 ? formatCurrency(vat) : 'Inclusive'],
               [{ content: 'GRAND TOTAL (TSHS)', styles: { fontStyle: 'bold' } }, { content: formatCurrency(grandTotal), styles: { fontStyle: 'bold' } }]
@@ -216,7 +230,7 @@ export function InvoiceViewPageComponent() {
 
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.text(`Signed at ${signedAtLocation || 'Dar es Salaam'} on this ${signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of ${signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}`, margin, finalY + 20);
+          doc.text(`Signed at ${invoice.signedAtLocation || 'Dar es Salaam'} on this ${invoice.signedAtDate ? format(parseISO(invoice.signedAtDate), 'do') : '___'} day of ${invoice.signedAtDate ? format(parseISO(invoice.signedAtDate), 'MMMM yyyy') : '_________ ________'}`, margin, finalY + 20);
 
 
           doc.save(`invoice_${invoice.id}.pdf`);
@@ -269,12 +283,6 @@ export function InvoiceViewPageComponent() {
       </div>
     );
   }
-
-    const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
-    const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
-    const totalBeforeVat = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
-    const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
-    const grandTotal = totalBeforeVat + vat;
 
   return (
     <>
