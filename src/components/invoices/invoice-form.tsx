@@ -474,7 +474,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4 pt-2 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} readOnly />} /></div>
+                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
                                             <div>
                                                 <Label>Event Type</Label>
                                                 <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
