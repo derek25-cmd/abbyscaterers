@@ -174,7 +174,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Order ID</FormLabel>
-                        <FormControl><Input placeholder="e.g. BOOK-2024-07" {...field} readOnly={isEditMode} /></FormControl>
+                        <FormControl><Input placeholder="e.g. BOOK-2024-07" {...field} /></FormControl>
                         <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire order.</FormDescription>
                         <FormMessage />
                     </FormItem>
