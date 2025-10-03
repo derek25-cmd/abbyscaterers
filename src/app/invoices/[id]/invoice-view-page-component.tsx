@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -11,58 +11,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, Edit, Download, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { UserOptions } from 'jspdf-autotable';
 import { useSettingsStorage } from "@/hooks/use-settings-storage";
-import { format, parseISO } from 'date-fns';
-
-interface jsPDFWithAutoTable extends jsPDF {
-  autoTable: (options: UserOptions) => jsPDF;
-}
-
-const convertToWords = (amount: number): string => {
-    if (amount < 0) return 'Negative amounts are not supported';
-    if (amount === 0) return 'Zero';
-    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    const thousands = ['', 'Thousand', 'Million', 'Billion'];
-    function convertChunk(num: number): string {
-        let result = '';
-        if (num >= 100) {
-            result += ones[Math.floor(num / 100)] + ' Hundred ';
-            num %= 100;
-        }
-        if (num >= 20) {
-            result += tens[Math.floor(num / 10)] + ' ';
-            num %= 10;
-        } else if (num >= 10) {
-            result += teens[num - 10] + ' ';
-            return result.trim();
-        }
-        if (num > 0) {
-            result += ones[num] + ' ';
-        }
-        return result.trim();
-    }
-    let numStr = Math.floor(amount).toString();
-    let chunkCount = 0;
-    let result = '';
-    while (numStr.length > 0) {
-        const chunk = numStr.slice(-3);
-        numStr = numStr.slice(0, -3);
-        const chunkNum = parseInt(chunk);
-        if (chunkNum !== 0) {
-            let chunkWords = convertChunk(chunkNum);
-            if (chunkCount > 0) {
-                chunkWords += ' ' + thousands[chunkCount];
-            }
-            result = chunkWords + ' ' + result;
-        }
-        chunkCount++;
-    }
-    return result.trim();
-};
-
 
 export function InvoiceViewPageComponent() {
   const params = useParams();
@@ -71,6 +20,7 @@ export function InvoiceViewPageComponent() {
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
+  const printRef = useRef<HTMLDivElement>(null);
 
 
   const [invoice, setInvoice] = useState<Invoice | undefined>(undefined);
@@ -101,139 +51,48 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
   const handleExportPDF = async () => {
-      if (!invoice || !client) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Invoice data not loaded yet.' });
+      if (!printRef.current) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Invoice template not loaded yet.' });
           return;
       }
       setExporting(true);
 
-      const formatCurrency = (amount: number) => {
-        if (typeof amount !== 'number') return 'N/A';
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
-      }
-
       try {
           const { default: jsPDF } = await import('jspdf');
-          await import('jspdf-autotable');
-
-          const doc = new jsPDF() as jsPDFWithAutoTable;
-          const pageWidth = doc.internal.pageSize.getWidth();
-          const pageHeight = doc.internal.pageSize.getHeight();
-          const margin = 20;
-
-          const addHeaderAndFooter = () => {
-              // Header
-              if (settings.headerUrl) {
-                  doc.addImage(settings.headerUrl, 'PNG', margin, 10, pageWidth - margin * 2, 20);
-              }
-              doc.setFontSize(22);
-              doc.setFont('helvetica', 'bold');
-              doc.text('INVOICE', pageWidth - margin, 45, { align: 'right' });
-
-
-              // Footer
-              if (settings.footerUrl) {
-                  doc.addImage(settings.footerUrl, 'PNG', margin, pageHeight - 30, pageWidth - margin * 2, 20);
-              }
-          };
-
-          addHeaderAndFooter();
-
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'normal');
-          doc.text(`Date: ${format(parseISO(invoice.invoiceDate), 'do MMMM yyyy')}`, pageWidth - margin, 50, { align: 'right' });
-          doc.text(`Invoice No.: ${invoice.id}`, pageWidth - margin, 55, { align: 'right' });
-
-          doc.text(`To:`, margin, 65);
-          let toY = 70;
-          [invoice.receiverName, invoice.receiverPosition, client.companyName, client.address1, client.address2, invoice.lpoNumber ? `LPO No.: ${invoice.lpoNumber}` : ''].filter(Boolean).forEach(line => {
-              if (line) {
-                doc.text(line, margin, toY);
-                toY += 5;
-              }
+          const { default: html2canvas } = await import('html2canvas');
+          
+          const canvas = await html2canvas(printRef.current, {
+            scale: 2, // Increase resolution
+            useCORS: true,
           });
 
-          if (invoice.serviceDesc) {
-              doc.setFont('helvetica', 'italic');
-              doc.text(invoice.serviceDesc, pageWidth / 2, toY + 10, { align: 'center', maxWidth: pageWidth - margin * 2 });
-              doc.setFont('helvetica', 'normal');
+          const imgData = canvas.toDataURL('image/png');
+          
+          const pdf = new jsPDF({
+              orientation: 'p',
+              unit: 'mm',
+              format: 'a4'
+          });
+
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgProps = pdf.getImageProperties(imgData);
+          const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+          
+          let heightLeft = imgHeight;
+          let position = 0;
+
+          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+          heightLeft -= pdfHeight;
+
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+            heightLeft -= pdfHeight;
           }
 
-          const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
-          const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
-          const totalBeforeVat = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
-          const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
-          const grandTotal = totalBeforeVat + vat;
-
-          const tableBody = invoice.items.map((item, index) => [
-              index + 1,
-              item.pax,
-              item.id,
-              item.particularDescription || 'N/A',
-              formatCurrency(item.unitPrice),
-              formatCurrency(item.total)
-          ]);
-          
-          let finalY = 0;
-
-          doc.autoTable({
-              startY: toY + 20,
-              head: [['S/No.', 'QTY', 'Order ID', 'PARTICULARS', 'UNIT PRICE (TSHS)', 'TOTAL (TSHS)']],
-              body: tableBody,
-              theme: 'grid',
-              headStyles: { fillColor: [221, 221, 221], textColor: 20 },
-              didDrawPage: (data) => {
-                  addHeaderAndFooter();
-              },
-              didParseCell: (data) => {
-                  if (data.section === 'head') {
-                      if(data.column.index > 3) data.cell.styles.halign = 'right';
-                  } else if (data.section === 'body') {
-                      if(data.column.index > 3) data.cell.styles.halign = 'right';
-                      if(data.column.index === 0 || data.column.index === 1) data.cell.styles.halign = 'center';
-                  }
-              },
-              willDrawCell: (data) => {
-                if (data.section === 'body' && data.column.index === 3) {
-                  data.cell.styles.halign = 'left';
-                }
-              }
-          });
-
-          finalY = (doc as any).lastAutoTable.finalY;
-
-          // Calculation Summary
-          const summaryX = pageWidth - margin - 50;
-          doc.autoTable({
-            startY: finalY + 1,
-            body: [
-              ['Sub-Total (TSHS)', formatCurrency(subtotal)],
-              ...(invoice.multiplyByDays ? [['No of days', invoice.numberOfDays], ['TOTAL (TSHS)', formatCurrency(totalForDays)]] : []),
-              ['Add Service Charge (TSHS)', formatCurrency(invoice.serviceCharge || 0)],
-              ['Add Transportation Costs (TSHS)', formatCurrency(invoice.transportCosts || 0)],
-              ['Total Before VAT (TSHS)', formatCurrency(totalBeforeVat)],
-              ['Add VAT 18% (TSHS)', vat > 0 ? formatCurrency(vat) : 'Inclusive'],
-              [{ content: 'GRAND TOTAL (TSHS)', styles: { fontStyle: 'bold' } }, { content: formatCurrency(grandTotal), styles: { fontStyle: 'bold' } }]
-            ],
-            theme: 'grid',
-            columnStyles: { 0: { halign: 'right' }, 1: { halign: 'right' } },
-            margin: { left: summaryX },
-          });
-          
-          finalY = (doc as any).lastAutoTable.finalY;
-          
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Amount in Words:', margin, finalY + 10, { align: 'right' });
-          doc.setFont('helvetica', 'italic');
-          doc.text(`Tanzania Shillings ${convertToWords(grandTotal)} only.`, margin + 40, finalY + 10, { align: 'right'});
-
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'normal');
-          doc.text(`Signed at ${invoice.signedAtLocation || 'Dar es Salaam'} on this ${invoice.signedAtDate ? format(parseISO(invoice.signedAtDate), 'do') : '___'} day of ${invoice.signedAtDate ? format(parseISO(invoice.signedAtDate), 'MMMM yyyy') : '_________ ________'}`, margin, finalY + 20);
-
-
-          doc.save(`invoice_${invoice.id}.pdf`);
+          pdf.save(`invoice_${invoice.id}.pdf`);
           toast({ title: 'Success', description: 'Invoice exported as PDF.' });
 
       } catch (error) {
@@ -301,7 +160,9 @@ export function InvoiceViewPageComponent() {
             </Button>
           </div>
         </div>
-        <InvoiceTemplate invoiceData={invoice} client={client}/>
+        <div ref={printRef}>
+            <InvoiceTemplate invoiceData={invoice} client={client}/>
+        </div>
     </>
   );
 }
