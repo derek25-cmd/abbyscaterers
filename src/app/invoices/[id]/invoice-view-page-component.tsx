@@ -11,14 +11,58 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, Edit, Download, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import type { UserOptions } from 'jspdf-autotable';
 import { useSettingsStorage } from "@/hooks/use-settings-storage";
+import { format, parseISO } from 'date-fns';
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: UserOptions) => jsPDF;
 }
+
+const convertToWords = (amount: number): string => {
+    if (amount < 0) return 'Negative amounts are not supported';
+    if (amount === 0) return 'Zero';
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const thousands = ['', 'Thousand', 'Million', 'Billion'];
+    function convertChunk(num: number): string {
+        let result = '';
+        if (num >= 100) {
+            result += ones[Math.floor(num / 100)] + ' Hundred ';
+            num %= 100;
+        }
+        if (num >= 20) {
+            result += tens[Math.floor(num / 10)] + ' ';
+            num %= 10;
+        } else if (num >= 10) {
+            result += teens[num - 10] + ' ';
+            return result.trim();
+        }
+        if (num > 0) {
+            result += ones[num] + ' ';
+        }
+        return result.trim();
+    }
+    let numStr = Math.floor(amount).toString();
+    let chunkCount = 0;
+    let result = '';
+    while (numStr.length > 0) {
+        const chunk = numStr.slice(-3);
+        numStr = numStr.slice(0, -3);
+        const chunkNum = parseInt(chunk);
+        if (chunkNum !== 0) {
+            let chunkWords = convertChunk(chunkNum);
+            if (chunkCount > 0) {
+                chunkWords += ' ' + thousands[chunkCount];
+            }
+            result = chunkWords + ' ' + result;
+        }
+        chunkCount++;
+    }
+    return result.trim();
+};
+
 
 export function InvoiceViewPageComponent() {
   const params = useParams();
@@ -253,5 +297,3 @@ export function InvoiceViewPageComponent() {
     </>
   );
 }
-
-      
