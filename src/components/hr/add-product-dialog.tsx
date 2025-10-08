@@ -74,10 +74,17 @@ export function AddProductDialog({ isOpen, setIsOpen, onAddProduct }) {
                   <SelectValue placeholder="Select a type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Food">Food</SelectItem>
-                  <SelectItem value="Equipment">Equipment</SelectItem>
+                  <SelectItem value="Herbes & Spices">Herbes & Spices</SelectItem>
+                  <SelectItem value="Fruits">Fruits</SelectItem>
+                  <SelectItem value="Vegetables">Vegetables</SelectItem>
+                  <SelectItem value="Starch">Starch</SelectItem>
+                  <SelectItem value="Protein">Protein</SelectItem>
+                  <SelectItem value="Ingredients">Ingredients</SelectItem>
+                  <SelectItem value="Cereal">Cereal</SelectItem>
+                  <SelectItem value="Packaging">Packaging</SelectItem>
+                  <SelectItem value="Heating">Heating</SelectItem>
                   <SelectItem value="Cleaning">Cleaning</SelectItem>
-                  <SelectItem value="Service Utensil">Service Utensil</SelectItem>
+                  <SelectItem value="Tableware">Tableware</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -92,6 +99,14 @@ export function AddProductDialog({ isOpen, setIsOpen, onAddProduct }) {
                   <SelectItem value="kg">kg</SelectItem>
                   <SelectItem value="liters">liters</SelectItem>
                   <SelectItem value="packs">packs</SelectItem>
+                  <SelectItem value="gallons">gallons</SelectItem>
+                  <SelectItem value="buckets">buckets</SelectItem>
+                  <SelectItem value="drums">drums</SelectItem>
+                  <SelectItem value="bottles">bottles</SelectItem>
+                  <SelectItem value="cartons">cartons</SelectItem>
+                  <SelectItem value="packets">packets</SelectItem>
+                  <SelectItem value="tins">tins</SelectItem>
+                  <SelectItem value="bags">bags</SelectItem>
                 </SelectContent>
               </Select>
             </div>
