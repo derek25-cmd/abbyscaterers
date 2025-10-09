@@ -32,13 +32,12 @@ export const addBooking = async (bookingData: Omit<BookingFormData, 'id'>): Prom
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        const { start_date, end_date, ...restOfBookingData } = bookingData;
+        const { clientId, ...restOfBookingData } = bookingData;
 
         const now = new Date().toISOString();
         const newBookingData = {
             ...restOfBookingData,
-            start_date,
-            end_date,
+            client_id: clientId, // Corrected field name
             user_id: user.id,
             id: `BK-${Date.now()}`,
             created_at: now,
