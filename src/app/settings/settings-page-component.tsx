@@ -1,6 +1,7 @@
 
 "use client";
 
+import React, { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { useSettingsStorage, AppSettings } from "@/hooks/use-settings-storage";
 import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useRef, ChangeEvent } from "react";
 import Image from "next/image";
 import { Loader2, UploadCloud, Hash } from "lucide-react";
 
@@ -20,7 +20,7 @@ export function SettingsPageComponent() {
     const [uploading, setUploading] = useState<Partial<Record<ImageKey, boolean>>>({});
     const [localSettings, setLocalSettings] = useState<AppSettings>({});
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (!settingsLoading) {
             setLocalSettings(settings);
         }
