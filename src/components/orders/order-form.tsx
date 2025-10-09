@@ -98,9 +98,10 @@ interface ClientEventFormProps {
     isSubmitting: boolean;
     singleClientEvent?: boolean;
     dateRange?: { from: Date, to: Date };
+    hideRecipes?: boolean;
 }
 
-export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange }: ClientEventFormProps) => {
+export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange, hideRecipes = false }: ClientEventFormProps) => {
     const { control } = form;
     const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
 
@@ -149,7 +150,7 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                                      {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                  </Button></FormControl></PopoverTrigger>
-                                 <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus disabled={dateRange} /></PopoverContent>
+                                 <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} /></PopoverContent>
                              </Popover>
                              <FormMessage />
                          </FormItem>
@@ -203,8 +204,12 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                     </FormItem>
                 )} />
              </div>
-            <Separator />
-            <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
+             {!hideRecipes && (
+                <>
+                    <Separator />
+                    <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
+                </>
+             )}
         </div>
     )
 }

@@ -59,7 +59,7 @@ export function AddDailyOrderDialog({
         numberOfPeople: 1,
         unitPrice: 0,
         vatType: "inclusive",
-        recipes: [],
+        recipes: [], // Recipes are no longer added here but schema requires it
       }]
     },
   });
@@ -121,6 +121,7 @@ export function AddDailyOrderDialog({
                  isSubmitting={isSubmitting}
                  singleClientEvent={true}
                  dateRange={{ from: fromDate, to: toDate }}
+                 hideRecipes={true}
                />
 
             </div>
