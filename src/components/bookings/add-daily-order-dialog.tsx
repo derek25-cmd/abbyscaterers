@@ -45,7 +45,7 @@ export function AddDailyOrderDialog({
     resolver: zodResolver(OrderSchema),
     defaultValues: {
       id: `ORD-${Date.now()}`,
-      name: `Daily Order for ${format(new Date(), 'PPP')}`,
+      name: `Daily Order for ${format(new Date(), 'PPP')}`, // This will be regenerated on the server, but good for consistency
       description: `Part of booking #${bookingId}`,
       booking_id: bookingId,
       proformaId: "",

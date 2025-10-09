@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase-client';
 import type { Order } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
+import { format } from 'date-fns';
 
 export const getOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase.from('orders').select('*');
@@ -25,7 +26,11 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 
 export const addOrder = async (orderData: OrderFormData): Promise<Order | null> => {
     const now = new Date().toISOString();
-    const newOrderData = { ...orderData, created_at: now, updated_at: now };
+
+    // Auto-generate a name if it's not provided, which is the case for daily orders.
+    const name = orderData.name || `Daily Order for ${format(new Date(orderData.clientEvents[0].date), 'PPP')}`;
+
+    const newOrderData = { ...orderData, name, created_at: now, updated_at: now };
 
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select();
     if (error) {
