@@ -4,16 +4,15 @@ import type { Order, ClientEvent } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 
+// This function maps the camelCase fields from the database to the camelCase fields in the application's Order type.
 const mapDbToOrder = (dbOrder: any): Order => {
     return {
         id: dbOrder.id,
         name: dbOrder.name,
         description: dbOrder.description,
-        proformaId: dbOrder.proforma_id,
-        booking_id: dbOrder.booking_id,
-        // The client_events field does not exist in the DB, so we create an empty array.
-        // The UI will have to derive this from other sources if needed.
-        clientEvents: dbOrder.client_events || [],
+        proformaId: dbOrder.proformaId, 
+        booking_id: dbOrder.bookingId, 
+        clientEvents: dbOrder.clientEvents || [],
         createdAt: dbOrder.createdAt,
         updatedAt: dbOrder.updatedAt,
     };
@@ -31,7 +30,7 @@ export const getOrders = async (): Promise<Order[]> => {
 export const getOrderById = async (id: string): Promise<Order | null> => {
     const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
     if (error) {
-        if (error.code !== 'PGRST116') { // Ignore "no rows found" error
+        if (error.code !== 'PGRST116') { 
             console.error('Error fetching order by id:', error);
         }
         return null;
@@ -56,13 +55,12 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
-    // This is the corrected payload. It does NOT include 'client_events'.
     const newOrderData = {
         id: orderData.id || newOrderId,
         name: name,
         description: orderData.description,
-        proforma_id: orderData.proformaId,
-        booking_id: orderData.booking_id,
+        proformaId: orderData.proformaId,
+        bookingId: orderData.booking_id,
         createdAt: now,
         updatedAt: now,
     };
@@ -74,23 +72,19 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         return null;
     }
     
-    // We add clientEvents back here for the application's in-memory state
     const resultOrder = mapDbToOrder(data);
     resultOrder.clientEvents = orderData.clientEvents || [];
 
     return resultOrder;
 };
 
-
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
-    // Correctly map field names and exclude client_events
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
-      proforma_id: updates.proformaId,
-      booking_id: updates.booking_id,
+      proformaId: updates.proformaId,
+      bookingId: updates.booking_id,
       updatedAt: new Date().toISOString()
-      // DO NOT include client_events
     };
     
     Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
