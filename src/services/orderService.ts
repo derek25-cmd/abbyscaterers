@@ -1,8 +1,19 @@
 
 import { supabase } from '@/lib/supabase-client';
-import type { Order } from '@/types';
+import type { Order, ClientEvent } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
+
+const mapClientEventToDb = (event: any) => ({
+  client_id: event.clientId,
+  date: event.date,
+  number_of_people: event.numberOfPeople,
+  meal_type: event.mealType,
+  recipes: event.recipes,
+  unit_price: event.unitPrice,
+  total: event.total,
+  vat_type: event.vatType,
+});
 
 export const getOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase.from('orders').select('*');
@@ -28,7 +39,6 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
-    // Auto-generate a name if it's not provided, which is the case for daily orders.
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
     const newOrderData = {
@@ -36,7 +46,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         name: name,
         description: orderData.description,
         proformaId: orderData.proformaId,
-        clientEvents: orderData.clientEvents,
+        clientEvents: orderData.clientEvents?.map(mapClientEventToDb), // Map to snake_case
         booking_id: orderData.booking_id,
         created_at: now,
         updated_at: now,
@@ -50,9 +60,14 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     return data?.[0] as Order;
 };
 
-
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
-    const { error } = await supabase.from('orders').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    const updatePayload = {
+      ...updates,
+      clientEvents: updates.clientEvents?.map(mapClientEventToDb), // Also map on update
+      updated_at: new Date().toISOString()
+    };
+    
+    const { error } = await supabase.from('orders').update(updatePayload).eq('id', id);
     if (error) {
         console.error('Error updating order:', error);
     }
@@ -66,4 +81,3 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     }
     return !error;
 };
-
