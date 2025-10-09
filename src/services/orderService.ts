@@ -4,24 +4,18 @@ import type { Order, ClientEvent } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 
-const mapOrderFromDb = (dbOrder: any): Order => {
+const mapDbToOrder = (dbOrder: any): Order => {
     return {
         id: dbOrder.id,
         name: dbOrder.name,
         description: dbOrder.description,
         proformaId: dbOrder.proforma_id,
         booking_id: dbOrder.booking_id,
-        clientEvents: (dbOrder.client_events || []).map((event: any) => ({
-            clientId: event.client_id,
-            date: event.date,
-            numberOfPeople: event.number_of_people,
-            mealType: event.meal_type,
-            recipes: event.recipes || [],
-            unitPrice: event.unit_price,
-            vatType: event.vat_type,
-        })),
-        createdAt: dbOrder.created_at,
-        updatedAt: dbOrder.updated_at,
+        // The client_events field does not exist in the DB, so we create an empty array.
+        // The UI will have to derive this from other sources if needed.
+        clientEvents: dbOrder.client_events || [],
+        createdAt: dbOrder.createdAt,
+        updatedAt: dbOrder.updatedAt,
     };
 }
 
@@ -31,7 +25,7 @@ export const getOrders = async (): Promise<Order[]> => {
         console.error('Error fetching orders:', JSON.stringify(error, null, 2));
         return [];
     }
-    return data as Order[];
+    return (data || []).map(mapDbToOrder);
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -42,7 +36,7 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
         }
         return null;
     }
-    return data as Order;
+    return mapDbToOrder(data);
 };
 
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
@@ -62,12 +56,12 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
+    // This is the corrected payload. It does NOT include 'client_events'.
     const newOrderData = {
         id: orderData.id || newOrderId,
         name: name,
         description: orderData.description,
         proforma_id: orderData.proformaId,
-        client_events: orderData.clientEvents,
         booking_id: orderData.booking_id,
         createdAt: now,
         updatedAt: now,
@@ -79,18 +73,24 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         console.error('Error adding order:', JSON.stringify(error, null, 2));
         return null;
     }
-    return data as Order;
+    
+    // We add clientEvents back here for the application's in-memory state
+    const resultOrder = mapDbToOrder(data);
+    resultOrder.clientEvents = orderData.clientEvents || [];
+
+    return resultOrder;
 };
 
 
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
+    // Correctly map field names and exclude client_events
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
       proforma_id: updates.proformaId,
       booking_id: updates.booking_id,
-      client_events: updates.clientEvents,
       updatedAt: new Date().toISOString()
+      // DO NOT include client_events
     };
     
     Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
