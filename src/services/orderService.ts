@@ -46,7 +46,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         name: name,
         description: orderData.description,
         proformaId: orderData.proformaId,
-        clientEvents: orderData.clientEvents?.map(mapClientEventToDb), // Map to snake_case
+        client_events: orderData.clientEvents?.map(mapClientEventToDb), // Map to snake_case for JSONB
         booking_id: orderData.booking_id,
         created_at: now,
         updated_at: now,
@@ -63,9 +63,12 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
     const updatePayload = {
       ...updates,
-      clientEvents: updates.clientEvents?.map(mapClientEventToDb), // Also map on update
+      client_events: updates.clientEvents?.map(mapClientEventToDb), // Also map on update
       updated_at: new Date().toISOString()
     };
+    
+    // Remove camelCase version if it exists to avoid sending both
+    delete (updatePayload as any).clientEvents;
     
     const { error } = await supabase.from('orders').update(updatePayload).eq('id', id);
     if (error) {
