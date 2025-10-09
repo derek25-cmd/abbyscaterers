@@ -4,16 +4,6 @@ import type { Order, ClientEvent } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 
-const mapClientEventToDb = (event: any) => ({
-    client_id: event.clientId,
-    date: event.date,
-    number_of_people: event.numberOfPeople,
-    meal_type: event.mealType,
-    recipes: event.recipes,
-    unit_price: event.unitPrice,
-    vat_type: event.vatType,
-});
-
 const mapOrderFromDb = (dbOrder: any): Order => {
     return {
         id: dbOrder.id,
@@ -36,12 +26,12 @@ const mapOrderFromDb = (dbOrder: any): Order => {
 }
 
 export const getOrders = async (): Promise<Order[]> => {
-    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('orders').select('*').order('createdAt', { ascending: false });
     if (error) {
         console.error('Error fetching orders:', JSON.stringify(error, null, 2));
         return [];
     }
-    return data.map(mapOrderFromDb);
+    return data as Order[];
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -52,7 +42,7 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
         }
         return null;
     }
-    return mapOrderFromDb(data);
+    return data as Order;
 };
 
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
@@ -77,10 +67,10 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         name: name,
         description: orderData.description,
         proforma_id: orderData.proformaId,
-        client_events: orderData.clientEvents?.map(mapClientEventToDb),
+        client_events: orderData.clientEvents,
         booking_id: orderData.booking_id,
-        created_at: now,
-        updated_at: now,
+        createdAt: now,
+        updatedAt: now,
     };
 
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select().single();
@@ -89,7 +79,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         console.error('Error adding order:', JSON.stringify(error, null, 2));
         return null;
     }
-    return mapOrderFromDb(data);
+    return data as Order;
 };
 
 
@@ -99,8 +89,8 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
       description: updates.description,
       proforma_id: updates.proformaId,
       booking_id: updates.booking_id,
-      client_events: updates.clientEvents?.map(mapClientEventToDb),
-      updated_at: new Date().toISOString()
+      client_events: updates.clientEvents,
+      updatedAt: new Date().toISOString()
     };
     
     Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
