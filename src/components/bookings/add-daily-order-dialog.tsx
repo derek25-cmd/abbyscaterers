@@ -46,7 +46,6 @@ export function AddDailyOrderDialog({
   const form = useForm<Partial<OrderFormData>>({
     resolver: zodResolver(DailyOrderDialogSchema),
     defaultValues: {
-      id: `ORD-${Date.now()}`,
       booking_id: bookingId,
       clientEvents: [{
         clientId: clientId,
@@ -78,6 +77,7 @@ export function AddDailyOrderDialog({
 
   const handleSubmit = async (data: Partial<OrderFormData>) => {
     await onSubmit(data);
+    setIsOpen(false);
   };
   
   const fromDate = parseISO(bookingStartDate);
@@ -86,7 +86,6 @@ export function AddDailyOrderDialog({
   useEffect(() => {
     if (isOpen) {
       form.reset({
-        id: `ORD-${Date.now()}`,
         booking_id: bookingId,
         clientEvents: [{
           clientId: clientId,

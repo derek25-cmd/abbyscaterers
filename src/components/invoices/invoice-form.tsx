@@ -102,7 +102,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             endDate: new Date().toISOString(),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
+            items: [{ particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         }
@@ -125,7 +125,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         }
 
         try {
-            const existingOrder = getOrderById(itemData.id);
+            const existingOrder = getOrderById(itemData.id!);
             const orderPayload = {
                 id: itemData.id,
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
@@ -143,7 +143,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             };
 
             if (existingOrder) {
-                updateOrder(itemData.id, orderPayload as any);
+                updateOrder(itemData.id!, orderPayload as any);
                 toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
             } else {
                 addOrder(orderPayload as any); 
@@ -270,7 +270,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
                     items: bookingOrders.flatMap(order => order.clientEvents.map(event => ({
                         id: order.id,
-                        particularType: 'meal',
+                        particularType: 'meal' as const,
                         eventType: '',
                         mealType: event.mealType,
                         pax: event.numberOfPeople,
@@ -291,17 +291,21 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                const updated = updateInvoice(invoiceId, data);
+                const updated = await updateInvoice(invoiceId, data);
                 if (updated) {
                     toast({ title: 'Success', description: 'Invoice updated successfully.' });
-                    router.push(`/invoices/${updated.id}`);
+                    router.push(`/invoices/${invoiceId}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
                 }
             } else {
-                const newInvoice = addInvoice(data);
-                toast({ title: 'Success', description: 'Invoice created successfully.' });
-                router.push(`/invoices/${newInvoice.id}`);
+                const newInvoice = await addInvoice(data);
+                if (newInvoice) {
+                    toast({ title: 'Success', description: 'Invoice created successfully.' });
+                    router.push(`/invoices/${newInvoice.id}`);
+                } else {
+                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to create invoice.' });
+                }
             }
         } catch (error) {
             console.error("Failed to save invoice", error);
@@ -500,7 +504,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
                             {fields.map((item, index) => {
                                 const orderId = form.getValues(`items.${index}.id`);
-                                const isSaved = orders.some(o => o.id === orderId);
+                                const isSaved = orderId ? orders.some(o => o.id === orderId) : false;
                                 return (
                                 <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
                                     <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
@@ -512,7 +516,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4 pt-2 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
+                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} readOnly />} /></div>
                                             <div>
                                                 <Label>Event Type</Label>
                                                 <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
