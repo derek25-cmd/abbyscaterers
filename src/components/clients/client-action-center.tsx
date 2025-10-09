@@ -2,9 +2,9 @@
 "use client";
 
 import type { Client } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { BookOpen, FileText, Calculator, ChevronRight } from "lucide-react";
+import { BookOpen, FileText, ChevronRight, Copy, FilePlus } from "lucide-react";
 
 interface ClientActionCenterProps {
     client: Client;
@@ -31,56 +31,43 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle>Client Action Center</CardTitle>
+                <CardDescription>Create new orders or invoices for {client.companyName}.</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center"><FilePlus className="mr-2 h-5 w-5 text-primary"/>Single Invoicing</h3>
                     <ActionItem 
                         href={`/orders/new?clientId=${client.id}`}
                         title="Create New Order"
-                        description="Start a new booking or event"
+                        description="For one-time events or single deliveries."
                         icon={BookOpen}
                     />
                     <ActionItem 
-                        href={`/orders?clientId=${client.id}`}
-                        title="Retrieve Existing Orders"
-                        description="View all bookings for this client"
-                        icon={BookOpen}
+                        href={`/invoicing/proforma-invoices/new?clientId=${client.id}`}
+                        title="Create Proforma Invoice"
+                        description="Generate a quote for a single event."
+                        icon={FileText}
                     />
-                </div>
-                <div className="space-y-3">
                     <ActionItem 
-                        href={`/proforma-invoices/new?clientId=${client.id}`}
-                        title="Create New Proforma"
-                        description="Generate a proforma invoice"
-                        icon={FileText}
-                    />
-                     <ActionItem 
-                        href={`/invoicing/proforma-invoices?clientId=${client.id}`}
-                        title="Access Existing Proformas"
-                        description="View all proformas for this client"
+                        href={`/invoicing/invoices/new?clientId=${client.id}`}
+                        title="Create Final Invoice"
+                        description="Directly generate a final bill."
                         icon={FileText}
                     />
                 </div>
-                 <div className="space-y-3">
+                <div className="space-y-4">
+                     <h3 className="text-lg font-semibold text-foreground flex items-center"><Copy className="mr-2 h-5 w-5 text-primary"/>Continuous Invoicing</h3>
                     <ActionItem 
-                        href={`/invoices/new?clientId=${client.id}`}
-                        title="Create New Invoice"
-                        description="Generate a final invoice"
-                        icon={FileText}
+                        href={`/invoices/new?clientId=${client.id}&type=continuous`}
+                        title="Start Continuous Invoice"
+                        description="For long-term contracts (e.g., daily meals)."
+                        icon={FilePlus}
                     />
                      <ActionItem 
-                        href={`/invoicing/invoices?clientId=${client.id}`}
-                        title="Access Existing Invoices"
-                        description="View all invoices for this client"
+                        href={`/invoices?clientId=${client.id}&type=continuous`}
+                        title="View Continuous Invoices"
+                        description="Manage ongoing contracts for this client."
                         icon={FileText}
-                    />
-                </div>
-                <div className="space-y-3">
-                     <ActionItem 
-                        href="/costing"
-                        title="Perform Individual Costing"
-                        description="Analyze costs related to client services"
-                        icon={Calculator}
                     />
                 </div>
             </CardContent>

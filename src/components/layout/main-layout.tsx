@@ -59,7 +59,6 @@ import { PrivateRoute } from "./private-route";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/orders", label: "Single Orders", icon: BookOpen },
-  { href: "/bookings", label: "Bookings", icon: BookCopy },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
   { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
   { href: "/equipment", label: "Inventory", icon: ChefHat },
