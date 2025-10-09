@@ -22,8 +22,9 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
   }
   
   const getOrderTotal = (order: Order) => {
-      if (!order.clientEvents) return 0;
-      return order.clientEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+      if (!order.clientEvents || order.clientEvents.length === 0) return 0;
+      const event = order.clientEvents[0];
+      return (event.unitPrice || 0) * (event.numberOfPeople || 0);
   }
 
   const grandTotal = data.reduce((sum, order) => sum + getOrderTotal(order), 0);
@@ -50,7 +51,7 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
               <TableRow key={order.id}>
                 <TableCell className="font-mono">{order.id}</TableCell>
                 <TableCell>{order.clientEvents && order.clientEvents[0] ? format(parseISO(order.clientEvents[0].date), 'PPP') : 'N/A'}</TableCell>
-                <TableCell className="font-medium">{order.name}</TableCell>
+                <TableCell className="font-medium">{order.clientEvents && order.clientEvents[0] ? order.clientEvents[0].mealType : (order.name || 'N/A')}</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(getOrderTotal(order))}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>

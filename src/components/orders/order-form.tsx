@@ -93,7 +93,7 @@ const ClientEventRecipeForm = ({ nestIndex, control }: ClientEventRecipeFormProp
 }
 
 interface ClientEventFormProps {
-    form: UseFormReturn<OrderFormData>;
+    form: UseFormReturn<any>; // Use 'any' here as it can be a partial form
     nestIndex: number;
     isSubmitting: boolean;
     singleClientEvent?: boolean;
@@ -231,6 +231,7 @@ interface OrderFormProps {
 export function OrderForm({ order, clientId }: OrderFormProps) {
   const router = useRouter();
   const { addOrder, updateOrder } = useOrderStorage();
+  const { clients } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -251,6 +252,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
               mealType: "Lunch only", 
               numberOfPeople: 10,
               unitPrice: 0,
+              total: 0,
               vatType: "inclusive", 
               recipes: []
             }],
@@ -267,6 +269,18 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
       form.reset(order);
     }
   }, [order, form]);
+  
+  useEffect(() => {
+      const sub = form.watch((value, {name}) => {
+          if (name === 'clientEvents.0.date' || name === 'clientEvents.0.clientId') {
+              const event = form.getValues('clientEvents')[0];
+              const clientName = clients.find(c => c.id === event.clientId)?.companyName || 'Client';
+              const dateStr = event.date ? format(parseISO(event.date), 'PPP') : 'Date';
+              form.setValue('name', `${clientName} Order on ${dateStr}`);
+          }
+      });
+      return () => sub.unsubscribe();
+  }, [form, clients]);
 
   async function onSubmit(data: OrderFormData) {
     setIsSubmitting(true);
@@ -364,7 +378,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, vatType: "inclusive", recipes: [] })} disabled={isLoading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [] })} disabled={isLoading}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
         </Button>
 

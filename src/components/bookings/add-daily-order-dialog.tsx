@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
 import { OrderSchema, type OrderFormData } from "@/lib/schemas";
-import { format, parseISO } from "date-fns";
 import { ClientEventForm } from "../orders/order-form";
+import { format, parseISO } from "date-fns";
 
 
 interface AddDailyOrderDialogProps {
@@ -41,16 +41,13 @@ export function AddDailyOrderDialog({
     bookingId
 }: AddDailyOrderDialogProps) {
   
-  // Use a modified schema that omits the name for this specific dialog
-  const DailyOrderDialogSchema = OrderSchema.omit({ name: true });
+  const DailyOrderDialogSchema = OrderSchema.omit({ name: true, description: true, proformaId: true });
 
   const form = useForm<Partial<OrderFormData>>({
     resolver: zodResolver(DailyOrderDialogSchema),
     defaultValues: {
       id: `ORD-${Date.now()}`,
-      description: `Part of booking #${bookingId}`,
       booking_id: bookingId,
-      proformaId: "",
       clientEvents: [{
         clientId: clientId,
         date: new Date().toISOString(),
@@ -72,7 +69,7 @@ export function AddDailyOrderDialog({
       const { numberOfPeople, unitPrice } = clientEvents[0];
       const newTotal = (numberOfPeople || 0) * (unitPrice || 0);
       if (clientEvents[0].total !== newTotal) {
-        setValue('clientEvents.0.total', newTotal);
+        setValue('clientEvents.0.total', newTotal, { shouldValidate: true });
       }
     }
   }, [clientEvents, setValue]);
@@ -86,14 +83,11 @@ export function AddDailyOrderDialog({
   const fromDate = parseISO(bookingStartDate);
   const toDate = parseISO(bookingEndDate);
 
-  // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
       form.reset({
         id: `ORD-${Date.now()}`,
-        description: `Part of booking #${bookingId}`,
         booking_id: bookingId,
-        proformaId: "",
         clientEvents: [{
           clientId: clientId,
           date: new Date().toISOString(),
