@@ -21,7 +21,9 @@ export const getOrders = async (): Promise<Order[]> => {
         console.error('Error fetching orders:', error);
         return [];
     }
-    return data as Order[];
+    // This is a workaround to ensure clientEvents is always an array
+    const orders = data as any[];
+    return orders.map(o => ({...o, clientEvents: o.clientEvents || []})) as Order[];
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -33,7 +35,8 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
         }
         return null;
     }
-    return data as Order;
+    const order = data as any;
+    return {...order, clientEvents: order.clientEvents || []} as Order;
 };
 
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
@@ -46,8 +49,8 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         id: orderData.id,
         name: name,
         description: orderData.description,
-        proforma_id: orderData.proformaId,
-        client_events: orderData.clientEvents?.map(mapClientEventToDb), // Map events to snake_case
+        proformaId: orderData.proformaId,
+        clientEvents: orderData.clientEvents,
         booking_id: orderData.booking_id,
         created_at: now,
         updated_at: now,
@@ -66,9 +69,9 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
-      proforma_id: updates.proformaId,
+      proformaId: updates.proformaId,
       booking_id: updates.booking_id,
-      client_events: updates.clientEvents?.map(mapClientEventToDb),
+      clientEvents: updates.clientEvents,
       updated_at: new Date().toISOString()
     };
     
@@ -89,4 +92,3 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     }
     return !error;
 };
-
