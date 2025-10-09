@@ -34,7 +34,6 @@ export function AddBookingDialog({ isOpen, setIsOpen }: AddBookingDialogProps) {
   const form = useForm<BookingFormData>({
     resolver: zodResolver(BookingSchema),
     defaultValues: {
-      id: `BK-${Date.now()}`,
       name: '',
       clientId: '',
       startDate: new Date().toISOString(),
@@ -46,7 +45,9 @@ export function AddBookingDialog({ isOpen, setIsOpen }: AddBookingDialogProps) {
   const onSubmit = async (data: BookingFormData) => {
     setIsSubmitting(true);
     try {
-      await addBooking(data);
+      // We no longer provide the ID, so we omit it from the data sent to addBooking
+      const { id, ...bookingData } = data;
+      await addBooking(bookingData);
       toast({ title: "Booking Created", description: "The new long-term booking has been added." });
       form.reset();
       setIsOpen(false);

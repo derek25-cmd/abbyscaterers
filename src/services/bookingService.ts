@@ -21,8 +21,9 @@ export const getBookingById = async (id: string): Promise<Booking | null> => {
     return data as Booking;
 }
 
-export const addBooking = async (bookingData: BookingFormData): Promise<Booking | null> => {
+export const addBooking = async (bookingData: Omit<BookingFormData, 'id'>): Promise<Booking | null> => {
     const now = new Date().toISOString();
+    // Let Supabase handle the ID generation by not including it in the insert payload
     const newBookingData = { ...bookingData, createdAt: now, updatedAt: now };
     const { data, error } = await supabase.from('bookings').insert([newBookingData]).select();
     if (error) {

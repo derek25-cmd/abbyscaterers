@@ -27,7 +27,7 @@ export function useBookingStorage() {
     refreshBookings();
   }, [refreshBookings]);
 
-  const addBooking = useCallback(async (bookingData: BookingFormData) => {
+  const addBooking = useCallback(async (bookingData: Omit<BookingFormData, 'id'>) => {
     const newBooking = await addToStorage(bookingData);
     if(newBooking) {
       refreshBookings();
