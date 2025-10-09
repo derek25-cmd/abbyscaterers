@@ -210,6 +210,7 @@ export interface DailyCosting {
 export interface Booking {
   id: string;
   clientId: string;
+  user_id: string;
   name: string;
   startDate: string; // ISO date string
   endDate: string; // ISO date string
