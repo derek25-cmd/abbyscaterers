@@ -4,17 +4,6 @@ import type { Order, ClientEvent } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 
-const mapClientEventToDb = (event: any) => ({
-  client_id: event.clientId,
-  date: event.date,
-  number_of_people: event.numberOfPeople,
-  meal_type: event.mealType,
-  recipes: event.recipes,
-  unit_price: event.unitPrice,
-  total: event.total,
-  vat_type: event.vatType,
-});
-
 export const getOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase.from('orders').select('*');
     if (error) {
@@ -41,12 +30,14 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
+    // Ensure the payload matches the database schema exactly, including the JSONB structure.
+    // The database expects a column named 'client_events' and the JSON within it should have camelCase keys.
     const newOrderData = {
         id: orderData.id,
         name: name,
         description: orderData.description,
         proformaId: orderData.proformaId,
-        client_events: orderData.clientEvents?.map(mapClientEventToDb), // Map to snake_case for JSONB
+        client_events: orderData.clientEvents, // Pass the array directly as it is already in the correct camelCase format for the JSONB column.
         booking_id: orderData.booking_id,
         created_at: now,
         updated_at: now,
@@ -60,14 +51,15 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     return data?.[0] as Order;
 };
 
+
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
     const updatePayload = {
       ...updates,
-      client_events: updates.clientEvents?.map(mapClientEventToDb), // Also map on update
+      client_events: updates.clientEvents, // Pass camelCase data directly
       updated_at: new Date().toISOString()
     };
     
-    // Remove camelCase version if it exists to avoid sending both
+    // Remove clientEvents if it's in the updates to avoid sending both camel/snake case
     delete (updatePayload as any).clientEvents;
     
     const { error } = await supabase.from('orders').update(updatePayload).eq('id', id);
