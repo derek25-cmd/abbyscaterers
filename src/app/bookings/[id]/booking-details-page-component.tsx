@@ -15,8 +15,10 @@ import { Calendar, User, ArrowLeft, PlusCircle, FileCheck } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
-import { OrderFormData } from "@/lib/schemas";
+import { OrderFormData, FinalInvoiceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
+import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
+import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 
 
 export function BookingDetailsPageComponent() {
@@ -26,10 +28,12 @@ export function BookingDetailsPageComponent() {
   const { getBookingById, isLoading: bookingsLoading } = useBookingStorage();
   const { orders, getOrdersByBookingId, addOrder, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { addInvoice } = useInvoiceStorage();
 
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [isCloseBookingOpen, setIsCloseBookingOpen] = useState(false);
   
   const bookingId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -68,16 +72,62 @@ export function BookingDetailsPageComponent() {
   }
   
   const getOrderTotal = (order: Order) => {
-      return order.clientEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+      if (!order.clientEvents || order.clientEvents.length === 0) return 0;
+      const event = order.clientEvents[0];
+      const total = (event.unitPrice || 0) * (event.numberOfPeople || 0);
+      return total;
   }
 
   const bookingTotal = useMemo(() => {
     return bookingOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
   }, [bookingOrders]);
 
-  const handleCloseAndInvoice = () => {
-    if (!booking) return;
-    router.push(`/invoices/new?bookingId=${booking.id}&clientId=${booking.client_id}`);
+  const handleCloseAndInvoice = async (invoiceDetails: Partial<FinalInvoiceFormData>) => {
+    if (!booking || !client) return;
+
+    const invoiceItems = bookingOrders.flatMap(order => order.clientEvents.map(event => ({
+        id: order.id,
+        particularType: 'meal' as const,
+        eventType: '',
+        mealType: event.mealType,
+        pax: event.numberOfPeople,
+        unitPrice: event.unitPrice,
+        total: event.unitPrice * event.numberOfPeople,
+        date: event.date,
+        vatType: event.vatType,
+        particularDescription: `${event.mealType} on ${format(parseISO(event.date), 'PPP')}`
+    })));
+
+    const newInvoiceData: FinalInvoiceFormData = {
+        ...invoiceDetails,
+        id: invoiceDetails.id!,
+        clientId: booking.client_id,
+        items: invoiceItems,
+        startDate: booking.start_date,
+        endDate: booking.end_date,
+        numberOfDays: bookingOrders.length,
+        multiplyByDays: false, // Each order is a line item, so we don't multiply
+        status: 'outstanding',
+        // Default other fields that are not in the dialog
+        proformaId: '',
+        selectedEventType: 'Catering services',
+        customEventType: '',
+        serviceFields: {},
+        serviceDesc: invoiceDetails.serviceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
+    };
+    
+    try {
+        const newInvoice = await addInvoice(newInvoiceData);
+        if (newInvoice) {
+             toast({ title: 'Success', description: `Invoice ${newInvoice.id} created.` });
+             router.push(`/invoices/${newInvoice.id}`);
+        } else {
+            throw new Error("Failed to save invoice to storage.");
+        }
+    } catch(error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create invoice.' });
+    }
   }
 
   const isLoading = bookingsLoading || clientsLoading || ordersLoading;
@@ -113,7 +163,7 @@ export function BookingDetailsPageComponent() {
                     <PlusCircle className="mr-2 h-4 w-4"/>
                     Record Daily Order
                 </Button>
-                 <Button variant="default" onClick={handleCloseAndInvoice}>
+                 <Button variant="default" onClick={() => setIsCloseBookingOpen(true)} disabled={bookingOrders.length === 0}>
                     <FileCheck className="mr-2 h-4 w-4"/>
                     Close & Generate Invoice
                 </Button>
@@ -162,6 +212,12 @@ export function BookingDetailsPageComponent() {
             bookingEndDate={booking.end_date}
             clientId={booking.client_id}
             bookingId={booking.id}
+        />
+
+        <CloseBookingDialog
+            isOpen={isCloseBookingOpen}
+            setIsOpen={setIsCloseBookingOpen}
+            onSubmit={handleCloseAndInvoice}
         />
     </div>
   );

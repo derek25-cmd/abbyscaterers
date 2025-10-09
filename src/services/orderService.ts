@@ -62,7 +62,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         description: orderData.description,
         proformaId: orderData.proformaId,
         booking_id: orderData.booking_id,
-        clientEvents: orderData.clientEvents, // Pass clientEvents directly
+        clientEvents: orderData.clientEvents,
         createdAt: now,
         updatedAt: now,
     };
