@@ -32,16 +32,17 @@ export const addBooking = async (bookingData: Omit<BookingFormData, 'id'>): Prom
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        const { clientId, ...restOfBookingData } = bookingData;
+        const { start_date, end_date, ...restOfBookingData } = bookingData;
 
         const now = new Date().toISOString();
-        const newBookingData = { 
+        const newBookingData = {
             ...restOfBookingData,
-            client_id: clientId,
+            start_date,
+            end_date,
             user_id: user.id,
             id: `BK-${Date.now()}`,
-            createdAt: now, 
-            updatedAt: now 
+            created_at: now,
+            updated_at: now,
         };
 
         const { data, error } = await supabase.from('bookings').insert([newBookingData]).select();
@@ -57,7 +58,7 @@ export const addBooking = async (bookingData: Omit<BookingFormData, 'id'>): Prom
 
 export const updateBooking = async (id: string, updates: Partial<BookingFormData>): Promise<boolean> => {
     try {
-        const { error } = await supabase.from('bookings').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id);
+        const { error } = await supabase.from('bookings').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
         if (error) throw error;
         return true;
     } catch(error) {
