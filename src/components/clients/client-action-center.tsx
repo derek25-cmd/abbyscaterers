@@ -58,14 +58,14 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
                 <div className="space-y-4">
                      <h3 className="text-lg font-semibold text-foreground flex items-center"><Copy className="mr-2 h-5 w-5 text-primary"/>Continuous Invoicing</h3>
                     <ActionItem 
-                        href={`/invoices/new?clientId=${client.id}&type=continuous`}
-                        title="Start Continuous Invoice"
+                        href={`/bookings?clientId=${client.id}`}
+                        title="Start Continuous Booking"
                         description="For long-term contracts (e.g., daily meals)."
                         icon={FilePlus}
                     />
                      <ActionItem 
-                        href={`/invoices?clientId=${client.id}&type=continuous`}
-                        title="View Continuous Invoices"
+                        href={`/bookings?clientId=${client.id}`}
+                        title="View Continuous Bookings"
                         description="Manage ongoing contracts for this client."
                         icon={FileText}
                     />
