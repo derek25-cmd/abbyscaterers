@@ -26,11 +26,13 @@ import { Checkbox } from '../ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { useBookingStorage } from '@/hooks/use-booking-storage';
 
 interface InvoiceFormProps {
     invoiceId?: string;
     proformaId?: string;
     clientId?: string;
+    bookingId?: string;
 }
 
 const eventTypes = [
@@ -48,10 +50,10 @@ const mealTypes = [
   'Lunch',
   'Dinner',
   'Breakfast and lunch',
+  'Brunch',
   'Breakfast, lunch and evening tea',
   'Breakfast, lunch and dinner',
   'Evening tea',
-  'Brunch',
 ];
 
 const serviceFieldsList = [
@@ -64,12 +66,13 @@ const serviceFieldsList = [
   { key: 'location', label: 'Location' }
 ];
 
-export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProps) {
+export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: InvoiceFormProps) {
     const router = useRouter();
     const { clients, getClientById: getClientDetails, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById } = useProformaInvoiceStorage();
     const { getInvoiceById, addInvoice, updateInvoice } = useInvoiceStorage();
-    const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
+    const { orders, addOrder, updateOrder, getOrderById, getOrdersByBookingId } = useOrderStorage();
+    const { getBookingById } = useBookingStorage();
     const { toast } = useToast();
 
     const isEditMode = !!invoiceId;
@@ -246,8 +249,43 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                     signedAtLocation: 'Dar es Salaam'
                 });
             }
+        } else if (bookingId) {
+            const booking = getBookingById(bookingId);
+            const bookingOrders = getOrdersByBookingId(bookingId);
+            if (booking && bookingOrders.length > 0) {
+                 form.reset({
+                    id: `INV-${Date.now()}`,
+                    proformaId: '',
+                    status: 'outstanding',
+                    invoiceDate: new Date().toISOString(),
+                    clientId: booking.client_id,
+                    location: '',
+                    numberOfDays: bookingOrders.length,
+                    multiplyByDays: false,
+                    serviceCharge: 0,
+                    transportCosts: 0,
+                    vatType: 'inclusive',
+                    startDate: booking.start_date,
+                    endDate: booking.end_date,
+                    serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
+                    items: bookingOrders.flatMap(order => order.clientEvents.map(event => ({
+                        id: order.id,
+                        particularType: 'meal',
+                        eventType: '',
+                        mealType: event.mealType,
+                        pax: event.numberOfPeople,
+                        unitPrice: event.unitPrice,
+                        total: event.unitPrice * event.numberOfPeople,
+                        date: event.date,
+                        vatType: event.vatType,
+                        particularDescription: `${event.mealType} on ${format(parseISO(event.date), 'PPP')}`
+                    }))),
+                    signedAtDate: new Date().toISOString(),
+                    signedAtLocation: 'Dar es Salaam'
+                 })
+            }
         }
-    }, [isEditMode, invoiceId, proformaId, getInvoiceById, getProformaById, form]);
+    }, [isEditMode, invoiceId, proformaId, bookingId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form]);
 
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);

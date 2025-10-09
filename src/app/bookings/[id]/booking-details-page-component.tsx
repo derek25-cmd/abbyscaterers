@@ -11,7 +11,7 @@ import { LoadingPage } from "@/components/layout/loading-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calendar, User, ArrowLeft, PlusCircle } from "lucide-react";
+import { Calendar, User, ArrowLeft, PlusCircle, FileCheck } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
@@ -75,6 +75,11 @@ export function BookingDetailsPageComponent() {
     return bookingOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
   }, [bookingOrders]);
 
+  const handleCloseAndInvoice = () => {
+    if (!booking) return;
+    router.push(`/invoices/new?bookingId=${booking.id}&clientId=${booking.client_id}`);
+  }
+
   const isLoading = bookingsLoading || clientsLoading || ordersLoading;
   
   if (isLoading) {
@@ -103,10 +108,16 @@ export function BookingDetailsPageComponent() {
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">{booking.name}</h1>
                 <p className="text-muted-foreground">Manage daily orders for this continuous contract.</p>
             </div>
-            <Button onClick={() => setIsAddOrderOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4"/>
-                Record Daily Order
-            </Button>
+            <div className="flex gap-2">
+                <Button onClick={() => setIsAddOrderOpen(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4"/>
+                    Record Daily Order
+                </Button>
+                 <Button variant="default" onClick={handleCloseAndInvoice}>
+                    <FileCheck className="mr-2 h-4 w-4"/>
+                    Close & Generate Invoice
+                </Button>
+            </div>
        </div>
 
         <Card>
