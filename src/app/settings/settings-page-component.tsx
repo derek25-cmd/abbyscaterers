@@ -10,19 +10,28 @@ import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useRef, ChangeEvent } from "react";
 import Image from "next/image";
-import { Loader2, UploadCloud } from "lucide-react";
+import { Loader2, UploadCloud, Hash } from "lucide-react";
 
-type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl';
+type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
 
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
     const { toast } = useToast();
     const [uploading, setUploading] = useState<Partial<Record<ImageKey, boolean>>>({});
+    const [localSettings, setLocalSettings] = useState<AppSettings>({});
+
+    React.useEffect(() => {
+        if (!settingsLoading) {
+            setLocalSettings(settings);
+        }
+    }, [settings, settingsLoading]);
+
 
     const fileInputRefs = {
         loginImageUrl: useRef<HTMLInputElement>(null),
         headerUrl: useRef<HTMLInputElement>(null),
         footerUrl: useRef<HTMLInputElement>(null),
+        signatureUrl: useRef<HTMLInputElement>(null),
     };
 
     const handleFileChange = async (event: ChangeEvent<HTMLInputElement>, imageKey: ImageKey) => {
@@ -39,7 +48,7 @@ export function SettingsPageComponent() {
                 updateSettings({ [imageKey]: publicUrl });
                 toast({
                     title: "Upload Successful",
-                    description: `The ${imageKey.replace('Url', '')} has been updated.`,
+                    description: `The ${imageKey.replace('Url', '')} image has been updated.`,
                 });
             } else {
                 throw new Error("Failed to get public URL.");
@@ -54,6 +63,24 @@ export function SettingsPageComponent() {
         } finally {
             setUploading(prev => ({ ...prev, [imageKey]: false }));
         }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setLocalSettings(prev => ({ ...prev, [name]: value }));
+    }
+    
+    const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        const numValue = parseInt(value, 10);
+        if(!isNaN(numValue)){
+            setLocalSettings(prev => ({...prev, [name]: numValue}))
+        }
+    }
+
+    const handleSaveSequences = () => {
+        updateSettings({ nextOrderNumber: localSettings.nextOrderNumber });
+        toast({ title: "Settings Saved", description: "Numbering sequences have been updated." });
     };
 
     const ImageUploader = ({ imageKey, label }: { imageKey: ImageKey, label: string }) => (
@@ -78,7 +105,7 @@ export function SettingsPageComponent() {
                 <Button
                     type="button"
                     variant="outline"
-                    onClick={() => fileInputRefs[imageKey].current?.click()}
+                    onClick={() => fileInputRefs[imageKey]?.current?.click()}
                     disabled={uploading[imageKey]}
                 >
                     {uploading[imageKey] ? (
@@ -117,6 +144,31 @@ export function SettingsPageComponent() {
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <ImageUploader imageKey="headerUrl" label="Header Image" />
                     <ImageUploader imageKey="footerUrl" label="Footer Image" />
+                    <ImageUploader imageKey="signatureUrl" label="Signature Image" />
+                </CardContent>
+            </Card>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle>Numbering Sequences</CardTitle>
+                    <CardDescription>Set the starting number for automatically generated IDs.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <div className="max-w-xs space-y-2">
+                        <Label htmlFor="nextOrderNumber" className="flex items-center"><Hash className="w-4 h-4 mr-2"/>Next Order Number</Label>
+                        <Input
+                            id="nextOrderNumber"
+                            name="nextOrderNumber"
+                            type="number"
+                            value={localSettings.nextOrderNumber || 1}
+                            onChange={handleNumberChange}
+                            min="1"
+                        />
+                         <p className="text-xs text-muted-foreground">The next order created will be assigned ID: ORD-{String(localSettings.nextOrderNumber || 1).padStart(5, '0')}</p>
+                    </div>
+                </CardContent>
+                <CardContent>
+                    <Button onClick={handleSaveSequences}>Save Sequences</Button>
                 </CardContent>
             </Card>
         </div>

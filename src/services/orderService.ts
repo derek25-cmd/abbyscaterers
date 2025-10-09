@@ -42,27 +42,17 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
-    const { count, error: countError } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true });
-
-    if (countError) {
-        console.error('Error counting orders:', countError);
-        throw new Error("Could not count existing orders to generate a new ID.");
-    }
-    
-    const nextIdNumber = (count ?? 0) + 1;
-    const newOrderId = `ORD-${String(nextIdNumber).padStart(5, '0')}`;
+    // Get next order number from settings in localStorage
+    const settings = JSON.parse(localStorage.getItem('caterSmartAppSettings') || '{}');
+    const nextOrderNumber = settings.nextOrderNumber || 1;
+    const newOrderId = `ORD-${String(nextOrderNumber).padStart(5, '0')}`;
     
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
     const newOrderData = {
-        id: orderData.id || newOrderId,
+        ...orderData,
+        id: newOrderId, // Use the generated sequential ID
         name: name,
-        description: orderData.description,
-        proformaId: orderData.proformaId,
-        booking_id: orderData.booking_id,
-        clientEvents: orderData.clientEvents,
         createdAt: now,
         updatedAt: now,
     };
@@ -74,6 +64,9 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         return null;
     }
     
+    // Increment and save the next order number in localStorage
+    localStorage.setItem('caterSmartAppSettings', JSON.stringify({ ...settings, nextOrderNumber: nextOrderNumber + 1 }));
+
     return mapDbToOrder(data);
 };
 

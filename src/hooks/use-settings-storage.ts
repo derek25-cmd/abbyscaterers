@@ -9,12 +9,16 @@ export interface AppSettings {
     loginImageUrl?: string;
     headerUrl?: string;
     footerUrl?: string;
+    signatureUrl?: string;
+    nextOrderNumber?: number;
 }
 
 const defaultSettings: AppSettings = {
     loginImageUrl: "https://picsum.photos/seed/catering/1200/1800",
     headerUrl: "",
-    footerUrl: ""
+    footerUrl: "",
+    signatureUrl: "",
+    nextOrderNumber: 1,
 }
 
 export function useSettingsStorage() {
@@ -23,9 +27,18 @@ export function useSettingsStorage() {
 
     useEffect(() => {
         if (typeof window !== "undefined") {
-            const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-            if (storedSettings) {
-                setSettings(JSON.parse(storedSettings));
+            try {
+                const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+                if (storedSettings) {
+                    const parsedSettings = JSON.parse(storedSettings);
+                    // Ensure defaults are applied for any missing keys
+                    setSettings({ ...defaultSettings, ...parsedSettings });
+                } else {
+                    setSettings(defaultSettings);
+                }
+            } catch (error) {
+                console.error("Failed to parse settings from localStorage", error);
+                setSettings(defaultSettings);
             }
             setIsLoading(false);
         }

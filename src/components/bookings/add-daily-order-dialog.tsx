@@ -41,7 +41,7 @@ export function AddDailyOrderDialog({
     bookingId
 }: AddDailyOrderDialogProps) {
   
-  const DailyOrderDialogSchema = OrderSchema.omit({ name: true, description: true, proformaId: true });
+  const DailyOrderDialogSchema = OrderSchema.pick({ clientEvents: true, booking_id: true }).partial();
 
   const form = useForm<Partial<OrderFormData>>({
     resolver: zodResolver(DailyOrderDialogSchema),
