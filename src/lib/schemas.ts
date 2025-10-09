@@ -150,8 +150,8 @@ export const ClientEventSchema = z.object({
 
 // Order schema
 export const OrderSchema = z.object({
-  id: z.string().min(1, "Menu ID is required"),
-  name: z.string().min(1, "Menu name is required"),
+  id: z.string().min(1, "Order ID is required"),
+  name: z.string().min(1, "Order name is required"),
   description: z.string().optional(),
   proformaId: z.string().optional(),
   clientEvents: z.array(ClientEventSchema).min(1, "At least one client event is required"),
@@ -185,24 +185,24 @@ const isValidDate = (dateString?: string) => {
 };
 
 const baseInvoiceSchema = z.object({
-    id: z.string().min(1, "Invoice number is required"),
+    id: z.string().optional(),
     invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
-    clientId: z.string().nullable(),
-    receiverName: z.string(),
-    receiverPosition: z.string(),
-    lpoNumber: z.string(),
-    location: z.string(),
+    clientId: z.string().nullable().optional(),
+    receiverName: z.string().optional(),
+    receiverPosition: z.string().optional(),
+    lpoNumber: z.string().optional(),
+    location: z.string().optional(),
     numberOfDays: z.number().min(1),
     multiplyByDays: z.boolean(),
     serviceCharge: z.number().min(0),
     transportCosts: z.number().min(0),
     vatType: z.enum(['inclusive', 'exclusive']),
-    selectedEventType: z.string(),
-    customEventType: z.string(),
+    selectedEventType: z.string().optional(),
+    customEventType: z.string().optional(),
     startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
     endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
     serviceFields: z.record(z.boolean()),
-    serviceDesc: z.string(),
+    serviceDesc: z.string().optional(),
     items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
 });
 
@@ -235,6 +235,7 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
 }).refine(data => {
+    if(!data.startDate || !data.endDate) return true;
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
     if(start > end) return false;

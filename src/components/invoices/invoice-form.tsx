@@ -79,7 +79,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
     const form = useForm<FinalInvoiceFormData>({
         resolver: zodResolver(FinalInvoiceSchema),
         defaultValues: {
-            id: "",
+            id: `INV-${Date.now()}`,
             proformaId: proformaId,
             status: 'outstanding',
             invoiceDate: new Date().toISOString(),
@@ -226,7 +226,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId }: InvoiceFormProp
                 form.reset({
                     ...proforma,
                     proformaId: proforma.id,
-                    id: '', 
+                    id: `INV-${Date.now()}`,
                     status: 'outstanding',
                     invoiceDate: new Date().toISOString(),
                     items: proforma.items.map(pi => ({
