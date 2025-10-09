@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -21,6 +22,7 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
   }
   
   const getOrderTotal = (order: Order) => {
+      if (!order.clientEvents) return 0;
       return order.clientEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
   }
 
@@ -47,7 +49,7 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
             {data.length > 0 ? data.map(order => (
               <TableRow key={order.id}>
                 <TableCell className="font-mono">{order.id}</TableCell>
-                <TableCell>{order.clientEvents[0] ? format(parseISO(order.clientEvents[0].date), 'PPP') : 'N/A'}</TableCell>
+                <TableCell>{order.clientEvents && order.clientEvents[0] ? format(parseISO(order.clientEvents[0].date), 'PPP') : 'N/A'}</TableCell>
                 <TableCell className="font-medium">{order.name}</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(getOrderTotal(order))}</TableCell>
                 <TableCell className="text-right">

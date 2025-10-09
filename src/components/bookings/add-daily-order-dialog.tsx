@@ -63,6 +63,19 @@ export function AddDailyOrderDialog({
       }]
     },
   });
+  
+  const { control, watch, setValue } = form;
+  const clientEvents = watch('clientEvents');
+
+  useEffect(() => {
+    if (clientEvents && clientEvents.length > 0) {
+      const { numberOfPeople, unitPrice } = clientEvents[0];
+      const newTotal = (numberOfPeople || 0) * (unitPrice || 0);
+      if (clientEvents[0].total !== newTotal) {
+        setValue('clientEvents.0.total', newTotal);
+      }
+    }
+  }, [clientEvents, setValue]);
 
   const { isSubmitting } = form.formState;
 

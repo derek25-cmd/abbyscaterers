@@ -58,7 +58,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         name: name,
         description: orderData.description,
         proformaId: orderData.proformaId,
-        client_events: orderData.clientEvents, // Pass camelCase directly to be stored in JSONB
+        clientEvents: orderData.clientEvents, // Pass camelCase directly to be stored in JSONB
         booking_id: orderData.booking_id,
         createdAt: now,
         updatedAt: now,
