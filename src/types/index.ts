@@ -1,3 +1,4 @@
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -122,8 +123,8 @@ export interface Order {
   proformaId?: string;
   booking_id?: string;
   clientEvents: ClientEvent[];
-  created_at: string; // ISO date string
-  updated_at: string; // ISO date string
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
 }
 
 // Shared Invoice Item Type

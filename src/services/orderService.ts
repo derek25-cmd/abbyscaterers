@@ -4,14 +4,23 @@ import type { Order, ClientEvent } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 
+const mapClientEventToDb = (event: any) => ({
+    client_id: event.clientId,
+    date: event.date,
+    number_of_people: event.numberOfPeople,
+    meal_type: event.mealType,
+    recipes: event.recipes,
+    unit_price: event.unitPrice,
+    vat_type: event.vatType,
+});
+
 export const getOrders = async (): Promise<Order[]> => {
-    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('orders').select('*').order('createdAt', { ascending: false });
     if (error) {
         console.error('Error fetching orders:', JSON.stringify(error, null, 2));
         return [];
     }
     const orders = data as any[];
-    // Ensure clientEvents is always an array
     return orders.map(o => ({...o, clientEvents: o.client_events || []})) as Order[];
 };
 
@@ -24,7 +33,6 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
         return null;
     }
     const order = data as any;
-    // Ensure clientEvents is always an array
     return {...order, clientEvents: order.client_events || []} as Order;
 };
 
@@ -49,11 +57,11 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         id: orderData.id || newOrderId,
         name: name,
         description: orderData.description,
-        proforma_id: orderData.proformaId,
-        client_events: orderData.clientEvents,
+        proformaId: orderData.proformaId,
+        client_events: orderData.clientEvents, // Pass camelCase directly to be stored in JSONB
         booking_id: orderData.booking_id,
-        created_at: now,
-        updated_at: now,
+        createdAt: now,
+        updatedAt: now,
     };
 
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select();
@@ -65,14 +73,15 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     return data?.[0] as Order;
 };
 
+
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
-      proforma_id: updates.proformaId,
+      proformaId: updates.proformaId,
       booking_id: updates.booking_id,
       client_events: updates.clientEvents,
-      updated_at: new Date().toISOString()
+      updatedAt: new Date().toISOString()
     };
     
     Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
