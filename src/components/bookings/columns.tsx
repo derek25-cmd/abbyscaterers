@@ -40,18 +40,18 @@ export const getBookingColumns = (
     cell: ({ row }) => <div className="font-medium">{row.getValue("clientName")}</div>,
   },
   {
-    accessorKey: "startDate",
+    accessorKey: "start_date",
     header: "Start Date",
     cell: ({ row }) => {
-      const date = parseISO(row.getValue("startDate"));
+      const date = parseISO(row.getValue("start_date"));
       return isValid(date) ? format(date, 'PPP') : 'N/A';
     },
   },
   {
-    accessorKey: "endDate",
+    accessorKey: "end_date",
     header: "End Date",
     cell: ({ row }) => {
-      const date = parseISO(row.getValue("endDate"));
+      const date = parseISO(row.getValue("end_date"));
       return isValid(date) ? format(date, 'PPP') : 'N/A';
     },
   },

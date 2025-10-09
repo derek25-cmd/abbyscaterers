@@ -7,7 +7,7 @@ import type { BookingFormData } from '@/lib/schemas';
 
 export const getBookings = async (): Promise<Booking[]> => {
     try {
-        const { data, error } = await supabase.from('bookings').select('*').order('startDate', { ascending: false });
+        const { data, error } = await supabase.from('bookings').select('*').order('start_date', { ascending: false });
         if (error) throw error;
         return data as Booking[];
     } catch (error) {
@@ -34,7 +34,8 @@ export const addBooking = async (bookingData: Omit<BookingFormData, 'id'>): Prom
 
         const now = new Date().toISOString();
         const newBookingData = { 
-            ...bookingData, 
+            ...bookingData,
+            id: `BK-${Date.now()}`, 
             user_id: user.id,
             createdAt: now, 
             updatedAt: now 
@@ -64,7 +65,7 @@ export const updateBooking = async (id: string, updates: Partial<BookingFormData
 
 export const deleteBooking = async (id: string): Promise<boolean> => {
     try {
-        const { error: dailyOrderError } = await supabase.from('daily_orders').delete().eq('bookingId', id);
+        const { error: dailyOrderError } = await supabase.from('daily_orders').delete().eq('booking_id', id);
         if(dailyOrderError) throw dailyOrderError;
 
         const { error } = await supabase.from('bookings').delete().eq('id', id);

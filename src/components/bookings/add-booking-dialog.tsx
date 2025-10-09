@@ -36,8 +36,8 @@ export function AddBookingDialog({ isOpen, setIsOpen }: AddBookingDialogProps) {
     defaultValues: {
       name: '',
       clientId: '',
-      startDate: new Date().toISOString(),
-      endDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString(),
+      start_date: new Date().toISOString(),
+      end_date: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString(),
       status: 'pending',
     },
   });
@@ -45,7 +45,6 @@ export function AddBookingDialog({ isOpen, setIsOpen }: AddBookingDialogProps) {
   const onSubmit = async (data: BookingFormData) => {
     setIsSubmitting(true);
     try {
-      // We no longer provide the ID, so we omit it from the data sent to addBooking
       const { id, ...bookingData } = data;
       await addBooking(bookingData);
       toast({ title: "Booking Created", description: "The new long-term booking has been added." });
@@ -90,13 +89,13 @@ export function AddBookingDialog({ isOpen, setIsOpen }: AddBookingDialogProps) {
                 </div>
             )}/>
             <div className="grid grid-cols-2 gap-4">
-                <Controller name="startDate" control={form.control} render={({ field }) => (
+                <Controller name="start_date" control={form.control} render={({ field }) => (
                     <div><Label>Start Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
                         <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(field.value)} onSelect={(d) => d && field.onChange(d.toISOString())} /></PopoverContent>
                     </Popover></div>
                 )}/>
-                 <Controller name="endDate" control={form.control} render={({ field }) => (
+                 <Controller name="end_date" control={form.control} render={({ field }) => (
                     <div><Label>End Date</Label><Popover><PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
                         <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(field.value)} onSelect={(d) => d && field.onChange(d.toISOString())} /></PopoverContent>

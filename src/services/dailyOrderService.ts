@@ -4,7 +4,7 @@ import type { DailyOrder } from '@/types';
 import type { DailyOrderFormData } from '@/lib/schemas';
 
 export const getDailyOrdersForBooking = async (bookingId: string): Promise<DailyOrder[]> => {
-    const { data, error } = await supabase.from('daily_orders').select('*').eq('bookingId', bookingId).order('orderDate', { ascending: true });
+    const { data, error } = await supabase.from('daily_orders').select('*').eq('booking_id', bookingId).order('order_date', { ascending: true });
     if (error) {
         console.error('Error fetching daily orders:', error);
         return [];
@@ -14,7 +14,7 @@ export const getDailyOrdersForBooking = async (bookingId: string): Promise<Daily
 
 export const addDailyOrder = async (orderData: DailyOrderFormData): Promise<DailyOrder | null> => {
     const now = new Date().toISOString();
-    const newOrderData = { ...orderData, createdAt: now, updatedAt: now };
+    const newOrderData = { ...orderData, created_at: now, updated_at: now };
 
     const { data, error } = await supabase.from('daily_orders').insert([newOrderData]).select();
     if (error) {
@@ -25,7 +25,7 @@ export const addDailyOrder = async (orderData: DailyOrderFormData): Promise<Dail
 };
 
 export const updateDailyOrder = async (id: string, updates: Partial<DailyOrderFormData>): Promise<boolean> => {
-    const { error } = await supabase.from('daily_orders').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id);
+    const { error } = await supabase.from('daily_orders').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
         console.error('Error updating daily order:', error);
     }

@@ -212,8 +212,8 @@ export interface Booking {
   clientId: string;
   user_id: string;
   name: string;
-  startDate: string; // ISO date string
-  endDate: string; // ISO date string
+  start_date: string; // ISO date string
+  end_date: string; // ISO date string
   status: 'active' | 'closed' | 'pending';
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
@@ -221,11 +221,11 @@ export interface Booking {
 
 export interface DailyOrder {
   id: string;
-  bookingId: string;
-  orderDate: string; // ISO date string
+  booking_id: string;
+  order_date: string; // ISO date string
   menu: string; // Simple description for now
   quantity: number;
-  unitPrice: number;
+  unit_price: number;
   total: number;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
