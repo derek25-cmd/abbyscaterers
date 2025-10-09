@@ -1,22 +1,22 @@
 
 import { supabase } from '@/lib/supabase-client';
-import type { Order, ClientEvent } from '@/types';
+import type { Order } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 
-// This function maps the camelCase fields from the database to the camelCase fields in the application's Order type.
 const mapDbToOrder = (dbOrder: any): Order => {
-    return {
-        id: dbOrder.id,
-        name: dbOrder.name,
-        description: dbOrder.description,
-        proformaId: dbOrder.proformaId, 
-        booking_id: dbOrder.bookingId, 
-        clientEvents: dbOrder.clientEvents || [],
-        createdAt: dbOrder.createdAt,
-        updatedAt: dbOrder.updatedAt,
-    };
-}
+  if (!dbOrder) return null as any;
+  return {
+    id: dbOrder.id,
+    name: dbOrder.name,
+    description: dbOrder.description,
+    proformaId: dbOrder.proformaId,
+    booking_id: dbOrder.booking_id,
+    clientEvents: dbOrder.clientEvents || [],
+    createdAt: dbOrder.createdAt,
+    updatedAt: dbOrder.updatedAt,
+  };
+};
 
 export const getOrders = async (): Promise<Order[]> => {
     const { data, error } = await supabase.from('orders').select('*').order('createdAt', { ascending: false });
@@ -24,7 +24,8 @@ export const getOrders = async (): Promise<Order[]> => {
         console.error('Error fetching orders:', JSON.stringify(error, null, 2));
         return [];
     }
-    return (data || []).map(mapDbToOrder);
+    const orders = data as any[];
+    return orders.map(mapDbToOrder);
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -60,7 +61,8 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         name: name,
         description: orderData.description,
         proformaId: orderData.proformaId,
-        bookingId: orderData.booking_id,
+        booking_id: orderData.booking_id,
+        clientEvents: orderData.clientEvents, // Pass clientEvents directly
         createdAt: now,
         updatedAt: now,
     };
@@ -72,18 +74,17 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         return null;
     }
     
-    const resultOrder = mapDbToOrder(data);
-    resultOrder.clientEvents = orderData.clientEvents || [];
-
-    return resultOrder;
+    return mapDbToOrder(data);
 };
+
 
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
       proformaId: updates.proformaId,
-      bookingId: updates.booking_id,
+      booking_id: updates.booking_id,
+      clientEvents: updates.clientEvents,
       updatedAt: new Date().toISOString()
     };
     

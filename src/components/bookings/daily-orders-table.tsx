@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal, Trash2, Eye, FileText } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Order } from "@/types";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import Link from "next/link";
 
 interface DailyOrdersTableProps {
@@ -47,11 +47,13 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length > 0 ? data.map(order => (
+            {data.length > 0 ? data.map(order => {
+              const eventDate = order.clientEvents?.[0]?.date;
+              return (
               <TableRow key={order.id}>
                 <TableCell className="font-mono">{order.id}</TableCell>
-                <TableCell>{order.clientEvents && order.clientEvents[0] ? format(parseISO(order.clientEvents[0].date), 'PPP') : 'N/A'}</TableCell>
-                <TableCell className="font-medium">{order.clientEvents && order.clientEvents[0] ? order.clientEvents[0].mealType : (order.name || 'N/A')}</TableCell>
+                <TableCell>{eventDate && isValid(parseISO(eventDate)) ? format(parseISO(eventDate), 'PPP') : 'N/A'}</TableCell>
+                <TableCell className="font-medium">{order.clientEvents?.[0]?.mealType || order.name || 'N/A'}</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(getOrderTotal(order))}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
@@ -77,7 +79,7 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
                     </DropdownMenu>
                 </TableCell>
               </TableRow>
-            )) : (
+            )}) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">No daily orders recorded yet.</TableCell>
               </TableRow>
