@@ -14,14 +14,34 @@ const mapClientEventToDb = (event: any) => ({
     vat_type: event.vatType,
 });
 
+const mapOrderFromDb = (dbOrder: any): Order => {
+    return {
+        id: dbOrder.id,
+        name: dbOrder.name,
+        description: dbOrder.description,
+        proformaId: dbOrder.proforma_id,
+        booking_id: dbOrder.booking_id,
+        clientEvents: (dbOrder.client_events || []).map((event: any) => ({
+            clientId: event.client_id,
+            date: event.date,
+            numberOfPeople: event.number_of_people,
+            mealType: event.meal_type,
+            recipes: event.recipes || [],
+            unitPrice: event.unit_price,
+            vatType: event.vat_type,
+        })),
+        createdAt: dbOrder.created_at,
+        updatedAt: dbOrder.updated_at,
+    };
+}
+
 export const getOrders = async (): Promise<Order[]> => {
-    const { data, error } = await supabase.from('orders').select('*').order('createdAt', { ascending: false });
+    const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
     if (error) {
         console.error('Error fetching orders:', JSON.stringify(error, null, 2));
         return [];
     }
-    const orders = data as any[];
-    return orders.map(o => ({...o, clientEvents: o.client_events || []})) as Order[];
+    return data.map(mapOrderFromDb);
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -32,8 +52,7 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
         }
         return null;
     }
-    const order = data as any;
-    return {...order, clientEvents: order.client_events || []} as Order;
+    return mapOrderFromDb(data);
 };
 
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
@@ -57,20 +76,20 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         id: orderData.id || newOrderId,
         name: name,
         description: orderData.description,
-        proformaId: orderData.proformaId,
-        clientEvents: orderData.clientEvents, // Pass camelCase directly to be stored in JSONB
+        proforma_id: orderData.proformaId,
+        client_events: orderData.clientEvents?.map(mapClientEventToDb),
         booking_id: orderData.booking_id,
-        createdAt: now,
-        updatedAt: now,
+        created_at: now,
+        updated_at: now,
     };
 
-    const { data, error } = await supabase.from('orders').insert([newOrderData]).select();
+    const { data, error } = await supabase.from('orders').insert([newOrderData]).select().single();
     
     if (error) {
         console.error('Error adding order:', JSON.stringify(error, null, 2));
         return null;
     }
-    return data?.[0] as Order;
+    return mapOrderFromDb(data);
 };
 
 
@@ -78,10 +97,10 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
-      proformaId: updates.proformaId,
+      proforma_id: updates.proformaId,
       booking_id: updates.booking_id,
-      client_events: updates.clientEvents,
-      updatedAt: new Date().toISOString()
+      client_events: updates.clientEvents?.map(mapClientEventToDb),
+      updated_at: new Date().toISOString()
     };
     
     Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
