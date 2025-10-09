@@ -45,7 +45,7 @@ export function BookingDetailsPageComponent() {
     }
   }, [bookingId, bookingsLoading, orders, ordersLoading, getBookingById, getOrdersByBookingId, router]);
 
-  const handleAddDailyOrder = async (orderData: OrderFormData) => {
+  const handleAddDailyOrder = async (orderData: Partial<OrderFormData>) => {
     if (!bookingId) return;
     try {
         await addOrder(orderData);

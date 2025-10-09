@@ -24,7 +24,7 @@ import { ClientEventForm } from "../orders/order-form";
 interface AddDailyOrderDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSubmit: (data: OrderFormData) => Promise<void>;
+  onSubmit: (data: Partial<OrderFormData>) => Promise<void>;
   bookingStartDate: string;
   bookingEndDate: string;
   clientId: string;
@@ -41,11 +41,13 @@ export function AddDailyOrderDialog({
     bookingId
 }: AddDailyOrderDialogProps) {
   
-  const form = useForm<OrderFormData>({
-    resolver: zodResolver(OrderSchema),
+  // Use a modified schema that omits the name for this specific dialog
+  const DailyOrderDialogSchema = OrderSchema.omit({ name: true });
+
+  const form = useForm<Partial<OrderFormData>>({
+    resolver: zodResolver(DailyOrderDialogSchema),
     defaultValues: {
       id: `ORD-${Date.now()}`,
-      name: `Daily Order for ${format(new Date(), 'PPP')}`, // This will be regenerated on the server, but good for consistency
       description: `Part of booking #${bookingId}`,
       booking_id: bookingId,
       proformaId: "",
@@ -64,7 +66,7 @@ export function AddDailyOrderDialog({
 
   const { isSubmitting } = form.formState;
 
-  const handleSubmit = async (data: OrderFormData) => {
+  const handleSubmit = async (data: Partial<OrderFormData>) => {
     await onSubmit(data);
   };
   
@@ -76,7 +78,6 @@ export function AddDailyOrderDialog({
     if (isOpen) {
       form.reset({
         id: `ORD-${Date.now()}`,
-        name: `Daily Order for ${format(new Date(), 'PPP')}`,
         description: `Part of booking #${bookingId}`,
         booking_id: bookingId,
         proformaId: "",
@@ -108,7 +109,7 @@ export function AddDailyOrderDialog({
             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                
                <ClientEventForm
-                 form={form}
+                 form={form as any}
                  nestIndex={0}
                  isSubmitting={isSubmitting}
                  singleClientEvent={true}
