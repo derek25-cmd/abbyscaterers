@@ -102,8 +102,17 @@ interface ClientEventFormProps {
 }
 
 export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange, hideRecipes = false }: ClientEventFormProps) => {
-    const { control } = form;
+    const { control, watch, setValue } = form;
     const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
+
+    const pax = watch(`clientEvents.${nestIndex}.numberOfPeople`);
+    const unitPrice = watch(`clientEvents.${nestIndex}.unitPrice`);
+
+    useEffect(() => {
+        const total = (pax || 0) * (unitPrice || 0);
+        setValue(`clientEvents.${nestIndex}.total`, total, { shouldValidate: true });
+    }, [pax, unitPrice, nestIndex, setValue]);
+
 
     return (
         <div className="space-y-6">
@@ -188,7 +197,7 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                  )}/>
                  <FormItem>
                     <FormLabel>Total Price</FormLabel>
-                    <Input type="text" readOnly disabled value={`${(form.getValues(`clientEvents.${nestIndex}.unitPrice`) * form.getValues(`clientEvents.${nestIndex}.numberOfPeople`)).toFixed(2)}`} />
+                    <Input type="text" readOnly disabled value={`${((watch(`clientEvents.${nestIndex}.unitPrice`) || 0) * (watch(`clientEvents.${nestIndex}.numberOfPeople`) || 0)).toFixed(2)}`} />
                  </FormItem>
                   <FormField control={control} name={`clientEvents.${nestIndex}.vatType`} render={({ field }) => (
                     <FormItem>

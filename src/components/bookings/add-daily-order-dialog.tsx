@@ -13,13 +13,9 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
+import { Form } from "@/components/ui/form";
+import { Loader2 } from "lucide-react";
 import { OrderSchema, type OrderFormData } from "@/lib/schemas";
-import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ClientEventForm } from "../orders/order-form";
 
@@ -58,8 +54,9 @@ export function AddDailyOrderDialog({
         mealType: "Lunch only",
         numberOfPeople: 1,
         unitPrice: 0,
+        total: 0,
         vatType: "inclusive",
-        recipes: [], // Recipes are no longer added here but schema requires it
+        recipes: [],
       }]
     },
   });
@@ -68,11 +65,33 @@ export function AddDailyOrderDialog({
 
   const handleSubmit = async (data: OrderFormData) => {
     await onSubmit(data);
-    form.reset();
   };
   
   const fromDate = parseISO(bookingStartDate);
   const toDate = parseISO(bookingEndDate);
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        id: `ORD-${Date.now()}`,
+        name: `Daily Order for ${format(new Date(), 'PPP')}`,
+        description: `Part of booking #${bookingId}`,
+        booking_id: bookingId,
+        proformaId: "",
+        clientEvents: [{
+          clientId: clientId,
+          date: new Date().toISOString(),
+          mealType: "Lunch only",
+          numberOfPeople: 1,
+          unitPrice: 0,
+          total: 0,
+          vatType: "inclusive",
+          recipes: [],
+        }]
+      });
+    }
+  }, [isOpen, form, bookingId, clientId]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -86,34 +105,6 @@ export function AddDailyOrderDialog({
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Order ID</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., ORD-2024-001" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Order Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Daily Lunch for NMB" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-               </div>
                
                <ClientEventForm
                  form={form}
@@ -125,7 +116,7 @@ export function AddDailyOrderDialog({
                />
 
             </div>
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-4 border-t">
               <DialogClose asChild>
                 <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
               </DialogClose>

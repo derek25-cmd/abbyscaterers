@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -49,7 +50,7 @@ export function BookingDetailsPageComponent() {
     try {
         await addOrder(orderData);
         toast({ title: "Success", description: "Daily order has been recorded."});
-        setIsAddOrderOpen(false);
+        setIsAddOrderOpen(false); // Close dialog on success
     } catch(error) {
         console.error(error);
         toast({ variant: "destructive", title: "Error", description: "Failed to record daily order."});
@@ -70,7 +71,9 @@ export function BookingDetailsPageComponent() {
       return order.clientEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
   }
 
-  const bookingTotal = bookingOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const bookingTotal = useMemo(() => {
+    return bookingOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  }, [bookingOrders]);
 
   const isLoading = bookingsLoading || clientsLoading || ordersLoading;
   
