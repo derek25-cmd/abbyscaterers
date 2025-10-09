@@ -206,6 +206,31 @@ export interface DailyCosting {
     createdAt: string; // ISO string
 }
 
+// --- CONTINUOUS INVOICING / BOOKING ---
+export interface Booking {
+  id: string;
+  clientId: string;
+  name: string;
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
+  status: 'active' | 'closed' | 'pending';
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+export interface DailyOrder {
+  id: string;
+  bookingId: string;
+  orderDate: string; // ISO date string
+  menu: string; // Simple description for now
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
+
 // --- HR & OPERATIONS ---
 
 export interface Asset {

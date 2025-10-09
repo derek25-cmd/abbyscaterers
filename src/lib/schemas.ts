@@ -1,5 +1,4 @@
 
-
 import { z } from "zod";
 
 // DietaryClassification schema
@@ -235,6 +234,10 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
 }).refine(data => {
+    if(!data.id) return false;
+    if(!data.receiverName) return false;
+    if(!data.receiverPosition) return false;
+
     if(!data.startDate || !data.endDate) return true;
     const start = new Date(data.startDate);
     const end = new Date(data.endDate);
@@ -256,6 +259,32 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
 
 
 export type FinalInvoiceFormData = z.infer<typeof FinalInvoiceSchema>;
+
+
+// --- CONTINUOUS INVOICING / BOOKING ---
+export const BookingSchema = z.object({
+  id: z.string().min(1, "Booking ID is required"),
+  clientId: z.string().min(1, "Client is required"),
+  name: z.string().min(1, "Booking name is required"),
+  startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
+  endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
+  status: z.enum(['active', 'closed', 'pending']),
+}).refine(data => new Date(data.startDate) <= new Date(data.endDate), {
+  message: "End date cannot be before start date",
+  path: ["endDate"],
+});
+export type BookingFormData = z.infer<typeof BookingSchema>;
+
+export const DailyOrderSchema = z.object({
+  id: z.string().optional(),
+  bookingId: z.string(),
+  orderDate: z.string().refine((d) => isValidDate(d), "A valid order date is required"),
+  menu: z.string().min(1, "Menu description is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  unitPrice: z.number().min(0, "Unit price cannot be negative"),
+  total: z.number(),
+});
+export type DailyOrderFormData = z.infer<typeof DailyOrderSchema>;
 
 
 // HR Schemas
