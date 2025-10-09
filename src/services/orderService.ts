@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase-client';
 import type { Order } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
@@ -15,7 +14,10 @@ export const getOrders = async (): Promise<Order[]> => {
 export const getOrderById = async (id: string): Promise<Order | null> => {
     const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
     if (error) {
-        console.error('Error fetching order by id:', error);
+        // Don't log "no rows found" as an error
+        if (error.code !== 'PGRST116') {
+            console.error('Error fetching order by id:', error);
+        }
         return null;
     }
     return data as Order;
@@ -23,7 +25,7 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 
 export const addOrder = async (orderData: OrderFormData): Promise<Order | null> => {
     const now = new Date().toISOString();
-    const newOrderData = { ...orderData, createdAt: now, updatedAt: now };
+    const newOrderData = { ...orderData, created_at: now, updated_at: now };
 
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select();
     if (error) {
@@ -34,7 +36,7 @@ export const addOrder = async (orderData: OrderFormData): Promise<Order | null> 
 };
 
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
-    const { error } = await supabase.from('orders').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id);
+    const { error } = await supabase.from('orders').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) {
         console.error('Error updating order:', error);
     }

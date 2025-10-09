@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -55,6 +54,10 @@ export function useOrderStorage() {
   const getOrderById = useCallback((id: string) => {
     return orders.find(o => o.id === id);
   }, [orders]);
+
+  const getOrdersByBookingId = useCallback((bookingId: string) => {
+    return orders.filter(o => o.booking_id === bookingId);
+  }, [orders]);
   
   const getEventsForDate = useCallback((date: Date): ClientEvent[] => {
     const targetDateStr = format(date, 'yyyy-MM-dd');
@@ -76,6 +79,7 @@ export function useOrderStorage() {
     updateOrder, 
     deleteOrder, 
     getOrderById,
+    getOrdersByBookingId,
     refreshOrders,
     getEventsForDate
   };

@@ -1,17 +1,17 @@
-
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Eye, FileText } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { DailyOrder } from "@/types";
+import type { Order } from "@/types";
 import { format, parseISO } from "date-fns";
+import Link from "next/link";
 
 interface DailyOrdersTableProps {
-    data: DailyOrder[];
-    onDeleteOrder: (orderId: number) => void;
+    data: Order[];
+    onDeleteOrder: (orderId: string) => void;
 }
 
 export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps) {
@@ -20,7 +20,11 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
   }
   
-  const grandTotal = data.reduce((sum, order) => sum + order.total, 0);
+  const getOrderTotal = (order: Order) => {
+      return order.clientEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  }
+
+  const grandTotal = data.reduce((sum, order) => sum + getOrderTotal(order), 0);
 
   return (
     <Card>
@@ -32,10 +36,9 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Order ID</TableHead>
               <TableHead>Date</TableHead>
-              <TableHead>Menu / Particulars</TableHead>
-              <TableHead className="text-center">Quantity</TableHead>
-              <TableHead className="text-right">Unit Price</TableHead>
+              <TableHead>Particulars</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead><span className="sr-only">Actions</span></TableHead>
             </TableRow>
@@ -43,11 +46,10 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
           <TableBody>
             {data.length > 0 ? data.map(order => (
               <TableRow key={order.id}>
-                <TableCell>{format(parseISO(order.order_date), 'PPP')}</TableCell>
-                <TableCell className="font-medium">{order.menu}</TableCell>
-                <TableCell className="text-center">{order.quantity}</TableCell>
-                <TableCell className="text-right">{formatCurrency(order.unit_price)}</TableCell>
-                <TableCell className="text-right font-semibold">{formatCurrency(order.total)}</TableCell>
+                <TableCell className="font-mono">{order.id}</TableCell>
+                <TableCell>{order.clientEvents[0] ? format(parseISO(order.clientEvents[0].date), 'PPP') : 'N/A'}</TableCell>
+                <TableCell className="font-medium">{order.name}</TableCell>
+                <TableCell className="text-right font-semibold">{formatCurrency(getOrderTotal(order))}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -55,6 +57,16 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                             <DropdownMenuItem asChild>
+                                <Link href={`/orders/${order.id}`} className="cursor-pointer">
+                                    <Eye className="mr-2 h-4 w-4"/> View Order
+                                </Link>
+                             </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href={`/invoices/new?fromOrder=${order.id}&clientId=${order.clientEvents[0]?.clientId}`} className="cursor-pointer">
+                                    <FileText className="mr-2 h-4 w-4"/> Create Invoice
+                                </Link>
+                             </DropdownMenuItem>
                              <DropdownMenuItem className="text-destructive" onClick={() => onDeleteOrder(order.id)}>
                                 <Trash2 className="mr-2 h-4 w-4"/> Delete Order
                              </DropdownMenuItem>
@@ -64,13 +76,13 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
               </TableRow>
             )) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">No daily orders recorded yet.</TableCell>
+                <TableCell colSpan={5} className="h-24 text-center">No daily orders recorded yet.</TableCell>
               </TableRow>
             )}
           </TableBody>
           <TableFooter>
             <TableRow>
-                <TableCell colSpan={4} className="text-right font-bold text-lg">Grand Total</TableCell>
+                <TableCell colSpan={3} className="text-right font-bold text-lg">Grand Total</TableCell>
                 <TableCell className="text-right font-bold text-lg">{formatCurrency(grandTotal)}</TableCell>
                 <TableCell></TableCell>
             </TableRow>

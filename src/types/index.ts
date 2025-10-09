@@ -1,4 +1,3 @@
-
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -121,9 +120,10 @@ export interface Order {
   name: string;
   description?: string;
   proformaId?: string;
+  booking_id?: string;
   clientEvents: ClientEvent[];
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
 }
 
 // Shared Invoice Item Type
@@ -204,6 +204,19 @@ export interface DailyCosting {
     totalEventIncome: number;
     netProfitLoss: number;
     createdAt: string; // ISO string
+}
+
+// --- CONTINUOUS INVOICING / BOOKING ---
+export interface Booking {
+  id: string;
+  client_id: string;
+  user_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: 'active' | 'closed' | 'pending';
+  created_at: string;
+  updated_at: string;
 }
 
 // --- HR & OPERATIONS ---

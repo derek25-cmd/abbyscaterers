@@ -1,8 +1,7 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Control } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -26,12 +25,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { MEAL_TYPES } from "@/types";
 import { Textarea } from "../ui/textarea";
 
-interface OrderFormProps {
-  order?: Order;
-  clientId?: string;
+interface ClientEventRecipeFormProps {
+    nestIndex: number;
+    control: Control<OrderFormData>;
 }
 
-const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, control: any }) => {
+const ClientEventRecipeForm = ({ nestIndex, control }: ClientEventRecipeFormProps) => {
     const { fields: recipeFields, append: appendRecipe, remove: removeRecipe } = useFieldArray({
         control,
         name: `clientEvents.${nestIndex}.recipes`
@@ -92,10 +91,125 @@ const ClientEventRecipeForm = ({ nestIndex, control }: { nestIndex: number, cont
     )
 }
 
+interface ClientEventFormProps {
+    control: Control<OrderFormData>;
+    nestIndex: number;
+    isSubmitting: boolean;
+    singleClientEvent?: boolean;
+    dateRange?: { from: Date, to: Date };
+}
+
+export const ClientEventForm = ({ control, nestIndex, isSubmitting, singleClientEvent, dateRange }: ClientEventFormProps) => {
+    const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={control} name={`clientEvents.${nestIndex}.clientId`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Client</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || singleClientEvent}>
+                                        {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search client..." />
+                                    <CommandList>
+                                        <CommandEmpty>No client found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {availableClients.map((c) => (
+                                                <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
+                                                    <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                    {c.companyName}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                 )} />
+                 <FormField control={control} name={`clientEvents.${nestIndex}.date`} render={({ field }) => {
+                     const dateValue = field.value ? parseISO(field.value) : undefined;
+                     return (
+                         <FormItem className="flex flex-col">
+                             <FormLabel>Event Date</FormLabel>
+                             <Popover>
+                                 <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
+                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                 </Button></FormControl></PopoverTrigger>
+                                 <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus disabled={dateRange} /></PopoverContent>
+                             </Popover>
+                             <FormMessage />
+                         </FormItem>
+                     )
+                 }} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={control} name={`clientEvents.${nestIndex}.numberOfPeople`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <FormField control={control} name={`clientEvents.${nestIndex}.unitPrice`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>Unit Price</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                 )}/>
+                 <FormItem>
+                    <FormLabel>Total Price</FormLabel>
+                    <Input type="text" readOnly disabled value={`${(control.getValues(`clientEvents.${nestIndex}.unitPrice`) * control.getValues(`clientEvents.${nestIndex}.numberOfPeople`)).toFixed(2)}`} />
+                 </FormItem>
+                  <FormField control={control} name={`clientEvents.${nestIndex}.vatType`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center">VAT</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select VAT type" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                <SelectItem value="inclusive">Inclusive</SelectItem>
+                                <SelectItem value="exclusive">Exclusive</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+             </div>
+            <Separator />
+            <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
+        </div>
+    )
+}
+
 export function OrderForm({ order, clientId }: OrderFormProps) {
   const router = useRouter();
   const { addOrder, updateOrder } = useOrderStorage();
-  const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,7 +231,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
               numberOfPeople: 10,
               unitPrice: 0,
               vatType: "inclusive", 
-              recipes: [{recipeId: ""}] 
+              recipes: []
             }],
         },
   });
@@ -137,14 +251,14 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     setIsSubmitting(true);
     try {
       if (order) {
-        const updated = updateOrder(order.id, data);
-        if (updated) {
-          toast({ title: "Order Updated", description: `${updated.name} (ID: ${updated.id}) has been updated.` });
-          router.push(`/orders/${updated.id}`);
+        const success = await updateOrder(order.id, data);
+        if (success) {
+          toast({ title: "Order Updated", description: `${data.name} (ID: ${data.id}) has been updated.` });
+          router.push(`/orders/${data.id}`);
         }
       } else {
-        const newOrderData = addOrder(data);
-        toast({ title: "Order Added", description: `${newOrderData.name} (ID: ${newOrderData.id}) has been added.` });
+        const newOrderData = await addOrder(data);
+        toast({ title: "Order Added", description: `${newOrderData!.name} (ID: ${newOrderData!.id}) has been added.` });
         router.push("/orders");
       }
     } catch (error) {
@@ -157,7 +271,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     }
   }
   
-  const isLoading = isSubmitting || clientsLoading;
+  const isLoading = isSubmitting;
 
   return (
     <Form {...form}>
@@ -212,107 +326,12 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                     <CardHeader>
                         <CardTitle className="text-xl">Client Event #{index + 1}</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField control={form.control} name={`clientEvents.${index}.clientId`} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Client</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
-                                                    {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search client..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No client found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {availableClients.map((c) => (
-                                                            <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
-                                                                <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                                {c.companyName}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                </FormItem>
-                             )} />
-                             <FormField control={form.control} name={`clientEvents.${index}.date`} render={({ field }) => {
-                                 const dateValue = field.value ? parseISO(field.value) : undefined;
-                                 return (
-                                     <FormItem className="flex flex-col">
-                                         <FormLabel>Event Date</FormLabel>
-                                         <Popover>
-                                             <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                 {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
-                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                             </Button></FormControl></PopoverTrigger>
-                                             <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus /></PopoverContent>
-                                         </Popover>
-                                         <FormMessage />
-                                     </FormItem>
-                                 )
-                             }} />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField control={form.control} name={`clientEvents.${index}.numberOfPeople`} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People</FormLabel>
-                                    <FormControl><Input type="number" placeholder="e.g. 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <FormField control={form.control} name={`clientEvents.${index}.mealType`} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                             <FormField control={form.control} name={`clientEvents.${index}.unitPrice`} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>Unit Price</FormLabel>
-                                    <FormControl><Input type="number" placeholder="e.g. 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                             )}/>
-                             <FormItem>
-                                <FormLabel>Total Price</FormLabel>
-                                <Input type="text" readOnly disabled value={`$${(form.watch(`clientEvents.${index}.unitPrice`) * form.watch(`clientEvents.${index}.numberOfPeople`)).toFixed(2)}`} />
-                             </FormItem>
-                              <FormField control={form.control} name={`clientEvents.${index}.vatType`} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="flex items-center">VAT</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select VAT type" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="inclusive">Inclusive</SelectItem>
-                                            <SelectItem value="exclusive">Exclusive</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                         </div>
-                        <Separator />
-                        <ClientEventRecipeForm nestIndex={index} control={form.control} />
-
+                    <CardContent>
+                        <ClientEventForm
+                            nestIndex={index}
+                            control={form.control}
+                            isSubmitting={isLoading}
+                        />
                     </CardContent>
                     {fields.length > 1 && (
                         <Button type="button" variant="ghost" size="icon" className="absolute top-3 right-3 text-destructive hover:bg-destructive/90 hover:text-destructive-foreground" onClick={() => remove(index)}>
@@ -324,7 +343,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, vatType: "inclusive", recipes: [{recipeId: ""}] })} disabled={isLoading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, vatType: "inclusive", recipes: [] })} disabled={isLoading}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
         </Button>
 

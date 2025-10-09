@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
-import type { Booking, DailyOrder, Client } from '@/types';
+import type { Booking, Order } from '@/types';
 import { useBookingStorage } from "@/hooks/use-booking-storage";
+import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { LoadingPage } from "@/components/layout/loading-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { Calendar, User, ArrowLeft, PlusCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
-import { DailyOrderFormData } from "@/lib/schemas";
+import { OrderFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -22,38 +22,32 @@ export function BookingDetailsPageComponent() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { getBookingById, isLoading: bookingsLoading, getDailyOrdersByBooking, addDailyOrder, deleteDailyOrder } = useBookingStorage();
+  const { getBookingById, isLoading: bookingsLoading } = useBookingStorage();
+  const { orders, getOrdersByBookingId, addOrder, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
 
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
-  const [dailyOrders, setDailyOrders] = useState<DailyOrder[]>([]);
-  const [client, setClient] = useState<Client | undefined>(undefined);
+  const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   
   const bookingId = typeof params.id === 'string' ? params.id : undefined;
 
   useEffect(() => {
-    if (bookingId && !bookingsLoading && !clientsLoading) {
+    if (bookingId && !bookingsLoading && !ordersLoading) {
       const foundBooking = getBookingById(bookingId);
       if (foundBooking) {
         setBooking(foundBooking);
-        setClient(getClientById(foundBooking.client_id));
-        setDailyOrders(getDailyOrdersByBooking(bookingId));
+        setBookingOrders(getOrdersByBookingId(bookingId));
       } else {
-        router.push('/bookings'); // Redirect if not found
+        // router.push('/bookings'); // Redirect if not found
       }
     }
-  }, [bookingId, bookingsLoading, clientsLoading, getBookingById, getClientById, getDailyOrdersByBooking, router]);
+  }, [bookingId, bookingsLoading, orders, ordersLoading, getBookingById, getOrdersByBookingId, router]);
 
-  const handleAddDailyOrder = async (orderData: Omit<DailyOrderFormData, 'bookingId'>) => {
+  const handleAddDailyOrder = async (orderData: OrderFormData) => {
     if (!bookingId) return;
     try {
-        const payload: DailyOrderFormData = {
-            ...orderData,
-            bookingId: bookingId,
-            total: orderData.quantity * orderData.unitPrice,
-        };
-        await addDailyOrder(payload);
+        await addOrder(orderData);
         toast({ title: "Success", description: "Daily order has been recorded."});
         setIsAddOrderOpen(false);
     } catch(error) {
@@ -62,25 +56,39 @@ export function BookingDetailsPageComponent() {
     }
   }
 
-  const handleDeleteDailyOrder = async (orderId: number) => {
+  const handleDeleteDailyOrder = async (orderId: string) => {
     try {
-        await deleteDailyOrder(orderId);
+        await deleteOrderFromStore(orderId);
         toast({ title: "Success", description: "Daily order deleted."});
     } catch(error) {
          console.error(error);
         toast({ variant: "destructive", title: "Error", description: "Failed to delete daily order."});
     }
   }
+  
+  const getOrderTotal = (order: Order) => {
+      return order.clientEvents.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  }
 
-  if (bookingsLoading || clientsLoading) {
+  const bookingTotal = bookingOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+
+  const isLoading = bookingsLoading || clientsLoading || ordersLoading;
+  
+  if (isLoading) {
     return <LoadingPage title="Loading Booking Details..." />;
   }
 
   if (!booking) {
-    return null; // Or a not-found page
+    return (
+        <div className="text-center py-10">
+            <h2 className="text-2xl font-semibold text-destructive">Booking Not Found</h2>
+            <p className="text-muted-foreground mt-2">The requested booking could not be found.</p>
+            <Button asChild className="mt-4"><Link href="/bookings">Back to Bookings</Link></Button>
+        </div>
+    );
   }
   
-  const bookingTotal = dailyOrders.reduce((sum, order) => sum + order.total, 0);
+  const client = getClientById(booking.client_id);
 
   return (
     <div className="space-y-6">
@@ -128,7 +136,7 @@ export function BookingDetailsPageComponent() {
         </Card>
 
         <DailyOrdersTable 
-            data={dailyOrders} 
+            data={bookingOrders} 
             onDeleteOrder={handleDeleteDailyOrder}
         />
         
@@ -138,8 +146,9 @@ export function BookingDetailsPageComponent() {
             onSubmit={handleAddDailyOrder}
             bookingStartDate={booking.start_date}
             bookingEndDate={booking.end_date}
+            clientId={booking.client_id}
+            bookingId={booking.id}
         />
     </div>
   );
 }
-

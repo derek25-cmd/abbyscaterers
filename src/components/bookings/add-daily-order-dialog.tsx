@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,33 +17,57 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { DailyOrderSchema, type DailyOrderFormData } from "@/lib/schemas";
+import { OrderSchema, type OrderFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { Textarea } from "../ui/textarea";
+import { useClientStorage } from "@/hooks/use-client-storage";
+import { useRecipeStorage } from "@/hooks/use-recipe-storage";
+import { ClientEventForm } from "../orders/order-form";
+
 
 interface AddDailyOrderDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSubmit: (data: Omit<DailyOrderFormData, 'bookingId' | 'total'>) => Promise<void>;
+  onSubmit: (data: OrderFormData) => Promise<void>;
   bookingStartDate: string;
   bookingEndDate: string;
+  clientId: string;
+  bookingId: string;
 }
 
-export function AddDailyOrderDialog({ isOpen, setIsOpen, onSubmit, bookingStartDate, bookingEndDate }: AddDailyOrderDialogProps) {
-  const form = useForm<Omit<DailyOrderFormData, 'bookingId' | 'total'>>({
-    resolver: zodResolver(DailyOrderSchema.omit({ bookingId: true, total: true, id: true })),
+export function AddDailyOrderDialog({ 
+    isOpen, 
+    setIsOpen, 
+    onSubmit, 
+    bookingStartDate, 
+    bookingEndDate,
+    clientId,
+    bookingId
+}: AddDailyOrderDialogProps) {
+  
+  const form = useForm<OrderFormData>({
+    resolver: zodResolver(OrderSchema),
     defaultValues: {
-      orderDate: new Date().toISOString(),
-      menu: "",
-      quantity: 1,
-      unitPrice: 0,
+      id: `ORD-${Date.now()}`,
+      name: `Daily Order for ${format(new Date(), 'PPP')}`,
+      description: `Part of booking #${bookingId}`,
+      booking_id: bookingId,
+      proformaId: "",
+      clientEvents: [{
+        clientId: clientId,
+        date: new Date().toISOString(),
+        mealType: "Lunch only",
+        numberOfPeople: 1,
+        unitPrice: 0,
+        vatType: "inclusive",
+        recipes: [],
+      }]
     },
   });
 
   const { isSubmitting } = form.formState;
 
-  const handleSubmit = async (data: Omit<DailyOrderFormData, 'bookingId' | 'total'>) => {
+  const handleSubmit = async (data: OrderFormData) => {
     await onSubmit(data);
     form.reset();
   };
@@ -54,88 +77,55 @@ export function AddDailyOrderDialog({ isOpen, setIsOpen, onSubmit, bookingStartD
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-4xl">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
             <DialogHeader>
               <DialogTitle>Record Daily Order</DialogTitle>
               <DialogDescription>
-                Add a new daily order to this booking contract.
+                Add a new daily order to this booking contract. This will create a new entry in the main Orders list.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-               <FormField
-                control={form.control}
-                name="orderDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Order Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar 
-                            mode="single" 
-                            selected={field.value ? parseISO(field.value) : undefined} 
-                            onSelect={(date) => field.onChange(date?.toISOString())} 
-                            disabled={{ before: fromDate, after: toDate }}
-                            initialFocus 
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="menu"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Menu / Particulars</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="e.g., Breakfast & Lunch for 50pax" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
+            <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
                     control={form.control}
-                    name="quantity"
+                    name="id"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Quantity</FormLabel>
+                      <FormItem>
+                        <FormLabel>Order ID</FormLabel>
                         <FormControl>
-                        <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                          <Input placeholder="e.g., ORD-2024-001" {...field} />
                         </FormControl>
                         <FormMessage />
-                    </FormItem>
+                      </FormItem>
                     )}
-                />
-                 <FormField
+                  />
+                   <FormField
                     control={form.control}
-                    name="unitPrice"
+                    name="name"
                     render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Unit Price (TZS)</FormLabel>
+                      <FormItem>
+                        <FormLabel>Order Name</FormLabel>
                         <FormControl>
-                        <Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
+                          <Input placeholder="e.g., Daily Lunch for NMB" {...field} />
                         </FormControl>
                         <FormMessage />
-                    </FormItem>
+                      </FormItem>
                     )}
-                />
-              </div>
+                  />
+               </div>
+               
+               <ClientEventForm
+                 control={form.control}
+                 nestIndex={0}
+                 isSubmitting={isSubmitting}
+                 singleClientEvent={true}
+                 dateRange={{ from: fromDate, to: toDate }}
+               />
+
             </div>
-            <DialogFooter>
+            <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline" disabled={isSubmitting}>Cancel</Button>
               </DialogClose>
