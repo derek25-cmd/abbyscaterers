@@ -30,12 +30,16 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
     // Auto-generate a name if it's not provided, which is the case for daily orders.
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
-
-    const newOrderData = { 
-        ...orderData, 
-        name, 
-        created_at: now, 
-        updated_at: now 
+    
+    const newOrderData = {
+        id: orderData.id,
+        name: name,
+        description: orderData.description,
+        proformaId: orderData.proformaId,
+        clientEvents: orderData.clientEvents,
+        booking_id: orderData.booking_id,
+        created_at: now,
+        updated_at: now,
     };
 
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select();
@@ -45,6 +49,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     }
     return data?.[0] as Order;
 };
+
 
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
     const { error } = await supabase.from('orders').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
@@ -61,3 +66,4 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     }
     return !error;
 };
+
