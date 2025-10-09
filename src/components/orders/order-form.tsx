@@ -1,7 +1,8 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Control } from "react-hook-form";
+import { useForm, useFieldArray, Control, UseFormReturn } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -92,14 +93,15 @@ const ClientEventRecipeForm = ({ nestIndex, control }: ClientEventRecipeFormProp
 }
 
 interface ClientEventFormProps {
-    control: Control<OrderFormData>;
+    form: UseFormReturn<OrderFormData>;
     nestIndex: number;
     isSubmitting: boolean;
     singleClientEvent?: boolean;
     dateRange?: { from: Date, to: Date };
 }
 
-export const ClientEventForm = ({ control, nestIndex, isSubmitting, singleClientEvent, dateRange }: ClientEventFormProps) => {
+export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange }: ClientEventFormProps) => {
+    const { control } = form;
     const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
 
     return (
@@ -185,7 +187,7 @@ export const ClientEventForm = ({ control, nestIndex, isSubmitting, singleClient
                  )}/>
                  <FormItem>
                     <FormLabel>Total Price</FormLabel>
-                    <Input type="text" readOnly disabled value={`${(control.getValues(`clientEvents.${nestIndex}.unitPrice`) * control.getValues(`clientEvents.${nestIndex}.numberOfPeople`)).toFixed(2)}`} />
+                    <Input type="text" readOnly disabled value={`${(form.getValues(`clientEvents.${nestIndex}.unitPrice`) * form.getValues(`clientEvents.${nestIndex}.numberOfPeople`)).toFixed(2)}`} />
                  </FormItem>
                   <FormField control={control} name={`clientEvents.${nestIndex}.vatType`} render={({ field }) => (
                     <FormItem>
@@ -205,6 +207,11 @@ export const ClientEventForm = ({ control, nestIndex, isSubmitting, singleClient
             <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
         </div>
     )
+}
+
+interface OrderFormProps {
+  order?: Order;
+  clientId?: string;
 }
 
 export function OrderForm({ order, clientId }: OrderFormProps) {
@@ -328,8 +335,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                     </CardHeader>
                     <CardContent>
                         <ClientEventForm
+                            form={form}
                             nestIndex={index}
-                            control={form.control}
                             isSubmitting={isLoading}
                         />
                     </CardContent>

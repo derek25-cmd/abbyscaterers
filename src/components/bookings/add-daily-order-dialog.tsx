@@ -1,7 +1,8 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +21,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { OrderSchema, type OrderFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { useClientStorage } from "@/hooks/use-client-storage";
-import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { ClientEventForm } from "../orders/order-form";
 
 
@@ -117,7 +116,7 @@ export function AddDailyOrderDialog({
                </div>
                
                <ClientEventForm
-                 control={form.control}
+                 form={form}
                  nestIndex={0}
                  isSubmitting={isSubmitting}
                  singleClientEvent={true}
@@ -140,4 +139,3 @@ export function AddDailyOrderDialog({
     </Dialog>
   );
 }
-
