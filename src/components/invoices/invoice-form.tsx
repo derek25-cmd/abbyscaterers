@@ -20,6 +20,7 @@ import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
 import { useInvoiceStorage } from '@/hooks/use-invoice-storage';
 import { useOrderStorage } from '@/hooks/use-order-storage';
+import { useBookingStorage } from '@/hooks/use-booking-storage';
 import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
