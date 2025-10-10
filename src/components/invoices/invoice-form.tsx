@@ -103,7 +103,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             endDate: new Date().toISOString(),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
+            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         }
@@ -128,7 +128,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         try {
             const existingOrder = getOrderById(itemData.id!);
             
-            // Ensure total is recalculated on save
             const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
 
             const orderPayload = {
@@ -142,7 +141,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
-                    total: recalculatedTotal, // Use recalculated total
+                    total: recalculatedTotal,
                     vatType: itemData.vatType,
                     recipes: existingOrder?.clientEvents?.[0]?.recipes || [],
                 }],
@@ -188,10 +187,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
-            // Save to local storage on change
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
 
-            if (name?.startsWith('items')) {
+            if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');
                  if(parts.length > 2) {
@@ -316,14 +314,10 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                const updated = await updateInvoice(invoiceId, data);
-                if (updated) {
-                    toast({ title: 'Success', description: 'Invoice updated successfully.' });
-                    localStorage.removeItem(DRAFT_STORAGE_KEY);
-                    router.push(`/invoices/${invoiceId}`);
-                } else {
-                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
-                }
+                await updateInvoice(invoiceId, data);
+                toast({ title: 'Success', description: 'Invoice updated successfully.' });
+                localStorage.removeItem(DRAFT_STORAGE_KEY);
+                router.push(`/invoices/${invoiceId}`);
             } else {
                 const newInvoice = await addInvoice(data);
                 if (newInvoice) {

@@ -79,7 +79,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const form = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
         defaultValues: {
-            id: "",
+            id: `PI-${Date.now()}`,
             invoiceDate: new Date().toISOString(),
             clientId: clientId || null,
             receiverName: '',
@@ -123,8 +123,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
         try {
             const existingOrder = getOrderById(itemData.id);
-
-            // Ensure total is recalculated on save
+            
             const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
 
             const orderPayload = {
@@ -138,22 +137,19 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
-                    total: recalculatedTotal, // Use recalculated total
+                    total: recalculatedTotal,
                     vatType: itemData.vatType,
                     recipes: existingOrder?.clientEvents?.[0]?.recipes || [],
                 }],
             };
 
             if (existingOrder) {
-                // Update existing order
                 updateOrder(itemData.id, orderPayload as any);
                 toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
             } else {
-                // Add new order
                 addOrder(orderPayload as any); 
                 toast({ title: "Order Created", description: `Order ${itemData.id} has been saved.` });
             }
-            // Visually confirm save by closing accordion
             setOpenAccordionItems(prev => prev.filter(p => p !== `item-${itemIndex}`));
         } catch (error) {
             console.error("Failed to create/update order:", error);
@@ -621,7 +617,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" size="lg" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
-                            {isEditMode ? 'Update and View Invoice' : 'Save and View Invoice'}
+                            {isEditMode ? 'Update and View Proforma' : 'Save and View Proforma'}
                         </Button>
                     </div>
                 </form>
