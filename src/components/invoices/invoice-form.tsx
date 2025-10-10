@@ -361,348 +361,486 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 </div>
             </CardHeader>
             <CardContent>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
-                       <AccordionItem value="item-1">
-                        <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Invoice Details</AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Controller name="id" control={form.control} render={({ field }) => (
-                                    <div><Label>Invoice Number</Label><Input {...field} placeholder="e.g., INV-2024-001" /></div>
-                                )}/>
-                                <Controller name="invoiceDate" control={form.control} render={({ field }) => (
-                                    <div><Label>Invoice Date</Label>
-                                        <Popover><PopoverTrigger asChild>
-                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                            </Button></PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                        </Popover>
-                                    </div>
-                                )}/>
-                                 <Controller name="status" control={form.control} render={({ field }) => (
-                                    <div><Label>Status</Label>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="outstanding">Outstanding</SelectItem>
-                                            <SelectItem value="paid">Paid</SelectItem>
-                                        </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}/>
-                            </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                      
-                       <AccordionItem value="item-2">
-                        <AccordionTrigger className="text-lg font-semibold"><User className="mr-2 h-5 w-5 text-primary" />Client Information</AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-4">
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
+                        <AccordionItem value="item-1">
+                            <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Invoice Details</AccordionTrigger>
+                            <AccordionContent className="pt-4 space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <Controller name="clientId" control={form.control} render={({ field }) => (
-                                <div><Label>Select Client</Label>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
-                                            {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search client..." />
-                                            <CommandList><CommandEmpty>No client found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {clients.map((c) => (
-                                                    <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
-                                                        <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                        {c.companyName}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                </div>
-                                )}/>
-                                <Controller name="lpoNumber" control={form.control} render={({ field }) => (
-                                    <div><Label>LPO Number</Label><Input {...field} placeholder="Enter LPO number" /></div>
-                                )}/>
-                                <Controller name="receiverName" control={form.control} render={({ field }) => (
-                                    <div><Label>Receiver Name</Label><Input {...field} placeholder="Enter receiver name" /></div>
-                                )}/>
-                                <Controller name="receiverPosition" control={form.control} render={({ field }) => (
-                                    <div><Label>Receiver Position</Label><Input {...field} placeholder="Enter receiver position" /></div>
-                                )}/>
-                            </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                      
-                      <AccordionItem value="item-3">
-                        <AccordionTrigger className="text-lg font-semibold"><Settings2 className="mr-2 h-5 w-5 text-primary" />Service Customization</AccordionTrigger>
-                        <AccordionContent className="pt-4 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                               <Controller name="startDate" control={form.control} render={({ field }) => (
-                                    <div><Label>Start Date</Label>
-                                        <Popover><PopoverTrigger asChild>
-                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                            </Button></PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                        </Popover>
-                                    </div>
-                                )}/>
-                                <Controller name="endDate" control={form.control} render={({ field }) => (
-                                     <div><Label>End Date</Label>
-                                        <Popover><PopoverTrigger asChild>
-                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                            </Button></PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                        </Popover>
-                                    </div>
-                                )}/>
-                                 <Controller name="location" control={form.control} render={({ field }) => (
-                                    <div><Label>Location</Label><Input {...field} placeholder="Enter event location" /></div>
-                                )}/>
-                                <Controller name="numberOfDays" control={form.control} render={({ field }) => (
-                                    <div><Label>Number of Days</Label><Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} /></div>
-                                )}/>
-                            </div>
-                            <div className="mt-4 space-y-2">
-                                <Label>Event Type for Service Description</Label>
-                                 <Controller name="selectedEventType" control={form.control} render={({ field }) => (
-                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                     </Select>
-                                 )}/>
-                                {form.watch("selectedEventType") === 'Custom' && (
-                                     <Controller name="customEventType" control={form.control} render={({ field }) => (
-                                        <Input {...field} placeholder="Custom Event Type" className="mt-2" />
-                                    )}/>
-                                )}
-
-                                <Label className="mt-4 block">Customize Service Description Fields</Label>
-                                <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2">
-                                  {serviceFieldsList.map(field => (
-                                    <div key={field.key} className="flex items-center space-x-2">
-                                        <Controller name={`serviceFields.${field.key}`} control={form.control} render={({ field: checkboxField }) => (
-                                             <Checkbox
-                                                checked={checkboxField.value}
-                                                onCheckedChange={checkboxField.onChange}
-                                                id={`service-field-${field.key}`}
-                                              />
-                                        )}/>
-                                      <Label htmlFor={`service-field-${field.key}`}>{field.label}</Label>
-                                    </div>
-                                  ))}
-                                </div>
-                                <Label className="mt-4 block">Service Description</Label>
-                                 <Controller name="serviceDesc" control={form.control} render={({ field }) => (
-                                    <Textarea {...field} rows={3} />
-                                )}/>
-                            </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                    
-                    <Card className="p-4 border-primary/20">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
-                            <Button type="button" onClick={() => { 
-                                const newIndex = fields.length;
-                                append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
-                                setOpenAccordionItems([`item-${newIndex}`]);
-                             }} size="sm">
-                                <Plus className="w-4 h-4 mr-2" /> Add Item
-                            </Button>
-                        </div>
-                        <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
-                            {fields.map((item, index) => {
-                                const orderId = form.getValues(`items.${index}.id`);
-                                const isSaved = orderId ? orders.some(o => o.id === orderId) : false;
-                                return (
-                                <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
-                                    <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
-                                        <div className="flex items-center gap-2">
-                                            {isSaved && <CheckCircle className="h-5 w-5 text-green-500"/>}
-                                            <span className="font-semibold">Order Item #{index + 1}</span>
-                                            <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.eventType`)}</span>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="p-4 pt-2 space-y-4">
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} readOnly />} /></div>
-                                            <div>
-                                                <Label>Event Type</Label>
-                                                <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger><SelectValue/></SelectTrigger>
-                                                        <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                )}/>
-                                            </div>
-                                            <div>
-                                                <Label>Meal Type</Label>
-                                                <Controller name={`items.${index}.mealType`} control={form.control} render={({ field }) => (
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger><SelectValue/></SelectTrigger>
-                                                        <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                )}/>
-                                            </div>
-                                            <div>
-                                            <Label>Event Date</Label>
-                                            <Controller name={`items.${index}.date`} control={form.control} render={({ field }) => (
+                                    <FormField
+                                        control={form.control}
+                                        name="id"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Invoice Number</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="e.g., INV-2024-001" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="invoiceDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Invoice Date</FormLabel>
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                    </Button>
+                                                        <FormControl>
+                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </FormControl>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
                                                 </Popover>
-                                            )} />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                            <div><Label>No. of People</Label><Controller name={`items.${index}.pax`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} />} /></div>
-                                            <div><Label>Unit Price</Label><Controller name={`items.${index}.unitPrice`} control={form.control} render={({ field }) => <Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} />} /></div>
-                                            <div><Label>Total</Label><Controller name={`items.${index}.total`} control={form.control} render={({ field }) => <Input type="number" {...field} readOnly />} /></div>
-                                            <div>
-                                                <Label>VAT</Label>
-                                                <Controller name={`items.${index}.vatType`} control={form.control} render={({ field }) => (
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="status"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Status</FormLabel>
+                                                <FormControl>
                                                     <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="inclusive">Inclusive</SelectItem>
-                                                            <SelectItem value="exclusive">Exclusive</SelectItem>
+                                                            <SelectItem value="outstanding">Outstanding</SelectItem>
+                                                            <SelectItem value="paid">Paid</SelectItem>
                                                         </SelectContent>
                                                     </Select>
-                                                )}/>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <Label>Particulars Display</Label>
-                                            <Controller
-                                                name={`items.${index}.particularType`}
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                        
+                        <AccordionItem value="item-2">
+                            <AccordionTrigger className="text-lg font-semibold"><User className="mr-2 h-5 w-5 text-primary" />Client Information</AccordionTrigger>
+                            <AccordionContent className="pt-4 space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="clientId"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Select Client</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
+                                                                {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command>
+                                                            <CommandInput placeholder="Search client..." />
+                                                            <CommandList><CommandEmpty>No client found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {clients.map((c) => (
+                                                                    <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
+                                                                        <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                        {c.companyName}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="lpoNumber"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>LPO Number</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="Enter LPO number" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="receiverName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Receiver Name</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="Enter receiver name" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="receiverPosition"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Receiver Position</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="Enter receiver position" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                        
+                        <AccordionItem value="item-3">
+                            <AccordionTrigger className="text-lg font-semibold"><Settings2 className="mr-2 h-5 w-5 text-primary" />Service Customization</AccordionTrigger>
+                            <AccordionContent className="pt-4 space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="startDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Start Date</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                </Popover>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="endDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>End Date</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                </Popover>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="location"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Location</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="Enter event location" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="numberOfDays"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Number of Days</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="mt-4 space-y-2">
+                                    <Label>Event Type for Service Description</Label>
+                                    <FormField
+                                        control={form.control}
+                                        name="selectedEventType"
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>{eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    {form.watch("selectedEventType") === 'Custom' && (
+                                        <FormField
+                                            control={form.control}
+                                            name="customEventType"
+                                            render={({ field }) => (
+                                                <Input {...field} placeholder="Custom Event Type" className="mt-2" />
+                                            )}
+                                        />
+                                    )}
+
+                                    <Label className="mt-4 block">Customize Service Description Fields</Label>
+                                    <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2">
+                                    {serviceFieldsList.map(field => (
+                                        <div key={field.key} className="flex items-center space-x-2">
+                                            <FormField
                                                 control={form.control}
-                                                render={({ field }) => (
-                                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
-                                                        <div className="flex items-center space-x-2">
-                                                            <RadioGroupItem value="event" id={`event-${index}`} />
-                                                            <Label htmlFor={`event-${index}`}>Event Type</Label>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <RadioGroupItem value="meal" id={`meal-${index}`} />
-                                                            <Label htmlFor={`meal-${index}`}>Meal Type</Label>
-                                                        </div>
-                                                    </RadioGroup>
+                                                name={`serviceFields.${field.key}`}
+                                                render={({ field: checkboxField }) => (
+                                                    <Checkbox
+                                                        checked={checkboxField.value}
+                                                        onCheckedChange={checkboxField.onChange}
+                                                        id={`service-field-${field.key}`}
+                                                    />
                                                 )}
                                             />
+                                        <Label htmlFor={`service-field-${field.key}`}>{field.label}</Label>
                                         </div>
-                                        <div className="flex justify-between items-center pt-2 border-t">
-                                            <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="h-4 w-4 mr-2" />Remove</Button>
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />{isSaved ? 'Update Order' : 'Save as Order'}</Button>
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                                );
-                            })}
+                                    ))}
+                                    </div>
+                                    <Label className="mt-4 block">Service Description</Label>
+                                    <FormField
+                                        control={form.control}
+                                        name="serviceDesc"
+                                        render={({ field }) => (
+                                            <Textarea {...field} rows={3} />
+                                        )}
+                                    />
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
                         </Accordion>
-                    </Card>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                       <Controller name="serviceCharge" control={form.control} render={({ field }) => (
-                             <div><Label>Service Charge (TSHS)</Label><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></div>
-                        )}/>
-                        <Controller name="transportCosts" control={form.control} render={({ field }) => (
-                             <div><Label>Transport Costs (TSHS)</Label><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></div>
-                        )}/>
-                        <Controller name="vatType" control={form.control} render={({ field }) => (
-                             <div><Label>VAT Type (Overall)</Label>
-                                <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent><SelectItem value="inclusive">Inclusive</SelectItem><SelectItem value="exclusive">Exclusive (+18%)</SelectItem></SelectContent>
-                                </Select>
-                             </div>
-                         )}/>
-                    </div>
-                     <div className="flex items-center space-x-2 pt-2">
-                        <Controller name="multiplyByDays" control={form.control} render={({ field }) => (
-                            <Checkbox id="multiply-days" checked={field.value} onCheckedChange={field.onChange} />
-                        )}/>
-                        <Label htmlFor="multiply-days">Multiply item totals by number of days</Label>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <Controller name="signedAtLocation" control={form.control} render={({ field }) => (
-                            <div><Label>Signed At Location</Label><Input {...field} /></div>
-                        )}/>
-                        <Controller name="signedAtDate" control={form.control} render={({ field }) => (
-                            <div><Label>Signed At Date</Label>
-                                <Popover><PopoverTrigger asChild>
-                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                    </Button></PopoverTrigger>
-                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
-                                </Popover>
+                        
+                        <Card className="p-4 border-primary/20">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
+                                <Button type="button" onClick={() => { 
+                                    const newIndex = fields.length;
+                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
+                                    setOpenAccordionItems([`item-${newIndex}`]);
+                                }} size="sm">
+                                    <Plus className="w-4 h-4 mr-2" /> Add Item
+                                </Button>
                             </div>
-                        )}/>
-                    </div>
-
-                     <div className="mt-6 p-4 bg-secondary/20 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-2">Summary</h3>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                          
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Items Subtotal:</span>
-                              <span className="font-medium">{calculateSubtotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                            </div>
-                            {form.getValues('multiplyByDays') && (
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Total for {form.getValues('numberOfDays')} Day(s):</span>
-                                <span className="font-medium">{calculateTotalDays().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between col-start-1">
-                              <span className="text-muted-foreground">Service Charge:</span>
-                              <span className="font-medium">{form.getValues('serviceCharge').toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                            </div>
-                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Transport Costs:</span>
-                                <span className="font-medium">{form.getValues('transportCosts').toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                            </div>
-                            <div className="flex justify-between font-semibold border-t pt-2 mt-2 col-span-2">
-                              <span>Total Before VAT:</span>
-                              <span>{(calculateTotalDays() + form.getValues('serviceCharge') + form.getValues('transportCosts')).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                            </div>
-                            <div className="flex justify-between col-span-2">
-                              <span className="text-muted-foreground">VAT ({form.getValues('vatType') === 'exclusive' ? '18%' : 'Inclusive'}):</span>
-                              <span className="font-medium">{calculateVAT().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-lg border-t-2 pt-2 mt-2 col-span-2">
-                              <span className="text-primary">Grand Total:</span>
-                              <span className="text-accent">{calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                            </div>
-                          
+                            <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
+                                {fields.map((item, index) => {
+                                    const orderId = form.getValues(`items.${index}.id`);
+                                    const isSaved = orderId ? orders.some(o => o.id === orderId) : false;
+                                    return (
+                                    <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
+                                        <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
+                                            <div className="flex items-center gap-2">
+                                                {isSaved && <CheckCircle className="h-5 w-5 text-green-500"/>}
+                                                <span className="font-semibold">Order Item #{index + 1}</span>
+                                                <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.eventType`)}</span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="p-4 pt-2 space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                                <FormField control={form.control} name={`items.${index}.id`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Order ID</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Event Type</FormLabel>
+                                                        <FormControl>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                                <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Meal Type</FormLabel>
+                                                        <FormControl>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                                <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Event Date</FormLabel>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <FormControl>
+                                                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                        {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                                    </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                        </Popover>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                                <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
+                                                    <FormItem><FormLabel>No. of People</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} /></FormControl></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Unit Price</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.total`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" {...field} readOnly /></FormControl></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.vatType`} render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>VAT</FormLabel>
+                                                        <FormControl>
+                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="inclusive">Inclusive</SelectItem>
+                                                                    <SelectItem value="exclusive">Exclusive</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+                                            <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Particulars Display</FormLabel>
+                                                    <FormControl>
+                                                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
+                                                            <div className="flex items-center space-x-2">
+                                                                <RadioGroupItem value="event" id={`event-${index}`} />
+                                                                <Label htmlFor={`event-${index}`}>Event Type</Label>
+                                                            </div>
+                                                            <div className="flex items-center space-x-2">
+                                                                <RadioGroupItem value="meal" id={`meal-${index}`} />
+                                                                <Label htmlFor={`meal-${index}`}>Meal Type</Label>
+                                                            </div>
+                                                        </RadioGroup>
+                                                    </FormControl>
+                                                </FormItem>
+                                            )} />
+                                            <div className="flex justify-between items-center pt-2 border-t">
+                                                <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="h-4 w-4 mr-2" />Remove</Button>
+                                                <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />{isSaved ? 'Update Order' : 'Save as Order'}</Button>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                    );
+                                })}
+                            </Accordion>
+                        </Card>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <FormField control={form.control} name="serviceCharge" render={({ field }) => (
+                                <FormItem><FormLabel>Service Charge (TSHS)</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>
+                            )}/>
+                            <FormField control={form.control} name="transportCosts" render={({ field }) => (
+                                <FormItem><FormLabel>Transport Costs (TSHS)</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>
+                            )}/>
+                            <FormField control={form.control} name="vatType" render={({ field }) => (
+                                <FormItem><FormLabel>VAT Type (Overall)</FormLabel>
+                                    <FormControl>
+                                        <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent><SelectItem value="inclusive">Inclusive</SelectItem><SelectItem value="exclusive">Exclusive (+18%)</SelectItem></SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                </FormItem>
+                            )}/>
                         </div>
-                      </div>
+                        <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
+                            <div className="flex items-center space-x-2 pt-2">
+                                <FormControl>
+                                    <Checkbox id="multiply-days" checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                                <Label htmlFor="multiply-days">Multiply item totals by number of days</Label>
+                            </div>
+                        )}/>
 
-                    <div className="flex justify-end gap-4 pt-4 border-t">
-                        <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                        <Button type="submit" size="lg" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
-                            {isEditMode ? 'Update Invoice' : 'Save and View Invoice'}
-                        </Button>
-                    </div>
-                </form>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField control={form.control} name="signedAtLocation" render={({ field }) => (
+                                <FormItem><FormLabel>Signed At Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
+                            )}/>
+                            <FormField control={form.control} name="signedAtDate" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Signed At Date</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                    </Popover>
+                                </FormItem>
+                            )}/>
+                        </div>
+
+                        <div className="mt-6 p-4 bg-secondary/20 rounded-lg">
+                            <h3 className="text-lg font-semibold mb-2">Summary</h3>
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            
+                                <div className="flex justify-between">
+                                <span className="text-muted-foreground">Items Subtotal:</span>
+                                <span className="font-medium">{calculateSubtotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                                {form.getValues('multiplyByDays') && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Total for {form.getValues('numberOfDays')} Day(s):</span>
+                                    <span className="font-medium">{calculateTotalDays().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                                )}
+                                <div className="flex justify-between col-start-1">
+                                <span className="text-muted-foreground">Service Charge:</span>
+                                <span className="font-medium">{form.getValues('serviceCharge').toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Transport Costs:</span>
+                                    <span className="font-medium">{form.getValues('transportCosts').toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                                <div className="flex justify-between font-semibold border-t pt-2 mt-2 col-span-2">
+                                <span>Total Before VAT:</span>
+                                <span>{(calculateTotalDays() + form.getValues('serviceCharge') + form.getValues('transportCosts')).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                                <div className="flex justify-between col-span-2">
+                                <span className="text-muted-foreground">VAT ({form.getValues('vatType') === 'exclusive' ? '18%' : 'Inclusive'}):</span>
+                                <span className="font-medium">{calculateVAT().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-lg border-t-2 pt-2 mt-2 col-span-2">
+                                <span className="text-primary">Grand Total:</span>
+                                <span className="text-accent">{calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
+                                </div>
+                            
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-4 pt-4 border-t">
+                            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                            <Button type="submit" size="lg" disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+                                {isEditMode ? 'Update Invoice' : 'Save and View Invoice'}
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
             </CardContent>
         </Card>
     );
