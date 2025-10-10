@@ -43,13 +43,13 @@ export function ClientActionCenter({ client }: ClientActionCenterProps) {
                         icon={BookOpen}
                     />
                     <ActionItem 
-                        href={`/invoicing/proforma-invoices/new?clientId=${client.id}`}
+                        href={`/proforma-invoices/new?clientId=${client.id}`}
                         title="Create Proforma Invoice"
                         description="Generate a quote for a single event."
                         icon={FileText}
                     />
                     <ActionItem 
-                        href={`/invoicing/invoices/new?clientId=${client.id}`}
+                        href={`/invoices/new?clientId=${client.id}`}
                         title="Create Final Invoice"
                         description="Directly generate a final bill."
                         icon={FileText}
