@@ -257,7 +257,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                const updated = updateProformaInvoice(invoiceId, data);
+                const updated = await updateProformaInvoice(invoiceId, data);
                 if (updated) {
                     toast({ title: 'Success', description: 'Proforma invoice updated successfully.' });
                     localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -266,7 +266,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update proforma invoice.' });
                 }
             } else {
-                const newInvoice = addProformaInvoice(data);
+                const newInvoice = await addProformaInvoice(data);
                 toast({ title: 'Success', description: 'Proforma invoice created successfully.' });
                 localStorage.removeItem(DRAFT_STORAGE_KEY);
                 router.push(`/proforma-invoices/${newInvoice.id}`);
