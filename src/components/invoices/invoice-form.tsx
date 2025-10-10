@@ -78,6 +78,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
+    const DRAFT_STORAGE_KEY = isEditMode ? `final-invoice-draft-${invoiceId}` : 'final-invoice-draft-new';
 
     const form = useForm<FinalInvoiceFormData>({
         resolver: zodResolver(FinalInvoiceSchema),
@@ -182,6 +183,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
+            // Save to local storage on change
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+
             if (name?.startsWith('items')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');
@@ -217,16 +221,17 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             }
         });
         return () => subscription.unsubscribe();
-    }, [form]);
+    }, [form, DRAFT_STORAGE_KEY]);
 
     useEffect(() => {
+        let dataToLoad: Partial<FinalInvoiceFormData> | undefined;
+
         if (isEditMode && invoiceId) {
-            const existingInvoice = getInvoiceById(invoiceId);
-            if (existingInvoice) form.reset(existingInvoice);
+            dataToLoad = getInvoiceById(invoiceId);
         } else if (proformaId) {
             const proforma = getProformaById(proformaId);
             if (proforma) {
-                form.reset({
+                dataToLoad = {
                     ...proforma,
                     proformaId: proforma.id,
                     id: `INV-${Date.now()}`,
@@ -247,13 +252,13 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     })),
                     signedAtDate: new Date().toISOString(),
                     signedAtLocation: 'Dar es Salaam'
-                });
+                };
             }
         } else if (bookingId) {
             const booking = getBookingById(bookingId);
             const bookingOrders = getOrdersByBookingId(bookingId);
             if (booking && bookingOrders.length > 0) {
-                 form.reset({
+                 dataToLoad = {
                     id: `INV-${Date.now()}`,
                     proformaId: '',
                     status: 'outstanding',
@@ -282,10 +287,25 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     }))),
                     signedAtDate: new Date().toISOString(),
                     signedAtLocation: 'Dar es Salaam'
-                 })
+                 };
+            }
+        } else {
+            const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+            if (savedDraft) {
+                try {
+                    dataToLoad = JSON.parse(savedDraft);
+                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                } catch (e) {
+                    console.error("Failed to parse draft from localStorage", e);
+                }
             }
         }
-    }, [isEditMode, invoiceId, proformaId, bookingId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form]);
+
+        if (dataToLoad) {
+            form.reset(dataToLoad);
+        }
+
+    }, [isEditMode, invoiceId, proformaId, bookingId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form, DRAFT_STORAGE_KEY, toast]);
 
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
@@ -294,6 +314,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 const updated = await updateInvoice(invoiceId, data);
                 if (updated) {
                     toast({ title: 'Success', description: 'Invoice updated successfully.' });
+                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/invoices/${invoiceId}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
@@ -302,6 +323,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 const newInvoice = await addInvoice(data);
                 if (newInvoice) {
                     toast({ title: 'Success', description: 'Invoice created successfully.' });
+                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/invoices/${newInvoice.id}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to create invoice.' });

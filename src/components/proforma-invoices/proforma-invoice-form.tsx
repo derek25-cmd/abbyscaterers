@@ -73,6 +73,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
+    const DRAFT_STORAGE_KEY = isEditMode ? `proforma-draft-${invoiceId}` : 'proforma-draft-new';
+
 
     const form = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
@@ -181,6 +183,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
     useEffect(() => {
         const subscription = form.watch((value, { name, type }) => {
+             // Save to local storage on change
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');
@@ -220,14 +225,28 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             }
         });
         return () => subscription.unsubscribe();
-    }, [form]);
+    }, [form, DRAFT_STORAGE_KEY]);
 
     useEffect(() => {
+        let dataToLoad;
         if (isEditMode && invoiceId) {
-            const existingInvoice = getProformaById(invoiceId);
-            if (existingInvoice) form.reset(existingInvoice);
+            dataToLoad = getProformaById(invoiceId);
+        } else {
+            const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+            if (savedDraft) {
+                try {
+                    dataToLoad = JSON.parse(savedDraft);
+                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                } catch (e) {
+                    console.error("Failed to parse draft from localStorage", e);
+                }
+            }
         }
-    }, [isEditMode, invoiceId, getProformaById, form]);
+
+        if (dataToLoad) {
+            form.reset(dataToLoad);
+        }
+    }, [isEditMode, invoiceId, getProformaById, form, DRAFT_STORAGE_KEY, toast]);
 
     async function onSubmit(data: ProformaInvoiceFormData) {
         setIsSubmitting(true);
@@ -236,6 +255,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 const updated = updateProformaInvoice(invoiceId, data);
                 if (updated) {
                     toast({ title: 'Success', description: 'Proforma invoice updated successfully.' });
+                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/proforma-invoices/${updated.id}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update proforma invoice.' });
@@ -243,6 +263,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             } else {
                 const newInvoice = addProformaInvoice(data);
                 toast({ title: 'Success', description: 'Proforma invoice created successfully.' });
+                localStorage.removeItem(DRAFT_STORAGE_KEY);
                 router.push(`/proforma-invoices/${newInvoice.id}`);
             }
         } catch (error) {
@@ -437,7 +458,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
                             {fields.map((item, index) => {
                                 const orderId = form.getValues(`items.${index}.id`);
-                                const isSaved = orders.some(o => o.id === orderId);
+                                const isSaved = orderId ? orders.some(o => o.id === orderId) : false;
                                 return (
                                 <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
                                     <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
@@ -449,7 +470,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4 pt-2 space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} />} /></div>
+                                            <div><Label>Order ID</Label><Controller name={`items.${index}.id`} control={form.control} render={({ field }) => <Input {...field} readOnly />} /></div>
                                             <div>
                                                 <Label>Event Type</Label>
                                                 <Controller name={`items.${index}.eventType`} control={form.control} render={({ field }) => (
