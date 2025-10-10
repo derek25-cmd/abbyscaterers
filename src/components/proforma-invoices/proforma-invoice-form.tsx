@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, isValid, parseISO, addDays } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
@@ -65,7 +65,7 @@ const serviceFieldsList = [
 
 export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceFormProps) {
     const router = useRouter();
-    const { clients, isLoading: clientsLoading, getClientById: getClientDetails } = useClientStorage();
+    const { clients, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
     const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
     const { toast } = useToast();
@@ -74,7 +74,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
     const DRAFT_STORAGE_KEY = isEditMode ? `proforma-draft-${invoiceId}` : 'proforma-draft-new';
-
+    
     const form = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
         defaultValues: {
@@ -99,12 +99,12 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
         }
     });
-    
+
     const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "items" });
-    
     const watchedFormValues = form.watch();
+
     const selectedClientId = form.watch('clientId');
-    const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
+    const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : undefined;
     
     const handleSaveAndCreateOrder = async (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
@@ -142,8 +142,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             };
 
             if (isExistingOrder) {
-                await updateOrder(itemData.id, orderPayload as any);
-                toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
+                const updatedOrder = await updateOrder(itemData.id, orderPayload as any);
+                if (updatedOrder) {
+                    toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
+                }
             } else {
                 const newOrder = await addOrder(orderPayload as any);
                 if (newOrder) {
@@ -159,8 +161,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             toast({ variant: "destructive", title: "Failed to Save Order", description: message });
         }
     };
-
-     const buildServiceDesc = React.useCallback(() => {
+    
+    const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
         let desc = 'Provision of';
         if (serviceFields.eventType && (selectedEventType || customEventType)) {
@@ -177,15 +179,15 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         if (serviceFields.location && location) desc += ` at ${location}`;
         return desc;
     }, [form]);
-    
-    useEffect(() => {
+
+     useEffect(() => {
         form.setValue("serviceDesc", buildServiceDesc());
     }, [watchedFormValues.serviceFields, watchedFormValues.items, watchedFormValues.numberOfDays, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.location, watchedFormValues.selectedEventType, watchedFormValues.customEventType, buildServiceDesc, form]);
 
     useEffect(() => {
-        const subscription = form.watch((value, { name, type }) => {
+        const subscription = form.watch((value, { name }) => {
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
-
+            
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');
@@ -200,7 +202,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                              form.setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
                          }
                     }
-                    
                     if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date') {
                         if (item.particularType === 'event') {
                             form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
@@ -210,7 +211,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     }
                 }
             }
-             if (name === 'startDate' || name === 'endDate') {
+
+            if (name === 'startDate' || name === 'endDate') {
                 const { startDate, endDate } = form.getValues();
                 if (startDate && endDate && isValid(parseISO(startDate)) && isValid(parseISO(endDate))) {
                     const diff = Math.max(1, Math.ceil((parseISO(endDate).getTime() - parseISO(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1);
@@ -218,7 +220,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 } else {
                     form.setValue('numberOfDays', 1);
                 }
-
+                
                 if(name === 'endDate' && endDate && isValid(parseISO(endDate))){
                     form.setValue('invoiceDate', endDate);
                 }
@@ -228,23 +230,22 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     }, [form, DRAFT_STORAGE_KEY]);
 
     useEffect(() => {
-        let dataToLoad;
         if (isEditMode && invoiceId) {
-            dataToLoad = getProformaById(invoiceId);
+            const dataToLoad = getProformaById(invoiceId);
+            if (dataToLoad) {
+                form.reset(dataToLoad);
+            }
         } else {
             const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
             if (savedDraft) {
                 try {
-                    dataToLoad = JSON.parse(savedDraft);
+                    const parsedData = JSON.parse(savedDraft);
+                    form.reset(parsedData);
                     toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
                 } catch (e) {
                     console.error("Failed to parse draft from localStorage", e);
                 }
             }
-        }
-
-        if (dataToLoad) {
-            form.reset(dataToLoad);
         }
     }, [isEditMode, invoiceId, getProformaById, form, DRAFT_STORAGE_KEY, toast]);
 
@@ -252,19 +253,23 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                const updated = await updateProformaInvoice(invoiceId, data);
-                if (updated) {
+                const updatedInvoice = await updateProformaInvoice(invoiceId, data);
+                if (updatedInvoice) {
                     toast({ title: 'Success', description: 'Proforma invoice updated successfully.' });
                     localStorage.removeItem(DRAFT_STORAGE_KEY);
-                    router.push(`/proforma-invoices/${invoiceId}`);
+                    router.push(`/proforma-invoices/${updatedInvoice.id}`);
                 } else {
-                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to update proforma invoice.' });
+                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to update proforma invoice.' });
                 }
             } else {
                 const newInvoice = await addProformaInvoice(data);
-                toast({ title: 'Success', description: 'Proforma invoice created successfully.' });
-                localStorage.removeItem(DRAFT_STORAGE_KEY);
-                router.push(`/proforma-invoices/${newInvoice.id}`);
+                if (newInvoice) {
+                    toast({ title: 'Success', description: 'Proforma invoice created successfully.' });
+                    localStorage.removeItem(DRAFT_STORAGE_KEY);
+                    router.push(`/proforma-invoices/${newInvoice.id}`);
+                } else {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to create proforma invoice.' });
+                }
             }
         } catch (error) {
             console.error("Failed to save proforma invoice", error);
@@ -285,6 +290,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         return form.getValues('vatType') === 'exclusive' ? totalBeforeVat * 0.18 : 0;
     };
     const calculateGrandTotal = () => calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0) + calculateVAT();
+
 
     return (
         <Card className="max-w-5xl mx-auto shadow-lg">
@@ -359,10 +365,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                 <Popover>
                                                     <PopoverTrigger asChild>
                                                         <FormControl>
-                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
-                                                            {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
+                                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
+                                                                {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -687,7 +693,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 </FormItem>
                             )}/>
                         </div>
-                        <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
+                         <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
                             <div className="flex items-center space-x-2 pt-2">
                                 <FormControl>
                                     <Checkbox id="multiply-days" checked={field.value} onCheckedChange={field.onChange} />
@@ -695,7 +701,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 <Label htmlFor="multiply-days">Multiply item totals by number of days</Label>
                             </div>
                         )}/>
-                        
+
                         <div className="mt-6 p-4 bg-secondary/20 rounded-lg">
                             <h3 className="text-lg font-semibold mb-2">Summary</h3>
                             <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">

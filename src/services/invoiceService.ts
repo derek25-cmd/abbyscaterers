@@ -25,7 +25,7 @@ export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Inv
     const now = new Date().toISOString();
     const newInvoiceData = { ...invoiceData, createdAt: now, updatedAt: now };
 
-    const { data, error } = await supabase.from('invoices').insert([newInvoiceData]).select();
+    const { data, error } = await supabase.from('invoices').insert([newInvoiceData]).select().single();
     if (error) {
         console.error('Error adding invoice:', error);
         return null;
@@ -42,15 +42,16 @@ export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Inv
         }
     }
 
-    return data?.[0] as Invoice;
+    return data as Invoice;
 };
 
-export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFormData>): Promise<boolean> => {
-    const { error } = await supabase.from('invoices').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id);
+export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFormData>): Promise<Invoice | null> => {
+    const { data, error } = await supabase.from('invoices').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
     if (error) {
         console.error('Error updating invoice:', error);
+        return null;
     }
-    return !error;
+    return data as Invoice;
 };
 
 export const deleteInvoice = async (id: string): Promise<boolean> => {

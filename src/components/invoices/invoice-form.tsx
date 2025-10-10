@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -149,8 +149,10 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             };
 
             if (isExistingOrder) {
-                await updateOrder(itemData.id!, orderPayload as any);
-                toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
+                const updatedOrder = await updateOrder(itemData.id!, orderPayload as any);
+                if (updatedOrder) {
+                    toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
+                }
             } else {
                 const newOrder = await addOrder(orderPayload as any);
                 if (newOrder) {
@@ -317,11 +319,11 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                const success = await updateInvoice(invoiceId, data);
-                if(success) {
+                const updatedInvoice = await updateInvoice(invoiceId, data);
+                if(updatedInvoice) {
                     toast({ title: 'Success', description: 'Invoice updated successfully.' });
                     localStorage.removeItem(DRAFT_STORAGE_KEY);
-                    router.push(`/invoices/${invoiceId}`);
+                    router.push(`/invoices/${updatedInvoice.id}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
                 }

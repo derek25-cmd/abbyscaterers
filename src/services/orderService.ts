@@ -71,7 +71,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 };
 
 
-export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<boolean> => {
+export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<Order | null> => {
     const updatePayload: { [key: string]: any } = {
       name: updates.name,
       description: updates.description,
@@ -83,11 +83,12 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
     
     Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
     
-    const { error } = await supabase.from('orders').update(updatePayload).eq('id', id);
+    const { data, error } = await supabase.from('orders').update(updatePayload).eq('id', id).select().single();
     if (error) {
         console.error('Error updating order:', JSON.stringify(error, null, 2));
+        return null;
     }
-    return !error;
+    return mapDbToOrder(data);
 };
 
 export const deleteOrder = async (id: string): Promise<boolean> => {
