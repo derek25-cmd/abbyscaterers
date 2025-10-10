@@ -101,8 +101,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     });
 
     const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "items" });
+    
     const watchedFormValues = form.watch();
-
     const selectedClientId = form.watch('clientId');
     const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : undefined;
     
@@ -122,6 +122,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
         try {
             const isExistingOrder = orders.some(o => o.id === itemData.id);
+            
             const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
 
             const orderPayload = {
@@ -142,8 +143,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             };
 
             if (isExistingOrder) {
-                const updatedOrder = await updateOrder(itemData.id, orderPayload as any);
+                const updatedOrder = await updateOrder(itemData.id!, orderPayload as any);
                 if (updatedOrder) {
+                    update(itemIndex, { ...itemData, id: updatedOrder.id, total: recalculatedTotal });
                     toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
                 }
             } else {
@@ -300,7 +302,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         <CardTitle className="text-3xl font-bold text-primary">{isEditMode ? "Edit Proforma Invoice" : "Create New Proforma Invoice"}</CardTitle>
                         <CardDescription>Fill in the details for the proforma invoice.</CardDescription>
                     </div>
-                    {selectedClient && (
+                     {selectedClient && (
                          <div className="text-right p-2 rounded-md bg-muted/50 border">
                             <p className="text-sm text-muted-foreground">Client</p>
                             <p className="text-lg font-bold text-primary flex items-center gap-2"><Building className="h-5 w-5" />{selectedClient.companyName}</p>
@@ -557,7 +559,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         
                         <Card className="p-4 border-primary/20">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Order Items</h3>
+                                <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
                                 <Button type="button" onClick={() => { 
                                     const newIndex = fields.length;
                                     append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
