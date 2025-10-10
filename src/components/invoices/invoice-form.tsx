@@ -27,6 +27,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { useBookingStorage } from '@/hooks/use-booking-storage';
+import { Form } from '@/components/ui/form';
 
 interface InvoiceFormProps {
     invoiceId?: string;
@@ -314,10 +315,14 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         setIsSubmitting(true);
         try {
             if (isEditMode && invoiceId) {
-                await updateInvoice(invoiceId, data);
-                toast({ title: 'Success', description: 'Invoice updated successfully.' });
-                localStorage.removeItem(DRAFT_STORAGE_KEY);
-                router.push(`/invoices/${invoiceId}`);
+                const success = await updateInvoice(invoiceId, data);
+                if(success) {
+                    toast({ title: 'Success', description: 'Invoice updated successfully.' });
+                    localStorage.removeItem(DRAFT_STORAGE_KEY);
+                    router.push(`/invoices/${invoiceId}`);
+                } else {
+                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
+                }
             } else {
                 const newInvoice = await addInvoice(data);
                 if (newInvoice) {
