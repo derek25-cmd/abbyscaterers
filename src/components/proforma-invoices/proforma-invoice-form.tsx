@@ -123,6 +123,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
         try {
             const existingOrder = getOrderById(itemData.id);
+
+            // Ensure total is recalculated on save
+            const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
+
             const orderPayload = {
                 id: itemData.id,
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
@@ -134,6 +138,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
+                    total: recalculatedTotal, // Use recalculated total
                     vatType: itemData.vatType,
                     recipes: existingOrder?.clientEvents?.[0]?.recipes || [],
                 }],
