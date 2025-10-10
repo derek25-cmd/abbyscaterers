@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +26,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-
 
 interface ProformaInvoiceFormProps {
     invoiceId?: string;
@@ -76,7 +75,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
     const DRAFT_STORAGE_KEY = isEditMode ? `proforma-draft-${invoiceId}` : 'proforma-draft-new';
 
-
     const form = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
         defaultValues: {
@@ -102,13 +100,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     });
     
-    const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
+    const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
     const selectedClientId = form.watch('clientId');
     const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
-
-    const handleSaveAndCreateOrder = (itemIndex: number) => {
+    
+    const handleSaveAndCreateOrder = async (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
         const client_id = form.getValues('clientId');
         const proformaId = form.getValues('id');
@@ -123,8 +121,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
 
         try {
-            const existingOrder = getOrderById(itemData.id);
-            
+            const isExistingOrder = orders.some(o => o.id === itemData.id);
             const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
 
             const orderPayload = {
@@ -140,16 +137,19 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     unitPrice: itemData.unitPrice,
                     total: recalculatedTotal,
                     vatType: itemData.vatType,
-                    recipes: existingOrder?.clientEvents?.[0]?.recipes || [],
+                    recipes: getOrderById(itemData.id)?.clientEvents?.[0]?.recipes || [],
                 }],
             };
 
-            if (existingOrder) {
-                updateOrder(itemData.id, orderPayload as any);
+            if (isExistingOrder) {
+                await updateOrder(itemData.id, orderPayload as any);
                 toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
             } else {
-                addOrder(orderPayload as any); 
-                toast({ title: "Order Created", description: `Order ${itemData.id} has been saved.` });
+                const newOrder = await addOrder(orderPayload as any);
+                if (newOrder) {
+                    update(itemIndex, { ...itemData, id: newOrder.id, total: recalculatedTotal });
+                    toast({ title: "Order Created", description: `Order ${newOrder.id} has been saved.` });
+                }
             }
             setOpenAccordionItems(prev => prev.filter(p => p !== `item-${itemIndex}`));
         } catch (error) {
@@ -160,8 +160,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     };
 
-
-    const buildServiceDesc = React.useCallback(() => {
+     const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
         let desc = 'Provision of';
         if (serviceFields.eventType && (selectedEventType || customEventType)) {
@@ -185,7 +184,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
     useEffect(() => {
         const subscription = form.watch((value, { name, type }) => {
-             // Save to local storage on change
             localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
 
             if (name?.startsWith('items.')) {
@@ -697,7 +695,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 <Label htmlFor="multiply-days">Multiply item totals by number of days</Label>
                             </div>
                         )}/>
-
+                        
                         <div className="mt-6 p-4 bg-secondary/20 rounded-lg">
                             <h3 className="text-lg font-semibold mb-2">Summary</h3>
                             <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">

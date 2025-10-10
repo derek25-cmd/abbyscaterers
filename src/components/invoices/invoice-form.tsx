@@ -110,13 +110,13 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         }
     });
     
-    const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
+    const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
     const selectedClientId = form.watch('clientId');
     const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
 
-    const handleSaveAndCreateOrder = (itemIndex: number) => {
+    const handleSaveAndCreateOrder = async (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
         const client_id = form.getValues('clientId');
         const proformaId = form.getValues('proformaId');
@@ -127,7 +127,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         }
 
         try {
-            const existingOrder = getOrderById(itemData.id!);
+            const isExistingOrder = orders.some(o => o.id === itemData.id);
             
             const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
 
@@ -144,16 +144,19 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     unitPrice: itemData.unitPrice,
                     total: recalculatedTotal,
                     vatType: itemData.vatType,
-                    recipes: existingOrder?.clientEvents?.[0]?.recipes || [],
+                    recipes: getOrderById(itemData.id)?.clientEvents?.[0]?.recipes || [],
                 }],
             };
 
-            if (existingOrder) {
-                updateOrder(itemData.id!, orderPayload as any);
+            if (isExistingOrder) {
+                await updateOrder(itemData.id!, orderPayload as any);
                 toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
             } else {
-                addOrder(orderPayload as any); 
-                toast({ title: "Order Created", description: `Order ${itemData.id} has been saved.` });
+                const newOrder = await addOrder(orderPayload as any);
+                if (newOrder) {
+                    update(itemIndex, { ...itemData, id: newOrder.id, total: recalculatedTotal });
+                    toast({ title: "Order Created", description: `Order ${newOrder.id} has been saved.` });
+                }
             }
             setOpenAccordionItems(prev => prev.filter(p => p !== `item-${itemIndex}`));
         } catch (error) {
@@ -163,7 +166,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             toast({ variant: "destructive", title: "Failed to Save Order", description: message });
         }
     };
-
 
      const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
