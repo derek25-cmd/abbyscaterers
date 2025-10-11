@@ -22,9 +22,15 @@ export const getIngredientById = async (itemNumber: string): Promise<Ingredient 
 }
 
 export const addIngredient = async (ingredientData: IngredientFormData): Promise<Ingredient | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("User not authenticated to add an ingredient.");
+        return null;
+    }
     const now = new Date().toISOString();
     const newIngredientData = { 
         ...ingredientData,
+        user_id: user.id,
         createdAt: now, 
         updatedAt: now,
         quantityUsed: 0 
@@ -38,9 +44,15 @@ export const addIngredient = async (ingredientData: IngredientFormData): Promise
 };
 
 export const addBulkIngredients = async (ingredientDataList: IngredientFormData[]): Promise<boolean> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("User not authenticated to add ingredients.");
+        return false;
+    }
     const now = new Date().toISOString();
     const newIngredients = ingredientDataList.map(ing => ({
         ...ing,
+        user_id: user.id,
         createdAt: now,
         updatedAt: now,
         quantityUsed: 0

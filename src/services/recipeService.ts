@@ -22,6 +22,11 @@ export const getRecipeById = async (recipeNumber: string): Promise<Recipe | null
 }
 
 export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("User not authenticated to add a recipe.");
+        return null;
+    }
     const now = new Date().toISOString();
     const { recipeNumber, recipeName, recipeType, ingredients } = recipeData;
     
@@ -30,6 +35,7 @@ export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | nu
         recipeName,
         recipeType,
         ingredients: ingredients || [],
+        user_id: user.id,
         createdAt: now, 
         updatedAt: now 
     };
