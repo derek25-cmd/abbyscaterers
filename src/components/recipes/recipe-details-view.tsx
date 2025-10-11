@@ -1,11 +1,12 @@
 
+
 "use client";
 import React, { useState } from "react";
 import type { Recipe } from "../../types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, SquarePen, Loader2 } from "lucide-react";
+import { ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, SquarePen, Loader2, Utensils } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "../../lib/utils";
 import { useIngredientStorage } from "../../hooks/use-ingredient-storage";
@@ -13,6 +14,7 @@ import { Skeleton } from "../ui/skeleton";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "../ui/badge";
 
 
 interface RecipeDetailsViewProps {
@@ -136,6 +138,11 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 divide-y md:divide-y-0 md:divide-x">
                 <div className="space-y-1 divide-y md:pr-4">
                     <DetailItem icon={ClipboardSignature} label="Recipe No." value={recipe.recipeNumber} />
+                     <DetailItem 
+                        icon={Utensils} 
+                        label="Recipe Type" 
+                        value={recipe.recipeType ? <Badge variant="secondary">{recipe.recipeType}</Badge> : 'N/A'}
+                    />
                 </div>
                 <div className="space-y-1 divide-y md:pl-4">
                     <DetailItem icon={ClipboardSignature} label="Recipe Name" value={recipe.recipeName} />

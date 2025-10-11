@@ -1,4 +1,5 @@
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -86,10 +87,14 @@ export interface RecipeIngredientItem {
   unit: UnitOfMeasure;
 }
 
+export const RECIPE_TYPES = ["Breakfast", "Lunch", "Dinner", "Evening Tea"] as const;
+export type RecipeType = (typeof RECIPE_TYPES)[number];
+
 export interface Recipe {
   recipeNumber: string; // User-facing unique ID
   recipeName: string; // "Food created"
-  ingredients: RecipeIngredientItem[];
+  recipeType?: RecipeType;
+  ingredients?: RecipeIngredientItem[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }

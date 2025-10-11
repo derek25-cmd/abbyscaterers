@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { RECIPE_TYPES } from "@/types";
 
 // DietaryClassification schema
 export const DietaryClassificationSchema = z.object({
@@ -107,9 +108,8 @@ export const RecipeIngredientItemSchema = z.object({
 export const RecipeSchema = z.object({
   recipeNumber: z.string().min(1, "Recipe number is required"),
   recipeName: z.string().min(1, "Recipe name is required"),
-  ingredients: z
-    .array(RecipeIngredientItemSchema)
-    .min(1, "At least one ingredient is required"),
+  recipeType: z.enum(RECIPE_TYPES).optional(),
+  ingredients: z.array(RecipeIngredientItemSchema).optional(),
 });
 
 export type RecipeFormData = z.infer<typeof RecipeSchema>;

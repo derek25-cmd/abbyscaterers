@@ -23,12 +23,13 @@ export const getRecipeById = async (recipeNumber: string): Promise<Recipe | null
 
 export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | null> => {
     const now = new Date().toISOString();
-    const { recipeNumber, recipeName, ingredients } = recipeData;
+    const { recipeNumber, recipeName, recipeType, ingredients } = recipeData;
     
     const newRecipeData = { 
         recipeNumber,
         recipeName,
-        ingredients,
+        recipeType,
+        ingredients: ingredients || [],
         createdAt: now, 
         updatedAt: now 
     };

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,7 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UNITS_OF_MEASURE } from "@/types";
+import { UNITS_OF_MEASURE, RECIPE_TYPES } from "@/types";
 
 
 interface RecipeFormProps {
@@ -55,12 +56,14 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
       ? {
           recipeNumber: recipe.recipeNumber,
           recipeName: recipe.recipeName,
-          ingredients: recipe.ingredients.map(ing => ({ ingredientId: ing.ingredientId, quantity: ing.quantity, unit: ing.unit })) || [],
+          recipeType: recipe.recipeType,
+          ingredients: recipe.ingredients || [],
         }
       : {
           recipeNumber: "",
           recipeName: "",
-          ingredients: [{ ingredientId: "", quantity: 1, unit: "kg" }],
+          recipeType: "Lunch",
+          ingredients: [],
         },
   });
 
@@ -71,13 +74,11 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
 
   useEffect(() => {
     if (recipe) {
-      const recipeIngredients = recipe.ingredients || [];
       form.reset({
         recipeNumber: recipe.recipeNumber,
         recipeName: recipe.recipeName,
-        ingredients: recipeIngredients.length > 0 
-          ? recipeIngredients.map(ing => ({ ingredientId: ing.ingredientId, quantity: ing.quantity, unit: ing.unit })) 
-          : [{ ingredientId: "", quantity: 1, unit: "kg" }],
+        recipeType: recipe.recipeType,
+        ingredients: recipe.ingredients || [],
       });
     }
   }, [recipe, form]);
@@ -86,17 +87,19 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
     setIsSubmitting(true);
     try {
       if (recipe) {
-        const updated = updateRecipe(recipe.recipeNumber, data);
+        const updated = await updateRecipe(recipe.recipeNumber, data);
         if (updated) {
-          toast({ title: "Recipe Updated", description: `${updated.recipeName} (No: ${updated.recipeNumber}) has been updated.` });
-          router.push(`/recipes/${updated.recipeNumber}`);
+          toast({ title: "Recipe Updated", description: `${data.recipeName} (No: ${data.recipeNumber}) has been updated.` });
+          router.push(`/recipes/${data.recipeNumber}`);
         } else {
           toast({ variant: "destructive", title: "Error", description: "Failed to update recipe." });
         }
       } else {
-        const newRecipeData = addRecipe(data);
-        toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
-        router.push("/recipes");
+        const newRecipeData = await addRecipe(data);
+        if (newRecipeData) {
+          toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
+          router.push("/recipes");
+        }
       }
     } catch (error) {
        console.error("Submission error:", error);
@@ -150,14 +153,36 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="recipeType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Recipe Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a recipe type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {RECIPE_TYPES.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Separator />
             <div>
-              <h3 className="text-lg font-medium mb-4">Ingredients</h3>
+              <h3 className="text-lg font-medium mb-4">Ingredients (Optional)</h3>
               <div className="space-y-4">
               {fields.map((item, index) => (
                 <div key={item.id} className="border rounded-md p-4 relative">
-                   {fields.length > 1 && (
+                   {fields.length > 0 && (
                      <Button
                         type="button"
                         variant="ghost"
