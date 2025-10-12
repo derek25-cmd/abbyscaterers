@@ -144,7 +144,7 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
             </Button>
             <Link href={`/orders/${menu.id}/edit`}>
               <Button>
-                <SquarePen className="mr-2 h-4 w-4" /> Edit Menu
+                <SquarePen className="mr-2 h-4 w-4" /> Edit Order
               </Button>
             </Link>
         </div>
@@ -165,7 +165,7 @@ export function DailyMenuDetailsView({ menu }: DailyMenuDetailsViewProps) {
       </div>
 
       <div className="mt-6 flex justify-end">
-         <Link href="/orders">
+         <Link href="/daily-menus">
             <Button variant="ghost">Back to Menu List</Button>
           </Link>
       </div>

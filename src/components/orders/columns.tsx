@@ -82,7 +82,7 @@ export const getOrderColumns = (
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/menus/new?orderId=${order.id}`} className="flex items-center cursor-pointer">
+                <Link href={`/daily-menus/new?orderId=${order.id}`} className="flex items-center cursor-pointer">
                   <Utensils className="mr-2 h-4 w-4" /> Create Menu
                 </Link>
               </DropdownMenuItem>
