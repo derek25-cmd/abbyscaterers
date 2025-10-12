@@ -14,7 +14,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Utensils, Users, Save } from 'lucide-react';
+import { Loader2, Utensils, Users, Save, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 type RecipeWithSelection = Recipe & { isSelected: boolean };
 
@@ -30,6 +31,7 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
         return initialState;
     });
     
+    const [recipeSearch, setRecipeSearch] = useState<Record<string, string>>({});
     const [isSaving, setIsSaving] = useState(false);
 
     const handleRecipeToggle = (eventKey: string, recipeId: string) => {
@@ -61,6 +63,7 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
     const getFilteredRecipes = (event: ClientEvent): RecipeWithSelection[] => {
         const eventKey = `${order.id}-${order.clientEvents.indexOf(event)}`;
         const selected = selectedRecipes[eventKey] || new Set();
+        const searchTerm = recipeSearch[eventKey]?.toLowerCase() || '';
 
         const filterMap: Record<string, RecipeType[]> = {
             'Breakfast only': ['Breakfast'],
@@ -76,7 +79,10 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
         const validTypes = filterMap[event.mealType] || [];
         
         return allRecipes
-            .filter(recipe => validTypes.includes(recipe.recipeType as any))
+            .filter(recipe => 
+                validTypes.includes(recipe.recipeType as any) &&
+                (searchTerm === '' || recipe.recipeName.toLowerCase().includes(searchTerm))
+            )
             .map(recipe => ({
                 ...recipe,
                 isSelected: selected.has(recipe.recipeNumber!)
@@ -102,6 +108,16 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
                             <div className="flex justify-between items-center mb-2">
                                 <h4 className="font-semibold flex items-center gap-2"><Utensils className="h-4 w-4 text-primary"/>{event.mealType}</h4>
                                 <Badge variant="secondary" className="flex items-center gap-2"><Users className="h-4 w-4"/>{event.numberOfPeople} Pax</Badge>
+                            </div>
+                            <div className="relative my-2">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="search"
+                                    placeholder="Filter recipes by name..."
+                                    value={recipeSearch[eventKey] || ''}
+                                    onChange={(e) => setRecipeSearch(prev => ({...prev, [eventKey]: e.target.value}))}
+                                    className="w-full rounded-lg bg-background pl-8"
+                                />
                             </div>
                             <ScrollArea className="h-48">
                                 <div className="space-y-2">
