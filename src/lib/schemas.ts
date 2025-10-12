@@ -106,7 +106,7 @@ export const RecipeIngredientItemSchema = z.object({
 
 // Recipe schema
 export const RecipeSchema = z.object({
-  recipeNumber: z.string().min(1, "Recipe number is required"),
+  recipeNumber: z.string().optional(),
   recipeName: z.string().min(1, "Recipe name is required"),
   recipeType: z.enum(RECIPE_TYPES).optional(),
   ingredients: z.array(RecipeIngredientItemSchema).optional(),

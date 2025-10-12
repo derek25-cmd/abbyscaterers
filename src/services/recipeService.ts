@@ -27,11 +27,16 @@ export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | nu
         console.error("User not authenticated to add a recipe.");
         return null;
     }
+
+    const settings = JSON.parse(localStorage.getItem('caterSmartAppSettings') || '{}');
+    const nextRecipeNumber = settings.nextRecipeNumber || 1;
+    const newRecipeNumber = `RN-${String(nextRecipeNumber).padStart(5, '0')}`;
+
     const now = new Date().toISOString();
-    const { recipeNumber, recipeName, recipeType, ingredients } = recipeData;
+    const { recipeName, recipeType, ingredients } = recipeData;
     
     const newRecipeData = { 
-        recipeNumber,
+        recipeNumber: newRecipeNumber,
         recipeName,
         recipeType,
         ingredients: ingredients || [],
@@ -40,12 +45,16 @@ export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | nu
         updatedAt: now 
     };
 
-    const { data, error } = await supabase.from('recipes').insert([newRecipeData]).select();
+    const { data, error } = await supabase.from('recipes').insert([newRecipeData]).select().single();
+    
     if (error) {
         console.error('Error adding recipe:', error);
         return null;
     }
-    return data?.[0] as Recipe;
+
+    localStorage.setItem('caterSmartAppSettings', JSON.stringify({ ...settings, nextRecipeNumber: nextRecipeNumber + 1 }));
+
+    return data as Recipe;
 };
 
 

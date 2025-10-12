@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useRef, ChangeEvent, useEffect } from "react";
@@ -79,7 +80,10 @@ export function SettingsPageComponent() {
     }
 
     const handleSaveSequences = () => {
-        updateSettings({ nextOrderNumber: localSettings.nextOrderNumber });
+        updateSettings({ 
+            nextOrderNumber: localSettings.nextOrderNumber,
+            nextRecipeNumber: localSettings.nextRecipeNumber 
+        });
         toast({ title: "Settings Saved", description: "Numbering sequences have been updated." });
     };
 
@@ -153,8 +157,8 @@ export function SettingsPageComponent() {
                     <CardTitle>Numbering Sequences</CardTitle>
                     <CardDescription>Set the starting number for automatically generated IDs.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                     <div className="max-w-xs space-y-2">
+                <CardContent className="grid md:grid-cols-2 gap-6">
+                     <div className="space-y-2">
                         <Label htmlFor="nextOrderNumber" className="flex items-center"><Hash className="w-4 h-4 mr-2"/>Next Order Number</Label>
                         <Input
                             id="nextOrderNumber"
@@ -165,6 +169,18 @@ export function SettingsPageComponent() {
                             min="1"
                         />
                          <p className="text-xs text-muted-foreground">The next order created will be assigned ID: ORD-{String(localSettings.nextOrderNumber || 1).padStart(5, '0')}</p>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="nextRecipeNumber" className="flex items-center"><Hash className="w-4 h-4 mr-2"/>Next Recipe Number</Label>
+                        <Input
+                            id="nextRecipeNumber"
+                            name="nextRecipeNumber"
+                            type="number"
+                            value={localSettings.nextRecipeNumber || 1}
+                            onChange={handleNumberChange}
+                            min="1"
+                        />
+                         <p className="text-xs text-muted-foreground">The next recipe created will be assigned ID: RN-{String(localSettings.nextRecipeNumber || 1).padStart(5, '0')}</p>
                     </div>
                 </CardContent>
                 <CardContent>

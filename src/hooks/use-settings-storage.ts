@@ -11,6 +11,7 @@ export interface AppSettings {
     footerUrl?: string;
     signatureUrl?: string;
     nextOrderNumber?: number;
+    nextRecipeNumber?: number;
 }
 
 const defaultSettings: AppSettings = {
@@ -19,6 +20,7 @@ const defaultSettings: AppSettings = {
     footerUrl: "",
     signatureUrl: "",
     nextOrderNumber: 1,
+    nextRecipeNumber: 1,
 }
 
 export function useSettingsStorage() {

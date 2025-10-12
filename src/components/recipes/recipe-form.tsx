@@ -60,7 +60,6 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
           ingredients: recipe.ingredients || [],
         }
       : {
-          recipeNumber: "",
           recipeName: "",
           recipeType: "Lunch",
           ingredients: [],
@@ -87,10 +86,10 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
     setIsSubmitting(true);
     try {
       if (recipe) {
-        const updated = await updateRecipe(recipe.recipeNumber, data);
-        if (updated) {
-          toast({ title: "Recipe Updated", description: `${data.recipeName} (No: ${data.recipeNumber}) has been updated.` });
-          router.push(`/recipes/${data.recipeNumber}`);
+        const success = await updateRecipe(recipe.recipeNumber, data);
+        if (success) {
+          toast({ title: "Recipe Updated", description: `${data.recipeName} (No: ${recipe.recipeNumber}) has been updated.` });
+          router.push(`/recipes/${recipe.recipeNumber}`);
         } else {
           toast({ variant: "destructive", title: "Error", description: "Failed to update recipe." });
         }
@@ -124,22 +123,14 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <FormField
-              control={form.control}
-              name="recipeNumber"
-              render={({ field }) => (
-                <FormItem>
+            {recipe && (
+                 <FormItem>
                   <FormLabel>Recipe No.</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. REC-001" {...field} />
+                    <Input value={recipe.recipeNumber} disabled />
                   </FormControl>
-                  <FormDescription className="flex items-center gap-1">
-                    <Info className="h-3 w-3" /> Enter a unique identifier for this recipe.
-                  </FormDescription>
-                  <FormMessage />
                 </FormItem>
-              )}
-            />
+            )}
             <FormField
               control={form.control}
               name="recipeName"
