@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Download, Loader2 } from "lucide-react";
+import { PlusCircle, Download, Loader2, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { getRecipeColumns } from "./columns"; 
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
@@ -41,7 +41,7 @@ import {
 import type { Recipe } from "@/types";
 
 export function RecipeListTable() {
-  const { recipes, isLoading, deleteRecipe: deleteRecipeFromStore } = useRecipeStorage();
+  const { recipes, isLoading, deleteRecipe: deleteRecipeFromStore, refreshRecipes } = useRecipeStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -100,7 +100,7 @@ export function RecipeListTable() {
       const row = [
         item.recipeNumber,
         `"${item.recipeName.replace(/"/g, '""')}"`,
-        item.ingredients.length,
+        item.ingredients?.length || 0,
         item.createdAt,
         item.updatedAt
       ];
@@ -141,6 +141,10 @@ export function RecipeListTable() {
           className="max-w-sm"
         />
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refreshRecipes()}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+          </Button>
           <Button variant="outline" onClick={exportData}>
             <Download className="mr-2 h-4 w-4" />
             Export Data
