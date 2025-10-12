@@ -1,59 +1,59 @@
--- Enable Row-Level Security
-ALTER TABLE
-  ingredients ENABLE ROW LEVEL SECURITY;
+-- Drop tables if they exist to start fresh (optional, for clean slate)
+DROP TABLE IF EXISTS "recipe_ingredients";
+DROP TABLE IF EXISTS "recipes";
+DROP TABLE IF EXISTS "ingredients";
 
-ALTER TABLE
-  recipes ENABLE ROW LEVEL SECURITY;
+-- Drop sequence if it exists
+DROP SEQUENCE IF EXISTS recipes_recipe_number_seq;
 
--- Create policies for ingredients
-CREATE POLICY "Allow authenticated users to see their own ingredients" ON ingredients FOR
-SELECT
-  USING (auth.uid() = user_id);
+-- 1. Create the sequence for recipe numbers
+CREATE SEQUENCE recipes_recipe_number_seq START 1;
 
-CREATE POLICY "Allow authenticated users to insert their own ingredients" ON ingredients FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Allow authenticated users to update their own ingredients" ON ingredients FOR
-UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Allow authenticated users to delete their own ingredients" ON ingredients FOR DELETE USING (auth.uid() = user_id);
-
--- Create policies for recipes
-CREATE POLICY "Allow authenticated users to see their own recipes" ON recipes FOR
-SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Allow authenticated users to insert their own recipes" ON recipes FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Allow authenticated users to update their own recipes" ON recipes FOR
-UPDATE
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Allow authenticated users to delete their own recipes" ON recipes FOR DELETE USING (auth.uid() = user_id);
-
--- Create the sequence for recipe numbers
-CREATE SEQUENCE IF NOT EXISTS recipes_recipe_number_seq START 1;
-
--- Create the ingredients table
-CREATE TABLE
-  ingredients (
-    "itemNumber" TEXT PRIMARY KEY,
-    "itemDescription" TEXT NOT NULL,
-    "itemClassification" TEXT NOT NULL,
-    units JSONB, -- Store units and prices as a JSON array of objects
-    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
-    "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
-    user_id UUID REFERENCES auth.users (id) DEFAULT auth.uid()
-  );
-
--- Create the recipes table
-CREATE TABLE
-  recipes (
-    "recipeNumber" TEXT PRIMARY KEY DEFAULT 'RN-' || LPAD(nextval('recipes_recipe_number_seq'::regclass)::TEXT, 5, '0'),
+-- 2. Create the recipes table without the default value initially
+CREATE TABLE "recipes" (
+    "recipeNumber" TEXT PRIMARY KEY,
     "recipeName" TEXT NOT NULL,
     "recipeType" TEXT,
-    ingredients JSONB, -- Store ingredients as a JSON array of objects
+    "ingredients" JSONB,
+    "user_id" UUID REFERENCES auth.users(id),
+    "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+    "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Alter the table to set the default value using the sequence
+ALTER TABLE "recipes"
+ALTER COLUMN "recipeNumber" SET DEFAULT 'RN-' || LPAD(nextval('recipes_recipe_number_seq')::TEXT, 5, '0');
+
+-- Create the ingredients table
+CREATE TABLE "ingredients" (
+    "itemNumber" TEXT PRIMARY KEY,
+    "itemDescription" TEXT NOT NULL,
+    "itemClassification" TEXT,
+    "units" JSONB,
+    "user_id" UUID REFERENCES auth.users(id),
     "createdAt" TIMESTAMPTZ DEFAULT NOW(),
     "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
-    user_id UUID REFERENCES auth.users (id) DEFAULT auth.uid()
-  );
+    "quantityUsed" REAL
+);
+
+-- Enable Row-Level Security for recipes
+ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
+
+-- Policies for recipes table
+DROP POLICY IF EXISTS "Authenticated users can perform all operations on their own recipes" ON recipes;
+CREATE POLICY "Authenticated users can perform all operations on their own recipes"
+ON recipes
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Enable Row-Level Security for ingredients
+ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
+
+-- Policies for ingredients table
+DROP POLICY IF EXISTS "Authenticated users can perform all operations on their own ingredients" ON ingredients;
+CREATE POLICY "Authenticated users can perform all operations on their own ingredients"
+ON ingredients
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
