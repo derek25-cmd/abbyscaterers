@@ -21,6 +21,29 @@ export const getRecipeById = async (recipeNumber: string): Promise<Recipe | null
     return data as Recipe;
 }
 
+export const getLatestRecipeNumber = async (): Promise<number> => {
+    const { data, error } = await supabase
+        .from('recipes')
+        .select('recipeNumber')
+        .order('createdAt', { ascending: false })
+        .limit(1)
+        .single();
+    
+    if(error || !data) {
+        if(error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+             console.error("Error fetching latest recipe number", error);
+        }
+        return 1;
+    }
+
+    const match = data.recipeNumber.match(/RN-(\d+)/);
+    if (match) {
+        return parseInt(match[1], 10) + 1;
+    }
+
+    return 1; // Default if no matching format is found
+}
+
 export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {

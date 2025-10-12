@@ -39,10 +39,32 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
     return mapDbToOrder(data);
 };
 
+export const getLatestOrderNumber = async (): Promise<number> => {
+    const { data, error } = await supabase
+        .from('orders')
+        .select('id')
+        .order('createdAt', { ascending: false })
+        .limit(1)
+        .single();
+    
+    if(error || !data) {
+        if(error && error.code !== 'PGRST116') {
+             console.error("Error fetching latest order number", error);
+        }
+        return 1;
+    }
+
+    const match = data.id.match(/ORD-(\d+)/);
+    if (match) {
+        return parseInt(match[1], 10) + 1;
+    }
+
+    return 1;
+}
+
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
-    // Get next order number from settings in localStorage
     const settings = JSON.parse(localStorage.getItem('caterSmartAppSettings') || '{}');
     const nextOrderNumber = settings.nextOrderNumber || 1;
     const newOrderId = `ORD-${String(nextOrderNumber).padStart(5, '0')}`;
@@ -51,7 +73,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     
     const newOrderData = {
         ...orderData,
-        id: newOrderId, // Use the generated sequential ID
+        id: newOrderId,
         name: name,
         createdAt: now,
         updatedAt: now,
@@ -64,7 +86,6 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         return null;
     }
     
-    // Increment and save the next order number in localStorage
     localStorage.setItem('caterSmartAppSettings', JSON.stringify({ ...settings, nextOrderNumber: nextOrderNumber + 1 }));
 
     return mapDbToOrder(data);

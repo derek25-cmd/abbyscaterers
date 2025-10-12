@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useRef, ChangeEvent, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,14 +11,18 @@ import { useSettingsStorage, AppSettings } from "@/hooks/use-settings-storage";
 import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { Loader2, UploadCloud, Hash } from "lucide-react";
+import { Loader2, UploadCloud, Hash, RefreshCw } from "lucide-react";
+import { getLatestRecipeNumber } from "@/services/recipeService";
+import { getLatestOrderNumber } from "@/services/orderService";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
+type SequenceKey = 'nextOrderNumber' | 'nextRecipeNumber';
 
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
     const { toast } = useToast();
     const [uploading, setUploading] = useState<Partial<Record<ImageKey, boolean>>>({});
+    const [syncing, setSyncing] = useState<Partial<Record<SequenceKey, boolean>>>({});
     const [localSettings, setLocalSettings] = useState<AppSettings>({});
 
     useEffect(() => {
@@ -66,11 +70,6 @@ export function SettingsPageComponent() {
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setLocalSettings(prev => ({ ...prev, [name]: value }));
-    }
-    
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         const numValue = parseInt(value, 10);
@@ -78,7 +77,7 @@ export function SettingsPageComponent() {
             setLocalSettings(prev => ({...prev, [name]: numValue}))
         }
     }
-
+    
     const handleSaveSequences = () => {
         updateSettings({ 
             nextOrderNumber: localSettings.nextOrderNumber,
@@ -86,6 +85,35 @@ export function SettingsPageComponent() {
         });
         toast({ title: "Settings Saved", description: "Numbering sequences have been updated." });
     };
+
+    const handleSync = async (sequenceKey: SequenceKey) => {
+        setSyncing(prev => ({ ...prev, [sequenceKey]: true }));
+        try {
+            let nextNumber;
+            if (sequenceKey === 'nextOrderNumber') {
+                nextNumber = await getLatestOrderNumber();
+            } else if (sequenceKey === 'nextRecipeNumber') {
+                nextNumber = await getLatestRecipeNumber();
+            }
+            
+            if (nextNumber !== undefined) {
+                updateSettings({ [sequenceKey]: nextNumber });
+                toast({ title: "Sync Successful", description: `Next ${sequenceKey === 'nextOrderNumber' ? 'Order' : 'Recipe'} Number has been updated to ${nextNumber}.` });
+            } else {
+                throw new Error("Could not determine next number.");
+            }
+
+        } catch (error) {
+            console.error("Sync error:", error);
+            toast({
+                variant: "destructive",
+                title: "Sync Failed",
+                description: "Could not sync with the database. Please try again.",
+            });
+        } finally {
+            setSyncing(prev => ({ ...prev, [sequenceKey]: false }));
+        }
+    }
 
     const ImageUploader = ({ imageKey, label }: { imageKey: ImageKey, label: string }) => (
         <div className="space-y-2">
@@ -123,6 +151,27 @@ export function SettingsPageComponent() {
         </div>
     );
 
+    const SequenceInput = ({ seqKey, label, helpText }: { seqKey: SequenceKey, label: string, helpText: string}) => (
+        <div className="space-y-2">
+            <Label htmlFor={seqKey} className="flex items-center"><Hash className="w-4 h-4 mr-2"/>{label}</Label>
+             <div className="flex items-center gap-2">
+                <Input
+                    id={seqKey}
+                    name={seqKey}
+                    type="number"
+                    value={localSettings[seqKey] || 1}
+                    onChange={handleNumberChange}
+                    min="1"
+                />
+                <Button variant="outline" size="icon" onClick={() => handleSync(seqKey)} disabled={syncing[seqKey]}>
+                    {syncing[seqKey] ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    <span className="sr-only">Sync with database</span>
+                </Button>
+            </div>
+             <p className="text-xs text-muted-foreground">{helpText} {String(localSettings[seqKey] || 1).padStart(5, '0')}</p>
+        </div>
+    )
+
 
     return (
         <div className="space-y-6">
@@ -155,37 +204,17 @@ export function SettingsPageComponent() {
             <Card>
                 <CardHeader>
                     <CardTitle>Numbering Sequences</CardTitle>
-                    <CardDescription>Set the starting number for automatically generated IDs.</CardDescription>
+                    <CardDescription>
+                        Set the starting number for automatically generated IDs. Use the sync button to fetch the latest number from the database.
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
-                     <div className="space-y-2">
-                        <Label htmlFor="nextOrderNumber" className="flex items-center"><Hash className="w-4 h-4 mr-2"/>Next Order Number</Label>
-                        <Input
-                            id="nextOrderNumber"
-                            name="nextOrderNumber"
-                            type="number"
-                            value={localSettings.nextOrderNumber || 1}
-                            onChange={handleNumberChange}
-                            min="1"
-                        />
-                         <p className="text-xs text-muted-foreground">The next order created will be assigned ID: ORD-{String(localSettings.nextOrderNumber || 1).padStart(5, '0')}</p>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="nextRecipeNumber" className="flex items-center"><Hash className="w-4 h-4 mr-2"/>Next Recipe Number</Label>
-                        <Input
-                            id="nextRecipeNumber"
-                            name="nextRecipeNumber"
-                            type="number"
-                            value={localSettings.nextRecipeNumber || 1}
-                            onChange={handleNumberChange}
-                            min="1"
-                        />
-                         <p className="text-xs text-muted-foreground">The next recipe created will be assigned ID: RN-{String(localSettings.nextRecipeNumber || 1).padStart(5, '0')}</p>
-                    </div>
+                     <SequenceInput seqKey="nextOrderNumber" label="Next Order Number" helpText="The next order created will be assigned ID: ORD-" />
+                     <SequenceInput seqKey="nextRecipeNumber" label="Next Recipe Number" helpText="The next recipe created will be assigned ID: RN-" />
                 </CardContent>
-                <CardContent>
+                 <CardFooter>
                     <Button onClick={handleSaveSequences}>Save Sequences</Button>
-                </CardContent>
+                </CardFooter>
             </Card>
         </div>
     )
