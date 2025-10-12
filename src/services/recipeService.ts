@@ -44,22 +44,18 @@ export const getLatestRecipeNumber = async (): Promise<number> => {
     return 1; // Default if no matching format is found
 }
 
-export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | null> => {
+export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>): Promise<Recipe | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         console.error("User not authenticated to add a recipe.");
         return null;
     }
 
-    const settings = JSON.parse(localStorage.getItem('caterSmartAppSettings') || '{}');
-    const nextRecipeNumber = settings.nextRecipeNumber || 1;
-    const newRecipeNumber = `RN-${String(nextRecipeNumber).padStart(5, '0')}`;
-
     const now = new Date().toISOString();
     const { recipeName, recipeType, ingredients } = recipeData;
     
+    // The recipeNumber is now handled by the database, so we don't include it here.
     const newRecipeData = { 
-        recipeNumber: newRecipeNumber,
         recipeName,
         recipeType,
         ingredients: ingredients || [],
@@ -75,14 +71,15 @@ export const addRecipe = async (recipeData: RecipeFormData): Promise<Recipe | nu
         return null;
     }
 
-    localStorage.setItem('caterSmartAppSettings', JSON.stringify({ ...settings, nextRecipeNumber: nextRecipeNumber + 1 }));
-
     return data as Recipe;
 };
 
 
 export const updateRecipe = async (recipeNumber: string, updates: Partial<RecipeFormData>): Promise<boolean> => {
-    const { error } = await supabase.from('recipes').update({ ...updates, updatedAt: new Date().toISOString() }).eq('recipeNumber', recipeNumber);
+    // Exclude recipeNumber from the update payload as it should not be changed.
+    const { recipeNumber: _, ...updatePayload } = updates;
+    
+    const { error } = await supabase.from('recipes').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('recipeNumber', recipeNumber);
     if (error) {
         console.error('Error updating recipe:', error);
     }

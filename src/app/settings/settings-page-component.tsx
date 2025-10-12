@@ -12,11 +12,10 @@ import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { Loader2, UploadCloud, Hash, RefreshCw } from "lucide-react";
-import { getLatestRecipeNumber } from "@/services/recipeService";
 import { getLatestOrderNumber } from "@/services/orderService";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
-type SequenceKey = 'nextOrderNumber' | 'nextRecipeNumber';
+type SequenceKey = 'nextOrderNumber';
 
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
@@ -81,7 +80,6 @@ export function SettingsPageComponent() {
     const handleSaveSequences = () => {
         updateSettings({ 
             nextOrderNumber: localSettings.nextOrderNumber,
-            nextRecipeNumber: localSettings.nextRecipeNumber 
         });
         toast({ title: "Settings Saved", description: "Numbering sequences have been updated." });
     };
@@ -92,13 +90,11 @@ export function SettingsPageComponent() {
             let nextNumber;
             if (sequenceKey === 'nextOrderNumber') {
                 nextNumber = await getLatestOrderNumber();
-            } else if (sequenceKey === 'nextRecipeNumber') {
-                nextNumber = await getLatestRecipeNumber();
             }
             
             if (nextNumber !== undefined) {
                 updateSettings({ [sequenceKey]: nextNumber });
-                toast({ title: "Sync Successful", description: `Next ${sequenceKey === 'nextOrderNumber' ? 'Order' : 'Recipe'} Number has been updated to ${nextNumber}.` });
+                toast({ title: "Sync Successful", description: `Next Order Number has been updated to ${nextNumber}.` });
             } else {
                 throw new Error("Could not determine next number.");
             }
@@ -168,7 +164,7 @@ export function SettingsPageComponent() {
                     <span className="sr-only">Sync with database</span>
                 </Button>
             </div>
-             <p className="text-xs text-muted-foreground">{helpText} {String(localSettings[seqKey] || 1).padStart(5, '0')}</p>
+             <p className="text-xs text-muted-foreground">{helpText}{String(localSettings[seqKey] || 1).padStart(5, '0')}</p>
         </div>
     )
 
@@ -210,7 +206,6 @@ export function SettingsPageComponent() {
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
                      <SequenceInput seqKey="nextOrderNumber" label="Next Order Number" helpText="The next order created will be assigned ID: ORD-" />
-                     <SequenceInput seqKey="nextRecipeNumber" label="Next Recipe Number" helpText="The next recipe created will be assigned ID: RN-" />
                 </CardContent>
                  <CardFooter>
                     <Button onClick={handleSaveSequences}>Save Sequences</Button>

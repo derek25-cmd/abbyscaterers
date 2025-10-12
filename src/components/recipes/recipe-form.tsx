@@ -98,6 +98,8 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         if (newRecipeData) {
           toast({ title: "Recipe Added", description: `${newRecipeData.recipeName} (No: ${newRecipeData.recipeNumber}) has been added.` });
           router.push("/recipes");
+        } else {
+            toast({ variant: "destructive", title: "Error", description: "Failed to add recipe. The recipe number might already exist or there was a database error." });
         }
       }
     } catch (error) {
