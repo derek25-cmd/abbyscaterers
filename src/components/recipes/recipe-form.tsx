@@ -61,7 +61,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         }
       : {
           recipeName: "",
-          recipeType: "Lunch",
+          recipeType: "Lunch/Dinner",
           ingredients: [],
         },
   });
@@ -297,7 +297,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                 </div>
               ))}
               </div>
-               <FormMessage>{form.formState.errors.ingredients?.root?.message || form.formState.errors.ingredients?.message}</FormMessage>
+               <FormMessage>{(form.formState.errors.ingredients?.root?.message || form.formState.errors.ingredients?.message)}</FormMessage>
               <Button
                 type="button"
                 variant="outline"

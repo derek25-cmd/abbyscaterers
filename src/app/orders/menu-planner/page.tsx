@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import type { Client, Order, Recipe, ClientEvent } from '@/types';
+import type { Client, Order, Recipe, ClientEvent, RecipeType } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -62,14 +62,14 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
         const eventKey = `${order.id}-${order.clientEvents.indexOf(event)}`;
         const selected = selectedRecipes[eventKey] || new Set();
 
-        const filterMap: Record<string, ('Breakfast' | 'Lunch' | 'Dinner' | 'Evening Tea')[]> = {
+        const filterMap: Record<string, RecipeType[]> = {
             'Breakfast only': ['Breakfast'],
-            'Lunch only': ['Lunch'],
-            'Dinner only': ['Lunch', 'Dinner'], // Dinner shows Lunch recipes
-            'Breakfast and lunch': ['Breakfast', 'Lunch'],
-            'Brunch': ['Breakfast', 'Lunch'],
-            'Breakfast, lunch and evening tea': ['Breakfast', 'Lunch', 'Evening Tea'],
-            'Breakfast, lunch and dinner': ['Breakfast', 'Lunch', 'Dinner'],
+            'Lunch only': ['Lunch/Dinner'],
+            'Dinner only': ['Lunch/Dinner'],
+            'Breakfast and lunch': ['Breakfast', 'Lunch/Dinner'],
+            'Brunch': ['Breakfast', 'Lunch/Dinner'],
+            'Breakfast, lunch and evening tea': ['Breakfast', 'Lunch/Dinner', 'Evening Tea'],
+            'Breakfast, lunch and dinner': ['Breakfast', 'Lunch/Dinner'],
             'Evening tea': ['Evening Tea'],
         };
 

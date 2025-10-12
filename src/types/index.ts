@@ -79,6 +79,7 @@ export interface Ingredient {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
   quantityUsed?: number; // Ephemeral property for costing
+  user_id?: string;
 }
 
 export interface RecipeIngredientItem {
@@ -87,7 +88,7 @@ export interface RecipeIngredientItem {
   unit: UnitOfMeasure;
 }
 
-export const RECIPE_TYPES = ["Breakfast", "Lunch", "Dinner", "Evening Tea"] as const;
+export const RECIPE_TYPES = ["Breakfast", "Lunch/Dinner", "Evening Tea"] as const;
 export type RecipeType = (typeof RECIPE_TYPES)[number];
 
 export interface Recipe {
@@ -97,6 +98,7 @@ export interface Recipe {
   ingredients?: RecipeIngredientItem[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  user_id?: string;
 }
 
 export const MEAL_TYPES = [
