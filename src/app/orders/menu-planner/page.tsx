@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { useRecipeStorage } from '@/hooks/use-recipe-storage';
 import { useClientStorage } from '@/hooks/use-client-storage';
@@ -23,16 +23,18 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
     const { recipes: allRecipes, isLoading: recipesLoading } = useRecipeStorage();
     const { toast } = useToast();
 
-    const [selectedRecipes, setSelectedRecipes] = useState<Record<string, Set<string>>>(() => {
+    const [selectedRecipes, setSelectedRecipes] = useState<Record<string, Set<string>>>({});
+    const [recipeSearch, setRecipeSearch] = useState<Record<string, string>>({});
+    const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
+
+    useEffect(() => {
         const initialState: Record<string, Set<string>> = {};
         order.clientEvents.forEach((event, index) => {
             initialState[`${order.id}-${index}`] = new Set(event.recipes.map(r => r.recipeId));
         });
-        return initialState;
-    });
-    
-    const [recipeSearch, setRecipeSearch] = useState<Record<string, string>>({});
-    const [isSaving, setIsSaving] = useState(false);
+        setSelectedRecipes(initialState);
+    }, [order]);
+
 
     const handleRecipeToggle = (eventKey: string, recipeId: string) => {
         setSelectedRecipes(prev => {
@@ -47,8 +49,8 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
     };
     
     const handleSave = async (eventIndex: number) => {
-        setIsSaving(true);
         const eventKey = `${order.id}-${eventIndex}`;
+        setIsSaving(prev => ({...prev, [eventKey]: true}));
         const recipeIds = Array.from(selectedRecipes[eventKey] || []);
         try {
             await onSave(order.id, eventIndex, recipeIds);
@@ -56,7 +58,7 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
         } catch (error) {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not update the menu.' });
         } finally {
-            setIsSaving(false);
+            setIsSaving(prev => ({...prev, [eventKey]: false}));
         }
     };
     
@@ -103,6 +105,8 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
                 {order.clientEvents.map((event, index) => {
                     const eventKey = `${order.id}-${index}`;
                     const recipesForEvent = getFilteredRecipes(event);
+                    const savingThisEvent = isSaving[eventKey];
+
                     return (
                         <div key={index} className="border rounded-lg p-4">
                             <div className="flex justify-between items-center mb-2">
@@ -136,8 +140,8 @@ const OrderCard = ({ order, client, onSave }: { order: Order; client: Client | u
                                 </div>
                             </ScrollArea>
                             <div className="flex justify-end mt-4">
-                                <Button size="sm" onClick={() => handleSave(index)} disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}
+                                <Button size="sm" onClick={() => handleSave(index)} disabled={savingThisEvent}>
+                                    {savingThisEvent ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>}
                                     <span className="ml-2">Save Menu</span>
                                 </Button>
                             </div>
