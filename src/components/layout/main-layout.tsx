@@ -26,7 +26,8 @@ import {
     LogOut,
     BookCopy,
     CalendarClock,
-    Utensils
+    Utensils,
+    ListPlus
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -61,7 +62,6 @@ import { PrivateRoute } from "./private-route";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/orders", label: "Single Orders", icon: BookOpen },
-  { href: "/daily-menus", label: "Daily Menus", icon: Utensils },
   { href: "/bookings", label: "Bookings", icon: CalendarClock },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
   { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
