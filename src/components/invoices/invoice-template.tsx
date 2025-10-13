@@ -117,10 +117,10 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                 </div>
 
                 <div id="invoice-main-content">
-                    <div className="flex justify-between items-start mb-2 relative">
+                    <div className="flex justify-between items-start mb-2 relative" style={{ marginTop: '-1.5rem' }}>
                         <div className="flex-1"></div>
                         <div className="text-right">
-                            <h2 className="font-bold text-4xl text-primary" style={{ marginTop: '-2px' }}>INVOICE</h2>
+                            <h2 className="font-bold text-4xl text-primary">INVOICE</h2>
                             <div className="mt-1 text-base space-y-0">
                                 <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
                                 <p><strong>Invoice No.:</strong> {id || '{Invoice No.}'}</p>
@@ -255,3 +255,5 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         </div>
     );
 }
+
+    
