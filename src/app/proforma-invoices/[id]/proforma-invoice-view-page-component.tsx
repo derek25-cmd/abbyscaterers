@@ -80,7 +80,7 @@ export function ProformaInvoiceViewPageComponent() {
 
 
   const handleExportPDF = async () => {
-    const mainContent = document.getElementById('proforma-main-table');
+    const mainContent = document.getElementById('proforma-main-content');
     const headerContent = document.getElementById('proforma-header');
     const footerContent = document.getElementById('proforma-footer');
     

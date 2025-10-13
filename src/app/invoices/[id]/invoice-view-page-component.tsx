@@ -51,7 +51,7 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
   const handleExportPDF = async () => {
-    const mainContent = document.getElementById('invoice-main-table');
+    const mainContent = document.getElementById('invoice-main-content');
     const headerContent = document.getElementById('invoice-header');
     const footerContent = document.getElementById('invoice-footer');
 
