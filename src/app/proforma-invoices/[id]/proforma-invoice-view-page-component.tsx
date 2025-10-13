@@ -118,35 +118,32 @@ export function ProformaInvoiceViewPageComponent() {
         const contentImgProps = pdf.getImageProperties(contentImgData);
         const contentImgHeight = (contentImgProps.height * pageContentWidth) / contentImgProps.width;
         
-        let position = 0;
         let contentHeightLeft = contentImgHeight;
+        let position = 0;
         let pageCount = 0;
 
-        const addPageElements = () => {
-            pdf.addImage(headerImgData, 'PNG', margin, margin, pageContentWidth, headerImgHeight);
-            pdf.addImage(footerImgData, 'PNG', margin, pdfHeight - footerImgHeight - margin, pageContentWidth, footerImgHeight);
-        }
-
-        pdf.addPage();
-        pageCount++;
-        addPageElements();
-        
-        const contentAreaHeight = pdfHeight - (margin * 2) - headerImgHeight - footerImgHeight;
-        
-        pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight, pageContentWidth, contentImgHeight);
-        contentHeightLeft -= contentAreaHeight;
+        const contentAreaHeight = pdfHeight - headerImgHeight - footerImgHeight - (margin * 2);
 
         while (contentHeightLeft > 0) {
-            position -= contentAreaHeight;
-            pdf.addPage();
             pageCount++;
-            addPageElements();
-            pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight + position, pageContentWidth, contentImgHeight);
+            pdf.addPage();
+            pdf.setPage(pageCount);
+
+            // Add Header
+            pdf.addImage(headerImgData, 'PNG', margin, margin, pageContentWidth, headerImgHeight);
+
+            // Add Content Slice
+            pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight, pageContentWidth, contentImgHeight, undefined, 'NONE', 0, position);
+
+            // Add Footer
+            pdf.addImage(footerImgData, 'PNG', margin, pdfHeight - footerImgHeight - margin, pageContentWidth, footerImgHeight);
+
             contentHeightLeft -= contentAreaHeight;
+            position += contentAreaHeight;
         }
-        
-        // Remove the initial blank page
-        if(pageCount > 0){
+
+        // Remove the initial blank page that jsPDF creates
+        if (pageCount > 0) {
           pdf.deletePage(1);
         }
 
