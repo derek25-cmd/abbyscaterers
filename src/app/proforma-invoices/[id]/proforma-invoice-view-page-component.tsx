@@ -97,6 +97,8 @@ export function ProformaInvoiceViewPageComponent() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const marginX = 40; // 40 points margin
+      const marginTop = 20;
+      const marginBottom = 20;
       const usableWidth = pageWidth - (marginX * 2);
 
       const headerCanvas = await html2canvas(headerElement, { scale: 2 });
@@ -109,13 +111,10 @@ export function ProformaInvoiceViewPageComponent() {
       const contentImgWidth = usableWidth;
       const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
 
-      const marginTop = 20;
-      const marginBottom = 20;
       const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
       let heightLeft = contentImgHeight;
       let position = 0;
-      let pageNumber = 1;
 
       // Add first page
       pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
@@ -125,13 +124,15 @@ export function ProformaInvoiceViewPageComponent() {
       heightLeft -= usableContentHeight;
 
       while (heightLeft > 0) {
-          pageNumber++;
-          position = heightLeft - contentImgHeight;
-          
+          position -= usableContentHeight;
           pdf.addPage();
+          
+          // Add header and footer to every new page
           pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
-          pdf.addImage(contentCanvas, 'PNG', marginX, position + marginTop + headerHeight, contentImgWidth, contentImgHeight);
           pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+          
+          // Add the remaining content
+          pdf.addImage(contentCanvas, 'PNG', marginX, position + marginTop + headerHeight, contentImgWidth, contentImgHeight);
           
           heightLeft -= usableContentHeight;
       }
