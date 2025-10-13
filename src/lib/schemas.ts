@@ -184,7 +184,7 @@ const isValidDate = (dateString?: string) => {
     return !isNaN(Date.parse(dateString));
 };
 
-const baseInvoiceSchema = z.object({
+export const baseInvoiceSchema = z.object({
     id: z.string().optional(),
     invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
     clientId: z.string().nullable().optional(),

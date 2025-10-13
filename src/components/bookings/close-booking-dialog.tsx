@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from "@/lib/schemas";
+import { baseInvoiceSchema, type ProformaInvoiceFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { Textarea } from "../ui/textarea";
@@ -29,7 +29,7 @@ interface CloseBookingDialogProps {
   onSubmit: (data: Partial<ProformaInvoiceFormData>) => Promise<void>;
 }
 
-const CloseBookingFormSchema = ProformaInvoiceSchema.pick({
+const CloseBookingFormSchema = baseInvoiceSchema.pick({
     id: true,
     invoiceDate: true,
     lpoNumber: true,

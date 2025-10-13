@@ -152,7 +152,7 @@ export interface InvoiceItem {
 // Proforma Invoice Types
 export interface ProformaInvoice {
   id: string; // The invoice number
-  invoiceDate?: string; // ISO string
+  invoiceDate: string; // ISO string
   clientId: string | null;
   receiverName: string;
   receiverPosition: string;
@@ -164,9 +164,9 @@ export interface ProformaInvoice {
   transportCosts: number;
   vatType: 'inclusive' | 'exclusive';
   selectedEventType: string;
-  customEventType: string;
-  startDate?: string; // ISO string
-  endDate?: string; // ISO string
+  customEventType?: string;
+  startDate: string; // ISO string
+  endDate: string; // ISO string
   serviceFields: Record<string, boolean>;
   serviceDesc: string;
   items: InvoiceItem[];
