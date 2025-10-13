@@ -51,57 +51,86 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
   const handleExportPDF = async () => {
-      if (!printRef.current) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Invoice template not loaded yet.' });
-          return;
-      }
-      setExporting(true);
+    const mainContent = document.getElementById('invoice-main-table');
+    const headerContent = document.getElementById('invoice-header');
+    const footerContent = document.getElementById('invoice-footer');
 
-      try {
-          const { default: jsPDF } = await import('jspdf');
-          const { default: html2canvas } = await import('html2canvas');
-          
-          const canvas = await html2canvas(printRef.current, {
-            scale: 2, // Increase resolution
-            useCORS: true,
-          });
+    if (!mainContent || !headerContent || !footerContent) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the invoice to export.' });
+        return;
+    }
+    setExporting(true);
 
-          const imgData = canvas.toDataURL('image/png');
-          
-          const pdf = new jsPDF({
-              orientation: 'p',
-              unit: 'mm',
-              format: 'a4'
-          });
+    try {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: html2canvas } = await import('html2canvas');
 
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgProps = pdf.getImageProperties(imgData);
-          const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          
-          let heightLeft = imgHeight;
-          let position = 0;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const pageContentWidth = pdfWidth - (margin * 2);
 
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-          heightLeft -= pdfHeight;
+        // --- Render Header ---
+        const headerCanvas = await html2canvas(headerContent, { scale: 2, useCORS: true });
+        const headerImgData = headerCanvas.toDataURL('image/png');
+        const headerImgProps = pdf.getImageProperties(headerImgData);
+        const headerImgHeight = (headerImgProps.height * pageContentWidth) / headerImgProps.width;
+        
+        // --- Render Footer ---
+        const footerCanvas = await html2canvas(footerContent, { scale: 2, useCORS: true });
+        const footerImgData = footerCanvas.toDataURL('image/png');
+        const footerImgProps = pdf.getImageProperties(footerImgData);
+        const footerImgHeight = (footerImgProps.height * pageContentWidth) / footerImgProps.width;
 
-          while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
+        // --- Render Main Content ---
+        const contentCanvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
+        const contentImgData = contentCanvas.toDataURL('image/png');
+        const contentImgProps = pdf.getImageProperties(contentImgData);
+        const contentImgHeight = (contentImgProps.height * pageContentWidth) / contentImgProps.width;
+        
+        let position = 0;
+        let contentHeightLeft = contentImgHeight;
+        let pageCount = 0;
+
+        const addPageElements = () => {
+            pdf.addImage(headerImgData, 'PNG', margin, margin, pageContentWidth, headerImgHeight);
+            pdf.addImage(footerImgData, 'PNG', margin, pdfHeight - footerImgHeight - margin, pageContentWidth, footerImgHeight);
+        }
+
+        pdf.addPage();
+        pageCount++;
+        addPageElements();
+        
+        const contentAreaHeight = pdfHeight - (margin * 2) - headerImgHeight - footerImgHeight;
+        
+        pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight, pageContentWidth, contentImgHeight);
+        contentHeightLeft -= contentAreaHeight;
+
+        while (contentHeightLeft > 0) {
+            position -= contentAreaHeight;
             pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-            heightLeft -= pdfHeight;
-          }
+            pageCount++;
+            addPageElements();
+            pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight + position, pageContentWidth, contentImgHeight);
+            contentHeightLeft -= contentAreaHeight;
+        }
 
-          pdf.save(`invoice_${invoice.id}.pdf`);
-          toast({ title: 'Success', description: 'Invoice exported as PDF.' });
+        // Remove the initial blank page
+        if(pageCount > 0){
+          pdf.deletePage(1);
+        }
 
-      } catch (error) {
-          console.error("PDF Export Error:", error);
-          toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
-      }
-      setExporting(false);
+        pdf.save(`invoice_${invoice?.id}.pdf`);
+        toast({ title: 'Success', description: 'Invoice exported as PDF.' });
+
+    } catch (error) {
+        console.error("PDF Export Error:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
+    }
+    setExporting(false);
   };
-  
+
   const handleDelete = () => {
     if(invoiceId) {
         deleteInvoice(invoiceId);

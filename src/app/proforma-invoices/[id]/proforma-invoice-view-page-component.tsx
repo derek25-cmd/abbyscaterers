@@ -80,8 +80,12 @@ export function ProformaInvoiceViewPageComponent() {
 
 
   const handleExportPDF = async () => {
-    if (!printRef.current) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Invoice data not loaded yet.' });
+    const mainContent = document.getElementById('proforma-main-table');
+    const headerContent = document.getElementById('proforma-header');
+    const footerContent = document.getElementById('proforma-footer');
+    
+    if (!mainContent || !headerContent || !footerContent) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the proforma to export.' });
         return;
     }
     setExporting(true);
@@ -90,32 +94,63 @@ export function ProformaInvoiceViewPageComponent() {
         const { default: jsPDF } = await import('jspdf');
         const { default: html2canvas } = await import('html2canvas');
 
-        const canvas = await html2canvas(printRef.current, {
-          scale: 2,
-          useCORS: true,
-        });
-
-        const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        const margin = 10;
+        const pageContentWidth = pdfWidth - (margin * 2);
 
-        let heightLeft = imgHeight;
+        // --- Render Header ---
+        const headerCanvas = await html2canvas(headerContent, { scale: 2, useCORS: true });
+        const headerImgData = headerCanvas.toDataURL('image/png');
+        const headerImgProps = pdf.getImageProperties(headerImgData);
+        const headerImgHeight = (headerImgProps.height * pageContentWidth) / headerImgProps.width;
+        
+        // --- Render Footer ---
+        const footerCanvas = await html2canvas(footerContent, { scale: 2, useCORS: true });
+        const footerImgData = footerCanvas.toDataURL('image/png');
+        const footerImgProps = pdf.getImageProperties(footerImgData);
+        const footerImgHeight = (footerImgProps.height * pageContentWidth) / footerImgProps.width;
+
+        // --- Render Main Content ---
+        const contentCanvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
+        const contentImgData = contentCanvas.toDataURL('image/png');
+        const contentImgProps = pdf.getImageProperties(contentImgData);
+        const contentImgHeight = (contentImgProps.height * pageContentWidth) / contentImgProps.width;
+        
         let position = 0;
+        let contentHeightLeft = contentImgHeight;
+        let pageCount = 0;
 
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-          heightLeft -= pdfHeight;
+        const addPageElements = () => {
+            pdf.addImage(headerImgData, 'PNG', margin, margin, pageContentWidth, headerImgHeight);
+            pdf.addImage(footerImgData, 'PNG', margin, pdfHeight - footerImgHeight - margin, pageContentWidth, footerImgHeight);
         }
 
-        pdf.save(`proforma_${invoice.id}.pdf`);
+        pdf.addPage();
+        pageCount++;
+        addPageElements();
+        
+        const contentAreaHeight = pdfHeight - (margin * 2) - headerImgHeight - footerImgHeight;
+        
+        pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight, pageContentWidth, contentImgHeight);
+        contentHeightLeft -= contentAreaHeight;
+
+        while (contentHeightLeft > 0) {
+            position -= contentAreaHeight;
+            pdf.addPage();
+            pageCount++;
+            addPageElements();
+            pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight + position, pageContentWidth, contentImgHeight);
+            contentHeightLeft -= contentAreaHeight;
+        }
+        
+        // Remove the initial blank page
+        if(pageCount > 0){
+          pdf.deletePage(1);
+        }
+
+        pdf.save(`proforma_${invoice?.id}.pdf`);
         toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
 
     } catch (error) {
