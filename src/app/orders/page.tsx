@@ -1,9 +1,6 @@
 
 
 import { OrdersPageContent } from './orders-page-content';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { ListPlus } from 'lucide-react';
 
 export default function OrdersPage() {
   return (
@@ -17,12 +14,6 @@ export default function OrdersPage() {
             View, add, edit, and manage all your event orders here.
             </p>
         </div>
-        <Button asChild>
-            <Link href="/orders/menu-planner">
-                <ListPlus className="mr-2 h-5 w-5"/>
-                Go to Menu Planner
-            </Link>
-        </Button>
       </div>
       <OrdersPageContent />
     </div>

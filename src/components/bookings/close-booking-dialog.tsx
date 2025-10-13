@@ -16,10 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { FinalInvoiceSchema, type FinalInvoiceFormData } from "@/lib/schemas";
+import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { Textarea } from "../ui/textarea";
@@ -27,13 +26,12 @@ import { Textarea } from "../ui/textarea";
 interface CloseBookingDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSubmit: (data: Partial<FinalInvoiceFormData>) => Promise<void>;
+  onSubmit: (data: Partial<ProformaInvoiceFormData>) => Promise<void>;
 }
 
-const CloseBookingFormSchema = FinalInvoiceSchema.pick({
+const CloseBookingFormSchema = ProformaInvoiceSchema.pick({
     id: true,
     invoiceDate: true,
-    status: true,
     lpoNumber: true,
     receiverName: true,
     receiverPosition: true,
@@ -42,18 +40,15 @@ const CloseBookingFormSchema = FinalInvoiceSchema.pick({
     serviceCharge: true,
     transportCosts: true,
     vatType: true,
-    signedAtLocation: true,
-    signedAtDate: true,
 });
 
 
 export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBookingDialogProps) {
-  const form = useForm<Partial<FinalInvoiceFormData>>({
+  const form = useForm<Partial<ProformaInvoiceFormData>>({
     resolver: zodResolver(CloseBookingFormSchema),
     defaultValues: {
-      id: `INV-${Date.now()}`,
+      id: `PI-${Date.now()}`,
       invoiceDate: new Date().toISOString(),
-      status: 'outstanding',
       lpoNumber: '',
       receiverName: '',
       receiverPosition: '',
@@ -62,14 +57,12 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
       serviceCharge: 0,
       transportCosts: 0,
       vatType: 'inclusive',
-      signedAtLocation: 'Dar es Salaam',
-      signedAtDate: new Date().toISOString(),
     },
   });
 
   const { isSubmitting } = form.formState;
 
-  const handleSubmit = async (data: Partial<FinalInvoiceFormData>) => {
+  const handleSubmit = async (data: Partial<ProformaInvoiceFormData>) => {
     await onSubmit(data);
     form.reset();
     setIsOpen(false);
@@ -81,18 +74,18 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
             <DialogHeader>
-              <DialogTitle>Close Booking & Generate Final Invoice</DialogTitle>
+              <DialogTitle>Close Booking & Generate Proforma Invoice</DialogTitle>
               <DialogDescription>
-                Provide the final details to generate an aggregated invoice for this booking.
+                Provide the final details to generate an aggregated proforma invoice for this booking.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="id" render={({ field }) => (
-                        <FormItem><FormLabel>Invoice Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Proforma Invoice Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                      <FormField control={form.control} name="invoiceDate" render={({ field }) => (
-                        <FormItem className="flex flex-col"><FormLabel>Invoice Date</FormLabel>
+                        <FormItem className="flex flex-col"><FormLabel>Proforma Invoice Date</FormLabel>
                         <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                             {field.value ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -103,13 +96,6 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
                     )} />
                      <FormField control={form.control} name="lpoNumber" render={({ field }) => (
                         <FormItem><FormLabel>LPO Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={form.control} name="status" render={({ field }) => (
-                        <FormItem><FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                            <SelectContent><SelectItem value="outstanding">Outstanding</SelectItem><SelectItem value="paid">Paid</SelectItem></SelectContent>
-                        </Select><FormMessage /></FormItem>
                     )} />
                 </div>
                  <FormField control={form.control} name="serviceDesc" render={({ field }) => (
@@ -138,21 +124,6 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
                         </Select><FormMessage /></FormItem>
                     )} />
                 </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField control={form.control} name="signedAtLocation" render={({ field }) => (
-                        <FormItem><FormLabel>Signed At Location</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                     <FormField control={form.control} name="signedAtDate" render={({ field }) => (
-                         <FormItem className="flex flex-col"><FormLabel>Signed At Date</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button></FormControl></PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} /></PopoverContent>
-                        </Popover><FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
             </div>
             <DialogFooter>
               <DialogClose asChild>
@@ -160,7 +131,7 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
               </DialogClose>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Generate Invoice
+                Generate Proforma
               </Button>
             </DialogFooter>
           </form>

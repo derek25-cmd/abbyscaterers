@@ -4,7 +4,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils } from "lucide-react";
 
 const reportCategories = [
   {
@@ -39,6 +39,12 @@ const reportCategories = [
   {
     category: "Inventory & Operations Reports",
     reports: [
+      {
+        title: "Daily Menu Report",
+        description: "View a consolidated menu for all orders on a specific day.",
+        href: "/reports/daily-menu",
+        icon: Utensils,
+      },
       {
         title: "Daily Stock Log",
         description: "Track all inventory movements for a selected day.",

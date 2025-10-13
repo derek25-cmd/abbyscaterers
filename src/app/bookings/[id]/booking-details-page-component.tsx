@@ -11,14 +11,14 @@ import { LoadingPage } from "@/components/layout/loading-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calendar, User, ArrowLeft, PlusCircle, FileCheck } from "lucide-react";
+import { Calendar, User, ArrowLeft, PlusCircle, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
-import { OrderFormData, FinalInvoiceFormData } from "@/lib/schemas";
+import { OrderFormData, ProformaInvoiceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
-import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
+import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 
 
 export function BookingDetailsPageComponent() {
@@ -28,7 +28,7 @@ export function BookingDetailsPageComponent() {
   const { getBookingById, isLoading: bookingsLoading } = useBookingStorage();
   const { orders, getOrdersByBookingId, addOrder, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const { addInvoice } = useInvoiceStorage();
+  const { addProformaInvoice } = useProformaInvoiceStorage();
 
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
@@ -82,7 +82,7 @@ export function BookingDetailsPageComponent() {
     return bookingOrders.reduce((sum, order) => sum + getOrderTotal(order), 0);
   }, [bookingOrders]);
 
-  const handleCloseAndInvoice = async (invoiceDetails: Partial<FinalInvoiceFormData>) => {
+  const handleCloseAndGenerateProforma = async (proformaDetails: Partial<ProformaInvoiceFormData>) => {
     if (!booking || !client) return;
 
     const invoiceItems = bookingOrders.flatMap(order => order.clientEvents.map(event => ({
@@ -98,35 +98,33 @@ export function BookingDetailsPageComponent() {
         particularDescription: `${event.mealType} on ${format(parseISO(event.date), 'PPP')}`
     })));
 
-    const newInvoiceData: FinalInvoiceFormData = {
-        ...invoiceDetails,
-        id: invoiceDetails.id!,
+    const newProformaData: ProformaInvoiceFormData = {
+        ...proformaDetails,
+        id: proformaDetails.id!,
         clientId: booking.client_id,
         items: invoiceItems,
         startDate: booking.start_date,
         endDate: booking.end_date,
         numberOfDays: bookingOrders.length,
         multiplyByDays: false, // Each order is a line item, so we don't multiply
-        status: 'outstanding',
         // Default other fields that are not in the dialog
-        proformaId: '',
         selectedEventType: 'Catering services',
         customEventType: '',
         serviceFields: {},
-        serviceDesc: invoiceDetails.serviceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
+        serviceDesc: proformaDetails.serviceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
     };
     
     try {
-        const newInvoice = await addInvoice(newInvoiceData);
-        if (newInvoice) {
-             toast({ title: 'Success', description: `Invoice ${newInvoice.id} created.` });
-             router.push(`/invoices/${newInvoice.id}`);
+        const newProforma = await addProformaInvoice(newProformaData);
+        if (newProforma) {
+             toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created.` });
+             router.push(`/proforma-invoices/${newProforma.id}`);
         } else {
-            throw new Error("Failed to save invoice to storage.");
+            throw new Error("Failed to save proforma invoice to storage.");
         }
     } catch(error) {
         console.error(error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create invoice.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to create proforma invoice.' });
     }
   }
 
@@ -164,8 +162,8 @@ export function BookingDetailsPageComponent() {
                     Record Daily Order
                 </Button>
                  <Button variant="default" onClick={() => setIsCloseBookingOpen(true)} disabled={bookingOrders.length === 0}>
-                    <FileCheck className="mr-2 h-4 w-4"/>
-                    Close & Generate Invoice
+                    <FileText className="mr-2 h-4 w-4"/>
+                    Close & Generate Proforma
                 </Button>
             </div>
        </div>
@@ -217,7 +215,7 @@ export function BookingDetailsPageComponent() {
         <CloseBookingDialog
             isOpen={isCloseBookingOpen}
             setIsOpen={setIsCloseBookingOpen}
-            onSubmit={handleCloseAndInvoice}
+            onSubmit={handleCloseAndGenerateProforma}
         />
     </div>
   );
