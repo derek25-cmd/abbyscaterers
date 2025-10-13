@@ -25,6 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useSettingsStorage } from "@/hooks/use-settings-storage";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -80,81 +82,54 @@ export function ProformaInvoiceViewPageComponent() {
 
 
   const handleExportPDF = async () => {
-    const mainContent = document.getElementById('proforma-main-content');
-    const headerContent = document.getElementById('proforma-header');
-    const footerContent = document.getElementById('proforma-footer');
+    const headerElement = document.getElementById('proforma-header');
+    const contentElement = document.getElementById('proforma-main-content');
+    const footerElement = document.getElementById('proforma-footer');
     
-    if (!mainContent || !headerContent || !footerContent) {
+    if (!contentElement || !headerElement || !footerElement) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the proforma to export.' });
         return;
     }
     setExporting(true);
 
     try {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: html2canvas } = await import('html2canvas');
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const margin = 10;
-        const pageContentWidth = pdfWidth - (margin * 2);
+      const headerCanvas = await html2canvas(headerElement, { scale: 2 });
+      const contentCanvas = await html2canvas(contentElement, { scale: 2 });
+      const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
-        // --- Render Canvases ---
-        const headerCanvas = await html2canvas(headerContent, { scale: 2, useCORS: true });
-        const contentCanvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
-        const footerCanvas = await html2canvas(footerContent, { scale: 2, useCORS: true });
+      const headerHeight = (headerCanvas.height * pageWidth) / headerCanvas.width;
+      const footerHeight = (footerCanvas.height * pageWidth) / footerCanvas.width;
+      const contentHeight = (contentCanvas.height * pageWidth) / contentCanvas.width;
+      
+      const usableHeight = pageHeight - headerHeight - footerHeight;
 
-        const headerImgData = headerCanvas.toDataURL('image/png');
-        const contentImgData = contentCanvas.toDataURL('image/png');
-        const footerImgData = footerCanvas.toDataURL('image/png');
+      let heightLeft = contentHeight;
+      let position = 0;
+      let pageNumber = 1;
 
-        const headerImgProps = pdf.getImageProperties(headerImgData);
-        const contentImgProps = pdf.getImageProperties(contentImgData);
-        const footerImgProps = pdf.getImageProperties(footerImgData);
+      // Add first page
+      pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, headerHeight);
+      pdf.addImage(contentCanvas.toDataURL('image/png'), 'PNG', 0, headerHeight, pageWidth, contentHeight);
+      pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', 0, pageHeight - footerHeight, pageWidth, footerHeight);
 
-        const headerImgHeight = (headerImgProps.height * pageContentWidth) / headerImgProps.width;
-        const footerImgHeight = (footerImgProps.height * pageContentWidth) / footerImgProps.width;
-        const contentImgHeight = (contentImgProps.height * pageContentWidth) / contentImgProps.width;
-        
-        const contentAreaHeight = pdfHeight - headerImgHeight - footerImgHeight - (margin * 2);
-        
-        let contentHeightLeft = contentImgHeight;
-        let position = 0;
-        let pageCount = 0;
-        
-        // Add first page
-        pdf.addPage();
-        pageCount++;
-        pdf.setPage(pageCount);
+      heightLeft -= usableHeight;
 
-        // Add header, content, and footer to the first page
-        pdf.addImage(headerImgData, 'PNG', margin, margin, pageContentWidth, headerImgHeight);
-        pdf.addImage(contentImgData, 'PNG', margin, margin + headerImgHeight, pageContentWidth, contentImgHeight);
-        pdf.addImage(footerImgData, 'PNG', margin, pdfHeight - footerImgHeight - margin, pageContentWidth, footerImgHeight);
-
-        contentHeightLeft -= contentAreaHeight;
-
-        // Add subsequent pages if content overflows
-        while (contentHeightLeft > 0) {
-            position += contentAreaHeight;
-            pdf.addPage();
-            pageCount++;
-            pdf.setPage(pageCount);
-
-            pdf.addImage(headerImgData, 'PNG', margin, margin, pageContentWidth, headerImgHeight);
-            // The key fix: The `y` coordinate for the image slice needs to be negative to pull up the correct part of the canvas
-            pdf.addImage(contentImgData, 'PNG', margin, -position + margin + headerImgHeight, pageContentWidth, contentImgHeight);
-            pdf.addImage(footerImgData, 'PNG', margin, pdfHeight - footerImgHeight - margin, pageContentWidth, footerImgHeight);
-            
-            contentHeightLeft -= contentAreaHeight;
-        }
-
-        // Remove the initial blank page jsPDF creates
-        pdf.deletePage(1);
-
-        pdf.save(`proforma_${invoice?.id}.pdf`);
-        toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
+      while (heightLeft > 0) {
+          pageNumber++;
+          position = heightLeft - contentHeight;
+          pdf.addPage();
+          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, headerHeight);
+          pdf.addImage(contentCanvas.toDataURL('image/png'), 'PNG', 0, position + headerHeight, pageWidth, contentHeight);
+          pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', 0, pageHeight - footerHeight, pageWidth, footerHeight);
+          heightLeft -= usableHeight;
+      }
+      
+      pdf.save(`proforma_${invoice?.id}.pdf`);
+      toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
 
     } catch (error) {
         console.error("PDF Export Error:", error);
