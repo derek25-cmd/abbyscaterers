@@ -107,34 +107,60 @@ export function ProformaInvoiceViewPageComponent() {
 
       const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
       const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-      
-      const contentImgWidth = usableWidth;
-      const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
-
       const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-      let heightLeft = contentImgHeight;
-      let position = 0;
+      const contentImgWidth = usableWidth;
+      const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
+      
+      const contentDataURL = contentCanvas.toDataURL('image/png');
+      const headerDataURL = headerCanvas.toDataURL('image/png');
+      const footerDataURL = footerCanvas.toDataURL('image/png');
 
-      // Add first page
-      pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
-      pdf.addImage(contentCanvas, 'PNG', marginX, marginTop + headerHeight, contentImgWidth, contentImgHeight);
-      pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+      let yOffset = 0;
+      let pageNumber = 1;
 
-      heightLeft -= usableContentHeight;
+      while (yOffset < contentImgHeight) {
+          if (pageNumber > 1) {
+              pdf.addPage();
+          }
 
-      while (heightLeft > 0) {
-          position -= usableContentHeight;
-          pdf.addPage();
+          // Add header
+          pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+
+          // Calculate the height of the slice for the current page
+          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = contentCanvas.width;
+          sliceCanvas.height = (sliceHeight / contentImgHeight) * contentCanvas.height;
+          const sliceCtx = sliceCanvas.getContext('2d');
           
-          // Add header and footer to every new page
-          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
-          pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+          sliceCtx?.drawImage(
+              contentCanvas,
+              0, // sourceX
+              yOffset * (contentCanvas.height / contentImgHeight), // sourceY
+              contentCanvas.width, // sourceWidth
+              sliceCanvas.height, // sourceHeight
+              0, // destX
+              0, // destY
+              sliceCanvas.width, // destWidth
+              sliceCanvas.height // destHeight
+          );
           
-          // Add the remaining content
-          pdf.addImage(contentCanvas, 'PNG', marginX, position + marginTop + headerHeight, contentImgWidth, contentImgHeight);
-          
-          heightLeft -= usableContentHeight;
+          // Add content slice to PDF
+          pdf.addImage(
+              sliceCanvas.toDataURL('image/png'),
+              'PNG',
+              marginX,
+              marginTop + headerHeight,
+              usableWidth,
+              sliceHeight
+          );
+
+          // Add footer
+          pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+
+          yOffset += sliceHeight;
+          pageNumber++;
       }
       
       pdf.save(`proforma_${invoice?.id}.pdf`);
@@ -184,7 +210,7 @@ export function ProformaInvoiceViewPageComponent() {
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         };
-        const newInvoice = addInvoice(newInvoiceData);
+        const newInvoice = addProformaInvoice(newInvoiceData);
         toast({
             title: "Final Invoice Created",
             description: `Invoice ${newInvoice.id} has been generated successfully.`
