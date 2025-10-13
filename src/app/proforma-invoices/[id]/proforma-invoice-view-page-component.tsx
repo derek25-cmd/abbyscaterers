@@ -96,36 +96,44 @@ export function ProformaInvoiceViewPageComponent() {
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 40; // 40 points margin
+      const usableWidth = pageWidth - (marginX * 2);
 
       const headerCanvas = await html2canvas(headerElement, { scale: 2 });
       const contentCanvas = await html2canvas(contentElement, { scale: 2 });
       const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
-      const headerHeight = (headerCanvas.height * pageWidth) / headerCanvas.width;
-      const footerHeight = (footerCanvas.height * pageWidth) / footerCanvas.width;
-      const contentHeight = (contentCanvas.height * pageWidth) / contentCanvas.width;
+      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+      const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
       
-      const usableHeight = pageHeight - headerHeight - footerHeight;
+      const contentImgWidth = usableWidth;
+      const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
 
-      let heightLeft = contentHeight;
+      const marginTop = 20;
+      const marginBottom = 20;
+      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+
+      let heightLeft = contentImgHeight;
       let position = 0;
       let pageNumber = 1;
 
       // Add first page
-      pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, headerHeight);
-      pdf.addImage(contentCanvas.toDataURL('image/png'), 'PNG', 0, headerHeight, pageWidth, contentHeight);
-      pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', 0, pageHeight - footerHeight, pageWidth, footerHeight);
+      pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
+      pdf.addImage(contentCanvas, 'PNG', marginX, marginTop + headerHeight, contentImgWidth, contentImgHeight);
+      pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
 
-      heightLeft -= usableHeight;
+      heightLeft -= usableContentHeight;
 
       while (heightLeft > 0) {
           pageNumber++;
-          position = heightLeft - contentHeight;
+          position = heightLeft - contentImgHeight;
+          
           pdf.addPage();
-          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidth, headerHeight);
-          pdf.addImage(contentCanvas.toDataURL('image/png'), 'PNG', 0, position + headerHeight, pageWidth, contentHeight);
-          pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', 0, pageHeight - footerHeight, pageWidth, footerHeight);
-          heightLeft -= usableHeight;
+          pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
+          pdf.addImage(contentCanvas, 'PNG', marginX, position + marginTop + headerHeight, contentImgWidth, contentImgHeight);
+          pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+          
+          heightLeft -= usableContentHeight;
       }
       
       pdf.save(`proforma_${invoice?.id}.pdf`);
