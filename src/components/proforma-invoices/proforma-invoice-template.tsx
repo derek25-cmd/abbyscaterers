@@ -245,26 +245,26 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     <div className="text-right my-2 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
+
+                    <div className="flex justify-end items-end mt-4">
+                        <div className="text-center" style={{ fontSize: '14px' }}>
+                        <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
+                        {settings.signatureUrl && <Image alt="Signature and Seal" height={80} width={200} className="h-20 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
+                        <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                        </div>
+                    </div>
+                     <div className="text-sm mt-4">
+                      <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
+                      <ul className="space-y-1 list-disc list-inside" style={{ fontSize: '14px' }}>
+                          <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
+                          <li>Payments shall be by Bank transfer or by Cheque.</li>
+                          <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
+                          <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
+                      </ul>
+                    </div>
                 </div>
                 
                  <div id="proforma-footer">
-                      <div className="flex justify-between items-end mt-4">
-                           <div></div>
-                           <div className="text-center" style={{ fontSize: '14px' }}>
-                            <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
-                            {settings.signatureUrl && <Image alt="Signature and Seal" height={80} width={200} className="h-20 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
-                            <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
-                            </div>
-                      </div>
-                       <div className="text-sm mt-4">
-                        <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
-                        <ul className="space-y-1 list-disc list-inside" style={{ fontSize: '14px' }}>
-                            <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
-                            <li>Payments shall be by Bank transfer or by Cheque.</li>
-                            <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
-                            <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
-                        </ul>
-                      </div>
                       {settings.footerUrl && (
                         <div className="mt-4">
                             <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />

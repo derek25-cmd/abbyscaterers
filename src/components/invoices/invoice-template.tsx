@@ -223,10 +223,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     <div className="text-left" style={{ fontSize: '15px' }}>
                         <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                     </div>
-                </div>
-
-                <div id="invoice-footer">
-                    <div className="flex justify-between items-end mt-4">
+                     <div className="flex justify-between items-end mt-4">
                         <div style={{fontSize: '14px'}}>
                             <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
                             <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
@@ -245,6 +242,9 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                         <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
                         </div>
                     </div>
+                </div>
+
+                <div id="invoice-footer">
                     {settings.footerUrl && (
                         <div className="mt-4">
                             <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />
