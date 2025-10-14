@@ -13,6 +13,7 @@ import { useSettingsStorage } from '@/hooks/use-settings-storage';
 interface InvoiceTemplateProps {
     invoiceData: Invoice;
     client: Client | undefined;
+    showHeaders?: boolean;
 }
 
 // ... (keep convertToWords function as is)
@@ -66,7 +67,7 @@ const formatDate = (dateStr?: string) => {
     return format(parseISO(dateStr), 'do MMMM yyyy');
 };
 
-export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
+export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: InvoiceTemplateProps) {
     const [notes, setNotes] = useState("");
     const [serviceDescription, setServiceDescription] = useState(invoiceData.serviceDesc);
     const { settings } = useSettingsStorage();
@@ -112,7 +113,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     fontSize: '15px',
                 }}
             >
-                <div id="invoice-header">
+                <div id="invoice-header" style={{ display: showHeaders ? 'block' : 'none' }}>
                     {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
@@ -244,7 +245,7 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
                     </div>
                 </div>
 
-                <div id="invoice-footer">
+                <div id="invoice-footer" style={{ display: showHeaders ? 'block' : 'none' }}>
                     {settings.footerUrl && (
                         <div className="mt-4">
                             <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />

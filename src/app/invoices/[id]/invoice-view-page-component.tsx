@@ -9,11 +9,13 @@ import { InvoiceTemplate } from "@/components/invoices/invoice-template";
 import type { Invoice, Client } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Edit, Download, Trash2 } from "lucide-react";
+import { Loader2, Edit, Download, Trash2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSettingsStorage } from "@/hooks/use-settings-storage";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export function InvoiceViewPageComponent() {
   const params = useParams();
@@ -29,6 +31,7 @@ export function InvoiceViewPageComponent() {
   const [client, setClient] = useState<Client | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [showHeaders, setShowHeaders] = useState(true);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -67,11 +70,12 @@ export function InvoiceViewPageComponent() {
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const marginX = 40; // 40 points margin
+        const marginX = 30;
         const marginTop = 20;
-        const marginBottom = 20;
+        const marginBottom = 5;
         const usableWidth = pageWidth - (marginX * 2);
 
+        // Capture header, content, and footer
         const headerCanvas = await html2canvas(headerElement, { scale: 2 });
         const contentCanvas = await html2canvas(contentElement, { scale: 2 });
         const footerCanvas = await html2canvas(footerElement, { scale: 2 });
@@ -80,9 +84,8 @@ export function InvoiceViewPageComponent() {
         const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
         const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-        const contentImgWidth = usableWidth;
-        const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
-        
+        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+
         const contentDataURL = contentCanvas.toDataURL('image/png');
         const headerDataURL = headerCanvas.toDataURL('image/png');
         const footerDataURL = footerCanvas.toDataURL('image/png');
@@ -91,48 +94,42 @@ export function InvoiceViewPageComponent() {
         let pageNumber = 1;
 
         while (yOffset < contentImgHeight) {
-            if (pageNumber > 1) {
-                pdf.addPage();
-            }
+          if (pageNumber > 1) {
+              pdf.addPage();
+          }
 
-            // Add header
-            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+          // Add header
+          pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+          
+          // Add footer
+          pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
 
-            // Calculate the height of the slice for the current page
-            const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = contentCanvas.width;
-            sliceCanvas.height = (sliceHeight / contentImgHeight) * contentCanvas.height;
-            const sliceCtx = sliceCanvas.getContext('2d');
-            
-            sliceCtx?.drawImage(
-                contentCanvas,
-                0, // sourceX
-                yOffset * (contentCanvas.height / contentImgHeight), // sourceY
-                contentCanvas.width, // sourceWidth
-                sliceCanvas.height, // sourceHeight
-                0, // destX
-                0, // destY
-                sliceCanvas.width, // destWidth
-                sliceCanvas.height // destHeight
+          // Calculate the height of the slice for the current page
+          const sliceCanvas = document.createElement('canvas');
+          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+          sliceCanvas.width = contentCanvas.width;
+          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+
+          const sliceCtx = sliceCanvas.getContext('2d');
+          if (sliceCtx) {
+            sliceCtx.drawImage(
+              contentCanvas,
+              0, // sourceX
+              (yOffset / contentImgHeight) * contentCanvas.height, // sourceY
+              contentCanvas.width, // sourceWidth
+              sliceCanvas.height, // sourceHeight
+              0, // destX
+              0, // destY
+              sliceCanvas.width, // destWidth
+              sliceCanvas.height // destHeight
             );
+          }
 
-            // Add content slice to PDF
-            pdf.addImage(
-                sliceCanvas.toDataURL('image/png'),
-                'PNG',
-                marginX,
-                marginTop + headerHeight,
-                usableWidth,
-                sliceHeight
-            );
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
 
-            // Add footer
-            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-
-            yOffset += sliceHeight;
-            pageNumber++;
-        }
+          yOffset += sliceHeight;
+          pageNumber++;
+      }
       
         pdf.save(`invoice_${invoice?.id}.pdf`);
         toast({ title: 'Success', description: 'Invoice exported as PDF.' });
@@ -188,7 +185,16 @@ export function InvoiceViewPageComponent() {
   return (
     <>
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-primary">Invoice Preview</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-primary">Invoice Preview</h1>
+            <div className="flex items-center space-x-2 mt-2">
+                <Switch id="show-headers" checked={showHeaders} onCheckedChange={setShowHeaders} />
+                <Label htmlFor="show-headers" className="text-sm text-muted-foreground flex items-center">
+                    {showHeaders ? <Eye className="w-4 h-4 mr-1"/> : <EyeOff className="w-4 h-4 mr-1"/>}
+                    Show Header & Footer
+                </Label>
+            </div>
+          </div>
           <div className="space-x-2 flex flex-wrap">
             <Button variant="outline" onClick={() => router.push(`/invoices/${invoiceId}/edit`)}>
               <Edit className="w-4 h-4 mr-2" /> Edit
@@ -203,7 +209,7 @@ export function InvoiceViewPageComponent() {
           </div>
         </div>
         <div ref={printRef}>
-            <InvoiceTemplate invoiceData={invoice} client={client}/>
+            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} />
         </div>
     </>
   );

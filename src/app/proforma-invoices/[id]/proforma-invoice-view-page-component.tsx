@@ -9,7 +9,7 @@ import { ProformaInvoiceTemplate } from "@/components/proforma-invoices/proforma
 import type { ProformaInvoice, Client } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Edit, Download, Trash2, FileCheck, Lock } from "lucide-react";
+import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
     AlertDialog,
@@ -27,11 +27,13 @@ import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useSettingsStorage } from "@/hooks/use-settings-storage";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
   const router = useRouter();
-  const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading } = useProformaInvoiceStorage();
+  const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading, updateProformaInvoice } = useProformaInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { addInvoice } = useInvoiceStorage();
   const { toast } = useToast();
@@ -45,6 +47,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const [showHeaders, setShowHeaders] = useState(true);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
@@ -141,7 +144,7 @@ export function ProformaInvoiceViewPageComponent() {
                 sliceCtx.drawImage(
                     contentCanvas,
                     0, // sourceX
-                    (yOffset / usableWidth) * contentCanvas.width, // sourceY
+                    (yOffset / contentImgHeight) * contentCanvas.height, // sourceY
                     contentCanvas.width, // sourceWidth
                     sliceCanvas.height, // sourceHeight
                     0, // destX
@@ -175,7 +178,7 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = () => {
+  const handleCreateFinalInvoice = async () => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
@@ -204,12 +207,23 @@ export function ProformaInvoiceViewPageComponent() {
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         };
-        const newInvoice = addProformaInvoice(newInvoiceData);
-        toast({
-            title: "Final Invoice Created",
-            description: `Invoice ${newInvoice.id} has been generated successfully.`
-        });
-        router.push(`/invoices/${newInvoice.id}`);
+        const newInvoice = await addInvoice(newInvoiceData);
+        
+        await updateProformaInvoice(invoice.id, { isInvoiced: true });
+
+        if (newInvoice) {
+            toast({
+                title: "Final Invoice Created",
+                description: `Invoice ${newInvoice.id} has been generated successfully.`
+            });
+            router.push(`/invoices/${newInvoice.id}`);
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "An error occurred while creating the final invoice."
+            });
+        }
     } catch(error) {
         console.error("Failed to create final invoice:", error);
         toast({
@@ -217,6 +231,7 @@ export function ProformaInvoiceViewPageComponent() {
             title: "Error",
             description: "An error occurred while creating the final invoice."
         });
+    } finally {
         setIsCreatingInvoice(false);
     }
   }
@@ -258,7 +273,16 @@ export function ProformaInvoiceViewPageComponent() {
   return (
     <>
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-primary">Proforma Invoice Preview</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-primary">Proforma Invoice Preview</h1>
+            <div className="flex items-center space-x-2 mt-2">
+                <Switch id="show-headers" checked={showHeaders} onCheckedChange={setShowHeaders} />
+                <Label htmlFor="show-headers" className="text-sm text-muted-foreground flex items-center">
+                    {showHeaders ? <Eye className="w-4 h-4 mr-1"/> : <EyeOff className="w-4 h-4 mr-1"/>}
+                    Show Header & Footer
+                </Label>
+            </div>
+          </div>
           <div className="space-x-2 flex flex-wrap">
             
             {isLocked && (
@@ -306,7 +330,7 @@ export function ProformaInvoiceViewPageComponent() {
           </div>
         </div>
         <div ref={printRef}>
-          <ProformaInvoiceTemplate invoiceData={invoice} client={client}/>
+          <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders}/>
         </div>
     </>
   );

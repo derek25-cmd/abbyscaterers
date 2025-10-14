@@ -16,6 +16,7 @@ import Image from 'next/image';
 interface ProformaInvoiceTemplateProps {
     invoiceData: ProformaInvoice;
     client: Client | undefined;
+    showHeaders?: boolean;
 }
 
 const convertToWords = (amount: number): string => {
@@ -74,7 +75,7 @@ interface EditParticularsState {
 }
 
 
-export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoiceTemplateProps) {
+export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = true }: ProformaInvoiceTemplateProps) {
     
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
@@ -132,14 +133,14 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     fontSize: '15px',
                 }}
             >
-                <div id="proforma-header">
-                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
+                <div id="proforma-header" style={{ display: showHeaders ? 'block' : 'none' }}>
+                      {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
                 <div id="proforma-main-content">
-                    <div className="flex justify-between items-start mb-2 relative">
+                    <div className="flex justify-between items-start mb-2 relative" style={{ marginTop: '-1.5rem' }}>
                         <div className="flex-1"></div>
-                        <div className="text-right" style={{ marginTop: '-1rem' }}>
+                        <div className="text-right">
                           <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
                           <div className="mt-1 text-base space-y-0">
                               <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
@@ -265,7 +266,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                     </div>
                 </div>
                 
-                 <div id="proforma-footer">
+                 <div id="proforma-footer" style={{ display: showHeaders ? 'block' : 'none' }}>
                       {settings.footerUrl && (
                         <div className="mt-4">
                             <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />
