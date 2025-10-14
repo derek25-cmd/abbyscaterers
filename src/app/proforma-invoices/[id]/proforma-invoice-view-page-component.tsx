@@ -126,17 +126,15 @@ export function ProformaInvoiceViewPageComponent() {
         while (yOffset < contentImgHeight) {
           if (pageNumber > 1) pdf.addPage();
         
-          // Conditionally draw header
+          // Header area
           if (showHeaders) {
               pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
           }
-          // Conditionally draw footer
-          if (showHeaders) {
-              pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-          }
 
-          const sliceCanvas = document.createElement('canvas');
+          // Draw content slice
           const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+          
+          const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = contentCanvas.width;
           sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
 
@@ -145,6 +143,11 @@ export function ProformaInvoiceViewPageComponent() {
             sliceCtx.drawImage(contentCanvas, 0, (yOffset / usableWidth) * contentCanvas.width, contentCanvas.width, sliceCanvas.height, 0, 0, sliceCanvas.width, sliceCanvas.height);
           }
           pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
+
+          // Footer area
+          if (showHeaders) {
+            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+          }
 
           yOffset += sliceHeight;
           pageNumber++;
