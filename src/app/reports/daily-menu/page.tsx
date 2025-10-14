@@ -3,15 +3,19 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { useClientStorage } from '@/hooks/use-client-storage';
+import { useRecipeStorage } from '@/hooks/use-recipe-storage';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, Save, ArrowLeft } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, ArrowLeft, Download } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 type MenuCell = { content: string; mealType: string };
 type OrderMenu = {
@@ -31,11 +35,13 @@ export default function DailyMenuPlannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { orders, isLoading: ordersLoading, updateOrder } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { recipes: availableRecipes, isLoading: recipesLoading } = useRecipeStorage();
   const [menuData, setMenuData] = useState<OrderMenu[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
-  const isLoading = ordersLoading || clientsLoading;
+  const isLoading = ordersLoading || clientsLoading || recipesLoading;
 
   useEffect(() => {
     if (isLoading) return;
@@ -51,48 +57,34 @@ export default function DailyMenuPlannerPage() {
         
         const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
 
-        const mealTitleMap: { [key: string]: string } = {
-          'Breakfast only': 'Breakfast',
-          'Brunch': 'Brunch',
-          'Lunch only': 'Lunch',
-          'Dinner only': 'Dinner',
-          'Breakfast and lunch': 'Breakfast & Lunch',
-          'Breakfast, lunch and evening tea': 'Full Day',
-          'Breakfast, lunch and dinner': 'Full Day',
-          'Evening tea': 'Evening Tea'
+        const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
+          return event.recipes
+            .map(r => {
+                const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === r.recipeId);
+                return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
+            })
+            .filter((name): name is string => name !== null);
         };
-
-        const getRecipesForMeal = (meal: string) => {
-            const recipeTypeMap: {[key:string]: string} = {
-                'Breakfast': 'Breakfast',
-                'Brunch': 'Breakfast',
-                'Lunch': 'Lunch/Dinner',
-                'Dinner': 'Lunch/Dinner',
-                'Evening Tea': 'Evening Tea'
-            }
-            return event.recipes
-                .map(r => r.recipeId)
-                .filter(Boolean);
-        }
 
         const addRecipesToMenu = (mealTitle: string, section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
              menu[MEAL_SECTIONS[section].start -1] = { content: mealTitle, mealType: 'header' };
-             recipes.forEach((recipe, i) => {
+             recipes.forEach((recipeName, i) => {
                  if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
-                    menu[MEAL_SECTIONS[section].start + i] = { content: recipe, mealType: mealTitle };
+                    menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: mealTitle };
                  }
              })
         }
         
-        const mealTitle = mealTitleMap[event.mealType] || 'Menu';
         if (event.mealType.includes('Breakfast') || event.mealType.includes('Brunch')) {
-            addRecipesToMenu(event.mealType.includes('Brunch') ? 'Brunch' : 'Breakfast', 'BREAKFAST', getRecipesForMeal('Breakfast'));
+            const mealTitle = event.mealType.includes('Brunch') ? 'Brunch' : 'Breakfast';
+            addRecipesToMenu(mealTitle, 'BREAKFAST', getRecipesForMealType('Breakfast'));
         }
         if (event.mealType.includes('Lunch') || event.mealType.includes('Dinner')) {
-            addRecipesToMenu(event.mealType.includes('Dinner') ? 'Dinner' : 'Lunch', 'LUNCH', getRecipesForMeal('Lunch/Dinner'));
+            const mealTitle = event.mealType.includes('Dinner') ? 'Dinner' : 'Lunch';
+            addRecipesToMenu(mealTitle, 'LUNCH', getRecipesForMealType('Lunch/Dinner'));
         }
         if (event.mealType.includes('Evening tea')) {
-            addRecipesToMenu('Evening Tea', 'TEA', getRecipesForMeal('Evening Tea'));
+            addRecipesToMenu('Evening Tea', 'TEA', getRecipesForMealType('Evening Tea'));
         }
 
 
@@ -105,7 +97,7 @@ export default function DailyMenuPlannerPage() {
     }).filter((item): item is OrderMenu => item !== null);
 
     setMenuData(initialMenuData);
-  }, [selectedDate, orders, getClientById, isLoading]);
+  }, [selectedDate, orders, getClientById, isLoading, availableRecipes]);
 
   const handleMenuChange = (orderIndex: number, rowIndex: number, value: string) => {
     const newMenuData = [...menuData];
@@ -126,9 +118,11 @@ export default function DailyMenuPlannerPage() {
 
             const updatedEvents = [...originalOrder.clientEvents];
             
-            const breakfastRecipes = orderMenu.menu.slice(MEAL_SECTIONS.BREAKFAST.start, MEAL_SECTIONS.BREAKFAST.end).filter(cell => cell.content).map(cell => ({ recipeId: cell.content }));
-            const lunchRecipes = orderMenu.menu.slice(MEAL_SECTIONS.LUNCH.start, MEAL_SECTIONS.LUNCH.end).filter(cell => cell.content).map(cell => ({ recipeId: cell.content }));
-            const teaRecipes = orderMenu.menu.slice(MEAL_SECTIONS.TEA.start, MEAL_SECTIONS.TEA.end).filter(cell => cell.content).map(cell => ({ recipeId: cell.content }));
+            const getRecipeId = (name: string) => availableRecipes.find(r => r.recipeName === name)?.recipeNumber || null;
+
+            const breakfastRecipes = orderMenu.menu.slice(MEAL_SECTIONS.BREAKFAST.start, MEAL_SECTIONS.BREAKFAST.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
+            const lunchRecipes = orderMenu.menu.slice(MEAL_SECTIONS.LUNCH.start, MEAL_SECTIONS.LUNCH.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
+            const teaRecipes = orderMenu.menu.slice(MEAL_SECTIONS.TEA.start, MEAL_SECTIONS.TEA.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
 
             updatedEvents[eventIndex] = {
                 ...updatedEvents[eventIndex],
@@ -145,6 +139,57 @@ export default function DailyMenuPlannerPage() {
         setIsSaving(false);
     }
   }
+
+  const handlePdfExport = () => {
+    setIsExporting(true);
+    try {
+      const doc = new jsPDF({ orientation: 'landscape' });
+      doc.text(`Daily Menu Report - ${selectedDate ? format(selectedDate, "PPP") : 'N/A'}`, 14, 15);
+
+      const head = [menuData.map(order => `${order.clientName} - #${order.pax} pax\n${order.orderId}`)];
+      
+      const body = Array.from({ length: 32 }).map((_, rowIndex) => 
+        menuData.map(order => order.menu[rowIndex]?.content || '')
+      );
+
+      (doc as any).autoTable({
+        head: head,
+        body: body,
+        startY: 25,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [244, 244, 245], // Corresponds to muted
+            textColor: [10, 10, 10],
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        styles: {
+            cellPadding: 2,
+            fontSize: 8,
+        },
+        didParseCell: function(data: any) {
+            if (data.row.section === 'head') return;
+            const rowIndex = data.row.index;
+            if (
+                rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
+                rowIndex + 1 === MEAL_SECTIONS.LUNCH.start ||
+                rowIndex + 1 === MEAL_SECTIONS.TEA.start
+            ) {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.fillColor = [254, 249, 195]; // yellow-200
+            }
+        },
+      });
+
+      doc.save(`Daily_Menu_Report_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
+      toast({ title: "Export Successful", description: "Report exported to PDF." });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
 
   return (
@@ -175,7 +220,11 @@ export default function DailyMenuPlannerPage() {
                 <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} initialFocus />
               </PopoverContent>
             </Popover>
-            <Button onClick={handleSaveMenus} disabled={isSaving}>
+             <Button onClick={handlePdfExport} variant="outline" disabled={isExporting || isLoading}>
+                 {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                 Export PDF
+             </Button>
+            <Button onClick={handleSaveMenus} disabled={isSaving || isLoading}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                 Save Menus
             </Button>
@@ -203,31 +252,49 @@ export default function DailyMenuPlannerPage() {
                     </thead>
                     <tbody>
                         {Array.from({ length: 32 }).map((_, rowIndex) => {
-                            const isHeaderRow = (
+                             const isHeaderRow = (
                                 rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
                                 rowIndex + 1 === MEAL_SECTIONS.LUNCH.start ||
                                 rowIndex + 1 === MEAL_SECTIONS.TEA.start
                             );
                             
-                            let sectionTitle = '';
-                            if (rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start) sectionTitle = 'Breakfast / Brunch';
-                            if (rowIndex + 1 === MEAL_SECTIONS.LUNCH.start) sectionTitle = 'Lunch / Dinner';
-                            if (rowIndex + 1 === MEAL_SECTIONS.TEA.start) sectionTitle = 'Evening Tea';
-                            
                             return (
                                 <tr key={rowIndex}>
                                     {menuData.map((order, orderIndex) => (
                                         <td key={orderIndex} className={cn("border p-0 align-top", isHeaderRow && 'bg-primary/10')}>
-                                            <input
-                                                type="text"
-                                                value={order.menu[rowIndex]?.content || ''}
-                                                onChange={(e) => handleMenuChange(orderIndex, rowIndex, e.target.value)}
-                                                className={cn(
-                                                    "w-full h-full p-2 bg-transparent focus:outline-none focus:bg-amber-100 dark:focus:bg-amber-900",
-                                                    isHeaderRow ? 'text-center font-bold text-primary' : ''
-                                                )}
-                                                placeholder={isHeaderRow ? sectionTitle : 'Enter menu item...'}
-                                            />
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <input
+                                                        type="text"
+                                                        value={order.menu[rowIndex]?.content || ''}
+                                                        onChange={(e) => handleMenuChange(orderIndex, rowIndex, e.target.value)}
+                                                        className={cn(
+                                                            "w-full h-full p-2 bg-transparent focus:outline-none focus:bg-amber-100 dark:focus:bg-amber-900",
+                                                             isHeaderRow ? 'text-center font-bold text-primary' : ''
+                                                        )}
+                                                        placeholder={isHeaderRow ? (order.menu[rowIndex]?.content || 'Section...') : 'Enter item...'}
+                                                    />
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search recipes..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No recipes found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                            {availableRecipes.map((recipe) => (
+                                                                <CommandItem
+                                                                    key={recipe.recipeNumber}
+                                                                    value={recipe.recipeName}
+                                                                    onSelect={() => handleMenuChange(orderIndex, rowIndex, recipe.recipeName)}
+                                                                >
+                                                                    {recipe.recipeName}
+                                                                </CommandItem>
+                                                            ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                         </td>
                                     ))}
                                 </tr>
@@ -249,3 +316,4 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
+

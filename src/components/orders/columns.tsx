@@ -81,11 +81,6 @@ export const getOrderColumns = (
                   <Edit className="mr-2 h-4 w-4" /> Edit Order
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/daily-menus/new?orderId=${order.id}`} className="flex items-center cursor-pointer">
-                  <Utensils className="mr-2 h-4 w-4" /> Create Menu
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete(order.id)}
