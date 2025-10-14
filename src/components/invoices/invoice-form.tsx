@@ -301,11 +301,19 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
             if (savedDraft) {
                 try {
-                    dataToLoad = JSON.parse(savedDraft);
-                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                    const parsedData = JSON.parse(savedDraft);
+                    if (clientId) {
+                        parsedData.clientId = clientId;
+                    }
+                    dataToLoad = parsedData;
+                    if (!isEditMode) {
+                      toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                    }
                 } catch (e) {
                     console.error("Failed to parse draft from localStorage", e);
                 }
+            } else if (clientId) {
+                dataToLoad = { ...form.getValues(), clientId: clientId };
             }
         }
 
@@ -313,7 +321,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             form.reset(dataToLoad);
         }
 
-    }, [isEditMode, invoiceId, proformaId, bookingId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form, DRAFT_STORAGE_KEY, toast]);
+    }, [isEditMode, invoiceId, proformaId, bookingId, clientId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form, DRAFT_STORAGE_KEY, toast]);
 
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);

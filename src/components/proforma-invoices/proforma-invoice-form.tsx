@@ -242,14 +242,25 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             if (savedDraft) {
                 try {
                     const parsedData = JSON.parse(savedDraft);
+                    // If a clientId is passed as a prop, it should take precedence
+                    if (clientId) {
+                        parsedData.clientId = clientId;
+                    }
                     form.reset(parsedData);
-                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                    if (!isEditMode) {
+                      toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
+                    }
                 } catch (e) {
                     console.error("Failed to parse draft from localStorage", e);
                 }
+            } else if (clientId) {
+                 form.reset({
+                    ...form.getValues(),
+                    clientId: clientId,
+                });
             }
         }
-    }, [isEditMode, invoiceId, getProformaById, form, DRAFT_STORAGE_KEY, toast]);
+    }, [isEditMode, invoiceId, clientId, getProformaById, form, DRAFT_STORAGE_KEY, toast]);
 
     async function onSubmit(data: ProformaInvoiceFormData) {
         setIsSubmitting(true);
