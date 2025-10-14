@@ -208,12 +208,15 @@ export const baseInvoiceSchema = z.object({
 
 export const ProformaInvoiceSchema = baseInvoiceSchema.refine(data => {
     const start = new Date(data.startDate);
+    start.setHours(0, 0, 0, 0);
     const end = new Date(data.endDate);
-    if(start > end) return false;
+    end.setHours(23, 59, 59, 999);
 
-    // Check if each item date is within the range
+    if (start > end) return false;
+
+    // Check if each item date is within the range (inclusive)
     for (const item of data.items) {
-        if (!item.date) return false; // Date is required for items
+        if (!item.date) return false;
         const itemDate = new Date(item.date);
         if (itemDate < start || itemDate > end) {
             return false;
