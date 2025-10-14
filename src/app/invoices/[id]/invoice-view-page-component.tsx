@@ -59,9 +59,9 @@ export function InvoiceViewPageComponent() {
     const headerElement = document.getElementById('invoice-header');
     const contentElement = document.getElementById('invoice-main-content');
     const footerElement = document.getElementById('invoice-footer');
-    
-    if (!contentElement || !headerElement || !footerElement) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the invoice to export.' });
+
+    if (!contentElement) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find invoice content to export.' });
         return;
     }
     setExporting(true);
@@ -75,63 +75,54 @@ export function InvoiceViewPageComponent() {
         const marginBottom = 5;
         const usableWidth = pageWidth - (marginX * 2);
 
-        // Capture header, content, and footer
-        const headerCanvas = await html2canvas(headerElement, { scale: 2 });
+        const headerCanvas = showHeaders && headerElement ? await html2canvas(headerElement, { scale: 2 }) : null;
         const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-        const footerCanvas = await html2canvas(footerElement, { scale: 2 });
+        const footerCanvas = showHeaders && footerElement ? await html2canvas(footerElement, { scale: 2 }) : null;
 
-        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+        const headerHeight = headerCanvas ? (headerCanvas.height * usableWidth) / headerCanvas.width : 0;
+        const footerHeight = footerCanvas ? (footerCanvas.height * usableWidth) / footerCanvas.width : 0;
         const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
         const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-
         const contentDataURL = contentCanvas.toDataURL('image/png');
-        const headerDataURL = headerCanvas.toDataURL('image/png');
-        const footerDataURL = footerCanvas.toDataURL('image/png');
+        const headerDataURL = headerCanvas?.toDataURL('image/png');
+        const footerDataURL = footerCanvas?.toDataURL('image/png');
 
         let yOffset = 0;
         let pageNumber = 1;
 
         while (yOffset < contentImgHeight) {
-          if (pageNumber > 1) {
-              pdf.addPage();
-          }
+            if (pageNumber > 1) pdf.addPage();
 
-          if (showHeaders) {
-            // Add header
-            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
-            // Add footer
-            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-          }
+            if (showHeaders && headerDataURL) {
+                pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+            }
+            if (showHeaders && footerDataURL) {
+                pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+            }
+            
+            const sliceCanvas = document.createElement('canvas');
+            const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+            sliceCanvas.width = contentCanvas.width;
+            sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
 
-          // Calculate the height of the slice for the current page
-          const sliceCanvas = document.createElement('canvas');
-          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-          sliceCanvas.width = contentCanvas.width;
-          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+            const sliceCtx = sliceCanvas.getContext('2d');
+            if (sliceCtx) {
+                sliceCtx.drawImage(
+                    contentCanvas,
+                    0, (yOffset / usableWidth) * contentCanvas.width,
+                    contentCanvas.width, sliceCanvas.height,
+                    0, 0,
+                    sliceCanvas.width, sliceCanvas.height
+                );
+            }
 
-          const sliceCtx = sliceCanvas.getContext('2d');
-          if (sliceCtx) {
-            sliceCtx.drawImage(
-              contentCanvas,
-              0, // sourceX
-              (yOffset / usableWidth) * contentCanvas.width, // sourceY
-              contentCanvas.width, // sourceWidth
-              sliceCanvas.height, // sourceHeight
-              0, // destX
-              0, // destY
-              sliceCanvas.width, // destWidth
-              sliceCanvas.height // destHeight
-            );
-          }
+            pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
 
-          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
+            yOffset += sliceHeight;
+            pageNumber++;
+        }
 
-          yOffset += sliceHeight;
-          pageNumber++;
-      }
-      
         pdf.save(`invoice_${invoice?.id}.pdf`);
         toast({ title: 'Success', description: 'Invoice exported as PDF.' });
 

@@ -138,7 +138,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                 </div>
 
                 <div id="proforma-main-content">
-                    <div className="flex justify-between items-start mb-2 relative" style={{ marginTop: '-1.5rem' }}>
+                    <div className="flex justify-between items-start mb-2" style={{ marginTop: '-1.5rem' }}>
                         <div className="flex-1"></div>
                         <div className="text-right">
                           <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
