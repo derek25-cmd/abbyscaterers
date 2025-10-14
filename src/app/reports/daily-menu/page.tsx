@@ -22,6 +22,7 @@ type OrderMenu = {
   orderId: string;
   clientName: string;
   pax: number;
+  mealType: string;
   menu: MenuCell[];
 };
 
@@ -92,6 +93,7 @@ export default function DailyMenuPlannerPage() {
             orderId: order.id,
             clientName: client?.companyName || 'Unknown Client',
             pax: event.numberOfPeople,
+            mealType: event.mealType,
             menu: menu,
         };
     }).filter((item): item is OrderMenu => item !== null);
@@ -140,46 +142,60 @@ export default function DailyMenuPlannerPage() {
     }
   }
 
-  const handlePdfExport = () => {
+ const handlePdfExport = () => {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      doc.text(`Daily Menu Report - ${selectedDate ? format(selectedDate, "PPP") : 'N/A'}`, 14, 15);
+      const COLUMNS_PER_PAGE = 5;
+      const totalColumns = menuData.length;
+      let startColumn = 0;
 
-      const head = [menuData.map(order => `${order.clientName} - #${order.pax} pax\n${order.orderId}`)];
-      
-      const body = Array.from({ length: 32 }).map((_, rowIndex) => 
-        menuData.map(order => order.menu[rowIndex]?.content || '')
-      );
+      while (startColumn < totalColumns) {
+        if (startColumn > 0) {
+            doc.addPage();
+        }
+        
+        doc.text(`Daily Menu Report - ${selectedDate ? format(selectedDate, "PPP") : 'N/A'}`, 14, 15);
+        
+        const endColumn = Math.min(startColumn + COLUMNS_PER_PAGE, totalColumns);
+        const pageMenuData = menuData.slice(startColumn, endColumn);
 
-      (doc as any).autoTable({
-        head: head,
-        body: body,
-        startY: 25,
-        theme: 'grid',
-        headStyles: {
-            fillColor: [244, 244, 245], // Corresponds to muted
-            textColor: [10, 10, 10],
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        styles: {
-            cellPadding: 2,
-            fontSize: 8,
-        },
-        didParseCell: function(data: any) {
-            if (data.row.section === 'head') return;
-            const rowIndex = data.row.index;
-            if (
-                rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
-                rowIndex + 1 === MEAL_SECTIONS.LUNCH.start ||
-                rowIndex + 1 === MEAL_SECTIONS.TEA.start
-            ) {
-                data.cell.styles.fontStyle = 'bold';
-                data.cell.styles.fillColor = [254, 249, 195]; // yellow-200
-            }
-        },
-      });
+        const head = [pageMenuData.map(order => `${order.clientName} - #${order.pax} pax\n${order.orderId}`)];
+        
+        const body = Array.from({ length: 32 }).map((_, rowIndex) => 
+          pageMenuData.map(order => order.menu[rowIndex]?.content || '')
+        );
+
+        (doc as any).autoTable({
+          head: head,
+          body: body,
+          startY: 25,
+          theme: 'grid',
+          headStyles: {
+              fillColor: [244, 244, 245], 
+              textColor: [10, 10, 10],
+              fontStyle: 'bold',
+              halign: 'center'
+          },
+          styles: {
+              cellPadding: 2,
+              fontSize: 8,
+          },
+          didParseCell: function(data: any) {
+              if (data.row.section === 'head') return;
+              const rowIndex = data.row.index;
+              if (
+                  rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
+                  rowIndex + 1 === MEAL_SECTIONS.LUNCH.start ||
+                  rowIndex + 1 === MEAL_SECTIONS.TEA.start
+              ) {
+                  data.cell.styles.fontStyle = 'bold';
+                  data.cell.styles.fillColor = [254, 249, 195]; 
+              }
+          },
+        });
+        startColumn = endColumn;
+      }
 
       doc.save(`Daily_Menu_Report_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
@@ -260,19 +276,38 @@ export default function DailyMenuPlannerPage() {
                             
                             return (
                                 <tr key={rowIndex}>
-                                    {menuData.map((order, orderIndex) => (
-                                        <td key={orderIndex} className={cn("border p-0 align-top", isHeaderRow && 'bg-primary/10')}>
+                                    {menuData.map((order, orderIndex) => {
+
+                                        const getIsDisabled = () => {
+                                            const mealType = order.mealType.toLowerCase();
+                                            const row = rowIndex + 1;
+                                            const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row <= MEAL_SECTIONS.BREAKFAST.end;
+                                            const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row <= MEAL_SECTIONS.LUNCH.end;
+                                            const isTeaSection = row >= MEAL_SECTIONS.TEA.start && row <= MEAL_SECTIONS.TEA.end;
+                                            
+                                            if (isBreakfastSection && !mealType.includes('breakfast') && !mealType.includes('brunch')) return true;
+                                            if (isLunchSection && !mealType.includes('lunch') && !mealType.includes('dinner')) return true;
+                                            if (isTeaSection && !mealType.includes('tea')) return true;
+
+                                            return false;
+                                        }
+                                        const isDisabled = getIsDisabled();
+
+                                        return (
+                                        <td key={orderIndex} className={cn("border p-0 align-top", isHeaderRow && 'bg-primary/10', isDisabled && 'bg-muted/50')}>
                                             <Popover>
-                                                <PopoverTrigger asChild>
+                                                <PopoverTrigger asChild disabled={isDisabled}>
                                                     <input
                                                         type="text"
                                                         value={order.menu[rowIndex]?.content || ''}
                                                         onChange={(e) => handleMenuChange(orderIndex, rowIndex, e.target.value)}
                                                         className={cn(
                                                             "w-full h-full p-2 bg-transparent focus:outline-none focus:bg-amber-100 dark:focus:bg-amber-900",
-                                                             isHeaderRow ? 'text-center font-bold text-primary' : ''
+                                                             isHeaderRow ? 'text-center font-bold text-primary' : '',
+                                                             isDisabled && 'cursor-not-allowed text-muted-foreground'
                                                         )}
                                                         placeholder={isHeaderRow ? (order.menu[rowIndex]?.content || 'Section...') : 'Enter item...'}
+                                                        disabled={isDisabled}
                                                     />
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -296,7 +331,8 @@ export default function DailyMenuPlannerPage() {
                                                 </PopoverContent>
                                             </Popover>
                                         </td>
-                                    ))}
+                                        )
+                                    })}
                                 </tr>
                             )
                         })}
@@ -316,4 +352,3 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
-
