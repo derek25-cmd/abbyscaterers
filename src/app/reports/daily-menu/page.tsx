@@ -8,7 +8,7 @@ import { useRecipeStorage } from '@/hooks/use-recipe-storage';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, Save, ArrowLeft, Download } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -42,6 +42,9 @@ export default function DailyMenuPlannerPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
+
+  const [selectedColumn, setSelectedColumn] = useState<number | null>(null);
+  const [clipboard, setClipboard] = useState<MenuCell[] | null>(null);
 
   const isLoading = ordersLoading || clientsLoading || recipesLoading;
 
@@ -109,6 +112,9 @@ export default function DailyMenuPlannerPage() {
     }).filter((item): item is OrderMenu => item !== null);
 
     setMenuData(initialMenuData);
+    // Reset selection when data changes
+    setSelectedColumn(null);
+    setClipboard(null);
   }, [selectedDate, orders, getClientById, isLoading, availableRecipes]);
 
   const handleMenuChange = (orderIndex: number, rowIndex: number, value: string) => {
@@ -217,6 +223,31 @@ export default function DailyMenuPlannerPage() {
       setIsExporting(false);
     }
   };
+  
+  const handleColumnSelect = (index: number) => {
+    setSelectedColumn(index);
+    setClipboard(null); // Clear clipboard when a new column is selected
+  };
+
+  const handleCopy = () => {
+    if (selectedColumn !== null) {
+      const menuToCopy = menuData[selectedColumn].menu.map(cell => ({...cell}));
+      setClipboard(menuToCopy);
+      toast({ title: 'Copied!', description: `Menu for ${menuData[selectedColumn].clientName} has been copied.` });
+    }
+  };
+
+  const handlePaste = (targetIndex: number) => {
+    if (clipboard) {
+      const newMenuData = [...menuData];
+      newMenuData[targetIndex].menu = clipboard.map(cell => ({...cell}));
+      setMenuData(newMenuData);
+      toast({ title: 'Pasted!', description: `Menu pasted to ${newMenuData[targetIndex].clientName}.` });
+      // Deselect after pasting
+      setSelectedColumn(null);
+      setClipboard(null);
+    }
+  };
 
 
   return (
@@ -270,9 +301,24 @@ export default function DailyMenuPlannerPage() {
                     <thead>
                         <tr className="bg-muted">
                             {menuData.map((order, orderIndex) => (
-                                <th key={orderIndex} className="border p-2 font-bold text-center align-top min-w-[200px]">
+                                <th key={orderIndex} className={cn("border p-2 font-bold text-center align-top min-w-[200px] cursor-pointer", selectedColumn === orderIndex && "bg-primary/20 ring-2 ring-primary z-10")} onClick={() => handleColumnSelect(orderIndex)}>
                                     <p className="font-semibold text-base">{order.clientName} - #{order.pax} pax</p>
                                     <p className="font-mono text-xs text-muted-foreground">{order.orderId}</p>
+                                    {selectedColumn === orderIndex && (
+                                       <div className="mt-2 flex justify-center gap-2">
+                                          <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleCopy(); }}>
+                                               {clipboard ? <ClipboardCheck className="mr-2 h-4 w-4"/> : <Clipboard className="mr-2 h-4 w-4"/>}
+                                               Copy
+                                           </Button>
+                                       </div>
+                                    )}
+                                     {selectedColumn !== null && selectedColumn !== orderIndex && clipboard && (
+                                        <div className="mt-2">
+                                            <Button size="sm" onClick={(e) => { e.stopPropagation(); handlePaste(orderIndex); }}>
+                                               <ClipboardCheck className="mr-2 h-4 w-4"/> Paste Here
+                                            </Button>
+                                        </div>
+                                    )}
                                 </th>
                             ))}
                         </tr>
@@ -305,7 +351,7 @@ export default function DailyMenuPlannerPage() {
                                         const isDisabled = getIsDisabled();
 
                                         return (
-                                        <td key={orderIndex} className={cn("border p-0 align-top", isHeaderRow && 'bg-primary/10', isDisabled && 'bg-muted/50')}>
+                                        <td key={orderIndex} className={cn("border p-0 align-top", isHeaderRow && 'bg-primary/10', isDisabled && 'bg-muted/50', selectedColumn === orderIndex && "bg-primary/5")}>
                                             <Popover>
                                                 <PopoverTrigger asChild disabled={isDisabled}>
                                                     <input
@@ -363,3 +409,4 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
+
