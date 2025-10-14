@@ -56,12 +56,14 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
   const handleExportPDF = async () => {
+    const headerElement = document.getElementById('invoice-header');
     const contentElement = document.getElementById('invoice-main-content');
-    if (!contentElement) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find the main content to export.' });
+    const footerElement = document.getElementById('invoice-footer');
+    
+    if (!contentElement || !headerElement || !footerElement) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the invoice to export.' });
         return;
     }
-
     setExporting(true);
 
     try {
@@ -69,89 +71,66 @@ export function InvoiceViewPageComponent() {
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
         const marginX = 30;
+        const marginTop = 20;
+        const marginBottom = 5;
+        const usableWidth = pageWidth - (marginX * 2);
 
-        if (showHeaders) {
-            const headerElement = document.getElementById('invoice-header');
-            const footerElement = document.getElementById('invoice-footer');
+        // Capture header, content, and footer
+        const headerCanvas = await html2canvas(headerElement, { scale: 2 });
+        const contentCanvas = await html2canvas(contentElement, { scale: 2 });
+        const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
-            if (!headerElement || !footerElement) {
-                toast({ variant: 'destructive', title: 'Error', description: 'Header or footer element not found.' });
-                setExporting(false);
-                return;
-            }
-            
-            const marginTop = 20;
-            const marginBottom = 5;
-            const usableWidth = pageWidth - marginX * 2;
+        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-            const headerCanvas = await html2canvas(headerElement, { scale: 2 });
-            const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-            const footerCanvas = await html2canvas(footerElement, { scale: 2 });
+        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-            const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-            const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-            const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+        const contentDataURL = contentCanvas.toDataURL('image/png');
+        const headerDataURL = headerCanvas.toDataURL('image/png');
+        const footerDataURL = footerCanvas.toDataURL('image/png');
 
-            const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-            const contentDataURL = contentCanvas.toDataURL('image/png');
-            const headerDataURL = headerCanvas.toDataURL('image/png');
-            const footerDataURL = footerCanvas.toDataURL('image/png');
+        let yOffset = 0;
+        let pageNumber = 1;
 
-            let yOffset = 0;
-            let pageNumber = 1;
+        while (yOffset < contentImgHeight) {
+          if (pageNumber > 1) {
+              pdf.addPage();
+          }
 
-            while (yOffset < contentImgHeight) {
-                if (pageNumber > 1) pdf.addPage();
-                pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
-                pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-                
-                const sliceCanvas = document.createElement('canvas');
-                const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-                sliceCanvas.width = contentCanvas.width;
-                sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+          if (showHeaders) {
+            // Add header
+            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+            // Add footer
+            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+          }
 
-                const sliceCtx = sliceCanvas.getContext('2d');
-                if (sliceCtx) {
-                    sliceCtx.drawImage(contentCanvas, 0, (yOffset / usableWidth) * contentCanvas.width, contentCanvas.width, sliceCanvas.height, 0, 0, sliceCanvas.width, sliceCanvas.height);
-                }
-                pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
+          // Calculate the height of the slice for the current page
+          const sliceCanvas = document.createElement('canvas');
+          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+          sliceCanvas.width = contentCanvas.width;
+          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
 
-                yOffset += sliceHeight;
-                pageNumber++;
-            }
-        } else {
-            // Export without headers and footers
-            const marginTop = 40;
-            const marginBottom = 40;
-            const usableHeight = pageHeight - marginTop - marginBottom;
-            const usableWidth = pageWidth - marginX * 2;
-            
-            const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-            const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-            const contentDataURL = contentCanvas.toDataURL('image/png');
+          const sliceCtx = sliceCanvas.getContext('2d');
+          if (sliceCtx) {
+            sliceCtx.drawImage(
+              contentCanvas,
+              0, // sourceX
+              (yOffset / usableWidth) * contentCanvas.width, // sourceY
+              contentCanvas.width, // sourceWidth
+              sliceCanvas.height, // sourceHeight
+              0, // destX
+              0, // destY
+              sliceCanvas.width, // destWidth
+              sliceCanvas.height // destHeight
+            );
+          }
 
-            let yOffset = 0;
-            let pageNumber = 1;
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
 
-            while (yOffset < contentImgHeight) {
-                if (pageNumber > 1) pdf.addPage();
-                
-                const sliceHeight = Math.min(usableHeight, contentImgHeight - yOffset);
-                
-                const sliceCanvas = document.createElement('canvas');
-                sliceCanvas.width = contentCanvas.width;
-                sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
-
-                const sliceCtx = sliceCanvas.getContext('2d');
-                if (sliceCtx) {
-                    sliceCtx.drawImage(contentCanvas, 0, (yOffset / usableWidth) * contentCanvas.width, contentCanvas.width, sliceCanvas.height, 0, 0, sliceCanvas.width, sliceCanvas.height);
-                }
-                
-                pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, sliceHeight);
-                yOffset += sliceHeight;
-                pageNumber++;
-            }
-        }
+          yOffset += sliceHeight;
+          pageNumber++;
+      }
       
         pdf.save(`invoice_${invoice?.id}.pdf`);
         toast({ title: 'Success', description: 'Invoice exported as PDF.' });
@@ -213,7 +192,7 @@ export function InvoiceViewPageComponent() {
                 <Switch id="show-headers" checked={showHeaders} onCheckedChange={setShowHeaders} />
                 <Label htmlFor="show-headers" className="text-sm text-muted-foreground flex items-center">
                     {showHeaders ? <Eye className="w-4 h-4 mr-1"/> : <EyeOff className="w-4 h-4 mr-1"/>}
-                    Show Header & Footer
+                    Show Header &amp; Footer
                 </Label>
             </div>
           </div>
