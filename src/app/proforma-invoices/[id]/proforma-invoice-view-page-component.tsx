@@ -89,8 +89,8 @@ export function ProformaInvoiceViewPageComponent() {
     const contentElement = document.getElementById('proforma-main-content');
     const footerElement = document.getElementById('proforma-footer');
     
-    if (!contentElement) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find proforma content to export.' });
+    if (!contentElement || !headerElement || !footerElement) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the proforma to export.' });
         return;
     }
     
@@ -105,19 +105,20 @@ export function ProformaInvoiceViewPageComponent() {
         const marginBottom = 5;
         const usableWidth = pageWidth - (marginX * 2);
 
-        const headerCanvas = showHeaders && headerElement ? await html2canvas(headerElement, { scale: 2 }) : null;
+        // Always capture header, content, and footer to calculate heights
+        const headerCanvas = await html2canvas(headerElement, { scale: 2 });
         const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-        const footerCanvas = showHeaders && footerElement ? await html2canvas(footerElement, { scale: 2 }) : null;
+        const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
-        const headerHeight = headerCanvas ? (headerCanvas.height * usableWidth) / headerCanvas.width : 0;
-        const footerHeight = footerCanvas ? (footerCanvas.height * usableWidth) / footerCanvas.width : 0;
+        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
         const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
         const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
         const contentDataURL = contentCanvas.toDataURL('image/png');
-        const headerDataURL = headerCanvas?.toDataURL('image/png');
-        const footerDataURL = footerCanvas?.toDataURL('image/png');
+        const headerDataURL = headerCanvas.toDataURL('image/png');
+        const footerDataURL = footerCanvas.toDataURL('image/png');
 
         let yOffset = 0;
         let pageNumber = 1;
@@ -125,10 +126,12 @@ export function ProformaInvoiceViewPageComponent() {
         while (yOffset < contentImgHeight) {
           if (pageNumber > 1) pdf.addPage();
         
-          if (showHeaders && headerDataURL) {
+          // Conditionally draw header
+          if (showHeaders) {
               pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
           }
-          if (showHeaders && footerDataURL) {
+          // Conditionally draw footer
+          if (showHeaders) {
               pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
           }
 
