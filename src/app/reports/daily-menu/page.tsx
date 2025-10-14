@@ -71,6 +71,11 @@ export default function DailyMenuPlannerPage() {
         
         const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
 
+        // Always set headers
+        menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
+        menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
+        menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
+
         const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
           return event.recipes
             .map(r => {
@@ -80,27 +85,25 @@ export default function DailyMenuPlannerPage() {
             .filter((name): name is string => name !== null);
         };
 
-        const addRecipesToMenu = (mealTitle: string, section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
-             menu[MEAL_SECTIONS[section].start -1] = { content: mealTitle, mealType: 'header' };
+        const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
              recipes.forEach((recipeName, i) => {
                  if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
-                    menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: mealTitle };
+                    menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
                  }
              })
         }
         
-        if (event.mealType.includes('Breakfast') || event.mealType.includes('Brunch')) {
-            const mealTitle = event.mealType.includes('Brunch') ? 'Brunch' : 'Breakfast';
-            addRecipesToMenu(mealTitle, 'BREAKFAST', getRecipesForMealType('Breakfast'));
-        }
-        if (event.mealType.includes('Lunch') || event.mealType.includes('Dinner')) {
-            const mealTitle = event.mealType.includes('Dinner') ? 'Dinner' : 'Lunch';
-            addRecipesToMenu(mealTitle, 'LUNCH', getRecipesForMealType('Lunch/Dinner'));
-        }
-        if (event.mealType.includes('Evening tea')) {
-            addRecipesToMenu('Evening Tea', 'TEA', getRecipesForMealType('Evening Tea'));
-        }
+        const orderMealType = event.mealType.toLowerCase();
 
+        if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
+            addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
+        }
+        if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
+            addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
+        }
+        if (orderMealType.includes('evening tea')) {
+            addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
+        }
 
         return {
             orderId: order.id,
@@ -239,13 +242,36 @@ export default function DailyMenuPlannerPage() {
 
   const handlePaste = (targetIndex: number) => {
     if (clipboard) {
-      const newMenuData = [...menuData];
-      newMenuData[targetIndex].menu = clipboard.map(cell => ({...cell}));
-      setMenuData(newMenuData);
-      toast({ title: 'Pasted!', description: `Menu pasted to ${newMenuData[targetIndex].clientName}.` });
-      // Deselect after pasting
-      setSelectedColumn(null);
-      setClipboard(null);
+        const newMenuData = [...menuData];
+        const targetOrder = newMenuData[targetIndex];
+        const targetMealType = targetOrder.mealType.toLowerCase();
+
+        const pastedMenu = targetOrder.menu.map((cell, index) => {
+            const row = index + 1;
+            const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
+            const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row < MEAL_SECTIONS.TEA.start;
+            const isTeaSection = row >= MEAL_SECTIONS.TEA.start;
+
+            const copiedCell = clipboard[index];
+
+            if (isBreakfastSection && (targetMealType.includes('breakfast') || targetMealType.includes('brunch'))) {
+                return { ...copiedCell };
+            }
+            if (isLunchSection && (targetMealType.includes('lunch') || targetMealType.includes('dinner'))) {
+                return { ...copiedCell };
+            }
+            if (isTeaSection && targetMealType.includes('tea')) {
+                return { ...copiedCell };
+            }
+            // Keep header rows, otherwise clear the cell
+            return cell.mealType === 'header' ? cell : { content: '', mealType: '' };
+        });
+
+        targetOrder.menu = pastedMenu;
+        setMenuData(newMenuData);
+        toast({ title: 'Pasted!', description: `Relevant menu items pasted to ${targetOrder.clientName}.` });
+        setSelectedColumn(null);
+        setClipboard(null);
     }
   };
 
@@ -304,6 +330,7 @@ export default function DailyMenuPlannerPage() {
                                 <th key={orderIndex} className={cn("border p-2 font-bold text-center align-top min-w-[200px] cursor-pointer", selectedColumn === orderIndex && "bg-primary/20 ring-2 ring-primary z-10")} onClick={() => handleColumnSelect(orderIndex)}>
                                     <p className="font-semibold text-base">{order.clientName} - #{order.pax} pax</p>
                                     <p className="font-mono text-xs text-muted-foreground">{order.orderId}</p>
+                                     <p className="font-sans text-xs text-accent">{order.mealType}</p>
                                     {selectedColumn === orderIndex && (
                                        <div className="mt-2 flex justify-center gap-2">
                                           <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleCopy(); }}>
@@ -336,11 +363,12 @@ export default function DailyMenuPlannerPage() {
                                     {menuData.map((order, orderIndex) => {
 
                                         const getIsDisabled = () => {
+                                            if (isHeaderRow) return false;
                                             const mealType = order.mealType.toLowerCase();
                                             const row = rowIndex + 1;
-                                            const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row <= MEAL_SECTIONS.BREAKFAST.end;
-                                            const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row <= MEAL_SECTIONS.LUNCH.end;
-                                            const isTeaSection = row >= MEAL_SECTIONS.TEA.start && row <= MEAL_SECTIONS.TEA.end;
+                                            const isBreakfastSection = row > MEAL_SECTIONS.BREAKFAST.start && row <= MEAL_SECTIONS.BREAKFAST.end;
+                                            const isLunchSection = row > MEAL_SECTIONS.LUNCH.start && row <= MEAL_SECTIONS.LUNCH.end;
+                                            const isTeaSection = row > MEAL_SECTIONS.TEA.start && row <= MEAL_SECTIONS.TEA.end;
                                             
                                             if (isBreakfastSection && !mealType.includes('breakfast') && !mealType.includes('brunch')) return true;
                                             if (isLunchSection && !mealType.includes('lunch') && !mealType.includes('dinner')) return true;
@@ -363,8 +391,8 @@ export default function DailyMenuPlannerPage() {
                                                              isHeaderRow ? 'text-center font-bold text-primary' : '',
                                                              isDisabled && 'cursor-not-allowed text-muted-foreground'
                                                         )}
-                                                        placeholder={isHeaderRow ? (order.menu[rowIndex]?.content || 'Section...') : 'Enter item...'}
-                                                        disabled={isDisabled}
+                                                        placeholder={isHeaderRow ? '' : 'Enter item...'}
+                                                        disabled={isDisabled || isHeaderRow}
                                                     />
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -409,4 +437,5 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
+
 
