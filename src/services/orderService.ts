@@ -65,15 +65,13 @@ export const getLatestOrderNumber = async (): Promise<number> => {
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
-    const settings = JSON.parse(localStorage.getItem('caterSmartAppSettings') || '{}');
-    const nextOrderNumber = settings.nextOrderNumber || 1;
-    const newOrderId = `ORD-${String(nextOrderNumber).padStart(5, '0')}`;
-    
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
+    // Omit 'id' from the initial insert object to let Supabase generate it.
+    const { id, ...orderPayload } = orderData;
+
     const newOrderData = {
-        ...orderData,
-        id: newOrderId,
+        ...orderPayload,
         name: name,
         createdAt: now,
         updatedAt: now,
@@ -85,8 +83,6 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         console.error('Error adding order:', JSON.stringify(error, null, 2));
         return null;
     }
-    
-    localStorage.setItem('caterSmartAppSettings', JSON.stringify({ ...settings, nextOrderNumber: nextOrderNumber + 1 }));
 
     return mapDbToOrder(data);
 };

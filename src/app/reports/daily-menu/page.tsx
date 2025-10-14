@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { useClientStorage } from '@/hooks/use-client-storage';
 import { useRecipeStorage } from '@/hooks/use-recipe-storage';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon, Loader2, Save, ArrowLeft, Download } from 'lucide-react';
@@ -48,11 +48,20 @@ export default function DailyMenuPlannerPage() {
   useEffect(() => {
     if (isLoading) return;
     
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const todaysOrders = orders.filter(order => order.clientEvents.some(e => e.date.startsWith(dateStr)));
+    const targetDayStart = startOfDay(selectedDate).getTime();
+
+    const todaysOrders = orders.filter(order => 
+        order.clientEvents.some(e => {
+            const eventDayStart = startOfDay(parseISO(e.date)).getTime();
+            return eventDayStart === targetDayStart;
+        })
+    );
 
     const initialMenuData: OrderMenu[] = todaysOrders.map(order => {
-        const event = order.clientEvents.find(e => e.date.startsWith(dateStr));
+        const event = order.clientEvents.find(e => {
+            const eventDayStart = startOfDay(parseISO(e.date)).getTime();
+            return eventDayStart === targetDayStart;
+        });
         if (!event) return null;
 
         const client = getClientById(event.clientId);
@@ -115,8 +124,9 @@ export default function DailyMenuPlannerPage() {
             const originalOrder = orders.find(o => o.id === orderMenu.orderId);
             if (!originalOrder) continue;
             
-            const dateStr = format(selectedDate, 'yyyy-MM-dd');
-            const eventIndex = originalOrder.clientEvents.findIndex(e => e.date.startsWith(dateStr));
+            const targetDayStart = startOfDay(selectedDate).getTime();
+            const eventIndex = originalOrder.clientEvents.findIndex(e => startOfDay(parseISO(e.date)).getTime() === targetDayStart);
+
             if (eventIndex === -1) continue;
 
             const updatedEvents = [...originalOrder.clientEvents];
