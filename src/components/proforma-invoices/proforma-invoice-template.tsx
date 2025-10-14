@@ -137,14 +137,14 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
                 </div>
 
                 <div id="proforma-main-content">
-                    <div className="flex justify-between items-start mb-2 relative" style={{ marginTop: '-1.5rem' }}>
+                    <div className="flex justify-between items-start mb-2 relative">
                         <div className="flex-1"></div>
-                        <div className="text-right">
-                        <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
-                        <div className="mt-1 text-base space-y-0">
-                            <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
-                            <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
-                        </div>
+                        <div className="text-right" style={{ marginTop: '-1rem' }}>
+                          <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
+                          <div className="mt-1 text-base space-y-0">
+                              <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
+                              <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
+                          </div>
                         </div>
                     </div>
 
@@ -302,5 +302,3 @@ export function ProformaInvoiceTemplate({ invoiceData, client }: ProformaInvoice
         </>
     );
 }
-
-    

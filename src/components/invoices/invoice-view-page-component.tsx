@@ -67,46 +67,66 @@ export function InvoiceViewPageComponent() {
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const marginX = 40; // 40 points margin
+        const marginX = 30;
         const marginTop = 20;
-        const marginBottom = 20;
+        const marginBottom = 5;
         const usableWidth = pageWidth - (marginX * 2);
 
+        // Capture header, content, and footer
         const headerCanvas = await html2canvas(headerElement, { scale: 2 });
         const contentCanvas = await html2canvas(contentElement, { scale: 2 });
         const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
         const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
         const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-        
-        const contentImgWidth = usableWidth;
-        const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
-
         const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-        let heightLeft = contentImgHeight;
-        let position = 0;
+        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-        // Add first page
-        pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
-        pdf.addImage(contentCanvas, 'PNG', marginX, marginTop + headerHeight, contentImgWidth, contentImgHeight);
-        pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+        const contentDataURL = contentCanvas.toDataURL('image/png');
+        const headerDataURL = headerCanvas.toDataURL('image/png');
+        const footerDataURL = footerCanvas.toDataURL('image/png');
 
-        heightLeft -= usableContentHeight;
+        let yOffset = 0;
+        let pageNumber = 1;
 
-        while (heightLeft > 0) {
-            position -= usableContentHeight;
-            pdf.addPage();
-            
-            // Add header and footer to every new page
-            pdf.addImage(headerCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop, usableWidth, headerHeight);
-            pdf.addImage(footerCanvas.toDataURL('image/png'), 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+        while (yOffset < contentImgHeight) {
+          if (pageNumber > 1) {
+              pdf.addPage();
+          }
 
-            // Add the remaining content
-            pdf.addImage(contentCanvas, 'PNG', marginX, position + marginTop + headerHeight, contentImgWidth, contentImgHeight);
+          // Add header
+          pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+          
+          // Add footer
+          pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
 
-            heightLeft -= usableContentHeight;
-        }
+          // Calculate the height of the slice for the current page
+          const sliceCanvas = document.createElement('canvas');
+          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+          sliceCanvas.width = contentCanvas.width;
+          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+
+          const sliceCtx = sliceCanvas.getContext('2d');
+          if (sliceCtx) {
+            sliceCtx.drawImage(
+              contentCanvas,
+              0, // sourceX
+              (yOffset / usableWidth) * contentCanvas.width, // sourceY
+              contentCanvas.width, // sourceWidth
+              sliceCanvas.height, // sourceHeight
+              0, // destX
+              0, // destY
+              sliceCanvas.width, // destWidth
+              sliceCanvas.height // destHeight
+            );
+          }
+
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
+
+          yOffset += sliceHeight;
+          pageNumber++;
+      }
       
         pdf.save(`invoice_${invoice?.id}.pdf`);
         toast({ title: 'Success', description: 'Invoice exported as PDF.' });

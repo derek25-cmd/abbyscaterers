@@ -93,78 +93,72 @@ export function ProformaInvoiceViewPageComponent() {
     setExporting(true);
 
     try {
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const marginX = 40; // 40 points margin
-      const marginTop = 20;
-      const marginBottom = 20;
-      const usableWidth = pageWidth - (marginX * 2);
+        const pdf = new jsPDF('p', 'pt', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const marginX = 30;
+        const marginTop = 20;
+        const marginBottom = 5;
+        const usableWidth = pageWidth - (marginX * 2);
 
-      const headerCanvas = await html2canvas(headerElement, { scale: 2 });
-      const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-      const footerCanvas = await html2canvas(footerElement, { scale: 2 });
+        // Capture header, content, and footer
+        const headerCanvas = await html2canvas(headerElement, { scale: 2 });
+        const contentCanvas = await html2canvas(contentElement, { scale: 2 });
+        const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
-      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-      const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-      const contentImgWidth = usableWidth;
-      const contentImgHeight = (contentCanvas.height * contentImgWidth) / contentCanvas.width;
+        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+
+        const contentDataURL = contentCanvas.toDataURL('image/png');
+        const headerDataURL = headerCanvas.toDataURL('image/png');
+        const footerDataURL = footerCanvas.toDataURL('image/png');
+
+        let yOffset = 0;
+        let pageNumber = 1;
+
+        while (yOffset < contentImgHeight) {
+            if (pageNumber > 1) {
+                pdf.addPage();
+            }
+
+            // Add header
+            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+            
+            // Add footer
+            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+
+            // Calculate the height of the slice for the current page
+            const sliceCanvas = document.createElement('canvas');
+            const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+            sliceCanvas.width = contentCanvas.width;
+            sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+
+            const sliceCtx = sliceCanvas.getContext('2d');
+            if (sliceCtx) {
+                sliceCtx.drawImage(
+                    contentCanvas,
+                    0, // sourceX
+                    (yOffset / usableWidth) * contentCanvas.width, // sourceY
+                    contentCanvas.width, // sourceWidth
+                    sliceCanvas.height, // sourceHeight
+                    0, // destX
+                    0, // destY
+                    sliceCanvas.width, // destWidth
+                    sliceCanvas.height // destHeight
+                );
+            }
+
+            pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
+
+            yOffset += sliceHeight;
+            pageNumber++;
+        }
       
-      const contentDataURL = contentCanvas.toDataURL('image/png');
-      const headerDataURL = headerCanvas.toDataURL('image/png');
-      const footerDataURL = footerCanvas.toDataURL('image/png');
-
-      let yOffset = 0;
-      let pageNumber = 1;
-
-      while (yOffset < contentImgHeight) {
-          if (pageNumber > 1) {
-              pdf.addPage();
-          }
-
-          // Add header
-          pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
-
-          // Calculate the height of the slice for the current page
-          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = contentCanvas.width;
-          sliceCanvas.height = (sliceHeight / contentImgHeight) * contentCanvas.height;
-          const sliceCtx = sliceCanvas.getContext('2d');
-          
-          sliceCtx?.drawImage(
-              contentCanvas,
-              0, // sourceX
-              yOffset * (contentCanvas.height / contentImgHeight), // sourceY
-              contentCanvas.width, // sourceWidth
-              sliceCanvas.height, // sourceHeight
-              0, // destX
-              0, // destY
-              sliceCanvas.width, // destWidth
-              sliceCanvas.height // destHeight
-          );
-          
-          // Add content slice to PDF
-          pdf.addImage(
-              sliceCanvas.toDataURL('image/png'),
-              'PNG',
-              marginX,
-              marginTop + headerHeight,
-              usableWidth,
-              sliceHeight
-          );
-
-          // Add footer
-          pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-
-          yOffset += sliceHeight;
-          pageNumber++;
-      }
-      
-      pdf.save(`proforma_${invoice?.id}.pdf`);
-      toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
+        pdf.save(`proforma_${invoice?.id}.pdf`);
+        toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
 
     } catch (error) {
         console.error("PDF Export Error:", error);

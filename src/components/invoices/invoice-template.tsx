@@ -255,5 +255,3 @@ export function InvoiceTemplate({ invoiceData, client }: InvoiceTemplateProps) {
         </div>
     );
 }
-
-    
