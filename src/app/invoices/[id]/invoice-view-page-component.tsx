@@ -94,8 +94,13 @@ export function InvoiceViewPageComponent() {
         while (yOffset < contentImgHeight) {
             if (pageNumber > 1) pdf.addPage();
             
-            if(showHeaders) {
-                pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+
+            if (!showHeaders) {
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(marginX, marginTop, usableWidth, headerHeight, 'F');
+                pdf.rect(marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight, 'F');
             }
 
             const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
@@ -116,10 +121,6 @@ export function InvoiceViewPageComponent() {
                 pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
             }
             
-            if (showHeaders) {
-                pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-            }
-
             yOffset += sliceHeight;
             pageNumber++;
         }
@@ -207,3 +208,5 @@ export function InvoiceViewPageComponent() {
     </>
   );
 }
+
+    
