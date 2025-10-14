@@ -75,7 +75,6 @@ export function InvoiceViewPageComponent() {
         const marginBottom = 5;
         const usableWidth = pageWidth - (marginX * 2);
 
-        // Always capture header, content, and footer to calculate heights
         const headerCanvas = await html2canvas(headerElement, { scale: 2 });
         const contentCanvas = await html2canvas(contentElement, { scale: 2 });
         const footerCanvas = await html2canvas(footerElement, { scale: 2 });
@@ -83,7 +82,6 @@ export function InvoiceViewPageComponent() {
         const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
         const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
         const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-
         const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
         const contentDataURL = contentCanvas.toDataURL('image/png');
@@ -95,13 +93,11 @@ export function InvoiceViewPageComponent() {
 
         while (yOffset < contentImgHeight) {
             if (pageNumber > 1) pdf.addPage();
-
-            // Header area
-            if (showHeaders) {
+            
+            if(showHeaders) {
                 pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
             }
 
-            // Draw content slice
             const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
             
             const sliceCanvas = document.createElement('canvas');
@@ -117,11 +113,9 @@ export function InvoiceViewPageComponent() {
                     0, 0,
                     sliceCanvas.width, sliceCanvas.height
                 );
+                pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
             }
-
-            pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
             
-            // Footer area
             if (showHeaders) {
                 pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
             }
