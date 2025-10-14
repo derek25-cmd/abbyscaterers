@@ -1,4 +1,5 @@
 
+
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
@@ -178,8 +179,8 @@ export default function DailyMenuPlannerPage() {
               halign: 'center'
           },
           styles: {
-              cellPadding: 2,
-              fontSize: 8,
+              cellPadding: 1,
+              fontSize: 7,
           },
           didParseCell: function(data: any) {
               if (data.row.section === 'head') return;
