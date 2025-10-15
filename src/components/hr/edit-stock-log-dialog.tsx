@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client'
 import {
@@ -18,6 +17,11 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
 import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 
 export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products }) {
   const [productId, setProductId] = useState('');
@@ -109,16 +113,50 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
               <Label htmlFor="product" className="text-right">
                 Product
               </Label>
-              <Select onValueChange={setProductId} value={productId}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+               <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                            "w-full justify-between col-span-3",
+                            !productId && "text-muted-foreground"
+                        )}
+                        >
+                        {productId
+                            ? products.find(
+                                (p) => p.id === productId
+                            )?.name
+                            : "Select product"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                        <CommandInput placeholder="Search product..." />
+                        <CommandList>
+                            <CommandEmpty>No product found.</CommandEmpty>
+                            <CommandGroup>
+                            {products.map((p) => (
+                                <CommandItem
+                                value={`${p.name} (${p.id})`}
+                                key={p.id}
+                                onSelect={() => setProductId(p.id)}
+                                >
+                                <Check
+                                    className={cn(
+                                    "mr-2 h-4 w-4",
+                                    p.id === productId ? "opacity-100" : "opacity-0"
+                                    )}
+                                />
+                                {p.name} (Qty: {p.quantity})
+                                </CommandItem>
+                            ))}
+                            </CommandGroup>
+                        </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
             </div>
 
             {selectedProduct && (

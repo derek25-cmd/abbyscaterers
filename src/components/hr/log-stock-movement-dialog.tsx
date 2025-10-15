@@ -16,8 +16,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
+import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
+import { cn } from "@/lib/utils";
 
 export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
   const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '' }]);
@@ -96,12 +99,50 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div>
                         <Label>Product</Label>
-                         <Select onValueChange={(value) => handleItemChange(index, 'productId', value)} value={item.productId}>
-                            <SelectTrigger><SelectValue placeholder="Select a product" /></SelectTrigger>
-                            <SelectContent>
-                                {products.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} (Qty: {p.quantity})</SelectItem>))}
-                            </SelectContent>
-                        </Select>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                    "w-full justify-between",
+                                    !item.productId && "text-muted-foreground"
+                                )}
+                                >
+                                {item.productId
+                                    ? products.find(
+                                        (p) => p.id === item.productId
+                                    )?.name
+                                    : "Select product"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                <CommandInput placeholder="Search product..." />
+                                <CommandList>
+                                    <CommandEmpty>No product found.</CommandEmpty>
+                                    <CommandGroup>
+                                    {products.map((p) => (
+                                        <CommandItem
+                                        value={`${p.name} (${p.id})`}
+                                        key={p.id}
+                                        onSelect={() => handleItemChange(index, 'productId', p.id)}
+                                        >
+                                        <Check
+                                            className={cn(
+                                            "mr-2 h-4 w-4",
+                                            p.id === item.productId ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {p.name} (Qty: {p.quantity})
+                                        </CommandItem>
+                                    ))}
+                                    </CommandGroup>
+                                </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                      </div>
                      <div>
                         <Label>Quantity</Label>
