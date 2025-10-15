@@ -24,7 +24,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 
 export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
-  const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '', actualPrice: 0 }]);
+  const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
   const { orders } = useOrderStorage();
   
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
@@ -33,7 +33,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
 
   useEffect(() => {
     if (isOpen) {
-        setItems([{ productId: '', quantity: 1, reason: '', orderId: '', actualPrice: 0 }]);
+        setItems([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
     }
   }, [isOpen]);
 
@@ -44,7 +44,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
     if (field === 'productId') {
         const product = getProduct(value);
         if (product) {
-            newItems[index]['actualPrice'] = product.unitPrice;
+            newItems[index]['actual_unit_price'] = product.unitPrice;
         }
     }
 
@@ -52,7 +52,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   };
 
   const addItem = () => {
-    setItems([...items, { productId: '', quantity: 1, reason: '', orderId: '', actualPrice: 0 }]);
+    setItems([...items, { productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
   };
 
   const removeItem = (index) => {
@@ -62,7 +62,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const validItems = items.filter(item => item.productId && item.quantity > 0 && item.reason && item.actualPrice >= 0);
+    const validItems = items.filter(item => item.productId && item.quantity > 0 && item.reason && item.actual_unit_price >= 0);
     if (validItems.length === 0) {
         alert("Please add at least one valid item to log.");
         return;
@@ -78,7 +78,8 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         type: logType,
         reason: finalReason,
         quantity: Number(item.quantity),
-        price: Number(item.actualPrice) * Number(item.quantity), // Use actual price for total cost
+        price: Number(item.actual_unit_price) * Number(item.quantity),
+        actual_unit_price: Number(item.actual_unit_price),
       });
     });
 
@@ -87,7 +88,8 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   
   const getProduct = (productId) => products.find(p => p.id === productId);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount) => {
+    if (typeof amount !== 'number') return 'TZS 0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
 
@@ -106,7 +108,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
             {items.map((item, index) => {
                 const product = getProduct(item.productId);
                 const catalogPrice = product?.unitPrice || 0;
-                const priceVariation = item.actualPrice - catalogPrice;
+                const priceVariation = item.actual_unit_price - catalogPrice;
 
                return (
                <Card key={index} className="relative p-4 bg-muted/50">
@@ -203,7 +205,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                     </div>
                     <div>
                         <Label>Actual Price (per unit)</Label>
-                        <Input type="number" value={item.actualPrice} onChange={(e) => handleItemChange(index, 'actualPrice', e.target.value)} min="0" step="any" />
+                        <Input type="number" value={item.actual_unit_price} onChange={(e) => handleItemChange(index, 'actual_unit_price', e.target.value)} min="0" step="any" />
                     </div>
                  </div>
 
