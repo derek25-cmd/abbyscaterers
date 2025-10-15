@@ -21,14 +21,10 @@ import { format, parseISO } from "date-fns";
 import { StockLog, Product } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
-import CostingSummary from "@/components/costing/CostingSummary";
-import EventIncomeTable from "@/components/costing/EventIncomeTable";
-import { useOrderStorage } from "@/hooks/use-order-storage";
-import StockLogTable from "@/components/costing/StockLogTable";
 
 
 export default function StockLogsPage() {
-  const { logs, isLoading: logsLoading, addStockLog, updateStockLog } = useStockLogStorage();
+  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore } = useStockLogStorage();
   const { products, isLoading: productsLoading, updateProduct: updateProductInStore } = useProductStorage();
 
   const [loading, setLoading] = useState(true);
@@ -58,7 +54,10 @@ export default function StockLogsPage() {
         return;
     }
 
-    await addStockLog(movement);
+    const price = product.unitPrice * movement.quantity;
+    const logData = { ...movement, price, productName: product.name };
+
+    await addStockLog(logData);
 
     const updatedProduct = { ...product };
     if(movement.type === 'Stock In') {
@@ -75,7 +74,7 @@ export default function StockLogsPage() {
   };
 
   const handleEditLog = async (updatedLog: any) => {
-    await updateStockLog(updatedLog.id, updatedLog);
+    await updateStockLogInStore(updatedLog.id, updatedLog);
   };
 
   const openEditDialog = (log: StockLog) => {
@@ -89,6 +88,7 @@ export default function StockLogsPage() {
   };
 
   const formatCurrency = (amount: number) => {
+    if(typeof amount !== 'number') return 'TZS 0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
   
@@ -356,5 +356,3 @@ export default function StockLogsPage() {
     </main>
   );
 }
-
-    

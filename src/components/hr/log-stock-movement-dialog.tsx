@@ -123,7 +123,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                                 <CommandList>
                                     <CommandEmpty>No product found.</CommandEmpty>
                                     <CommandGroup>
-                                    {products.map((p) => (
+                                    {(products || []).map((p) => (
                                         <CommandItem
                                         value={`${p.name} (${p.id})`}
                                         key={p.id}
