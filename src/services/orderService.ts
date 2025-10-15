@@ -69,7 +69,6 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     
     const newOrderData = {
         ...orderData,
-        id: orderData.id || `ORD-${Date.now()}`, // Ensure ID exists
         name: name,
         createdAt: now,
         updatedAt: now,
@@ -113,4 +112,3 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     }
     return !error;
 };
-
