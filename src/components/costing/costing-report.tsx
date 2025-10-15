@@ -3,7 +3,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, DollarSign, PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -12,6 +12,9 @@ import StockLogTable from "./StockLogTable";
 import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import EventIncomeTable from "./EventIncomeTable";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 
 type CostingReportProps = {
     request: any;
@@ -24,6 +27,8 @@ type CostingReportProps = {
 export const CostingReport = ({ request, onBack, clients, orders, isLoading: parentLoading }: CostingReportProps) => {
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
+  const [miscIncome, setMiscIncome] = useState(0);
+  const [miscExpenses, setMiscExpenses] = useState(0);
   
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
 
@@ -72,8 +77,10 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
   }, [request, clients, orders, allLogs, isLoading]);
 
-  const totalIncome = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
-  const netProfitLoss = totalIncome - ingredientCost;
+  const incomeFromEvents = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
+  const totalIncome = incomeFromEvents + miscIncome;
+  const totalIngredientCost = ingredientCost + miscExpenses;
+  const netProfitLoss = totalIncome - totalIngredientCost;
 
   const handlePdfExport = () => {
     setIsExporting(true);
@@ -84,7 +91,11 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     // Summary Cards
     const summaryData = [
         ["Total Ingredient Cost", `${ingredientCost.toLocaleString()} TZS`],
-        ["Total Income", `${totalIncome.toLocaleString()} TZS`],
+        ["Miscellaneous Expenses", `${miscExpenses.toLocaleString()} TZS`],
+        ["Total Costs", `${totalIngredientCost.toLocaleString()} TZS`],
+        ["Total Income from Events", `${incomeFromEvents.toLocaleString()} TZS`],
+        ["Miscellaneous Income", `${miscIncome.toLocaleString()} TZS`],
+        ["Total Revenue", `${totalIncome.toLocaleString()} TZS`],
         ["Net Profit/Loss", `${netProfitLoss.toLocaleString()} TZS`],
     ];
     (doc as any).autoTable({
@@ -151,10 +162,38 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
       <div className="space-y-6 bg-background p-4 rounded-lg">
         <CostingSummary 
-          totalIngredientCost={ingredientCost}
+          totalIngredientCost={totalIngredientCost}
           totalIncome={totalIncome}
           netProfitLoss={netProfitLoss}
         />
+        
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><PlusCircle className="mr-2 h-5 w-5 text-primary" />Additional Income & Expenses</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <Label htmlFor="misc-income" className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" />Miscellaneous Income</Label>
+                    <Input 
+                        id="misc-income"
+                        type="number"
+                        value={miscIncome}
+                        onChange={(e) => setMiscIncome(parseFloat(e.target.value) || 0)}
+                        placeholder="e.g., Tips, Service Charges"
+                    />
+                </div>
+                <div>
+                    <Label htmlFor="misc-expenses" className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-red-500" />Miscellaneous Expenses</Label>
+                    <Input
+                        id="misc-expenses"
+                        type="number"
+                        value={miscExpenses}
+                        onChange={(e) => setMiscExpenses(parseFloat(e.target.value) || 0)}
+                        placeholder="e.g., Transport, Utilities"
+                    />
+                </div>
+            </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
           <StockLogTable logs={filteredStockLogs} totalCost={ingredientCost} />

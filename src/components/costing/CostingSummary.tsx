@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,13 +15,17 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
   const costingMargin = totalIncome > 0 ? (totalIngredientCost / totalIncome) * 100 : 0;
 
   let marginStatusText = "";
+  let marginColorClass = "";
 
   if (costingMargin > 30) {
     marginStatusText = "Below break-even";
+    marginColorClass = "text-destructive";
   } else if (costingMargin >= 25 && costingMargin <= 30) {
     marginStatusText = "Above break-even";
+    marginColorClass = "text-orange-600";
   } else {
     marginStatusText = "Healthy Margin";
+    marginColorClass = "text-green-600";
   }
   
   const formatCurrency = (amount: number) => {
@@ -30,39 +35,39 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       {/* Total Ingredient Cost */}
-      <Card className="p-2">
+      <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Ingredient Cost</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Costs</CardTitle>
           <ShoppingCart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold text-destructive">
+          <div className="text-2xl font-bold text-destructive">
             {formatCurrency(totalIngredientCost)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Daily food cost
+            Ingredient costs + misc. expenses
           </p>
         </CardContent>
       </Card>
 
       {/* Total Income */}
-      <Card className="p-2">
+      <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-xl font-bold text-green-600">
+          <div className="text-2xl font-bold text-green-600">
             {formatCurrency(totalIncome)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Event revenue
+            Event revenue + misc. income
           </p>
         </CardContent>
       </Card>
 
       {/* Net Profit/Loss */}
-      <Card className="p-2">
+      <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Net Profit/Loss</CardTitle>
           {isProfit ? 
@@ -72,19 +77,19 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         </CardHeader>
         <CardContent>
           <div className={cn(
-            "text-xl font-bold",
+            "text-2xl font-bold",
             isProfit ? "text-green-600" : "text-destructive"
           )}>
             {isProfit ? '+' : ''}{formatCurrency(netProfitLoss)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Daily {isProfit ? 'profit' : 'loss'}
+            Total Revenue - Total Costs
           </p>
         </CardContent>
       </Card>
 
       {/* Costing Margin */}
-      <Card className="p-2">
+      <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Costing Margin</CardTitle>
           <Percent className="h-4 w-4 text-muted-foreground" />
@@ -92,7 +97,7 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
         <CardContent>
            <div className={cn(
                "text-2xl font-bold",
-               costingMargin > 30 ? "text-destructive" : "text-foreground"
+               marginColorClass
             )}>
             {costingMargin.toFixed(1)}%
           </div>
