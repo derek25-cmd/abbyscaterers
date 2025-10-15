@@ -67,20 +67,13 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
-    // Omit 'id' from the initial insert object to let Supabase generate it.
-    const { id, ...orderPayload } = orderData;
-
     const newOrderData = {
-        ...orderPayload,
+        ...orderData,
+        id: orderData.id || `ORD-${Date.now()}`, // Ensure ID exists
         name: name,
         createdAt: now,
         updatedAt: now,
     };
-
-    // Remove the id from the payload to let Supabase generate it
-    if ('id' in newOrderData) {
-      delete (newOrderData as any).id;
-    }
 
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select().single();
     
@@ -120,3 +113,4 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     }
     return !error;
 };
+
