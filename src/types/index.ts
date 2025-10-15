@@ -368,3 +368,12 @@ export interface StockLog {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface DailyMenu {
+    id: number;
+    order_id: string;
+    menu_date: string; // YYYY-MM-DD
+    recipes: { recipeId: string }[];
+    created_at: string;
+    updated_at: string;
+}

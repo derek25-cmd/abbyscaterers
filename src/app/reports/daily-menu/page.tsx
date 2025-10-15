@@ -17,6 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { getMenusByDate, upsertDailyMenu } from '@/services/dailyMenuService';
+import { DailyMenu } from '@/types';
+
 
 type MenuCell = { content: string; mealType: string };
 type OrderMenu = {
@@ -35,7 +38,7 @@ const MEAL_SECTIONS = {
 
 export default function DailyMenuPlannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { orders, isLoading: ordersLoading, updateOrder } = useOrderStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { recipes: availableRecipes, isLoading: recipesLoading } = useRecipeStorage();
   const [menuData, setMenuData] = useState<OrderMenu[]>([]);
@@ -49,75 +52,82 @@ export default function DailyMenuPlannerPage() {
   const isLoading = ordersLoading || clientsLoading || recipesLoading;
 
   useEffect(() => {
-    if (isLoading) return;
-    
-    const targetDayStart = startOfDay(selectedDate).getTime();
+    const fetchAndSetMenuData = async () => {
+      if (isLoading) return;
+      
+      const targetDayStart = startOfDay(selectedDate).getTime();
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-    const todaysOrders = orders.filter(order => 
-        order.clientEvents.some(e => {
-            const eventDayStart = startOfDay(parseISO(e.date)).getTime();
-            return eventDayStart === targetDayStart;
-        })
-    );
+      const todaysOrders = orders.filter(order => 
+          order.clientEvents.some(e => {
+              const eventDayStart = startOfDay(parseISO(e.date)).getTime();
+              return eventDayStart === targetDayStart;
+          })
+      );
+      
+      const savedMenus = await getMenusByDate(dateStr);
 
-    const initialMenuData: OrderMenu[] = todaysOrders.map(order => {
-        const event = order.clientEvents.find(e => {
-            const eventDayStart = startOfDay(parseISO(e.date)).getTime();
-            return eventDayStart === targetDayStart;
-        });
-        if (!event) return null;
+      const initialMenuData: OrderMenu[] = todaysOrders.map(order => {
+          const event = order.clientEvents.find(e => {
+              const eventDayStart = startOfDay(parseISO(e.date)).getTime();
+              return eventDayStart === targetDayStart;
+          });
+          if (!event) return null;
 
-        const client = getClientById(event.clientId);
-        
-        const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
+          const client = getClientById(event.clientId);
+          const savedMenu = savedMenus.find(m => m.order_id === order.id);
+          
+          const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
 
-        // Always set headers
-        menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
-        menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
-        menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
+          menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
+          menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
+          menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
 
-        const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
-          return event.recipes
-            .map(r => {
-                const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === r.recipeId);
-                return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
-            })
-            .filter((name): name is string => name !== null);
-        };
+          const recipesToUse = savedMenu ? savedMenu.recipes.map(r => r.recipeId) : event.recipes.map(r => r.recipeId);
+          
+          const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
+            return recipesToUse
+              .map(recipeId => {
+                  const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
+                  return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
+              })
+              .filter((name): name is string => name !== null);
+          };
 
-        const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
-             recipes.forEach((recipeName, i) => {
-                 if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
-                    menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
-                 }
-             })
-        }
-        
-        const orderMealType = event.mealType.toLowerCase();
+          const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
+              recipes.forEach((recipeName, i) => {
+                  if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
+                      menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
+                  }
+              })
+          }
+          
+          const orderMealType = event.mealType.toLowerCase();
 
-        if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
-            addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
-        }
-        if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
-            addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
-        }
-        if (orderMealType.includes('evening tea')) {
-            addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
-        }
+          if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
+              addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
+          }
+          if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
+              addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
+          }
+          if (orderMealType.includes('evening tea')) {
+              addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
+          }
 
-        return {
-            orderId: order.id,
-            clientName: client?.companyName || 'Unknown Client',
-            pax: event.numberOfPeople,
-            mealType: event.mealType,
-            menu: menu,
-        };
-    }).filter((item): item is OrderMenu => item !== null);
+          return {
+              orderId: order.id,
+              clientName: client?.companyName || 'Unknown Client',
+              pax: event.numberOfPeople,
+              mealType: event.mealType,
+              menu: menu,
+          };
+      }).filter((item): item is OrderMenu => item !== null);
 
-    setMenuData(initialMenuData);
-    // Reset selection when data changes
-    setSelectedColumn(null);
-    setClipboard(null);
+      setMenuData(initialMenuData);
+      setSelectedColumn(null);
+      setClipboard(null);
+    }
+    fetchAndSetMenuData();
   }, [selectedDate, orders, getClientById, isLoading, availableRecipes]);
 
   const handleMenuChange = (orderIndex: number, rowIndex: number, value: string) => {
@@ -130,28 +140,19 @@ export default function DailyMenuPlannerPage() {
     setIsSaving(true);
     try {
         for (const orderMenu of menuData) {
-            const originalOrder = orders.find(o => o.id === orderMenu.orderId);
-            if (!originalOrder) continue;
-            
-            const targetDayStart = startOfDay(selectedDate).getTime();
-            const eventIndex = originalOrder.clientEvents.findIndex(e => startOfDay(parseISO(e.date)).getTime() === targetDayStart);
-
-            if (eventIndex === -1) continue;
-
-            const updatedEvents = [...originalOrder.clientEvents];
-            
             const getRecipeId = (name: string) => availableRecipes.find(r => r.recipeName === name)?.recipeNumber || null;
 
             const breakfastRecipes = orderMenu.menu.slice(MEAL_SECTIONS.BREAKFAST.start, MEAL_SECTIONS.BREAKFAST.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
             const lunchRecipes = orderMenu.menu.slice(MEAL_SECTIONS.LUNCH.start, MEAL_SECTIONS.LUNCH.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
             const teaRecipes = orderMenu.menu.slice(MEAL_SECTIONS.TEA.start, MEAL_SECTIONS.TEA.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
-
-            updatedEvents[eventIndex] = {
-                ...updatedEvents[eventIndex],
-                recipes: [...breakfastRecipes, ...lunchRecipes, ...teaRecipes]
-            };
             
-            await updateOrder(originalOrder.id, { clientEvents: updatedEvents } as any);
+            const menuToSave: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'> = {
+              order_id: orderMenu.orderId,
+              menu_date: format(selectedDate, 'yyyy-MM-dd'),
+              recipes: [...breakfastRecipes, ...lunchRecipes, ...teaRecipes]
+            };
+
+            await upsertDailyMenu(menuToSave);
         }
         toast({ title: 'Success', description: 'All menus for the selected date have been saved.' });
     } catch(e) {
@@ -437,5 +438,6 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
+
 
 
