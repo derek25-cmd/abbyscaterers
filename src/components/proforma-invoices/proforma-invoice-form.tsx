@@ -73,7 +73,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
-    const DRAFT_STORAGE_KEY = isEditMode ? `proforma-draft-${invoiceId}` : 'proforma-draft-new';
     
     const form = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
@@ -187,10 +186,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
-             if (!isEditMode) {
-                localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
-            }
-            
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');
@@ -230,7 +225,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             }
         });
         return () => subscription.unsubscribe();
-    }, [form, DRAFT_STORAGE_KEY, isEditMode]);
+    }, [form]);
 
     useEffect(() => {
         if (isEditMode && invoiceId) {
@@ -238,27 +233,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             if (dataToLoad) {
                 form.reset(dataToLoad);
             }
-        } else if (!isEditMode) { // Only restore draft if creating a new invoice
-            const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
-            if (savedDraft) {
-                try {
-                    const parsedData = JSON.parse(savedDraft);
-                    if (clientId) { // If a clientId is passed as a prop, it should take precedence
-                        parsedData.clientId = clientId;
-                    }
-                    form.reset(parsedData);
-                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
-                } catch (e) {
-                    console.error("Failed to parse draft from localStorage", e);
-                }
-            } else if (clientId) {
-                form.reset({
-                    ...form.getValues(),
-                    clientId: clientId,
-                });
-            }
+        } else if (!isEditMode && clientId) {
+            form.reset({
+                ...form.getValues(),
+                clientId: clientId,
+            });
         }
-    }, [isEditMode, invoiceId, clientId, getProformaById, form, DRAFT_STORAGE_KEY, toast]);
+    }, [isEditMode, invoiceId, clientId, getProformaById, form]);
 
     async function onSubmit(data: ProformaInvoiceFormData) {
         setIsSubmitting(true);
@@ -267,7 +248,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 const updatedInvoice = await updateProformaInvoice(invoiceId, data);
                 if (updatedInvoice) {
                     toast({ title: 'Success', description: 'Proforma invoice updated successfully.' });
-                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/proforma-invoices/${updatedInvoice.id}`);
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to update proforma invoice.' });
@@ -276,7 +256,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 const newInvoice = await addProformaInvoice(data);
                 if (newInvoice) {
                     toast({ title: 'Success', description: 'Proforma invoice created successfully.' });
-                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/proforma-invoices/${newInvoice.id}`);
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to create proforma invoice.' });
@@ -764,5 +743,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         </Card>
     );
 }
+
+    
 
     

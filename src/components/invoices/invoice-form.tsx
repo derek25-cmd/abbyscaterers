@@ -79,7 +79,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
-    const DRAFT_STORAGE_KEY = isEditMode ? `final-invoice-draft-${invoiceId}` : 'final-invoice-draft-new';
 
     const form = useForm<FinalInvoiceFormData>({
         resolver: zodResolver(FinalInvoiceSchema),
@@ -192,10 +191,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
-            if (!isEditMode) {
-                localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
-            }
-
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
                 const parts = name.split('.');
@@ -231,7 +226,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             }
         });
         return () => subscription.unsubscribe();
-    }, [form, DRAFT_STORAGE_KEY, isEditMode]);
+    }, [form]);
 
     useEffect(() => {
         let dataToLoad: Partial<FinalInvoiceFormData> | undefined;
@@ -299,29 +294,15 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     signedAtLocation: 'Dar es Salaam'
                  };
             }
-        } else if (!isEditMode) { // Only restore draft if creating a new invoice
-            const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
-            if (savedDraft) {
-                try {
-                    const parsedData = JSON.parse(savedDraft);
-                    if (clientId) {
-                        parsedData.clientId = clientId;
-                    }
-                    dataToLoad = parsedData;
-                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
-                } catch (e) {
-                    console.error("Failed to parse draft from localStorage", e);
-                }
-            } else if (clientId) {
-                dataToLoad = { ...form.getValues(), clientId: clientId };
-            }
+        } else if (clientId) {
+            dataToLoad = { ...form.getValues(), clientId: clientId };
         }
 
         if (dataToLoad) {
             form.reset(dataToLoad);
         }
 
-    }, [isEditMode, invoiceId, proformaId, bookingId, clientId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form, DRAFT_STORAGE_KEY, toast]);
+    }, [isEditMode, invoiceId, proformaId, bookingId, clientId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form, toast]);
 
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
@@ -330,7 +311,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 const updatedInvoice = await updateInvoice(invoiceId, data);
                 if(updatedInvoice) {
                     toast({ title: 'Success', description: 'Invoice updated successfully.' });
-                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/invoices/${updatedInvoice.id}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
@@ -339,7 +319,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 const newInvoice = await addInvoice(data);
                 if (newInvoice) {
                     toast({ title: 'Success', description: 'Invoice created successfully.' });
-                    localStorage.removeItem(DRAFT_STORAGE_KEY);
                     router.push(`/invoices/${newInvoice.id}`);
                 } else {
                      toast({ variant: 'destructive', title: 'Error', description: 'Failed to create invoice.' });
@@ -862,5 +841,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         </Card>
     );
 }
+
+    
 
     
