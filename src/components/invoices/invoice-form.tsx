@@ -192,7 +192,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
-            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+            if (!isEditMode) {
+                localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+            }
 
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
@@ -229,7 +231,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             }
         });
         return () => subscription.unsubscribe();
-    }, [form, DRAFT_STORAGE_KEY]);
+    }, [form, DRAFT_STORAGE_KEY, isEditMode]);
 
     useEffect(() => {
         let dataToLoad: Partial<FinalInvoiceFormData> | undefined;
@@ -297,7 +299,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     signedAtLocation: 'Dar es Salaam'
                  };
             }
-        } else {
+        } else if (!isEditMode) { // Only restore draft if creating a new invoice
             const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
             if (savedDraft) {
                 try {
@@ -306,9 +308,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         parsedData.clientId = clientId;
                     }
                     dataToLoad = parsedData;
-                    if (!isEditMode) {
-                      toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
-                    }
+                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
                 } catch (e) {
                     console.error("Failed to parse draft from localStorage", e);
                 }
@@ -862,3 +862,5 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         </Card>
     );
 }
+
+    

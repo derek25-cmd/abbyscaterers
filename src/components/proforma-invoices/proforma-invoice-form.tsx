@@ -187,7 +187,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
-            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+             if (!isEditMode) {
+                localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(value));
+            }
             
             if (name?.startsWith('items.')) {
                 const items = form.getValues('items');
@@ -228,7 +230,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             }
         });
         return () => subscription.unsubscribe();
-    }, [form, DRAFT_STORAGE_KEY]);
+    }, [form, DRAFT_STORAGE_KEY, isEditMode]);
 
     useEffect(() => {
         if (isEditMode && invoiceId) {
@@ -236,24 +238,21 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             if (dataToLoad) {
                 form.reset(dataToLoad);
             }
-        } else {
+        } else if (!isEditMode) { // Only restore draft if creating a new invoice
             const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
             if (savedDraft) {
                 try {
                     const parsedData = JSON.parse(savedDraft);
-                    // If a clientId is passed as a prop, it should take precedence
-                    if (clientId) {
+                    if (clientId) { // If a clientId is passed as a prop, it should take precedence
                         parsedData.clientId = clientId;
                     }
                     form.reset(parsedData);
-                    if (!isEditMode) {
-                      toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
-                    }
+                    toast({ title: 'Draft Restored', description: 'Your unsaved changes have been loaded.' });
                 } catch (e) {
                     console.error("Failed to parse draft from localStorage", e);
                 }
             } else if (clientId) {
-                 form.reset({
+                form.reset({
                     ...form.getValues(),
                     clientId: clientId,
                 });
@@ -765,3 +764,5 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         </Card>
     );
 }
+
+    
