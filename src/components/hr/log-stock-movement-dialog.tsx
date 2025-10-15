@@ -73,8 +73,10 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
       if (item.reason === 'Customer Order' && item.orderId) {
           finalReason = `Customer Order: ${item.orderId}`;
       }
+      const product = getProduct(item.productId);
       onLogMovement({
         productId: item.productId,
+        productName: product?.name || 'Unknown',
         type: logType,
         reason: finalReason,
         quantity: Number(item.quantity),
@@ -187,7 +189,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                         </div>
                          <div className="p-2 bg-background/50 rounded-md">
                             <p className="font-semibold text-muted-foreground">Total Value</p>
-                            <p>{formatCurrency(product.unitPrice * item.quantity)}</p>
+                            <p>{formatCurrency(item.actual_unit_price * item.quantity)}</p>
                         </div>
                     </div>
                 )}

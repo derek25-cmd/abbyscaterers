@@ -52,9 +52,8 @@ export default function StockLogsPage() {
         return;
     }
 
-    const price = product.unitPrice * movement.quantity;
-    const logData = { ...movement, price, productName: product.name };
-
+    // The price for the log is determined by the actual_unit_price
+    const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
     await addStockLog(logData);
 
     const updatedProduct = { ...product };
@@ -68,7 +67,8 @@ export default function StockLogsPage() {
         updatedProduct.quantity -= movement.quantity;
     }
     
-    await updateProductInStore(product.id, updatedProduct);
+    // We only update the quantity in the product catalog, not its base unitPrice
+    await updateProductInStore(product.id, { quantity: updatedProduct.quantity });
   };
 
   const handleEditLog = async (updatedLog: any) => {
@@ -354,5 +354,3 @@ export default function StockLogsPage() {
     </main>
   );
 }
-
-    
