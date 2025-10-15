@@ -30,16 +30,39 @@ import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ORGANIZATION_TYPES } from "@/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function ClientListTable() {
-  const { clients, isLoading } = useClientStorage();
+  const { clients, isLoading, deleteClient } = useClientStorage();
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+
+  const handleDeleteRequest = React.useCallback((clientId: string) => {
+    setItemToDelete(clientId);
+  }, []);
+
+  const confirmDelete = React.useCallback(async () => {
+    if (itemToDelete) {
+      await deleteClient(itemToDelete);
+      toast({ title: "Client Deleted", description: "The client and all associated data have been removed." });
+      setItemToDelete(null);
+    }
+  }, [itemToDelete, deleteClient, toast]);
   
-  const columns = React.useMemo(() => getColumns(), []);
+  const columns = React.useMemo(() => getColumns(handleDeleteRequest), [handleDeleteRequest]);
 
   const table = useReactTable({
     data: clients,
@@ -224,6 +247,18 @@ export function ClientListTable() {
           Next
         </Button>
       </div>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open: boolean) => !open && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. This will permanently delete the client and all associated data like orders and invoices.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
