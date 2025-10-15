@@ -137,12 +137,11 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
      // Income Appendix
     doc.text("Income Appendix", 14, lastY + 15);
     (doc as any).autoTable({
-        head: [['Order ID', 'Client', 'Pax', 'Meal Type', 'Unit Price (TSHS)', 'Total Price (TSHS)']],
-        body: filteredEvents.map(event => {
+        head: [['Client', 'Pax', 'Meal Type', 'Unit Price (TSHS)', 'Total Price (TSHS)']],
+        body: filteredEvents.map((event: any) => {
             const client = clients.find(c => c.id === event.clientId)
             const totalPrice = event.unitPrice * event.numberOfPeople;
             return [
-                event.orderId,
                 client?.companyName || "N/A", 
                 event.numberOfPeople,
                 event.mealType, 
