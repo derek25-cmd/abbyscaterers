@@ -311,7 +311,7 @@ export default function DailyMenuPlannerPage() {
              </Button>
             <Button onClick={handleSaveMenus} disabled={isSaving || isLoading}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                Save Menus
+                Save / Update Menus
             </Button>
         </div>
       </div>
@@ -368,7 +368,7 @@ export default function DailyMenuPlannerPage() {
                                             const mealType = order.mealType.toLowerCase();
                                             const row = rowIndex + 1;
                                             const isBreakfastSection = row > MEAL_SECTIONS.BREAKFAST.start && row <= MEAL_SECTIONS.BREAKFAST.end;
-                                            const isLunchSection = row > MEAL_SECTIONS.LUNCH.start && row <= MEAL_SECTIONS.LUNCH.end;
+                                            const isLunchSection = row > MEAL_SECTIONS.LUNCH.start && row <= MEAL_SECTIONS.TEA.end;
                                             const isTeaSection = row > MEAL_SECTIONS.TEA.start && row <= MEAL_SECTIONS.TEA.end;
                                             
                                             if (isBreakfastSection && !mealType.includes('breakfast') && !mealType.includes('brunch')) return true;
@@ -438,6 +438,7 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
+
 
 
 
