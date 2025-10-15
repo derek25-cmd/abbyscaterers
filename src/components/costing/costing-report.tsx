@@ -15,6 +15,7 @@ import EventIncomeTable from "./EventIncomeTable";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { useProductStorage } from "@/hooks/use-product-storage";
 
 type CostingReportProps = {
     request: any;
@@ -31,8 +32,10 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
   const [miscExpenses, setMiscExpenses] = useState(0);
   
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
+  const { products, isLoading: productsLoading } = useProductStorage();
 
-  const isLoading = parentLoading || stockLogsLoading;
+
+  const isLoading = parentLoading || stockLogsLoading || productsLoading;
 
   const { title, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
     if (!request || isLoading) {
@@ -84,11 +87,11 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
   const handlePdfExport = () => {
     setIsExporting(true);
-    const doc = new jsPDF({ orientation: 'landscape' });
+    const doc = new jsPDF({ orientation: 'portrait' });
 
     doc.text(title, 14, 15);
     
-    const profitMargin = totalIncome > 0 ? (netProfitLoss / totalIncome) * 100 : 0;
+    const costingMargin = totalIncome > 0 ? (totalIngredientCost / totalIncome) * 100 : 0;
 
     // Summary Cards
     const summaryData = [
@@ -99,13 +102,13 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         ["Miscellaneous Income", `${miscIncome.toLocaleString()} TZS`],
         ["Total Revenue", `${totalIncome.toLocaleString()} TZS`],
         ["Net Profit/Loss", `${netProfitLoss.toLocaleString()} TZS`],
-        ["Profit Margin", `${profitMargin.toFixed(2)}%`],
+        ["Costing Margin", `${costingMargin.toFixed(2)}%`],
     ];
     (doc as any).autoTable({
         body: summaryData,
         startY: 25,
         theme: 'plain',
-        styles: { fontSize: 12 },
+        styles: { fontSize: 10 },
         columnStyles: { 0: { fontStyle: 'bold' } }
     });
 
@@ -114,13 +117,17 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     // Expenses Appendix
     doc.text("Expenses Appendix", 14, lastY + 15);
     (doc as any).autoTable({
-        head: [['Product', 'Type', 'Qty', 'Total Value']],
-        body: filteredStockLogs.map(log => [
-            log.productName,
-            log.type,
-            log.quantity,
-            `${log.price.toLocaleString()} TZS`,
-        ]),
+        head: [['Product', 'Type', 'Qty', 'Unit', 'Total Value (TSHS)']],
+        body: filteredStockLogs.map(log => {
+            const product = products.find(p => p.id === log.productId);
+            return [
+                log.productName,
+                log.type,
+                log.quantity,
+                product?.unit || 'N/A',
+                log.price.toLocaleString(),
+            ];
+        }),
         startY: lastY + 20,
         headStyles: { fillColor: [220, 38, 38] }, // Destructive color
     });
@@ -130,11 +137,18 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
      // Income Appendix
     doc.text("Income Appendix", 14, lastY + 15);
     (doc as any).autoTable({
-        head: [['Client', 'Meal Type', 'Total Price']],
+        head: [['Order ID', 'Client', 'Pax', 'Meal Type', 'Unit Price (TSHS)', 'Total Price (TSHS)']],
         body: filteredEvents.map(event => {
             const client = clients.find(c => c.id === event.clientId)
             const totalPrice = event.unitPrice * event.numberOfPeople;
-            return [client?.companyName || "N/A", event.mealType, `${totalPrice.toLocaleString()} TZS`];
+            return [
+                event.orderId,
+                client?.companyName || "N/A", 
+                event.numberOfPeople,
+                event.mealType, 
+                event.unitPrice.toLocaleString(),
+                totalPrice.toLocaleString()
+            ];
         }),
         startY: lastY + 20,
         headStyles: { fillColor: [22, 163, 74] }, // Success color
