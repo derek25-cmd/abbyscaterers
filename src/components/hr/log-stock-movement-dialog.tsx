@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 'use client'
 import {
@@ -16,14 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
-import { PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { PlusCircle, Trash2, Check, ChevronsUpDown, ArrowRight } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { cn } from "@/lib/utils";
 
 export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
-  const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '' }]);
+  const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '', actualPrice: 0 }]);
   const { orders } = useOrderStorage();
   
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
@@ -32,18 +33,26 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
 
   useEffect(() => {
     if (isOpen) {
-        setItems([{ productId: '', quantity: 1, reason: '', orderId: '' }]);
+        setItems([{ productId: '', quantity: 1, reason: '', orderId: '', actualPrice: 0 }]);
     }
   }, [isOpen]);
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
+    
+    if (field === 'productId') {
+        const product = getProduct(value);
+        if (product) {
+            newItems[index]['actualPrice'] = product.unitPrice;
+        }
+    }
+
     setItems(newItems);
   };
 
   const addItem = () => {
-    setItems([...items, { productId: '', quantity: 1, reason: '', orderId: '' }]);
+    setItems([...items, { productId: '', quantity: 1, reason: '', orderId: '', actualPrice: 0 }]);
   };
 
   const removeItem = (index) => {
@@ -53,7 +62,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const validItems = items.filter(item => item.productId && item.quantity > 0 && item.reason);
+    const validItems = items.filter(item => item.productId && item.quantity > 0 && item.reason && item.actualPrice >= 0);
     if (validItems.length === 0) {
         alert("Please add at least one valid item to log.");
         return;
@@ -69,6 +78,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         type: logType,
         reason: finalReason,
         quantity: Number(item.quantity),
+        price: Number(item.actualPrice) * Number(item.quantity), // Use actual price for total cost
       });
     });
 
@@ -77,9 +87,13 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   
   const getProduct = (productId) => products.find(p => p.id === productId);
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{logType}</DialogTitle>
@@ -89,7 +103,12 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
           </DialogHeader>
           <ScrollArea className="h-[60vh] p-1">
           <div className="space-y-4 py-4">
-            {items.map((item, index) => (
+            {items.map((item, index) => {
+                const product = getProduct(item.productId);
+                const catalogPrice = product?.unitPrice || 0;
+                const priceVariation = item.actualPrice - catalogPrice;
+
+               return (
                <Card key={index} className="relative p-4 bg-muted/50">
                 {items.length > 1 && (
                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive" onClick={() => removeItem(index)}>
@@ -149,15 +168,45 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                         <Input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} min="1" max={logType === 'Stock Out' ? getProduct(item.productId)?.quantity : undefined } />
                      </div>
                  </div>
-                 <div className="mt-4">
-                    <Label>Reason</Label>
-                    <Select onValueChange={(value) => handleItemChange(index, 'reason', value)} value={item.reason}>
-                      <SelectTrigger><SelectValue placeholder="Select a reason" /></SelectTrigger>
-                      <SelectContent>
-                        {reasonOptions.map(r => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+                 
+                {product && (
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="p-2 bg-background/50 rounded-md">
+                            <p className="font-semibold text-muted-foreground">Type</p>
+                            <p>{product.category}</p>
+                        </div>
+                         <div className="p-2 bg-background/50 rounded-md">
+                            <p className="font-semibold text-muted-foreground">Stock Qty</p>
+                            <p>{product.quantity} {product.unit}</p>
+                        </div>
+                        <div className="p-2 bg-background/50 rounded-md">
+                            <p className="font-semibold text-muted-foreground">Catalog Price</p>
+                            <p>{formatCurrency(product.unitPrice)}</p>
+                        </div>
+                         <div className="p-2 bg-background/50 rounded-md">
+                            <p className="font-semibold text-muted-foreground">Total Value</p>
+                            <p>{formatCurrency(product.unitPrice * item.quantity)}</p>
+                        </div>
+                    </div>
+                )}
+
+
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <Label>Reason</Label>
+                        <Select onValueChange={(value) => handleItemChange(index, 'reason', value)} value={item.reason}>
+                          <SelectTrigger><SelectValue placeholder="Select a reason" /></SelectTrigger>
+                          <SelectContent>
+                            {reasonOptions.map(r => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label>Actual Price (per unit)</Label>
+                        <Input type="number" value={item.actualPrice} onChange={(e) => handleItemChange(index, 'actualPrice', e.target.value)} min="0" step="any" />
+                    </div>
                  </div>
+
                  {item.reason === 'Customer Order' && (
                      <div className="mt-4">
                         <Label>Customer Order</Label>
@@ -169,8 +218,20 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                         </Select>
                      </div>
                  )}
+
+                 {product && (
+                    <div className="mt-4 p-2 bg-blue-500/10 rounded-md text-center">
+                        <p className="text-sm font-semibold text-blue-800">
+                            Price Variation: 
+                            <span className={cn("ml-2 font-bold", priceVariation > 0 ? "text-destructive" : "text-green-600")}>
+                                {priceVariation !== 0 && (priceVariation > 0 ? '+' : '')}{formatCurrency(priceVariation)}
+                            </span>
+                        </p>
+                    </div>
+                 )}
                </Card>
-            ))}
+               )
+            })}
              <Button type="button" variant="outline" size="sm" onClick={addItem}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Another Product
               </Button>

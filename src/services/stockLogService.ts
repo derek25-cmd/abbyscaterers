@@ -12,11 +12,11 @@ export const getStockLogs = async (): Promise<StockLog[]> => {
     return data as StockLog[];
 };
 
-export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>): Promise<StockLog | null> => {
+export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' >): Promise<StockLog | null> => {
     const now = new Date();
     const newLogData = {
         ...log,
-        date: format(now, 'yyyy-MM-dd')
+        date: log.date || format(now, 'yyyy-MM-dd')
     };
 
     const { data, error } = await supabase.from('stock_logs').insert([newLogData]).select();
