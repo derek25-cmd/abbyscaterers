@@ -21,7 +21,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { BookingSchema, type BookingFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { Client } from "@/types";
 
 interface AddBookingDialogProps {
@@ -37,8 +37,8 @@ export function AddBookingDialog({ isOpen, setIsOpen, clients, onAddBooking }: A
     defaultValues: {
       name: "",
       clientId: "",
-      start_date: new Date().toISOString(),
-      end_date: new Date().toISOString(),
+      start_date: format(new Date(), 'yyyy-MM-dd'),
+      end_date: format(new Date(), 'yyyy-MM-dd'),
       status: 'active',
     },
   });
@@ -108,13 +108,13 @@ export function AddBookingDialog({ isOpen, setIsOpen, clients, onAddBooking }: A
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                                {field.value ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
+                            <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} initialFocus />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />
@@ -131,13 +131,13 @@ export function AddBookingDialog({ isOpen, setIsOpen, clients, onAddBooking }: A
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
+                                {field.value ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus />
+                            <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} initialFocus />
                           </PopoverContent>
                         </Popover>
                         <FormMessage />

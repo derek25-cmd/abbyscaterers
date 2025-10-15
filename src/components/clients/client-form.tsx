@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
 
 interface ClientFormProps {
   client?: Client; // For editing existing client
@@ -51,7 +52,7 @@ export function ClientForm({ client }: ClientFormProps) {
     defaultValues: client
       ? {
           ...client,
-          lastContacted: client.lastContacted ? client.lastContacted : new Date().toISOString(),
+          lastContacted: client.lastContacted ? client.lastContacted : format(new Date(), 'yyyy-MM-dd'),
           contacts: client.contacts && client.contacts.length > 0 ? client.contacts : [{ name: "", email: "", phone: "" }]
         }
       : {
@@ -64,7 +65,7 @@ export function ClientForm({ client }: ClientFormProps) {
           primaryLocation: "",
           typeOfOrganization: undefined,
           postalCode: "",
-          lastContacted: new Date().toISOString(),
+          lastContacted: format(new Date(), 'yyyy-MM-dd'),
           contacts: [],
         },
   });
@@ -78,7 +79,7 @@ export function ClientForm({ client }: ClientFormProps) {
     if (client) {
       form.reset({
         ...client,
-        lastContacted: client.lastContacted ? client.lastContacted : new Date().toISOString(),
+        lastContacted: client.lastContacted ? client.lastContacted : format(new Date(), 'yyyy-MM-dd'),
         contacts: client.contacts && client.contacts.length > 0 ? client.contacts : []
       });
     }
@@ -90,21 +91,23 @@ export function ClientForm({ client }: ClientFormProps) {
     try {
       const payload: ClientFormData = {
         ...data,
-        lastContacted: data.lastContacted ? new Date(data.lastContacted).toISOString() : new Date().toISOString(),
+        lastContacted: data.lastContacted ? format(new Date(data.lastContacted), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       };
 
       if (client) {
-        const updated = updateClient(client.id, payload); 
+        const updated = await updateClient(client.id, payload);
         if (updated) {
-          toast({ title: "Client Updated", description: `${updated.companyName} (ID: ${updated.id}) has been updated.` });
-          router.push(`/clients/${updated.id}`);
+          toast({ title: "Client Updated", description: `${payload.companyName} (ID: ${payload.id}) has been updated.` });
+          router.push(`/clients/${payload.id}`);
         } else {
           toast({ variant: "destructive", title: "Error", description: "Failed to update client." });
         }
       } else {
-        const newClientData = addClient(payload);
-        toast({ title: "Client Added", description: `${newClientData.companyName} (ID: ${newClientData.id}) has been added.` });
-        router.push("/clients");
+        const newClientData = await addClient(payload);
+        if (newClientData) {
+            toast({ title: "Client Added", description: `${newClientData.companyName} (ID: ${newClientData.id}) has been added.` });
+            router.push("/clients");
+        }
       }
     } catch (error: unknown) {
       console.error("Submission error:", error);

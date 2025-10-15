@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfDay } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES } from "@/types";
@@ -159,7 +159,7 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                                      {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                  </Button></FormControl></PopoverTrigger>
-                                 <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date?.toISOString())} initialFocus disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} /></PopoverContent>
+                                 <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} initialFocus disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} /></PopoverContent>
                              </Popover>
                              <FormMessage />
                          </FormItem>
@@ -248,7 +248,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
           proformaId: "",
           clientEvents: [{ 
               clientId: clientId || "", 
-              date: new Date().toISOString(), 
+              date: format(new Date(), 'yyyy-MM-dd'),
               mealType: "Lunch only", 
               numberOfPeople: 10,
               unitPrice: 0,
@@ -293,8 +293,10 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
         }
       } else {
         const newOrderData = await addOrder(data);
-        toast({ title: "Order Added", description: `${newOrderData!.name} (ID: ${newOrderData!.id}) has been added.` });
-        router.push("/orders");
+        if (newOrderData) {
+            toast({ title: "Order Added", description: `${newOrderData!.name} (ID: ${newOrderData!.id}) has been added.` });
+            router.push("/orders");
+        }
       }
     } catch (error) {
        console.error("Submission error:", error);
@@ -378,7 +380,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: new Date().toISOString(), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [] })} disabled={isLoading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: format(new Date(), 'yyyy-MM-dd'), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [] })} disabled={isLoading}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
         </Button>
 

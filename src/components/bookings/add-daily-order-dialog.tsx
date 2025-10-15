@@ -49,7 +49,7 @@ export function AddDailyOrderDialog({
       booking_id: bookingId,
       clientEvents: [{
         clientId: clientId,
-        date: new Date().toISOString(),
+        date: format(new Date(), 'yyyy-MM-dd'),
         mealType: "Lunch only",
         numberOfPeople: 1,
         unitPrice: 0,
@@ -89,7 +89,7 @@ export function AddDailyOrderDialog({
         booking_id: bookingId,
         clientEvents: [{
           clientId: clientId,
-          date: new Date().toISOString(),
+          date: format(new Date(), 'yyyy-MM-dd'),
           mealType: "Lunch only",
           numberOfPeople: 1,
           unitPrice: 0,
