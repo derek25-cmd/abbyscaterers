@@ -25,7 +25,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES } from "@/types";
 import { Textarea } from "../ui/textarea";
-import { useSettingsStorage } from "@/hooks/use-settings-storage";
 
 interface ClientEventRecipeFormProps {
     nestIndex: number;
@@ -234,7 +233,6 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
   const { addOrder, updateOrder } = useOrderStorage();
   const { clients } = useClientStorage();
   const { toast } = useToast();
-  const { settings, updateSettings } = useSettingsStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditMode = !!order;
@@ -269,11 +267,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
   useEffect(() => {
     if (order) {
       form.reset(order);
-    } else {
-      const nextId = `ORD-${String(settings.nextOrderNumber || 1).padStart(5, '0')}`;
-      form.setValue('id', nextId);
     }
-  }, [order, form, settings.nextOrderNumber]);
+  }, [order, form]);
   
   useEffect(() => {
       const sub = form.watch((value, {name}) => {
@@ -300,7 +295,6 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
         const newOrderData = await addOrder(data);
         if (newOrderData) {
             toast({ title: "Order Added", description: `${newOrderData!.name} (ID: ${newOrderData!.id}) has been added.` });
-            updateSettings({ nextOrderNumber: (settings.nextOrderNumber || 1) + 1 });
             router.push("/orders");
         }
       }
@@ -331,8 +325,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                 <FormField control={form.control} name="id" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Order ID</FormLabel>
-                        <FormControl><Input placeholder="e.g. BOOK-2024-07" {...field} readOnly={!isEditMode}/></FormControl>
-                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>A unique identifier for this entire order.</FormDescription>
+                        <FormControl><Input placeholder="Auto-generated" {...field} readOnly/></FormControl>
+                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>The ID is automatically generated upon saving.</FormDescription>
                         <FormMessage />
                     </FormItem>
                 )} />

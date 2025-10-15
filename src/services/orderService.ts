@@ -39,36 +39,16 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
     return mapDbToOrder(data);
 };
 
-export const getLatestOrderNumber = async (): Promise<number> => {
-    const { data, error } = await supabase
-        .from('orders')
-        .select('id')
-        .order('createdAt', { ascending: false })
-        .limit(1)
-        .single();
-    
-    if(error || !data) {
-        if(error && error.code !== 'PGRST116') {
-             console.error("Error fetching latest order number", error);
-        }
-        return 1;
-    }
-
-    const match = data.id.match(/ORD-(\d+)/);
-    if (match) {
-        return parseInt(match[1], 10) + 1;
-    }
-
-    return 1;
-}
-
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
     const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
     
+    // Create a new object for insertion that doesn't include the 'id' field
+    const { id, ...restOfOrderData } = orderData;
+
     const newOrderData = {
-        ...orderData,
+        ...restOfOrderData,
         name: name,
         createdAt: now,
         updatedAt: now,
