@@ -11,14 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { EditStockLogDialog } from "@/components/hr/edit-stock-log-dialog";
 import { ViewStockLogDialog } from "@/components/hr/view-stock-log-dialog";
-import { getStockLogs, addStockLog, updateStockLog } from "@/services/stockLogService";
-import { getProducts, updateProduct } from "@/services/productService";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { StockLog, Product } from "@/types";
+import { StockLog } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 
@@ -356,3 +354,5 @@ export default function StockLogsPage() {
     </main>
   );
 }
+
+    
