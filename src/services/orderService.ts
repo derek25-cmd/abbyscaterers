@@ -77,6 +77,11 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         updatedAt: now,
     };
 
+    // Remove the id from the payload to let Supabase generate it
+    if ('id' in newOrderData) {
+      delete (newOrderData as any).id;
+    }
+
     const { data, error } = await supabase.from('orders').insert([newOrderData]).select().single();
     
     if (error) {

@@ -55,23 +55,16 @@ export default function DailyMenuPlannerPage() {
     const fetchAndSetMenuData = async () => {
       if (isLoading) return;
       
-      const targetDayStart = startOfDay(selectedDate).getTime();
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-
+      
       const todaysOrders = orders.filter(order => 
-          order.clientEvents.some(e => {
-              const eventDayStart = startOfDay(parseISO(e.date)).getTime();
-              return eventDayStart === targetDayStart;
-          })
+          order.clientEvents.some(e => e.date === dateStr)
       );
       
       const savedMenus = await getMenusByDate(dateStr);
 
       const initialMenuData: OrderMenu[] = todaysOrders.map(order => {
-          const event = order.clientEvents.find(e => {
-              const eventDayStart = startOfDay(parseISO(e.date)).getTime();
-              return eventDayStart === targetDayStart;
-          });
+          const event = order.clientEvents.find(e => e.date === dateStr);
           if (!event) return null;
 
           const client = getClientById(event.clientId);
@@ -438,7 +431,4 @@ export default function DailyMenuPlannerPage() {
     </div>
   );
 }
-
-
-
 

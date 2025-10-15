@@ -87,7 +87,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             id: `INV-${Date.now()}`,
             proformaId: proformaId,
             status: 'outstanding',
-            invoiceDate: new Date().toISOString(),
+            invoiceDate: format(new Date(), 'yyyy-MM-dd'),
             clientId: clientId || null,
             receiverName: '',
             receiverPosition: '',
@@ -100,12 +100,12 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             vatType: 'inclusive',
             selectedEventType: eventTypes[0],
             customEventType: '',
-            startDate: new Date().toISOString(),
-            endDate: new Date().toISOString(),
+            startDate: format(new Date(), 'yyyy-MM-dd'),
+            endDate: format(new Date(), 'yyyy-MM-dd'),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
-            signedAtDate: new Date().toISOString(),
+            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' }],
+            signedAtDate: format(new Date(), 'yyyy-MM-dd'),
             signedAtLocation: 'Dar es Salaam'
         }
     });
@@ -138,7 +138,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 proformaId: proformaId || "",
                 clientEvents: [{
                     clientId: client_id,
-                    date: itemData.date || new Date().toISOString(),
+                    date: itemData.date || format(new Date(), 'yyyy-MM-dd'),
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
@@ -244,7 +244,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     proformaId: proforma.id,
                     id: `INV-${Date.now()}`,
                     status: 'outstanding',
-                    invoiceDate: new Date().toISOString(),
+                    invoiceDate: format(new Date(), 'yyyy-MM-dd'),
                     items: proforma.items.map(pi => ({
                         id: pi.id,
                         particularType: pi.particularType,
@@ -258,7 +258,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         particularDescription: pi.particularDescription,
                         vatType: pi.vatType,
                     })),
-                    signedAtDate: new Date().toISOString(),
+                    signedAtDate: format(new Date(), 'yyyy-MM-dd'),
                     signedAtLocation: 'Dar es Salaam'
                 };
             }
@@ -270,7 +270,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     id: `INV-${Date.now()}`,
                     proformaId: '',
                     status: 'outstanding',
-                    invoiceDate: new Date().toISOString(),
+                    invoiceDate: format(new Date(), 'yyyy-MM-dd'),
                     clientId: booking.client_id,
                     location: '',
                     numberOfDays: bookingOrders.length,
@@ -293,7 +293,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         vatType: event.vatType,
                         particularDescription: `${event.mealType} on ${format(parseISO(event.date), 'PPP')}`
                     }))),
-                    signedAtDate: new Date().toISOString(),
+                    signedAtDate: format(new Date(), 'yyyy-MM-dd'),
                     signedAtLocation: 'Dar es Salaam'
                  };
             }
@@ -412,7 +412,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                 </Popover>
                                             </FormItem>
                                         )}
@@ -536,7 +536,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                 </Popover>
                                             </FormItem>
                                         )}
@@ -556,7 +556,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                 </Popover>
                                             </FormItem>
                                         )}
@@ -647,7 +647,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                 <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
                                 <Button type="button" onClick={() => { 
                                     const newIndex = fields.length;
-                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
+                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' });
                                     setOpenAccordionItems([`item-${newIndex}`]);
                                 }} size="sm">
                                     <Plus className="w-4 h-4 mr-2" /> Add Item
@@ -705,7 +705,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                                     </Button>
                                                                 </FormControl>
                                                             </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                         </Popover>
                                                     </FormItem>
                                                 )} />
@@ -805,7 +805,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                     </Popover>
                                 </FormItem>
                             )}/>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -64,7 +65,7 @@ export function useOrderStorage() {
     const allEvents: ClientEvent[] = [];
     orders.forEach(order => {
         order.clientEvents.forEach(event => {
-            if (event.date.startsWith(targetDateStr)) {
+            if (event.date === targetDateStr) {
                 allEvents.push(event);
             }
         });

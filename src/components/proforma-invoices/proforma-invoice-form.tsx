@@ -79,7 +79,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         resolver: zodResolver(ProformaInvoiceSchema),
         defaultValues: {
             id: `PI-${Date.now()}`,
-            invoiceDate: new Date().toISOString(),
+            invoiceDate: format(new Date(), 'yyyy-MM-dd'),
             clientId: clientId || null,
             receiverName: '',
             receiverPosition: '',
@@ -92,11 +92,11 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             vatType: 'inclusive',
             selectedEventType: eventTypes[0],
             customEventType: '',
-            startDate: new Date().toISOString(),
-            endDate: new Date().toISOString(),
+            startDate: format(new Date(), 'yyyy-MM-dd'),
+            endDate: format(new Date(), 'yyyy-MM-dd'),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' }],
+            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' }],
         }
     });
 
@@ -132,7 +132,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 proformaId: proformaId,
                 clientEvents: [{
                     clientId: client_id,
-                    date: itemData.date || new Date().toISOString(),
+                    date: itemData.date || format(new Date(), 'yyyy-MM-dd'),
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
                     unitPrice: itemData.unitPrice,
@@ -145,7 +145,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             if (isExistingOrder) {
                 const updatedOrder = await updateOrder(itemData.id!, orderPayload as any);
                 if (updatedOrder) {
-                    update(itemIndex, { ...itemData, id: updatedOrder.id, total: recalculatedTotal });
                     toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
                 }
             } else {
@@ -326,7 +325,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
                         <AccordionItem value="item-1">
-                            <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Invoice Details</AccordionTrigger>
+                            <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Proforma Details</AccordionTrigger>
                             <AccordionContent className="pt-4 space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
@@ -356,7 +355,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                 </Popover>
                                             </FormItem>
                                         )}
@@ -462,7 +461,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                 </Popover>
                                             </FormItem>
                                         )}
@@ -482,7 +481,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                             </Button>
                                                         </FormControl>
                                                     </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                 </Popover>
                                             </FormItem>
                                         )}
@@ -573,7 +572,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
                                 <Button type="button" onClick={() => { 
                                     const newIndex = fields.length;
-                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: new Date().toISOString(), vatType: 'inclusive' });
+                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' });
                                     setOpenAccordionItems([`item-${newIndex}`]);
                                 }} size="sm">
                                     <Plus className="w-4 h-4 mr-2" /> Add Item
@@ -631,7 +630,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                     </Button>
                                                                 </FormControl>
                                                             </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d?.toISOString())} /></PopoverContent>
+                                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
                                                         </Popover>
                                                     </FormItem>
                                                 )} />
