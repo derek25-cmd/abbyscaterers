@@ -13,22 +13,16 @@ export function useStockLogStorage() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshLogs = useCallback(() => {
-    const fetchAndSanitize = async () => {
-      setIsLoading(true);
-      const storedLogs = await getAllFromStorage();
-      const sanitizedLogs = storedLogs.map((log: StockLog) => ({
-        ...log,
-        quantity: Number(log.quantity) || 0,
-        price: Number(log.price) || 0,
-      }));
-      setLogs(sanitizedLogs.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      setIsLoading(false);
-    };
-
-    if (typeof window !== "undefined") {
-      fetchAndSanitize();
-    }
+  const refreshLogs = useCallback(async () => {
+    setIsLoading(true);
+    const storedLogs = await getAllFromStorage();
+    const sanitizedLogs = storedLogs.map((log: StockLog) => ({
+      ...log,
+      quantity: Number(log.quantity) || 0,
+      price: Number(log.price) || 0,
+    }));
+    setLogs(sanitizedLogs.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {

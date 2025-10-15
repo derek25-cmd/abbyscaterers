@@ -4,40 +4,40 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Product } from "@/types";
 import {
-  getAllProducts as getAllFromStorage,
+  getProducts as getAllFromStorage,
   addProduct as addToStorage,
   updateProduct as updateInStorage,
-} from '@/lib/product-data';
+} from '@/services/productService';
 
 export function useProductStorage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setProducts(getAllFromStorage());
-      setIsLoading(false);
-    }
-  }, []);
-
-  const refreshProducts = useCallback(() => {
-    if (typeof window !== "undefined") {
-      setProducts(getAllFromStorage());
-    }
+  const refreshProducts = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getAllFromStorage();
+    setProducts(data);
+    setIsLoading(false);
   }, []);
   
-  const addProduct = useCallback((data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newItem = addToStorage(data);
+  useEffect(() => {
     refreshProducts();
+  }, [refreshProducts]);
+  
+  const addProduct = useCallback(async (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'sku'>) => {
+    const newItem = await addToStorage(data);
+    if(newItem) {
+        refreshProducts();
+    }
     return newItem;
   }, [refreshProducts]);
 
-  const updateProduct = useCallback((id: string, updates: Partial<Product>) => {
-    const updatedItem = updateInStorage(id, updates);
-    if (updatedItem) {
+  const updateProduct = useCallback(async (id: string, updates: Partial<Product>) => {
+    const success = await updateInStorage(id, updates);
+    if (success) {
       refreshProducts();
     }
-    return updatedItem;
+    return success;
   }, [refreshProducts]);
 
   const getProductById = useCallback((id: string) => {

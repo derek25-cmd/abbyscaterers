@@ -1,6 +1,7 @@
 
 import { supabase } from '@/lib/supabase-client';
 import { StockLog } from '@/types';
+import { format } from 'date-fns';
 
 export const getStockLogs = async (): Promise<StockLog[]> => {
     const { data, error } = await supabase.from('stock_logs').select('*');
@@ -11,8 +12,14 @@ export const getStockLogs = async (): Promise<StockLog[]> => {
     return data as StockLog[];
 };
 
-export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<StockLog | null> => {
-    const { data, error } = await supabase.from('stock_logs').insert([log]).select();
+export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>): Promise<StockLog | null> => {
+    const now = new Date();
+    const newLogData = {
+        ...log,
+        date: format(now, 'yyyy-MM-dd')
+    };
+
+    const { data, error } = await supabase.from('stock_logs').insert([newLogData]).select();
     if (error) {
         console.error('Error adding stock log:', error);
         return null;
