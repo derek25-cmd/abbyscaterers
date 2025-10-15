@@ -8,6 +8,21 @@
     ],
     "frameworksBackend": {
       "region": "us-central1"
+    },
+    "build": {
+      "steps": [
+        {
+          "name": "fetch",
+          "args": ["."],
+          "env": {}
+        },
+        {
+          "name": "npm install"
+        },
+        {
+          "name": "npm run build"
+        }
+      ]
     }
   },
   "apphosting": [
