@@ -87,6 +87,8 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     const doc = new jsPDF({ orientation: 'landscape' });
 
     doc.text(title, 14, 15);
+    
+    const profitMargin = totalIncome > 0 ? (netProfitLoss / totalIncome) * 100 : 0;
 
     // Summary Cards
     const summaryData = [
@@ -97,6 +99,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         ["Miscellaneous Income", `${miscIncome.toLocaleString()} TZS`],
         ["Total Revenue", `${totalIncome.toLocaleString()} TZS`],
         ["Net Profit/Loss", `${netProfitLoss.toLocaleString()} TZS`],
+        ["Profit Margin", `${profitMargin.toFixed(2)}%`],
     ];
     (doc as any).autoTable({
         body: summaryData,
@@ -106,7 +109,10 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         columnStyles: { 0: { fontStyle: 'bold' } }
     });
 
-    // Stock Log Table
+    let lastY = (doc as any).autoTable.previous.finalY;
+
+    // Expenses Appendix
+    doc.text("Expenses Appendix", 14, lastY + 15);
     (doc as any).autoTable({
         head: [['Product', 'Type', 'Qty', 'Total Value']],
         body: filteredStockLogs.map(log => [
@@ -115,11 +121,14 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
             log.quantity,
             `${log.price.toLocaleString()} TZS`,
         ]),
-        startY: (doc as any).autoTable.previous.finalY + 10,
-        headStyles: { fillColor: [22, 163, 74] },
+        startY: lastY + 20,
+        headStyles: { fillColor: [220, 38, 38] }, // Destructive color
     });
+
+    lastY = (doc as any).autoTable.previous.finalY;
     
-     // Event Income Table
+     // Income Appendix
+    doc.text("Income Appendix", 14, lastY + 15);
     (doc as any).autoTable({
         head: [['Client', 'Meal Type', 'Total Price']],
         body: filteredEvents.map(event => {
@@ -127,8 +136,8 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
             const totalPrice = event.unitPrice * event.numberOfPeople;
             return [client?.companyName || "N/A", event.mealType, `${totalPrice.toLocaleString()} TZS`];
         }),
-        startY: (doc as any).autoTable.previous.finalY + 10,
-        headStyles: { fillColor: [22, 163, 74] },
+        startY: lastY + 20,
+        headStyles: { fillColor: [22, 163, 74] }, // Success color
     });
 
 
