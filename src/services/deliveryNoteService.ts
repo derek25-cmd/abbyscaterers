@@ -35,7 +35,7 @@ export const createDeliveryNoteFromOrder = async (
         const { data: latestNote, error: latestNoteError } = await supabase
             .from('delivery_notes')
             .select('id')
-            .order('id', { ascending: false })
+            .order('created_at', { ascending: false }) // FIX: Order by creation date to get the true latest note
             .limit(1)
             .single();
 
@@ -44,9 +44,11 @@ export const createDeliveryNoteFromOrder = async (
         }
 
         let nextSerial = 1;
-        if (latestNote) {
+        if (latestNote && latestNote.id) {
             const lastIdNumber = parseInt(latestNote.id.replace('DN-', ''), 10);
-            nextSerial = lastIdNumber + 1;
+            if (!isNaN(lastIdNumber)) {
+                nextSerial = lastIdNumber + 1;
+            }
         }
         
         const deliveryNoteId = `DN-${String(nextSerial).padStart(4, '0')}`;
@@ -81,8 +83,8 @@ export const createDeliveryNoteFromOrder = async (
           user_id: user.id,
           items: order.clientEvents.map(event => ({
             qty: event.numberOfPeople,
-            itemCode: event.recipes[0]?.recipeId || 'N/A', // Assuming one recipe per event for simplicity, adjust as needed
-            description: recipeMap.get(event.recipes[0]?.recipeId) || 'Unknown Recipe',
+            itemCode: event.recipes.length > 0 ? event.recipes[0].recipeId : 'N/A', 
+            description: event.recipes.length > 0 ? (recipeMap.get(event.recipes[0].recipeId) || 'Unknown Recipe') : 'No recipe specified',
           })),
         };
 
