@@ -31,12 +31,24 @@ export const createDeliveryNoteFromOrder = async (
             throw new Error("Order details are incomplete.");
         }
 
-        // 1. Generate the next delivery note number from the sequence
-        const { data: nextSerial, error: sequenceError } = await supabase.rpc('nextval', { sequencename: 'delivery_note_serial_sequence' });
-        
-        if (sequenceError) {
-            throw new Error('Could not get next value from sequence: ' + sequenceError.message);
+        // 1. Get the latest delivery note to determine the next number
+        const { data: latestNote, error: latestNoteError } = await supabase
+            .from('delivery_notes')
+            .select('id')
+            .order('id', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (latestNoteError && latestNoteError.code !== 'PGRST116') { // PGRST116: No rows found
+            throw new Error('Could not query for the latest delivery note: ' + latestNoteError.message);
         }
+
+        let nextSerial = 1;
+        if (latestNote) {
+            const lastIdNumber = parseInt(latestNote.id.replace('DN-', ''), 10);
+            nextSerial = lastIdNumber + 1;
+        }
+        
         const deliveryNoteId = `DN-${String(nextSerial).padStart(4, '0')}`;
 
         // 2. Fetch recipe details to get names
@@ -67,13 +79,11 @@ export const createDeliveryNoteFromOrder = async (
           vehicle_reg_no: details.vehicleRegNo,
           delivered_by: details.deliveredBy,
           user_id: user.id,
-          items: order.clientEvents.flatMap(event =>
-            event.recipes.map(recipe => ({
-              qty: event.numberOfPeople,
-              itemCode: recipe.recipeId,
-              description: recipeMap.get(recipe.recipeId) || 'Unknown Recipe',
-            }))
-          ),
+          items: order.clientEvents.map(event => ({
+            qty: event.numberOfPeople,
+            itemCode: event.recipes[0]?.recipeId || 'N/A', // Assuming one recipe per event for simplicity, adjust as needed
+            description: recipeMap.get(event.recipes[0]?.recipeId) || 'Unknown Recipe',
+          })),
         };
 
         // 5. Save the new delivery note to the database
