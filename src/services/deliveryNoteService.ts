@@ -30,7 +30,6 @@ export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): P
 
     const now = new Date().toISOString();
     
-    // Correctly structure the payload for Supabase
     const newDeliveryNoteData = { 
         id: deliveryNoteData.id,
         order_id: deliveryNoteData.orderId,
@@ -40,7 +39,7 @@ export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): P
         delivery_location: deliveryNoteData.deliveryLocation,
         vehicle_reg_no: deliveryNoteData.vehicleRegNo,
         delivered_by: deliveryNoteData.deliveredBy,
-        items: deliveryNoteData.items, // This should now be correctly formatted JSONB
+        items: deliveryNoteData.items,
         user_id: user.id,
         created_at: now, 
         updated_at: now 
