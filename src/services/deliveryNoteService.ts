@@ -30,11 +30,10 @@ export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): P
 
     const now = new Date().toISOString();
     
-    // This is the corrected payload
     const newDeliveryNoteData = { 
         id: deliveryNoteData.id,
         order_id: deliveryNoteData.orderId,
-        client_id: deliveryNoteData.clientId, // Ensure this maps correctly
+        client_id: deliveryNoteData.clientId,
         client_name: deliveryNoteData.clientName,
         delivery_date: deliveryNoteData.deliveryDate,
         delivery_location: deliveryNoteData.deliveryLocation,

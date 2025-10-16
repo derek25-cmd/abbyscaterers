@@ -46,7 +46,9 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
             className="p-8 bg-white text-black print:shadow-none"
             style={{ fontFamily: 'sans-serif', fontSize: '12px' }}
         >
-            {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
+             <div id="invoice-header">
+                {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
+             </div>
 
             <div className="flex justify-between items-start mt-4 mb-4">
                 <div className="text-sm">
