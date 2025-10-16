@@ -1,4 +1,5 @@
 
+
 import { z } from "zod";
 import { RECIPE_TYPES } from "@/types";
 
@@ -149,7 +150,7 @@ export const ClientEventSchema = z.object({
 
 // Order schema
 export const OrderSchema = z.object({
-  id: z.string().min(1, "Order ID is required"),
+  id: z.string().optional(),
   name: z.string().min(1, "Order name is required"),
   description: z.string().optional(),
   proformaId: z.string().optional(),
@@ -267,6 +268,26 @@ export const DailyOrderSchema = z.object({
   total: z.number(),
 });
 export type DailyOrderFormData = z.infer<typeof DailyOrderSchema>;
+
+
+// Delivery Note Schema
+export const DeliveryNoteItemSchema = z.object({
+  qty: z.number().min(1, "Quantity must be at least 1"),
+  itemCode: z.string().min(1, "Item code is required"),
+  description: z.string().min(1, "Description is required"),
+});
+
+export const DeliveryNoteSchema = z.object({
+  id: z.string().min(1, "Delivery note number is required"),
+  orderId: z.string(),
+  clientId: z.string(),
+  deliveryDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
+  deliveryLocation: z.string().min(1, "Delivery location is required"),
+  vehicleRegNo: z.string().optional(),
+  deliveredBy: z.string().min(1, "Delivered by is required"),
+  items: z.array(DeliveryNoteItemSchema).min(1, "At least one item is required"),
+});
+export type DeliveryNoteFormData = z.infer<typeof DeliveryNoteSchema>;
 
 
 // HR Schemas

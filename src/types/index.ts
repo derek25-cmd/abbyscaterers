@@ -1,4 +1,5 @@
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -224,6 +225,27 @@ export interface Booking {
   status: 'active' | 'closed' | 'pending';
   created_at: string;
   updated_at: string;
+}
+
+// --- DELIVERY NOTE ---
+export interface DeliveryNoteItem {
+  qty: number;
+  itemCode: string; // Recipe Number
+  description: string; // Recipe Name
+}
+
+export interface DeliveryNote {
+  id: string; // Delivery Note Number
+  orderId: string;
+  clientId: string;
+  clientName: string;
+  deliveryDate: string; // ISO date string
+  deliveryLocation: string;
+  vehicleRegNo?: string;
+  deliveredBy: string;
+  items: DeliveryNoteItem[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 // --- HR & OPERATIONS ---
