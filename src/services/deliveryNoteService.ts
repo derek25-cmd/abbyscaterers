@@ -35,11 +35,11 @@ export const createDeliveryNoteFromOrder = async (
         const { data: latestNote, error: latestNoteError } = await supabase
             .from('delivery_notes')
             .select('id')
-            .order('created_at', { ascending: false }) // FIX: Order by creation date to get the true latest note
+            .order('createdAt', { ascending: false }) // FIX: Use camelCase 'createdAt'
             .limit(1)
-            .single();
+            .maybeSingle(); // FIX: Use maybeSingle() to avoid error on empty table
 
-        if (latestNoteError && latestNoteError.code !== 'PGRST116') { // PGRST116: No rows found
+        if (latestNoteError) {
             throw new Error('Could not query for the latest delivery note: ' + latestNoteError.message);
         }
 
@@ -67,25 +67,28 @@ export const createDeliveryNoteFromOrder = async (
 
         // 3. Get client details from the first event
         const firstEvent = order.clientEvents[0];
-        const { data: client, error: clientError } = await supabase.from('clients').select('companyName, primaryLocation').eq('id', firstEvent.clientId).single();
+        const clientId = firstEvent.client_id || firstEvent.clientId; // FIX: Handle both snake_case and camelCase
+        if (!clientId) throw new Error("Client ID is missing from this order event.");
+
+        const { data: client, error: clientError } = await supabase.from('clients').select('companyName, primaryLocation').eq('id', clientId).single();
         if(clientError) throw new Error(`Failed to fetch client details: ${clientError.message}`);
 
         // 4. Construct the new delivery note object
         const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
           id: deliveryNoteId,
           order_id: order.id,
-          client_id: firstEvent.clientId,
+          client_id: clientId,
           client_name: client?.companyName || 'N/A',
           delivery_date: new Date().toISOString(),
           delivery_location: client?.primaryLocation || 'N/A',
           vehicle_reg_no: details.vehicleRegNo,
           delivered_by: details.deliveredBy,
-          user_id: user.id,
           items: order.clientEvents.map(event => ({
             qty: event.numberOfPeople,
             itemCode: event.recipes.length > 0 ? event.recipes[0].recipeId : 'N/A', 
             description: event.recipes.length > 0 ? (recipeMap.get(event.recipes[0].recipeId) || 'Unknown Recipe') : 'No recipe specified',
           })),
+          user_id: user.id,
         };
 
         // 5. Save the new delivery note to the database
@@ -99,7 +102,7 @@ export const createDeliveryNoteFromOrder = async (
           throw new Error(`Failed to save delivery note: ${insertError.message}`);
         }
 
-        return savedNote;
+        return savedNote as DeliveryNote;
 
     } catch (err: any) {
         console.error('Error creating delivery note:', err);
