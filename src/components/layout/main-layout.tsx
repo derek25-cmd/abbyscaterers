@@ -63,6 +63,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/orders", label: "Single Orders", icon: BookOpen },
   { href: "/bookings", label: "Bookings", icon: CalendarClock },
+  { href: "/delivery-notes", label: "Delivery Notes", icon: Truck },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
   { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
   { href: "/equipment", label: "Inventory", icon: ChefHat },
@@ -274,3 +275,5 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    
