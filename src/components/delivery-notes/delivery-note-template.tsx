@@ -113,4 +113,3 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
         </Card>
     );
 }
-

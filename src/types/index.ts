@@ -246,6 +246,7 @@ export interface DeliveryNote {
   items: DeliveryNoteItem[];
   createdAt: string;
   updatedAt: string;
+  user_id: string;
 }
 
 // --- HR & OPERATIONS ---
