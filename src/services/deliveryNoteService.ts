@@ -22,22 +22,21 @@ export const getDeliveryNoteById = async (id: string): Promise<DeliveryNote | nu
 
 export const createDeliveryNoteFromOrder = async (
     order: Order, 
-    details: { vehicleRegNo: string, deliveredBy: string }
+    details: { vehicleRegNo?: string; deliveredBy: string }
 ): Promise<DeliveryNote | null> => {
     try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated.");
-
         if (!order || !order.clientEvents || order.clientEvents.length === 0) {
             throw new Error("Order details are incomplete.");
         }
 
         // 1. Generate the next delivery note number from the sequence
-        const { data: sequenceData, error: sequenceError } = await supabase.rpc('nextval', { sequencename: 'delivery_note_serial_sequence' });
+        const { data: nextSerial, error: sequenceError } = await supabase.rpc('nextval', { sequencename: 'delivery_note_serial_sequence' });
+        
         if (sequenceError) {
             throw new Error('Could not get next value from sequence: ' + sequenceError.message);
         }
-        const nextSerial = sequenceData;
         const deliveryNoteId = `DN-${String(nextSerial).padStart(4, '0')}`;
 
         // 2. Fetch recipe details to get names
@@ -52,14 +51,16 @@ export const createDeliveryNoteFromOrder = async (
         }
         const recipeMap = new Map(recipes.map(r => [r.recipeNumber, r.recipeName]));
 
-        // 3. Get client details
-        const client = (await supabase.from('clients').select('companyName, primaryLocation').eq('id', order.clientEvents[0].clientId).single()).data;
-        
+        // 3. Get client details from the first event
+        const firstEvent = order.clientEvents[0];
+        const { data: client, error: clientError } = await supabase.from('clients').select('companyName, primaryLocation').eq('id', firstEvent.clientId).single();
+        if(clientError) throw new Error(`Failed to fetch client details: ${clientError.message}`);
+
         // 4. Construct the new delivery note object
         const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
           id: deliveryNoteId,
           order_id: order.id,
-          client_id: order.clientEvents[0].clientId,
+          client_id: firstEvent.clientId,
           client_name: client?.companyName || 'N/A',
           delivery_date: new Date().toISOString(),
           delivery_location: client?.primaryLocation || 'N/A',
@@ -76,7 +77,7 @@ export const createDeliveryNoteFromOrder = async (
         };
 
         // 5. Save the new delivery note to the database
-        const { data: savedNote, error: insertError } = await supabaseClient
+        const { data: savedNote, error: insertError } = await supabase
           .from('delivery_notes')
           .insert(newDeliveryNote)
           .select()
