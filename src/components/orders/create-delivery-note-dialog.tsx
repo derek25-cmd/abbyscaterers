@@ -1,7 +1,6 @@
 
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,7 +47,7 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
       clientId: client?.id || '',
       clientName: client?.companyName || 'Unknown Client',
       deliveryDate: format(new Date(), 'yyyy-MM-dd'),
-      deliveryLocation: "",
+      deliveryLocation: client?.primaryLocation || client?.address1 || "",
       vehicleRegNo: "",
       deliveredBy: "",
       items: order.clientEvents.flatMap(event => 
