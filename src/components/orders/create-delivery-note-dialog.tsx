@@ -4,11 +4,8 @@
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DeliveryNoteSchema, type DeliveryNoteFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 import { useDeliveryNoteStorage } from "@/hooks/use-delivery-note-storage";
-import { useRecipeStorage } from "@/hooks/use-recipe-storage";
-import { useClientStorage } from "@/hooks/use-client-storage";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Order } from "@/types";
-import { format, parseISO } from "date-fns";
-import React from "react";
+import { z } from "zod";
 
 interface CreateDeliveryNoteDialogProps {
   isOpen: boolean;
@@ -31,58 +27,46 @@ interface CreateDeliveryNoteDialogProps {
   order: Order;
 }
 
+const DeliveryNoteDialogSchema = z.object({
+  vehicleRegNo: z.string().optional(),
+  deliveredBy: z.string().min(1, "Delivered by is required"),
+});
+type DeliveryNoteDialogFormData = z.infer<typeof DeliveryNoteDialogSchema>;
+
 export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDeliveryNoteDialogProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { addDeliveryNote } = useDeliveryNoteStorage();
-  const { getRecipeById } = useRecipeStorage();
-  const { getClientById } = useClientStorage();
 
-  const form = useForm<DeliveryNoteFormData>({
-    resolver: zodResolver(DeliveryNoteSchema),
+  const form = useForm<DeliveryNoteDialogFormData>({
+    resolver: zodResolver(DeliveryNoteDialogSchema),
+    defaultValues: {
+      vehicleRegNo: "",
+      deliveredBy: "",
+    }
   });
 
-  React.useEffect(() => {
-    if (order && isOpen) {
-      const client = order.clientEvents[0] ? getClientById(order.clientEvents[0].clientId) : null;
-      
-      form.reset({
-        id: `DN-${Date.now()}`,
-        orderId: order.id,
-        clientId: client?.id || '',
-        clientName: client?.companyName || 'Unknown Client',
-        deliveryDate: format(new Date(), 'yyyy-MM-dd'),
-        deliveryLocation: client?.primaryLocation || client?.address1 || "",
-        vehicleRegNo: "",
-        deliveredBy: "",
-        items: order.clientEvents.flatMap(event => 
-          event.recipes.map(recipeRef => {
-            const recipe = getRecipeById(recipeRef.recipeId);
-            return {
-              qty: event.numberOfPeople, // 'qty' should be the number of people
-              itemCode: recipe?.recipeNumber || 'N/A',
-              description: recipe?.recipeName || 'Unknown Recipe'
-            }
-          })
-        ),
-      });
-    }
-  }, [order, isOpen, getClientById, getRecipeById, form]);
-
-
-  async function onSubmit(data: DeliveryNoteFormData) {
+  async function onSubmit(data: DeliveryNoteDialogFormData) {
     try {
-      const newNote = await addDeliveryNote(data);
+      const newNote = await addDeliveryNote(order.id, {
+        vehicleRegNo: data.vehicleRegNo || "",
+        deliveredBy: data.deliveredBy,
+      });
+
       if (newNote) {
         toast({ title: "Success", description: `Delivery note ${newNote.id} created.` });
         setIsOpen(false);
         router.push(`/delivery-notes/${newNote.id}`);
       } else {
-         throw new Error("Failed to save delivery note to storage.");
+         throw new Error("Failed to create delivery note. The server function might have failed.");
       }
     } catch (error) {
       console.error("Failed to create delivery note:", error);
-      toast({ variant: "destructive", title: "Error", description: "Failed to create delivery note." });
+      let message = "An unexpected error occurred.";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      toast({ variant: "destructive", title: "Error", description: message });
     }
   }
 
@@ -94,39 +78,17 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
             <DialogHeader>
               <DialogTitle>Create Delivery Note</DialogTitle>
               <DialogDescription>
-                Confirm details for the delivery note for order {order.name}.
+                Confirm details for the delivery note for order: {order.name}.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-               <FormField
-                control={form.control}
-                name="id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Delivery Note Number</FormLabel>
-                    <FormControl><Input {...field} readOnly /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="deliveryLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Delivery Location</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="vehicleRegNo"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vehicle Registration No.</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} placeholder="e.g. T123 ABC"/></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -137,14 +99,14 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Delivered By</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} placeholder="e.g. Jovin Paul Jovin"/></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setIsOpen(false)}>
+              <Button type="button" variant="secondary" onClick={() => setIsOpen(false)} disabled={form.formState.isSubmitting}>
                 Cancel
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>

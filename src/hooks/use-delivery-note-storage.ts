@@ -3,10 +3,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { DeliveryNote } from "@/types";
-import type { DeliveryNoteFormData } from "@/lib/schemas";
 import {
   getDeliveryNotes as getDeliveryNotesFromService,
-  addDeliveryNote as addDeliveryNoteToService,
+  createDeliveryNoteFromOrder as createDeliveryNoteInService,
   deleteDeliveryNote as deleteDeliveryNoteFromService,
 } from '@/services/deliveryNoteService';
 
@@ -25,8 +24,8 @@ export function useDeliveryNoteStorage() {
     refreshDeliveryNotes();
   }, [refreshDeliveryNotes]);
 
-  const addDeliveryNote = useCallback(async (deliveryNoteData: DeliveryNoteFormData) => {
-    const newDeliveryNote = await addDeliveryNoteToService(deliveryNoteData);
+  const addDeliveryNote = useCallback(async (orderId: string, details: { vehicleRegNo: string, deliveredBy: string }) => {
+    const newDeliveryNote = await createDeliveryNoteInService(orderId, details);
     if(newDeliveryNote) {
       await refreshDeliveryNotes();
     }

@@ -235,10 +235,10 @@ export interface DeliveryNoteItem {
 }
 
 export interface DeliveryNote {
-  id: string; // Delivery Note Number
+  id: string; // Delivery Note Number (e.g., DN-0001)
   order_id: string;
   client_id: string;
-  clientName: string;
+  client_name: string;
   delivery_date: string; // ISO date string
   delivery_location: string;
   vehicle_reg_no?: string;
@@ -249,7 +249,8 @@ export interface DeliveryNote {
   user_id: string;
 }
 
-// --- HR & OPERATIONS ---
+
+// HR & OPERATIONS
 
 export interface Asset {
   id: string;
