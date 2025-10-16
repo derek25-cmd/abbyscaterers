@@ -29,11 +29,21 @@ export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): P
     }
 
     const now = new Date().toISOString();
+    
+    // Correctly structure the payload for Supabase
     const newDeliveryNoteData = { 
-        ...deliveryNoteData,
+        id: deliveryNoteData.id,
+        order_id: deliveryNoteData.orderId,
+        client_id: deliveryNoteData.clientId,
+        client_name: deliveryNoteData.clientName,
+        delivery_date: deliveryNoteData.deliveryDate,
+        delivery_location: deliveryNoteData.deliveryLocation,
+        vehicle_reg_no: deliveryNoteData.vehicleRegNo,
+        delivered_by: deliveryNoteData.deliveredBy,
+        items: deliveryNoteData.items, // This should now be correctly formatted JSONB
         user_id: user.id,
-        createdAt: now, 
-        updatedAt: now 
+        created_at: now, 
+        updated_at: now 
     };
     
     const { data, error } = await supabase.from('delivery_notes').insert([newDeliveryNoteData]).select().single();
