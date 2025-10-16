@@ -30,6 +30,7 @@ export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): P
 
     const now = new Date().toISOString();
     
+    // Use snake_case for Supabase table columns
     const newDeliveryNoteData = { 
         id: deliveryNoteData.id,
         order_id: deliveryNoteData.orderId,
@@ -47,7 +48,7 @@ export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): P
     
     const { data, error } = await supabase.from('delivery_notes').insert([newDeliveryNoteData]).select().single();
     if (error) {
-        console.error('Error adding delivery note:', error);
+        console.error('Error adding delivery note:', JSON.stringify(error, null, 2));
         return null;
     }
     return data as DeliveryNote;

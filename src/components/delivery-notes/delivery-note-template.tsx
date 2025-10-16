@@ -30,7 +30,6 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
         description: item.description,
     }));
     
-    // Create empty rows to reach the total of 23
     const emptyRows = Array.from({ length: Math.max(0, totalRows - filledItems.length) }, (_, index) => ({
         s_n: filledItems.length + index + 1,
         qty: '',

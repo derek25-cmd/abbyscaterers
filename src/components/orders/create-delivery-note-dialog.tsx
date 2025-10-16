@@ -22,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Order } from "@/types";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import React from "react";
 
 interface CreateDeliveryNoteDialogProps {
   isOpen: boolean;
@@ -37,31 +38,37 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
   const { getRecipeById } = useRecipeStorage();
   const { getClientById } = useClientStorage();
 
-  const client = order.clientEvents[0] ? getClientById(order.clientEvents[0].clientId) : null;
-  
   const form = useForm<DeliveryNoteFormData>({
     resolver: zodResolver(DeliveryNoteSchema),
-    defaultValues: {
-      id: `DN-${Date.now()}`,
-      orderId: order.id,
-      clientId: client?.id || '',
-      clientName: client?.companyName || 'Unknown Client',
-      deliveryDate: format(new Date(), 'yyyy-MM-dd'),
-      deliveryLocation: client?.primaryLocation || client?.address1 || "",
-      vehicleRegNo: "",
-      deliveredBy: "",
-      items: order.clientEvents.flatMap(event => 
-        event.recipes.map(recipeRef => {
-          const recipe = getRecipeById(recipeRef.recipeId);
-          return {
-            qty: event.numberOfPeople,
-            itemCode: recipe?.recipeNumber || 'N/A',
-            description: recipe?.recipeName || 'Unknown Recipe'
-          }
-        })
-      ),
-    },
   });
+
+  React.useEffect(() => {
+    if (order && isOpen) {
+      const client = order.clientEvents[0] ? getClientById(order.clientEvents[0].clientId) : null;
+      
+      form.reset({
+        id: `DN-${Date.now()}`,
+        orderId: order.id,
+        clientId: client?.id || '',
+        clientName: client?.companyName || 'Unknown Client',
+        deliveryDate: format(new Date(), 'yyyy-MM-dd'),
+        deliveryLocation: client?.primaryLocation || client?.address1 || "",
+        vehicleRegNo: "",
+        deliveredBy: "",
+        items: order.clientEvents.flatMap(event => 
+          event.recipes.map(recipeRef => {
+            const recipe = getRecipeById(recipeRef.recipeId);
+            return {
+              qty: event.numberOfPeople, // 'qty' should be the number of people
+              itemCode: recipe?.recipeNumber || 'N/A',
+              description: recipe?.recipeName || 'Unknown Recipe'
+            }
+          })
+        ),
+      });
+    }
+  }, [order, isOpen, getClientById, getRecipeById, form]);
+
 
   async function onSubmit(data: DeliveryNoteFormData) {
     try {
@@ -97,7 +104,7 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Delivery Note Number</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} readOnly /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

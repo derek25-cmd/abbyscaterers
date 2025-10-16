@@ -1,4 +1,5 @@
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -235,16 +236,16 @@ export interface DeliveryNoteItem {
 
 export interface DeliveryNote {
   id: string; // Delivery Note Number
-  orderId: string;
-  clientId: string;
+  order_id: string;
+  client_id: string;
   clientName: string;
-  deliveryDate: string; // ISO date string
-  deliveryLocation: string;
-  vehicleRegNo?: string;
-  deliveredBy: string;
+  delivery_date: string; // ISO date string
+  delivery_location: string;
+  vehicle_reg_no?: string;
+  delivered_by: string;
   items: DeliveryNoteItem[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   user_id: string;
 }
 
