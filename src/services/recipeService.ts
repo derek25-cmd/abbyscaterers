@@ -36,7 +36,7 @@ export const getLatestRecipeNumber = async (): Promise<number> => {
         return 1;
     }
 
-    const match = data.recipeNumber.match(/RN-(\d+)/);
+    const match = data.recipeNumber.match(/ARN(\d+)/);
     if (match) {
         return parseInt(match[1], 10) + 1;
     }
@@ -54,8 +54,11 @@ export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>
     const now = new Date().toISOString();
     const { recipeName, recipeType, ingredients } = recipeData;
     
-    // The recipeNumber is now handled by the database, so we don't include it here.
+    const nextNumber = await getLatestRecipeNumber();
+    const newRecipeNumber = `ARN${String(nextNumber).padStart(3, '0')}`;
+
     const newRecipeData = { 
+        recipeNumber: newRecipeNumber,
         recipeName,
         recipeType,
         ingredients: ingredients || [],
@@ -93,3 +96,4 @@ export const deleteRecipe = async (recipeNumber: string): Promise<boolean> => {
     }
     return !error;
 };
+
