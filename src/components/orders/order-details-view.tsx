@@ -6,7 +6,7 @@ import type { Order, ClientEvent } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { BookOpen, CalendarDays, DollarSign, FileText, Loader2, SquarePen, Users, UtensilsCrossed } from "lucide-react";
+import { BookOpen, CalendarDays, DollarSign, FileText, Loader2, SquarePen, Users, UtensilsCrossed, Truck } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -15,6 +15,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "../ui/badge";
+import { CreateDeliveryNoteDialog } from "./create-delivery-note-dialog";
+
 
 interface OrderDetailsViewProps {
   order: Order;
@@ -77,6 +79,7 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
 export function OrderDetailsView({ order }: OrderDetailsViewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isDeliveryNoteDialogOpen, setIsDeliveryNoteDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const handlePdfExport = async () => {
@@ -138,6 +141,9 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
            </p>
         </div>
         <div className="flex gap-2">
+             <Button variant="outline" onClick={() => setIsDeliveryNoteDialogOpen(true)}>
+              <Truck className="mr-2 h-4 w-4" /> Create Delivery Note
+            </Button>
             <Button variant="outline" onClick={handlePdfExport} disabled={isExporting}>
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                {isExporting ? 'Exporting...' : 'Export as PDF'}
@@ -169,6 +175,12 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
             <Button variant="ghost">Back to Order List</Button>
           </Link>
       </div>
+
+      <CreateDeliveryNoteDialog
+        isOpen={isDeliveryNoteDialogOpen}
+        setIsOpen={setIsDeliveryNoteDialogOpen}
+        order={order}
+      />
     </>
   );
 }

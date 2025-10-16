@@ -28,7 +28,7 @@ export function useDeliveryNoteStorage() {
   const addDeliveryNote = useCallback(async (deliveryNoteData: DeliveryNoteFormData) => {
     const newDeliveryNote = await addDeliveryNoteToService(deliveryNoteData);
     if(newDeliveryNote) {
-      refreshDeliveryNotes();
+      await refreshDeliveryNotes();
     }
     return newDeliveryNote;
   }, [refreshDeliveryNotes]);
@@ -36,7 +36,7 @@ export function useDeliveryNoteStorage() {
   const deleteDeliveryNote = useCallback(async (id: string) => {
     const success = await deleteDeliveryNoteFromService(id);
     if (success) {
-      refreshDeliveryNotes();
+      await refreshDeliveryNotes();
     }
     return success;
   }, [refreshDeliveryNotes]);

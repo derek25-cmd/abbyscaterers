@@ -4,7 +4,7 @@ import type { DeliveryNote } from '@/types';
 import type { DeliveryNoteFormData } from '@/lib/schemas';
 
 export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
-    const { data, error } = await supabase.from('delivery_notes').select('*').order('createdAt', { ascending: false });
+    const { data, error } = await supabase.from('delivery_notes').select('*').order('created_at', { ascending: false });
     if (error) {
         console.error('Error fetching delivery notes:', error);
         return [];
@@ -22,8 +22,19 @@ export const getDeliveryNoteById = async (id: string): Promise<DeliveryNote | nu
 }
 
 export const addDeliveryNote = async (deliveryNoteData: DeliveryNoteFormData): Promise<DeliveryNote | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("User not authenticated to add a delivery note.");
+        return null;
+    }
+
     const now = new Date().toISOString();
-    const newDeliveryNoteData = { ...deliveryNoteData, createdAt: now, updatedAt: now };
+    const newDeliveryNoteData = { 
+        ...deliveryNoteData,
+        user_id: user.id,
+        createdAt: now, 
+        updatedAt: now 
+    };
     
     const { data, error } = await supabase.from('delivery_notes').insert([newDeliveryNoteData]).select().single();
     if (error) {
