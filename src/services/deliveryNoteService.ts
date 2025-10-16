@@ -1,7 +1,6 @@
 
 import { supabase } from '@/lib/supabase-client';
-import type { DeliveryNote } from '@/types';
-import type { DeliveryNoteFormData } from '@/lib/schemas';
+import type { DeliveryNote, Order } from '@/types';
 
 export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
     const { data, error } = await supabase.from('delivery_notes').select('*').order('created_at', { ascending: false });
@@ -22,24 +21,79 @@ export const getDeliveryNoteById = async (id: string): Promise<DeliveryNote | nu
 }
 
 export const createDeliveryNoteFromOrder = async (
-    orderId: string, 
+    order: Order, 
     details: { vehicleRegNo: string, deliveredBy: string }
 ): Promise<DeliveryNote | null> => {
     try {
-        const { data, error } = await supabase.functions.invoke('create-delivery-note', {
-            body: { 
-                orderId,
-                vehicleRegNo: details.vehicleRegNo,
-                deliveredBy: details.deliveredBy
-            },
-        });
-        if (error) throw error;
-        return data as DeliveryNote;
-    } catch (error) {
-        console.error('Error invoking create-delivery-note function:', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated.");
+
+        if (!order || !order.clientEvents || order.clientEvents.length === 0) {
+            throw new Error("Order details are incomplete.");
+        }
+
+        // 1. Generate the next delivery note number from the sequence
+        const { data: sequenceData, error: sequenceError } = await supabase.rpc('nextval', { sequencename: 'delivery_note_serial_sequence' });
+        if (sequenceError) {
+            throw new Error('Could not get next value from sequence: ' + sequenceError.message);
+        }
+        const nextSerial = sequenceData;
+        const deliveryNoteId = `DN-${String(nextSerial).padStart(4, '0')}`;
+
+        // 2. Fetch recipe details to get names
+        const recipeIds = order.clientEvents.flatMap((event) => event.recipes.map((r) => r.recipeId));
+        const { data: recipes, error: recipesError } = await supabase
+            .from('recipes')
+            .select('recipeNumber, recipeName')
+            .in('recipeNumber', recipeIds);
+
+        if (recipesError) {
+            throw new Error(`Failed to fetch recipes: ${recipesError.message}`);
+        }
+        const recipeMap = new Map(recipes.map(r => [r.recipeNumber, r.recipeName]));
+
+        // 3. Get client details
+        const client = (await supabase.from('clients').select('companyName, primaryLocation').eq('id', order.clientEvents[0].clientId).single()).data;
+        
+        // 4. Construct the new delivery note object
+        const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
+          id: deliveryNoteId,
+          order_id: order.id,
+          client_id: order.clientEvents[0].clientId,
+          client_name: client?.companyName || 'N/A',
+          delivery_date: new Date().toISOString(),
+          delivery_location: client?.primaryLocation || 'N/A',
+          vehicle_reg_no: details.vehicleRegNo,
+          delivered_by: details.deliveredBy,
+          user_id: user.id,
+          items: order.clientEvents.flatMap(event =>
+            event.recipes.map(recipe => ({
+              qty: event.numberOfPeople,
+              itemCode: recipe.recipeId,
+              description: recipeMap.get(recipe.recipeId) || 'Unknown Recipe',
+            }))
+          ),
+        };
+
+        // 5. Save the new delivery note to the database
+        const { data: savedNote, error: insertError } = await supabaseClient
+          .from('delivery_notes')
+          .insert(newDeliveryNote)
+          .select()
+          .single();
+
+        if (insertError) {
+          throw new Error(`Failed to save delivery note: ${insertError.message}`);
+        }
+
+        return savedNote;
+
+    } catch (err: any) {
+        console.error('Error creating delivery note:', err);
         return null;
     }
 }
+
 
 export const deleteDeliveryNote = async (id: string): Promise<boolean> => {
     const { error } = await supabase.from('delivery_notes').delete().eq('id', id);

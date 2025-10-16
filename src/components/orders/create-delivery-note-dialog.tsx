@@ -48,17 +48,14 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
 
   async function onSubmit(data: DeliveryNoteDialogFormData) {
     try {
-      const newNote = await addDeliveryNote(order.id, {
-        vehicleRegNo: data.vehicleRegNo || "",
-        deliveredBy: data.deliveredBy,
-      });
+      const newNote = await addDeliveryNote(order, data);
 
       if (newNote) {
         toast({ title: "Success", description: `Delivery note ${newNote.id} created.` });
         setIsOpen(false);
         router.push(`/delivery-notes/${newNote.id}`);
       } else {
-         throw new Error("Failed to create delivery note. The server function might have failed.");
+         throw new Error("Failed to create delivery note. The creation service returned null.");
       }
     } catch (error) {
       console.error("Failed to create delivery note:", error);
