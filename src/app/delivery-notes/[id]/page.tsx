@@ -13,6 +13,7 @@ import { Loader2, Edit, Download, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { LoadingPage } from "@/components/layout/loading-page";
 
 export default function DeliveryNoteViewPage() {
     const params = useParams();
@@ -28,9 +29,11 @@ export default function DeliveryNoteViewPage() {
     const noteId = typeof params.id === 'string' ? params.id : undefined;
 
     useEffect(() => {
-        if (notesLoading || clientsLoading) return;
+        if (notesLoading || clientsLoading) {
+            return; // Wait until data is loaded
+        }
         if (!noteId) {
-            setError("Invalid delivery note ID.");
+            setError("Invalid delivery note ID provided in the URL.");
             return;
         }
 
@@ -40,9 +43,14 @@ export default function DeliveryNoteViewPage() {
             if (foundNote.clientId) {
                 const foundClient = getClientById(foundNote.clientId);
                 setClient(foundClient);
+                 if (!foundClient) {
+                    setError(`Client with ID ${foundNote.clientId} not found for this delivery note.`);
+                }
+            } else {
+                 setError("Client ID is missing from this delivery note.");
             }
         } else {
-            setError("Delivery note not found.");
+            setError("Delivery note not found. It may have been deleted or the ID is incorrect.");
         }
     }, [noteId, getDeliveryNoteById, getClientById, notesLoading, clientsLoading]);
 
@@ -76,19 +84,14 @@ export default function DeliveryNoteViewPage() {
     };
     
     if (notesLoading || clientsLoading) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin mr-2" />
-          <span>Loading delivery note...</span>
-        </div>
-      );
+      return <LoadingPage title="Loading Delivery Note..." message="Fetching the details for your delivery record."/>;
     }
     
     if (error || !deliveryNote || !client) {
       return (
-        <div className="text-center py-10">
+        <div className="text-center py-10 max-w-xl mx-auto">
           <h2 className="text-2xl font-semibold text-destructive">
-            {error || 'Delivery Note Not Found'}
+            {error || 'Could not display delivery note.'}
           </h2>
           <Button asChild className="mt-4"><Link href="/delivery-notes">Back to List</Link></Button>
         </div>
@@ -113,3 +116,4 @@ export default function DeliveryNoteViewPage() {
         </>
     );
 }
+
