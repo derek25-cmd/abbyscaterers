@@ -9,7 +9,7 @@ import { DeliveryNoteTemplate } from "@/components/delivery-notes/delivery-note-
 import type { DeliveryNote, Client } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Edit, Download, Printer } from "lucide-react";
+import { Loader2, Download, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -38,13 +38,15 @@ export default function DeliveryNoteViewPage() {
         }
 
         const foundNote = getDeliveryNoteById(noteId);
+        
         if (foundNote) {
             setDeliveryNote(foundNote);
-            if (foundNote.clientId) {
-                const foundClient = getClientById(foundNote.clientId);
+            // Use the correct snake_case field name
+            if (foundNote.client_id) {
+                const foundClient = getClientById(foundNote.client_id);
                 setClient(foundClient);
                  if (!foundClient) {
-                    setError(`Client with ID ${foundNote.clientId} not found for this delivery note.`);
+                    setError(`Client with ID ${foundNote.client_id} not found for this delivery note.`);
                 }
             } else {
                  setError("Client ID is missing from this delivery note.");

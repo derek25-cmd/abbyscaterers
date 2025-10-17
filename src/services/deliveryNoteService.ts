@@ -40,15 +40,19 @@ export const createDeliveryNoteFromOrder = async (
     }
     const deliveryNoteId = `DN-${String(nextSerial).padStart(4, '0')}`;
     
-    const allRecipeIds = order.clientEvents.flatMap(event => event.recipes?.map(r => r.recipeId) || []);
-    const uniqueRecipeIds = [...new Set(allRecipeIds)];
+    const recipeIds = order.clientEvents.flatMap(event => event.recipes?.map(r => r.recipeId) || []);
+    const uniqueRecipeIds = [...new Set(recipeIds)];
+    
+    let recipes = [];
+    if(uniqueRecipeIds.length > 0) {
+      const { data: recipeData, error: recipesError } = await supabase
+        .from('recipes')
+        .select('recipeNumber, recipeName')
+        .in('recipeNumber', uniqueRecipeIds);
 
-    const { data: recipes, error: recipesError } = await supabase
-      .from('recipes')
-      .select('recipeNumber, recipeName')
-      .in('recipeNumber', uniqueRecipeIds);
-
-    if (recipesError) throw new Error(`Failed to fetch recipes: ${recipesError.message}`);
+      if (recipesError) throw new Error(`Failed to fetch recipes: ${recipesError.message}`);
+      recipes = recipeData;
+    }
     const recipeMap = new Map(recipes.map(r => [r.recipeNumber, r.recipeName]));
 
     const firstEvent = order.clientEvents[0];
@@ -64,13 +68,13 @@ export const createDeliveryNoteFromOrder = async (
     if (clientError) throw new Error(`Failed to fetch client details: ${clientError.message}`);
 
     const deliveryItems = order.clientEvents.flatMap(event => 
-        event.recipes.map(recipe => ({
+        (event.recipes || []).map(recipe => ({
             qty: event.numberOfPeople,
             itemCode: recipe.recipeId,
             description: recipeMap.get(recipe.recipeId) || 'Unknown Recipe',
         }))
     );
-
+    
     const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
       id: deliveryNoteId,
       order_id: order.id,

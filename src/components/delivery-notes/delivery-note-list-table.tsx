@@ -61,11 +61,8 @@ export function DeliveryNoteListTable() {
   }, [itemToDelete, deleteDeliveryNote, toast]);
 
   const tableData = React.useMemo(() => {
-    return deliveryNotes.map(dn => ({
-      ...dn,
-      clientName: dn.client_name, // Use the client_name from the delivery note itself
-      orderId: dn.order_id,
-    }))
+    // No extra mapping needed if the service already returns the correct structure
+    return deliveryNotes;
   }, [deliveryNotes]);
   
   const columns = React.useMemo(() => getDeliveryNoteColumns(handleDeleteRequest), [handleDeleteRequest]);
@@ -101,9 +98,9 @@ export function DeliveryNoteListTable() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Input
             placeholder="Filter by client name..."
-            value={(table.getColumn("clientName")?.getFilterValue() as string) ?? ""}
+            value={(table.getColumn("client_name")?.getFilterValue() as string) ?? ""}
             onChange={(event) =>
-              table.getColumn("clientName")?.setFilterValue(event.target.value)
+              table.getColumn("client_name")?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
         />

@@ -27,13 +27,13 @@ export const getDeliveryNoteColumns = (
     cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
   },
   {
-    accessorKey: "clientName",
+    accessorKey: "client_name",
     header: "Client Name",
   },
     {
-    accessorKey: "orderId",
+    accessorKey: "order_id",
     header: "Order ID",
-    cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("orderId")}</div>,
+    cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("order_id")}</div>,
   },
   {
     accessorKey: "delivery_date",
