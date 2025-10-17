@@ -59,7 +59,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
             </div>
             
             <div className="grid grid-cols-2 gap-4 mb-2 mt-[-1rem]">
-                <div className="text-lg" style={{fontSize: '23px'}}>
+                <div className="text-lg" style={{fontSize: '18px'}}>
                     <p><strong>Account No.</strong> {client_id || 'N/A'}</p>
                     <p><strong>Customer Name:</strong> {client_name}</p>
                     <p><strong>Delivery Address:</strong> {delivery_location}</p>
@@ -68,12 +68,12 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
             </div>
 
             <div className="mb-2 text-center font-semibold">
-                <p>Please Receive the Following/bellow Goods/Items:</p>
+                <p>Please Receive the Following/below Goods/Items:</p>
             </div>
 
             <div className="relative mt-6">
                 {/* Box positioned at top-left, aligned with table border */}
-                <div className="absolute -top-[2.6rem] -left-[1px]">
+                <div className="absolute -top-[2.6rem] -right-[1px]">
                     <div className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 border border-gray-800">
                     <div><strong>TIN: 151-209-696</strong></div>
                     <div><strong>VRN: 40-050290-L</strong></div>
