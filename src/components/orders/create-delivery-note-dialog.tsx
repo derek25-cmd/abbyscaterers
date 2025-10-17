@@ -53,6 +53,7 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
       if (newNote) {
         toast({ title: "Success", description: `Delivery note ${newNote.id} created.` });
         setIsOpen(false);
+        form.reset();
         router.push(`/delivery-notes/${newNote.id}`);
       } else {
          throw new Error("Failed to create delivery note. The creation service returned null.");
@@ -103,7 +104,7 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
               />
             </div>
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={() => setIsOpen(false)} disabled={form.formState.isSubmitting}>
+              <Button type="button" variant="secondary" onClick={() => { setIsOpen(false); form.reset(); }} disabled={form.formState.isSubmitting}>
                 Cancel
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>

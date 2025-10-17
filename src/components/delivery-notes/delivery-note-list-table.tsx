@@ -37,11 +37,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useClientStorage } from "@/hooks/use-client-storage";
 
 export function DeliveryNoteListTable() {
   const { deliveryNotes, isLoading, deleteDeliveryNote } = useDeliveryNoteStorage();
-  const { getClientById } = useClientStorage();
   const { toast } = useToast();
   
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -65,9 +63,10 @@ export function DeliveryNoteListTable() {
   const tableData = React.useMemo(() => {
     return deliveryNotes.map(dn => ({
       ...dn,
-      clientName: getClientById(dn.clientId)?.companyName || 'Unknown Client',
+      clientName: dn.client_name, // Use the client_name from the delivery note itself
+      orderId: dn.order_id,
     }))
-  }, [deliveryNotes, getClientById]);
+  }, [deliveryNotes]);
   
   const columns = React.useMemo(() => getDeliveryNoteColumns(handleDeleteRequest), [handleDeleteRequest]);
 
@@ -172,5 +171,3 @@ export function DeliveryNoteListTable() {
     </div>
   );
 }
-
-    

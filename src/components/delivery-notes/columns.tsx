@@ -16,7 +16,7 @@ import {
 import type { DeliveryNote } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
 
-type DeliveryNoteWithClient = DeliveryNote & { clientName: string };
+type DeliveryNoteWithClient = DeliveryNote & { clientName: string; orderId: string; };
 
 export const getDeliveryNoteColumns = (
   onDelete: (id: string) => void
@@ -36,10 +36,10 @@ export const getDeliveryNoteColumns = (
     cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("orderId")}</div>,
   },
   {
-    accessorKey: "deliveryDate",
+    accessorKey: "delivery_date",
     header: "Delivery Date",
     cell: ({ row }) => {
-      const dateStr = row.getValue("deliveryDate") as string;
+      const dateStr = row.getValue("delivery_date") as string;
       if (!dateStr) return 'N/A';
       const date = parseISO(dateStr);
       return isValid(date) ? format(date, 'PPP') : 'Invalid Date';
@@ -77,5 +77,3 @@ export const getDeliveryNoteColumns = (
     },
   },
 ];
-
-    
