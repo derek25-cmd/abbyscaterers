@@ -13,7 +13,7 @@ export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
 
 export const createDeliveryNoteFromOrder = async (
   order: Order, 
-  details: { vehicleRegNo?: string; deliveredBy: string; location: string; }
+  details: { vehicleRegNo?: string; deliveredBy: string; location: string }
 ): Promise<DeliveryNote | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -22,23 +22,13 @@ export const createDeliveryNoteFromOrder = async (
       throw new Error("Order details are incomplete.");
     }
 
-    const { data: latestNote, error: latestNoteError } = await supabase
-      .from('delivery_notes')
-      .select('id')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: nextVal, error: sequenceError } = await supabase.rpc('nextval', { sequencename: 'delivery_note_serial_sequence' });
 
-    if (latestNoteError) {
-      console.warn("Warning fetching latest note:", latestNoteError.message);
+    if (sequenceError) {
+      throw new Error(`Could not get next value from sequence: ${sequenceError.message}`);
     }
-
-    let nextSerial = 1;
-    if (latestNote?.id) {
-      const lastIdNumber = parseInt(latestNote.id.replace('DN-', ''), 10);
-      if (!isNaN(lastIdNumber)) nextSerial = lastIdNumber + 1;
-    }
-    const deliveryNoteId = `DN-${String(nextSerial).padStart(4, '0')}`;
+    
+    const deliveryNoteId = String(nextVal).padStart(6, '0');
     
     const recipeIds = order.clientEvents.flatMap(event => event.recipes?.map(r => r.recipeId) || []);
     const uniqueRecipeIds = [...new Set(recipeIds)];
@@ -100,7 +90,7 @@ export const createDeliveryNoteFromOrder = async (
 
   } catch (err: any) {
     console.error('Error creating delivery note:', err);
-    return null;
+    throw err; // Re-throw to be caught in the UI
   }
 };
 

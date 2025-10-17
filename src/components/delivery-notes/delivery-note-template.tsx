@@ -22,7 +22,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
     const { settings } = useSettingsStorage();
     const { id, delivery_date, client_name, delivery_location, vehicle_reg_no, delivered_by, items, client_id } = deliveryNote;
     
-    const totalRows = 23;
+    const totalRows = 20;
     const filledItems = items.map((item, index) => ({
         s_n: index + 1,
         qty: item.qty,
@@ -43,7 +43,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
         <Card
             id="delivery-note-pdf-content"
             className="p-8 bg-white text-black print:shadow-none"
-            style={{ fontFamily: 'sans-serif', fontSize: '18px', position: 'relative' }}
+            style={{ fontFamily: 'sans-serif', fontSize: '20px', position: 'relative' }}
         >
              <div id="invoice-header">
                 {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
@@ -58,20 +58,21 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                     <p><strong>Date:</strong> {formatDate(delivery_date)}</p>
                 </div>
             </div>
-
-            <div className="flex justify-between items-start mb-2 mt-[-1rem]">
-                 <div className="text-sm">
+            
+            <div className="grid grid-cols-2 gap-4 mb-2 mt-[-1rem]">
+                <div className="text-lg" style={{fontSize: '21px'}}>
                     <p><strong>Account No.</strong> {client_id || 'N/A'}</p>
                     <p><strong>Customer Name:</strong> {client_name}</p>
                     <p><strong>Delivery Address:</strong> {delivery_location}</p>
                     <p><strong>Vehicle Reg. No.</strong> {vehicle_reg_no || 'N/A'}</p>
                 </div>
-                 <div className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 mt-[-1rem] border border-gray-800" style={{ alignSelf: 'flex-start' }}>
-                    <div><strong>TIN: 151-209-696</strong></div>
-                    <div><strong>VRN: 40-050290-L</strong></div>
+                <div className="flex justify-end items-end">
+                     <div className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 border border-gray-800" >
+                        <div><strong>TIN: 151-209-696</strong></div>
+                        <div><strong>VRN: 40-050290-L</strong></div>
+                    </div>
                 </div>
             </div>
-
 
             <div className="mb-2 text-center font-semibold">
                 <p>Please Receive the Following/bellow Goods/Items:</p>
