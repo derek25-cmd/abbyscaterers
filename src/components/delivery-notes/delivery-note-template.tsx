@@ -43,13 +43,13 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
         <Card
             id="delivery-note-pdf-content"
             className="p-8 bg-white text-black print:shadow-none"
-            style={{ fontFamily: 'sans-serif', fontSize: '16px', position: 'relative' }}
+            style={{ fontFamily: 'sans-serif', fontSize: '18px', position: 'relative' }}
         >
              <div id="invoice-header">
                 {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
              </div>
             
-            <div className="flex justify-between items-start mt-[-2rem] mb-4 relative z-10">
+            <div className="flex justify-between items-start mt-[-2.5rem] mb-4 relative z-10">
                 <div className="text-sm w-1/2">
                     {/* Placeholder for left side content */}
                 </div>
@@ -66,7 +66,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                     <p><strong>Delivery Address:</strong> {delivery_location}</p>
                     <p><strong>Vehicle Reg. No.</strong> {vehicle_reg_no || 'N/A'}</p>
                 </div>
-                 <div className="border border-gray-800 flex flex-col items-center justify-center text-xs p-1 bg-white shadow-sm text-center w-40 mt-[-1rem]">
+                 <div className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 mt-[-1rem] border border-gray-800" style={{ alignSelf: 'flex-start' }}>
                     <div><strong>TIN: 151-209-696</strong></div>
                     <div><strong>VRN: 40-050290-L</strong></div>
                 </div>
@@ -77,7 +77,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                 <p>Please Receive the Following/bellow Goods/Items:</p>
             </div>
 
-            <table className="w-full border-collapse border border-gray-800 text-xs mb-2">
+            <table className="w-full border-collapse border border-gray-800 text-sm mb-2">
                 <thead>
                     <tr className="font-bold text-center bg-gray-200">
                         <th className="border border-gray-800 p-1 w-[5%]">S/N</th>
@@ -103,7 +103,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                 <p className="font-bold">THE SUPPLIER HAS DELIVERED THE ABOVE GOODS IN THE RIGHT QUANTITY, GOOD ORDER AND CONDITION and THE CUSTOMER HAVE RECEIVED THE ABOVE GOODS IN THE RIGHT QUANTITY, GOOD ORDER AND CONDITION.</p>
             </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-8 text-xs">
+            <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
                 <div>
                     <p>Delivered By: <strong>{delivered_by || '_________________________'}</strong></p>
                     <p className="mt-8">Signature: _________________________</p>
