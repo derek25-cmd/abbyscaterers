@@ -43,7 +43,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
         <Card
             id="delivery-note-pdf-content"
             className="p-8 bg-white text-black print:shadow-none"
-            style={{ fontFamily: 'sans-serif', fontSize: '12px', position: 'relative' }}
+            style={{ fontFamily: 'sans-serif', fontSize: '16px', position: 'relative' }}
         >
              <div id="invoice-header">
                 {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
