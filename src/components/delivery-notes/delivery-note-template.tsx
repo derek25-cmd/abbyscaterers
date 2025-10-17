@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -60,17 +59,11 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
             </div>
             
             <div className="grid grid-cols-2 gap-4 mb-2 mt-[-1rem]">
-                <div className="text-lg" style={{fontSize: '21px'}}>
+                <div className="text-lg" style={{fontSize: '23px'}}>
                     <p><strong>Account No.</strong> {client_id || 'N/A'}</p>
                     <p><strong>Customer Name:</strong> {client_name}</p>
                     <p><strong>Delivery Address:</strong> {delivery_location}</p>
                     <p><strong>Vehicle Reg. No.</strong> {vehicle_reg_no || 'N/A'}</p>
-                </div>
-                <div className="flex justify-end items-end">
-                     <div className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 border border-gray-800" >
-                        <div><strong>TIN: 151-209-696</strong></div>
-                        <div><strong>VRN: 40-050290-L</strong></div>
-                    </div>
                 </div>
             </div>
 
@@ -78,26 +71,37 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                 <p>Please Receive the Following/bellow Goods/Items:</p>
             </div>
 
-            <table className="w-full border-collapse border border-gray-800 text-sm mb-2">
-                <thead>
+            <div className="relative mt-6">
+                {/* Box positioned at top-left, aligned with table border */}
+                <div className="absolute -top-[2.6rem] -left-[1px]">
+                    <div className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 border border-gray-800">
+                    <div><strong>TIN: 151-209-696</strong></div>
+                    <div><strong>VRN: 40-050290-L</strong></div>
+                    </div>
+                </div>
+
+                {/* Table */}
+                <table className="w-full border-collapse border border-gray-800 text-sm mb-2">
+                    <thead>
                     <tr className="font-bold text-center bg-gray-200">
                         <th className="border border-gray-800 p-1 w-[5%]">S/N</th>
                         <th className="border border-gray-800 p-1 w-[10%]">QTY</th>
                         <th className="border border-gray-800 p-1 w-[15%]">ITEM CODE</th>
                         <th className="border border-gray-800 p-1 text-left">DESCRIPTION OF ITEMS DELIVERED</th>
                     </tr>
-                </thead>
-                <tbody>
+                    </thead>
+                    <tbody>
                     {displayItems.map((item, index) => (
                         <tr key={index}>
-                            <td className="border border-gray-800 p-1 text-center">{item.s_n}</td>
-                            <td className="border border-gray-800 p-1 text-center">{item.qty}</td>
-                            <td className="border border-gray-800 p-1 text-center">{item.itemCode}</td>
-                            <td className="border border-gray-800 p-1">{item.description}</td>
+                        <td className="border border-gray-800 p-1 text-center">{item.s_n}</td>
+                        <td className="border border-gray-800 p-1 text-center">{item.qty}</td>
+                        <td className="border border-gray-800 p-1 text-center">{item.itemCode}</td>
+                        <td className="border border-gray-800 p-1">{item.description}</td>
                         </tr>
                     ))}
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
             
             <div className="text-xs space-y-2 mt-4">
                 <p><strong>Note:</strong> All shortages must be indicated on the signed copy of this delivery Note at the time of delivery. Any claim not indicated on this signed copy will NOT be accepted.</p>
