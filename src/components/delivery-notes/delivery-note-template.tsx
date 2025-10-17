@@ -20,7 +20,7 @@ const formatDate = (dateStr?: string) => {
 
 export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTemplateProps) {
     const { settings } = useSettingsStorage();
-    const { id, deliveryDate, clientName, deliveryLocation, vehicleRegNo, deliveredBy, items } = deliveryNote;
+    const { id, delivery_date, client_name, delivery_location, vehicle_reg_no, delivered_by, items, client_id } = deliveryNote;
     
     const totalRows = 23;
     const filledItems = items.map((item, index) => ({
@@ -43,34 +43,38 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
         <Card
             id="delivery-note-pdf-content"
             className="p-8 bg-white text-black print:shadow-none"
-            style={{ fontFamily: 'sans-serif', fontSize: '12px' }}
+            style={{ fontFamily: 'sans-serif', fontSize: '12px', position: 'relative' }}
         >
              <div id="invoice-header">
                 {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
              </div>
-
-            <div className="flex justify-between items-start mt-4 mb-4">
-                <div className="text-sm">
-                    <p><strong>Account No.</strong> {client?.id || 'N/A'}</p>
-                    <p><strong>Customer Name:</strong> {clientName}</p>
-                    <p><strong>Delivery Address:</strong> {deliveryLocation}</p>
-                    <p><strong>Vehicle Reg. No.</strong> {vehicleRegNo || 'N/A'}</p>
-                </div>
-                <div className="text-right text-sm">
-                    <h2 className="font-bold text-2xl text-primary mb-1">DELIVERY NOTE No. {id}</h2>
-                    <p><strong>Date:</strong> {formatDate(deliveryDate)}</p>
-                </div>
-            </div>
-
-            <div className="mb-2">
-                <p>Please Receive the Following/bellow Goods/Items:</p>
-            </div>
             
-            <div className="flex justify-end mb-2">
-                <div className="border border-gray-800 flex flex-col items-center justify-center text-xs p-1 bg-white shadow-sm text-center w-40">
+            <div className="flex justify-between items-start mt-[-2rem] mb-4 relative z-10">
+                <div className="text-sm w-1/2">
+                    {/* Placeholder for left side content */}
+                </div>
+                <div className="text-right w-1/2">
+                    <h2 className="font-bold text-2xl text-primary mb-1">DELIVERY NOTE No. {id}</h2>
+                    <p><strong>Date:</strong> {formatDate(delivery_date)}</p>
+                </div>
+            </div>
+
+            <div className="flex justify-between items-start mb-2 mt-[-1rem]">
+                 <div className="text-sm">
+                    <p><strong>Account No.</strong> {client_id || 'N/A'}</p>
+                    <p><strong>Customer Name:</strong> {client_name}</p>
+                    <p><strong>Delivery Address:</strong> {delivery_location}</p>
+                    <p><strong>Vehicle Reg. No.</strong> {vehicle_reg_no || 'N/A'}</p>
+                </div>
+                 <div className="border border-gray-800 flex flex-col items-center justify-center text-xs p-1 bg-white shadow-sm text-center w-40 mt-[-1rem]">
                     <div><strong>TIN: 151-209-696</strong></div>
                     <div><strong>VRN: 40-050290-L</strong></div>
                 </div>
+            </div>
+
+
+            <div className="mb-2 text-center font-semibold">
+                <p>Please Receive the Following/bellow Goods/Items:</p>
             </div>
 
             <table className="w-full border-collapse border border-gray-800 text-xs mb-2">
@@ -101,9 +105,9 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
 
             <div className="mt-8 grid grid-cols-2 gap-8 text-xs">
                 <div>
-                    <p>Delivered By: <strong>{deliveredBy || '_________________________'}</strong></p>
+                    <p>Delivered By: <strong>{delivered_by || '_________________________'}</strong></p>
                     <p className="mt-8">Signature: _________________________</p>
-                    <p className="mt-8">Date: {formatDate(deliveryDate)}</p>
+                    <p className="mt-8">Date: {formatDate(delivery_date)}</p>
                 </div>
                 <div className="text-left">
                     <p>Received By: _________________________</p>

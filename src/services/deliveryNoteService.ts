@@ -13,7 +13,7 @@ export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
 
 export const createDeliveryNoteFromOrder = async (
   order: Order, 
-  details: { vehicleRegNo?: string; deliveredBy: string }
+  details: { vehicleRegNo?: string; deliveredBy: string; location: string; }
 ): Promise<DeliveryNote | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -61,7 +61,7 @@ export const createDeliveryNoteFromOrder = async (
 
     const { data: client, error: clientError } = await supabase
       .from('clients')
-      .select('companyName, primaryLocation')
+      .select('companyName')
       .eq('id', clientId)
       .single();
 
@@ -81,7 +81,7 @@ export const createDeliveryNoteFromOrder = async (
       client_id: clientId,
       client_name: client?.companyName || 'N/A',
       delivery_date: new Date().toISOString(),
-      delivery_location: client?.primaryLocation || 'N/A',
+      delivery_location: details.location,
       vehicle_reg_no: details.vehicleRegNo,
       delivered_by: details.deliveredBy,
       user_id: user.id,

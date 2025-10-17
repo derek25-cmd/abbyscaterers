@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Order } from "@/types";
 import { z } from "zod";
+import { useClientStorage } from "@/hooks/use-client-storage";
+import { useEffect } from "react";
 
 interface CreateDeliveryNoteDialogProps {
   isOpen: boolean;
@@ -30,6 +32,7 @@ interface CreateDeliveryNoteDialogProps {
 const DeliveryNoteDialogSchema = z.object({
   vehicleRegNo: z.string().optional(),
   deliveredBy: z.string().min(1, "Delivered by is required"),
+  location: z.string().min(1, "Location is required"),
 });
 type DeliveryNoteDialogFormData = z.infer<typeof DeliveryNoteDialogSchema>;
 
@@ -37,14 +40,26 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
   const router = useRouter();
   const { toast } = useToast();
   const { addDeliveryNote } = useDeliveryNoteStorage();
+  const { getClientById } = useClientStorage();
 
   const form = useForm<DeliveryNoteDialogFormData>({
     resolver: zodResolver(DeliveryNoteDialogSchema),
     defaultValues: {
       vehicleRegNo: "",
       deliveredBy: "",
+      location: "",
     }
   });
+
+  useEffect(() => {
+    if (order.clientEvents && order.clientEvents.length > 0) {
+      const clientId = order.clientEvents[0].client_id || order.clientEvents[0].clientId;
+      const client = getClientById(clientId);
+      if (client?.primaryLocation) {
+        form.setValue("location", client.primaryLocation);
+      }
+    }
+  }, [order, getClientById, form]);
 
   async function onSubmit(data: DeliveryNoteDialogFormData) {
     try {
@@ -80,6 +95,17 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+               <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Delivery Location</FormLabel>
+                    <FormControl><Input {...field} placeholder="e.g. NMB HQ, Posta"/></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="vehicleRegNo"
