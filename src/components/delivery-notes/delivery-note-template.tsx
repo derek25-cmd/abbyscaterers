@@ -48,39 +48,36 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
             <div id="invoice-header">
                 {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
             </div>
-
-            {/* Header & Client Info aligned with date */}
-            <div className="flex justify-between items-end mt-[-2.5rem] mb-2 relative z-10">
-                {/* Left: Client Details */}
+            
+            <div className="text-right">
+                <h2 className="font-bold text-2xl text-primary mb-1">DELIVERY NOTE No. {id}</h2>
+            </div>
+            
+            <div className="flex justify-between items-start mb-2 relative z-10">
                 <div className="text-lg w-1/2" style={{ fontSize: '18px', lineHeight: '1.4rem' }}>
-                    <div style={{ marginTop: '1rem' }}>
+                     <div>
                         <p><strong>Account No.</strong> {client_id || 'N/A'}</p>
-                        <p style={{ display: 'flex', alignItems: 'flex-start' }}>
-                            <strong style={{ flexShrink: 0 }}>Customer Name:&nbsp;</strong>
-                            <span style={{ flex: 1, wordBreak: 'break-word' }}>{client_name}</span>
+                        <p style={{ display: 'flex' }}>
+                            <strong style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>Customer Name:&nbsp;</strong>
+                            <span style={{ wordBreak: 'break-word' }}>{client_name}</span>
                         </p>
                         <p><strong>Delivery Address:</strong> {delivery_location}</p>
                         <p><strong>Vehicle Reg. No.</strong> {vehicle_reg_no || 'N/A'}</p>
                     </div>
                 </div>
-
-                {/* Right: Delivery Note Info */}
                 <div className="text-right w-1/2">
-                    <h2 className="font-bold text-2xl text-primary mb-1">DELIVERY NOTE No. {id}</h2>
                     <p><strong>Date:</strong> {formatDate(delivery_date)}</p>
                 </div>
             </div>
 
-            {/* Title right above table */}
-            <div className="mb-[1px] text-center font-semibold mt-[0rem]">
+            <div className="mb-[1px] text-center font-semibold mt-2">
                 <p>Please Receive the Following/below Goods/Items:</p>
             </div>
 
             <div className="relative mt-0">
-                {/* TIN/VRN Box (centered content) */}
                 <div className="absolute -top-[2.6rem] -right-[1px]">
                     <div
-                        className="flex flex-col items-center justify-center text-xs p-1 bg-white text-center w-40 border border-gray-800 h-[3rem]"
+                        className="flex flex-col items-center justify-center p-1 bg-white text-center w-40 border border-gray-800 h-[3rem]"
                         style={{
                             fontSize: '14px',
                             display: 'flex',
@@ -94,7 +91,6 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                     </div>
                 </div>
 
-                {/* Table */}
                 <table className="w-full border-collapse border border-gray-800 text-sm mb-0">
                     <thead>
                         <tr className="font-bold text-center bg-gray-200">
@@ -117,7 +113,6 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                 </table>
             </div>
 
-            {/* Note Section (tight spacing) */}
             <div className="text-xs mt-0">
                 <p className="font-bold mt-0 mb-0">Note:</p>
                 <p className="mt-0 mb-2">
