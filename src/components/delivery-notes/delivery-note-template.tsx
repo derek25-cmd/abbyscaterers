@@ -49,7 +49,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                 {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
             </div>
             
-            <div className="text-right">
+            <div className="text-right mt-2">
                 <h2 className="font-bold text-2xl text-primary mb-1">DELIVERY NOTE No. {id}</h2>
             </div>
             
@@ -70,7 +70,7 @@ export function DeliveryNoteTemplate({ deliveryNote, client }: DeliveryNoteTempl
                 </div>
             </div>
 
-            <div className="mb-[1px] text-center font-semibold mt-2">
+            <div className="text-center font-semibold mt-2" style={{ marginBottom: '2px' }}>
                 <p>Please Receive the Following/below Goods/Items:</p>
             </div>
 
