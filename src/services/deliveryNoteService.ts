@@ -22,13 +22,27 @@ export const createDeliveryNoteFromOrder = async (
       throw new Error("Order details are incomplete.");
     }
 
-    const { data: nextVal, error: sequenceError } = await supabase.rpc('nextval', { sequencename: 'delivery_note_serial_sequence' });
+    // Fetch the latest delivery note ID to manually increment it
+    const { data: latestNote, error: latestNoteError } = await supabase
+      .from('delivery_notes')
+      .select('id')
+      .order('id', { ascending: false })
+      .limit(1)
+      .single();
 
-    if (sequenceError) {
-      throw new Error(`Could not get next value from sequence: ${sequenceError.message}`);
+    if (latestNoteError && latestNoteError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
+        throw new Error(`Could not fetch latest delivery note ID: ${latestNoteError.message}`);
+    }
+
+    let nextIdNumber = 8892; // Default starting number if no notes exist
+    if (latestNote) {
+        const currentIdNumber = parseInt(latestNote.id, 10);
+        if (!isNaN(currentIdNumber)) {
+            nextIdNumber = currentIdNumber + 1;
+        }
     }
     
-    const deliveryNoteId = String(nextVal).padStart(6, '0');
+    const deliveryNoteId = String(nextIdNumber).padStart(6, '0');
     
     const recipeIds = order.clientEvents.flatMap(event => event.recipes?.map(r => r.recipeId) || []);
     const uniqueRecipeIds = [...new Set(recipeIds)];
