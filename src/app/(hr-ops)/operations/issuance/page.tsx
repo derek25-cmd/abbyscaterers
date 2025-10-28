@@ -38,22 +38,23 @@ export default function IssuancePage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("assetName");
 
+    const fetchData = async () => {
+        setLoading(true);
+        const [logsData, assetsData, employeesData, ordersData] = await Promise.all([
+            getIssuances(),
+            getAssets(),
+            getEmployees(),
+            getOrders()
+        ]);
+        setLog(logsData);
+        setAssets(assetsData);
+        setEmployees(employeesData);
+        setOrders(ordersData);
+        setLoading(false);
+    }
+    
     useEffect(() => {
         setSelectedDate(new Date());
-        const fetchData = async () => {
-            setLoading(true);
-            const [logsData, assetsData, employeesData, ordersData] = await Promise.all([
-                getIssuances(),
-                getAssets(),
-                getEmployees(),
-                getOrders()
-            ]);
-            setLog(logsData);
-            setAssets(assetsData);
-            setEmployees(employeesData);
-            setOrders(ordersData);
-            setLoading(false);
-        }
         fetchData();
     }, []);
 
@@ -102,35 +103,14 @@ export default function IssuancePage() {
     };
     
     const handleNewIssuance = async (issuanceData: any) => {
-        // Create a shallow copy and remove the 'order' property before sending to Supabase
-        const { order, ...payload } = issuanceData;
-        await addIssuance(payload);
-
-        // Update asset quantities
-        for (const item of issuanceData.items) {
-            const asset = assets.find(a => a.id === item.assetId);
-            if (asset) {
-                const updatedAsset = { ...asset, quantity: asset.quantity - item.quantityIssued };
-                 // Change status if quantity is 0 or it's not In Use already
-                if (updatedAsset.quantity === 0) {
-                    updatedAsset.status = 'In Use'; 
-                }
-                await updateAsset(asset.id, updatedAsset);
-            }
-        }
-        
-        // Refresh local data
-        const [logsData, assetsData] = await Promise.all([getIssuances(), getAssets()]);
-        setLog(logsData);
-        setAssets(assetsData);
+        await addIssuance(issuanceData);
+        await fetchData();
     };
 
 
     const handleEditIssuance = async (updatedLog: any) => {
         await updateIssuance(updatedLog.id, updatedLog);
-        setLog(prevLog => 
-            prevLog.map(l => l.id === updatedLog.id ? updatedLog : l)
-        );
+        await fetchData();
     };
 
     const handleReturnIssuance = async (logId: string, returnedItems: any) => {
@@ -145,33 +125,31 @@ export default function IssuancePage() {
             if (newReturnedQty < item.quantityIssued) {
                 allReturned = false;
             }
-
-            // Return stock
-            const asset = assets.find(a => a.id === item.assetId);
-            if (asset && returnedQty > 0) {
-                const updatedAsset = { 
-                    ...asset, 
-                    quantity: asset.quantity + returnedQty,
-                    status: asset.status === 'In Use' ? 'Available' : asset.status,
-                };
-                updateAsset(asset.id, updatedAsset);
-            }
-            
-            return {
-                ...item,
-                quantityReturned: newReturnedQty,
-            };
+            return { ...item, quantityReturned: newReturnedQty };
         });
+        
+        const assetUpdates = [];
+        for (const assetId in returnedItems) {
+            const returnedQty = returnedItems[assetId];
+            if (returnedQty > 0) {
+                 const assetToUpdate = assets.find(a => a.id === assetId);
+                 if (assetToUpdate) {
+                     assetUpdates.push(updateAsset(assetId, { 
+                         quantity: assetToUpdate.quantity + returnedQty,
+                         status: 'Available'
+                     }));
+                 }
+            }
+        }
+        await Promise.all(assetUpdates);
 
         const newStatus = allReturned ? 'Returned' : 'Partially Returned';
         const updatedLogEntry = { ...logEntry, items: updatedItems, status: newStatus };
         
         await updateIssuance(logId, updatedLogEntry);
 
-        // Refresh data
-        const [logsData, assetsData] = await Promise.all([getIssuances(), getAssets()]);
-        setLog(logsData);
-        setAssets(assetsData);
+        // Refresh all data
+        await fetchData();
     };
 
 
@@ -288,6 +266,7 @@ export default function IssuancePage() {
                   <TableHead>Issue ID</TableHead>
                   <TableHead>Order</TableHead>
                   <TableHead>Issued To</TableHead>
+                  <TableHead>Branch</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Total Value</TableHead>
                   <TableHead>Status</TableHead>
@@ -302,6 +281,7 @@ export default function IssuancePage() {
                     <TableCell className="font-medium">{logEntry.id}</TableCell>
                     <TableCell>{orders.find(o => o.id === logEntry.orderId)?.name || 'N/A'}</TableCell>
                     <TableCell>{logEntry.issuedTo}</TableCell>
+                    <TableCell><Badge variant="outline">{logEntry.branch}</Badge></TableCell>
                     <TableCell>{logEntry.date}</TableCell>
                     <TableCell className="text-right">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(logEntry.totalValue).replace('TZS', 'TZS ')}</TableCell>
                     <TableCell>{getStatusBadge(logEntry.status)}</TableCell>
@@ -339,7 +319,7 @@ export default function IssuancePage() {
       <NewIssuanceDialog
         isOpen={isIssuanceDialogOpen}
         setIsOpen={setIsIssuanceDialogOpen}
-        assets={assets.filter(a => a.quantity > 0)}
+        assets={assets}
         employees={employees.filter(e => e.status === 'Active')}
         orders={orders}
         onNewIssuance={handleNewIssuance}

@@ -18,6 +18,13 @@ export const addIssuance = async (issuance: Omit<Issuance, 'id' | 'createdAt' | 
         console.error('Error adding issuance:', error);
         return null;
     }
+    // Update asset quantities
+    for (const item of issuance.items) {
+        const { data: asset, error: assetError } = await supabase.from('assets').select('quantity').eq('id', item.assetId).single();
+        if(asset) {
+            await supabase.from('assets').update({ quantity: asset.quantity - item.quantityIssued }).eq('id', item.assetId);
+        }
+    }
     return data?.[0] as Issuance;
 };
 

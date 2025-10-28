@@ -252,6 +252,9 @@ export interface DeliveryNote {
 
 // HR & OPERATIONS
 
+export const BRANCHES = ["Dar es Salaam", "Dodoma", "Arusha"] as const;
+export type Branch = typeof BRANCHES[number];
+
 export interface Asset {
   id: string;
   name: string;
@@ -260,6 +263,7 @@ export interface Asset {
   unitPrice: number;
   quantity: number;
   status: string;
+  branch: Branch;
   lastMaintenance: string;
   nextMaintenance: string;
   createdAt: string;
@@ -283,6 +287,7 @@ export interface Issuance {
     issuedTo: string; // Employee Name
     date: string; // ISO date string
     status: 'Issued' | 'Partially Returned' | 'Returned' | 'Incomplete';
+    branch: Branch;
     items: IssuedItem[];
     totalValue: number;
     notes?: string;

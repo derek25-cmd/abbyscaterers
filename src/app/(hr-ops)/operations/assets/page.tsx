@@ -5,14 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, MoreHorizontal } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Truck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AddAssetDialog } from '@/components/hr/add-asset-dialog';
 import { EditAssetDialog } from '@/components/hr/edit-asset-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ViewAssetDialog } from '@/components/hr/view-asset-dialog';
-import { getAssets, addAsset, updateAsset } from '@/services/assetService';
+import { getAssets, addAsset, updateAsset, transferAsset } from '@/services/assetService';
 import { format, parseISO, isValid } from 'date-fns';
+import { TransferAssetDialog } from '@/components/hr/transfer-asset-dialog';
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<any[]>([]);
@@ -20,14 +21,17 @@ export default function AssetsPage() {
   const [isAddAssetDialogOpen, setIsAddAssetDialogOpen] = useState(false);
   const [isEditAssetDialogOpen, setIsEditAssetDialogOpen] = useState(false);
   const [isViewAssetDialogOpen, setIsViewAssetDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   
+  const fetchAssets = async () => {
+    setLoading(true);
+    const assetsData = await getAssets();
+    setAssets(assetsData);
+    setLoading(false);
+  };
+  
   useEffect(() => {
-    const fetchAssets = async () => {
-      const assetsData = await getAssets();
-      setAssets(assetsData);
-      setLoading(false);
-    };
     fetchAssets();
   }, []);
 
@@ -45,20 +49,19 @@ export default function AssetsPage() {
   };
   
   const handleAddAsset = async (newAsset: any) => {
-    const addedAsset = await addAsset(newAsset);
-    if(addedAsset){
-      setAssets(prevAssets => [addedAsset, ...prevAssets]);
-    }
+    await addAsset(newAsset);
+    await fetchAssets();
   };
   
   const handleEditAsset = async (updatedAsset: any) => {
     await updateAsset(updatedAsset.id, updatedAsset);
-    setAssets(prevAssets => 
-        prevAssets.map(asset => 
-            asset.id === updatedAsset.id ? updatedAsset : asset
-        )
-    );
+    await fetchAssets();
   };
+
+  const handleTransferAsset = async (transferData: any) => {
+    await transferAsset(transferData);
+    await fetchAssets();
+  }
 
   const openEditDialog = (asset: any) => {
     setSelectedAsset(asset);
@@ -86,6 +89,12 @@ export default function AssetsPage() {
         <div className="flex items-center">
           <h1 className="font-headline text-2xl font-bold">Asset Management</h1>
           <div className="ml-auto flex items-center gap-2">
+             <Button size="sm" className="h-8 gap-1" variant="outline" onClick={() => setIsTransferDialogOpen(true)}>
+              <Truck className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Transfer Assets
+              </span>
+            </Button>
             <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddAssetDialogOpen(true)}>
               <PlusCircle className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -110,6 +119,7 @@ export default function AssetsPage() {
                 <TableRow>
                   <TableHead>Asset ID</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Branch</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
@@ -127,6 +137,7 @@ export default function AssetsPage() {
                   <TableRow key={asset.id}>
                     <TableCell className="font-medium">{asset.id}</TableCell>
                     <TableCell>{asset.name}</TableCell>
+                    <TableCell><Badge variant="secondary">{asset.branch}</Badge></TableCell>
                     <TableCell>{asset.type}</TableCell>
                     <TableCell>{asset.unit}</TableCell>
                     <TableCell className="text-right">{formatCurrency(asset.unitPrice)}</TableCell>
@@ -177,6 +188,12 @@ export default function AssetsPage() {
             asset={selectedAsset}
         />
       )}
+       <TransferAssetDialog
+        isOpen={isTransferDialogOpen}
+        setIsOpen={setIsTransferDialogOpen}
+        assets={assets}
+        onTransferAsset={handleTransferAsset}
+      />
     </main>
   );
 }
