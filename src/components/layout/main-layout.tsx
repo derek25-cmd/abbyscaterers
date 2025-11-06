@@ -27,7 +27,8 @@ import {
     BookCopy,
     CalendarClock,
     Utensils,
-    ListPlus
+    ListPlus,
+    Banknote
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -77,6 +78,7 @@ const navItems = [
   },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/costing", label: "Costing", icon: Calculator },
+  { href: "/finances", label: "Finances", icon: Banknote },
   { 
     label: "HR & Operations", 
     icon: Briefcase,
@@ -142,7 +144,8 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
     const { open } = useSidebar();
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
     
-    const isParentActive = item.subItems?.some(sub => currentPathname.startsWith(sub.href)) || false;
+    const isParentActive = item.subItems?.some(sub => currentPathname.startsWith(sub.href)) || (item.href && currentPathname.startsWith(item.href)) || false;
+
 
     useEffect(() => {
         if (isParentActive) {
@@ -275,5 +278,3 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
