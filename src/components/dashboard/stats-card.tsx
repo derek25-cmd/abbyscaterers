@@ -1,6 +1,6 @@
 
 import { LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
@@ -12,7 +12,7 @@ interface StatsCardProps {
   description?: string;
 }
 
-export function StatsCard({ title, value, change, changeType = "neutral", icon: Icon }: StatsCardProps) {
+export function StatsCard({ title, value, change, changeType = "neutral", icon: Icon, description }: StatsCardProps) {
   const getChangeColor = () => {
     switch (changeType) {
       case "positive":
@@ -34,9 +34,9 @@ export function StatsCard({ title, value, change, changeType = "neutral", icon: 
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-foreground">{value}</div>
-        {change && (
-          <p className={cn("text-xs mt-1", getChangeColor())}>
-            {change}
+        {description && (
+          <p className="text-xs text-muted-foreground">
+            {description}
           </p>
         )}
       </CardContent>
