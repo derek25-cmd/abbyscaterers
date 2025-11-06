@@ -1,5 +1,6 @@
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -405,4 +406,22 @@ export interface DailyMenu {
     recipes: { recipeId: string }[];
     created_at: string;
     updated_at: string;
+}
+
+// --- FINANCE MODULE ---
+export interface Purchase {
+    id: string;
+    date: string; // ISO date string
+    supplier: string;
+    invoiceNumber: string;
+    description: string;
+    quantity: number;
+    unitCost: number;
+    totalCost: number;
+    taxAmount: number;
+    paymentMethod: 'cash' | 'bank' | 'credit';
+    paymentStatus: 'paid' | 'unpaid';
+    expenseCategory: string;
+    createdAt: string; // ISO date string
+    updatedAt: string; // ISO date string
 }
