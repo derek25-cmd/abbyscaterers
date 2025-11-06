@@ -1,6 +1,7 @@
 
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -165,7 +166,7 @@ export interface ProformaInvoice {
   transportCosts: number;
   vatType: 'inclusive' | 'exclusive';
   selectedEventType: string;
-  customEventType?: string;
+  customEventType: string;
   startDate: string; // ISO string
   endDate: string; // ISO string
   serviceFields: Record<string, boolean>;
@@ -422,6 +423,22 @@ export interface Purchase {
     paymentMethod: 'cash' | 'bank' | 'credit';
     paymentStatus: 'paid' | 'unpaid';
     expenseCategory: string;
+    createdAt: string; // ISO date string
+    updatedAt: string; // ISO date string
+}
+
+export interface Sale {
+    id: string;
+    date: string; // ISO date string
+    customerId: string;
+    invoiceNumber: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    totalAmount: number;
+    taxAmount: number;
+    paymentMethod: 'cash' | 'bank' | 'credit';
+    paymentStatus: 'paid' | 'unpaid';
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
 }
