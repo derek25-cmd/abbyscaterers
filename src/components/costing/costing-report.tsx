@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Loader2, DollarSign, PlusCircle } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, DollarSign, PlusCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useProductStorage } from "@/hooks/use-product-storage";
+import { addCostingReport, getCostingReportsByDate, deleteCostingReport } from "@/services/costingService";
+import type { CostingReportItem } from "@/types";
 
 type CostingReportProps = {
     request: any;
@@ -28,14 +30,26 @@ type CostingReportProps = {
 export const CostingReport = ({ request, onBack, clients, orders, isLoading: parentLoading }: CostingReportProps) => {
   const { toast } = useToast();
   const [isExporting, setIsExporting] = useState(false);
-  const [miscIncome, setMiscIncome] = useState(0);
-  const [miscExpenses, setMiscExpenses] = useState(0);
+  const [miscItems, setMiscItems] = useState<CostingReportItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
   const { products, isLoading: productsLoading } = useProductStorage();
 
-
   const isLoading = parentLoading || stockLogsLoading || productsLoading;
+  const reportDate = request?.dates?.[0]; // Assuming single date for now
+
+  const fetchMiscItems = async () => {
+    if (reportDate) {
+      const items = await getCostingReportsByDate(reportDate);
+      setMiscItems(items);
+    }
+  };
+
+  useEffect(() => {
+    fetchMiscItems();
+  }, [reportDate]);
+
 
   const { title, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
     if (!request || isLoading) {
@@ -79,6 +93,56 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     };
 
   }, [request, clients, orders, allLogs, isLoading]);
+  
+  const handleMiscItemChange = (index: number, field: 'description' | 'amount', value: string | number) => {
+    const newItems = [...miscItems];
+    (newItems[index] as any)[field] = value;
+    setMiscItems(newItems);
+  }
+
+  const addMiscItem = (type: 'income' | 'expense') => {
+      setMiscItems([...miscItems, {
+          id: `temp-${Date.now()}`,
+          report_date: reportDate,
+          type,
+          description: '',
+          amount: 0,
+      } as CostingReportItem]);
+  }
+  
+  const removeMiscItem = async (item: CostingReportItem, index: number) => {
+      if (item.id && !String(item.id).startsWith('temp-')) {
+          await deleteCostingReport(item.id);
+          await fetchMiscItems();
+      } else {
+          setMiscItems(miscItems.filter((_, i) => i !== index));
+      }
+  }
+
+  const handleSaveMiscItems = async () => {
+      setIsSaving(true);
+      try {
+          for (const item of miscItems) {
+              if (item.description && item.amount > 0) {
+                  await addCostingReport({
+                      report_date: item.report_date,
+                      type: item.type,
+                      description: item.description,
+                      amount: item.amount,
+                  });
+              }
+          }
+          toast({ title: "Success", description: "Miscellaneous items saved." });
+          await fetchMiscItems();
+      } catch (error) {
+           toast({ variant: "destructive", title: "Error", description: "Could not save items." });
+      } finally {
+          setIsSaving(false);
+      }
+  }
+
+  const miscIncome = useMemo(() => miscItems.filter(i => i.type === 'income').reduce((sum, i) => sum + i.amount, 0), [miscItems]);
+  const miscExpenses = useMemo(() => miscItems.filter(i => i.type === 'expense').reduce((sum, i) => sum + i.amount, 0), [miscItems]);
 
   const incomeFromEvents = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
   const totalIncome = incomeFromEvents + miscIncome;
@@ -191,28 +255,36 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center"><PlusCircle className="mr-2 h-5 w-5 text-primary" />Additional Income & Expenses</CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center"><PlusCircle className="mr-2 h-5 w-5 text-primary" />Additional Income & Expenses</CardTitle>
+                    <Button onClick={handleSaveMiscItems} size="sm" disabled={isSaving}>
+                        {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2"/>}
+                        Save Items
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <Label htmlFor="misc-income" className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" />Miscellaneous Income</Label>
-                    <Input 
-                        id="misc-income"
-                        type="number"
-                        value={miscIncome}
-                        onChange={(e) => setMiscIncome(parseFloat(e.target.value) || 0)}
-                        placeholder="e.g., Tips, Service Charges"
-                    />
+                <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" />Miscellaneous Income</Label>
+                    {miscItems.filter(i => i.type === 'income').map((item, index) => (
+                        <div key={item.id} className="flex gap-2 items-center">
+                            <Input placeholder="Description (e.g. Tips)" value={item.description} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'description', e.target.value)} />
+                            <Input type="number" placeholder="Amount" value={item.amount} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'amount', parseFloat(e.target.value) || 0)} className="w-32"/>
+                            <Button variant="ghost" size="icon" onClick={() => removeMiscItem(item, miscItems.indexOf(item))}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                        </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={() => addMiscItem('income')}><PlusCircle className="h-4 w-4 mr-2" />Add Income Item</Button>
                 </div>
-                <div>
-                    <Label htmlFor="misc-expenses" className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-red-500" />Miscellaneous Expenses</Label>
-                    <Input
-                        id="misc-expenses"
-                        type="number"
-                        value={miscExpenses}
-                        onChange={(e) => setMiscExpenses(parseFloat(e.target.value) || 0)}
-                        placeholder="e.g., Transport, Utilities"
-                    />
+                 <div className="space-y-2">
+                    <Label className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-red-500" />Miscellaneous Expenses</Label>
+                    {miscItems.filter(i => i.type === 'expense').map((item, index) => (
+                        <div key={item.id} className="flex gap-2 items-center">
+                            <Input placeholder="Description (e.g. Transport)" value={item.description} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'description', e.target.value)} />
+                            <Input type="number" placeholder="Amount" value={item.amount} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'amount', parseFloat(e.target.value) || 0)} className="w-32"/>
+                            <Button variant="ghost" size="icon" onClick={() => removeMiscItem(item, miscItems.indexOf(item))}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                        </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={() => addMiscItem('expense')}><PlusCircle className="h-4 w-4 mr-2" />Add Expense Item</Button>
                 </div>
             </CardContent>
         </Card>

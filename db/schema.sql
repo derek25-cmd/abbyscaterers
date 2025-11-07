@@ -1,102 +1,75 @@
--- Supabase SQL schema for the catering management system's finance module
 
--- ========== Purchases Table ==========
--- Purpose: Records all goods and services bought by the company.
-
-CREATE TABLE IF NOT EXISTS public.purchases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    supplier TEXT NOT NULL,
-    invoiceNumber TEXT NOT NULL,
-    description TEXT NOT NULL,
-    quantity NUMERIC NOT NULL,
-    unitCost NUMERIC NOT NULL,
-    totalCost NUMERIC NOT NULL,
-    taxAmount NUMERIC DEFAULT 0,
-    paymentMethod TEXT CHECK (paymentMethod IN ('cash', 'bank', 'credit')),
-    paymentStatus TEXT CHECK (paymentStatus IN ('paid', 'unpaid')),
-    expenseCategory TEXT,
-    createdAt TIMESTAMPTZ DEFAULT now(),
-    updatedAt TIMESTAMPTZ DEFAULT now()
+-- Purchases Table
+CREATE TABLE purchases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  date DATE NOT NULL,
+  supplier TEXT NOT NULL,
+  invoiceNumber TEXT NOT NULL,
+  description TEXT NOT NULL,
+  quantity NUMERIC NOT NULL,
+  unitCost NUMERIC NOT NULL,
+  totalCost NUMERIC NOT NULL,
+  taxAmount NUMERIC DEFAULT 0,
+  paymentMethod TEXT NOT NULL, -- e.g., 'cash', 'bank', 'credit'
+  paymentStatus TEXT NOT NULL, -- e.g., 'paid', 'unpaid'
+  expenseCategory TEXT,
+  createdAt TIMESTAMPTZ DEFAULT now(),
+  updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS for the purchases table
-ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
-
--- Policy: Authenticated users can manage their own purchase records
-CREATE POLICY "Allow authenticated users to manage their own purchases"
-ON public.purchases
-FOR ALL
-TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own purchases"
+  ON purchases FOR ALL
+  USING (auth.uid() = user_id);
 
 
--- ========== Sales Table ==========
--- Purpose: Records all revenue-generating activities.
-
-CREATE TABLE IF NOT EXISTS public.sales (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    customerId TEXT NOT NULL,
-    invoiceNumber TEXT NOT NULL,
-    description TEXT NOT NULL,
-    quantity NUMERIC NOT NULL,
-    unitPrice NUMERIC NOT NULL,
-    totalAmount NUMERIC NOT NULL,
-    taxAmount NUMERIC DEFAULT 0,
-    paymentMethod TEXT CHECK (paymentMethod IN ('cash', 'bank', 'credit')),
-    paymentStatus TEXT CHECK (paymentStatus IN ('paid', 'unpaid')),
-    createdAt TIMESTAMPTZ DEFAULT now(),
-    updatedAt TIMESTAMPTZ DEFAULT now()
+-- Sales Table
+CREATE TABLE sales (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id),
+  date DATE NOT NULL,
+  customerId TEXT NOT NULL,
+  invoiceNumber TEXT NOT NULL,
+  description TEXT NOT NULL,
+  quantity NUMERIC NOT NULL,
+  unitPrice NUMERIC NOT NULL,
+  totalAmount NUMERIC NOT NULL,
+  taxAmount NUMERIC DEFAULT 0,
+  paymentMethod TEXT NOT NULL, -- e.g., 'cash', 'bank', 'credit'
+  paymentStatus TEXT NOT NULL, -- e.g., 'paid', 'unpaid'
+  createdAt TIMESTAMPTZ DEFAULT now(),
+  updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS for the sales table
-ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own sales"
+  ON sales FOR ALL
+  USING (auth.uid() = user_id);
 
--- Policy: Authenticated users can manage their own sales records
-CREATE POLICY "Allow authenticated users to manage their own sales"
-ON public.sales
-FOR ALL
-TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
-
-
--- ========== Costing Reports Table ==========
--- Purpose: Persists daily miscellaneous income and expenses for costing analysis.
-
-CREATE TABLE IF NOT EXISTS public.costing_reports (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    date DATE NOT NULL UNIQUE,
-    misc_income NUMERIC DEFAULT 0,
-    misc_expenses NUMERIC DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT unique_user_date UNIQUE (user_id, date)
+-- Costing Reports Table for Miscellaneous Items
+CREATE TABLE costing_reports (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid(),
+  report_date DATE NOT NULL,
+  type TEXT NOT NULL, -- 'income' or 'expense'
+  description TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(report_date, type, description)
 );
 
--- Enable RLS for the costing_reports table
-ALTER TABLE public.costing_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE costing_reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage their own costing reports"
+  ON costing_reports FOR ALL
+  USING (auth.uid() = user_id);
 
--- Policy: Authenticated users can manage their own costing reports
-CREATE POLICY "Allow authenticated users to manage their own costing reports"
-ON public.costing_reports
-FOR ALL
-TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+-- Note on Ledgers:
+-- Accounts Payable and Accounts Receivable are not separate tables.
+-- They are derived from the 'purchases' and 'sales' tables respectively.
 
-
--- ========== Derived Ledgers (Notes) ==========
--- The Accounts Payable and Accounts Receivable ledgers are not separate tables.
--- They are derived by querying the `purchases` and `sales` tables.
-
--- Accounts Payable:
+-- To get Accounts Payable:
 -- SELECT * FROM purchases WHERE paymentStatus = 'unpaid';
 
--- Accounts Receivable:
+-- To get Accounts Receivable:
 -- SELECT * FROM sales WHERE paymentStatus = 'unpaid';
