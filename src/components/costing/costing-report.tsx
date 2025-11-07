@@ -157,7 +157,6 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     
     const costingMargin = totalIncome > 0 ? (totalIngredientCost / totalIncome) * 100 : 0;
 
-    // Summary Cards
     const summaryData = [
         ["Total Ingredient Cost", `${ingredientCost.toLocaleString()} TZS`],
         ["Miscellaneous Expenses", `${miscExpenses.toLocaleString()} TZS`],
@@ -178,9 +177,9 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
     let lastY = (doc as any).autoTable.previous.finalY;
 
-    // Expenses Appendix
     doc.text("Expenses Appendix", 14, lastY + 15);
     (doc as any).autoTable({
+        theme: 'grid',
         head: [['Product', 'Type', 'Qty', 'Unit', 'Total Value (TSHS)']],
         body: filteredStockLogs.map(log => {
             const product = products.find(p => p.id === log.productId);
@@ -193,15 +192,15 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
             ];
         }),
         startY: lastY + 20,
-        headStyles: { fillColor: [220, 38, 38] }, // Destructive color
+        headStyles: { fillColor: [220, 38, 38], halign: 'center' },
         columnStyles: { 4: { halign: 'right' } }
     });
 
     lastY = (doc as any).autoTable.previous.finalY;
     
-     // Income Appendix
     doc.text("Income Appendix", 14, lastY + 15);
     (doc as any).autoTable({
+        theme: 'grid',
         head: [['Client', 'Pax', 'Meal Type', 'Unit Price (TSHS)', 'Total Price (TSHS)']],
         body: filteredEvents.map((event: any) => {
             const client = clients.find(c => c.id === event.clientId)
@@ -215,7 +214,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
             ];
         }),
         startY: lastY + 20,
-        headStyles: { fillColor: [22, 163, 74] }, // Success color
+        headStyles: { fillColor: [22, 163, 74], halign: 'center' },
         columnStyles: { 
             3: { halign: 'right' },
             4: { halign: 'right' }
