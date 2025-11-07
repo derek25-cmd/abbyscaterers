@@ -97,7 +97,12 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent 
+        className="sm:max-w-3xl"
+        onInteractOutside={(e) => {
+            e.preventDefault();
+        }}
+        >
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{logType}</DialogTitle>
@@ -169,7 +174,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                      </div>
                      <div>
                         <Label>Quantity</Label>
-                        <Input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} min="1" max={logType === 'Stock Out' ? getProduct(item.productId)?.quantity : undefined } />
+                        <Input type="number" step="any" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} min="0.01" max={logType === 'Stock Out' ? getProduct(item.productId)?.quantity : undefined } />
                      </div>
                  </div>
                  
