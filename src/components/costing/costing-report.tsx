@@ -141,8 +141,10 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
       }
   }
 
-  const miscIncome = useMemo(() => miscItems.filter(i => i.type === 'income').reduce((sum, i) => sum + i.amount, 0), [miscItems]);
-  const miscExpenses = useMemo(() => miscItems.filter(i => i.type === 'expense').reduce((sum, i) => sum + i.amount, 0), [miscItems]);
+  const miscIncomeItems = useMemo(() => miscItems.filter(i => i.type === 'income'), [miscItems]);
+  const miscExpenseItems = useMemo(() => miscItems.filter(i => i.type === 'expense'), [miscItems]);
+  const miscIncome = useMemo(() => miscIncomeItems.reduce((sum, i) => sum + i.amount, 0), [miscIncomeItems]);
+  const miscExpenses = useMemo(() => miscExpenseItems.reduce((sum, i) => sum + i.amount, 0), [miscExpenseItems]);
 
   const incomeFromEvents = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
   const totalIncome = incomeFromEvents + miscIncome;
@@ -177,7 +179,33 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
     let lastY = (doc as any).autoTable.previous.finalY;
 
-    doc.text("Expenses Appendix", 14, lastY + 15);
+    if (miscIncomeItems.length > 0) {
+        doc.text("Miscellaneous Income Appendix", 14, lastY + 15);
+        (doc as any).autoTable({
+            theme: 'grid',
+            head: [['Description', 'Amount (TSHS)']],
+            body: miscIncomeItems.map(item => [item.description, item.amount.toLocaleString()]),
+            startY: lastY + 20,
+            headStyles: { fillColor: [22, 163, 74], halign: 'center' },
+            columnStyles: { 1: { halign: 'right' } }
+        });
+        lastY = (doc as any).autoTable.previous.finalY;
+    }
+
+    if (miscExpenseItems.length > 0) {
+        doc.text("Miscellaneous Expenses Appendix", 14, lastY + 15);
+        (doc as any).autoTable({
+            theme: 'grid',
+            head: [['Description', 'Amount (TSHS)']],
+            body: miscExpenseItems.map(item => [item.description, item.amount.toLocaleString()]),
+            startY: lastY + 20,
+            headStyles: { fillColor: [220, 38, 38], halign: 'center' },
+            columnStyles: { 1: { halign: 'right' } }
+        });
+        lastY = (doc as any).autoTable.previous.finalY;
+    }
+
+    doc.text("Stock Out Expenses Appendix", 14, lastY + 15);
     (doc as any).autoTable({
         theme: 'grid',
         head: [['Product', 'Type', 'Qty', 'Unit', 'Total Value (TSHS)']],
@@ -198,7 +226,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
     lastY = (doc as any).autoTable.previous.finalY;
     
-    doc.text("Income Appendix", 14, lastY + 15);
+    doc.text("Event Income Appendix", 14, lastY + 15);
     (doc as any).autoTable({
         theme: 'grid',
         head: [['Client', 'Pax', 'Meal Type', 'Unit Price (TSHS)', 'Total Price (TSHS)']],
@@ -270,7 +298,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-green-500" />Miscellaneous Income</Label>
-                    {miscItems.filter(i => i.type === 'income').map((item, index) => (
+                    {miscIncomeItems.map((item, index) => (
                         <div key={item.id} className="flex gap-2 items-center">
                             <Input placeholder="Description (e.g. Tips)" value={item.description} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'description', e.target.value)} />
                             <Input type="number" placeholder="Amount" value={item.amount} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'amount', parseFloat(e.target.value) || 0)} className="w-32"/>
@@ -281,7 +309,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
                 </div>
                  <div className="space-y-2">
                     <Label className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-red-500" />Miscellaneous Expenses</Label>
-                    {miscItems.filter(i => i.type === 'expense').map((item, index) => (
+                    {miscExpenseItems.map((item, index) => (
                         <div key={item.id} className="flex gap-2 items-center">
                             <Input placeholder="Description (e.g. Transport)" value={item.description} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'description', e.target.value)} />
                             <Input type="number" placeholder="Amount" value={item.amount} onChange={e => handleMiscItemChange(miscItems.indexOf(item), 'amount', parseFloat(e.target.value) || 0)} className="w-32"/>
