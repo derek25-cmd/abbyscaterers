@@ -194,6 +194,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         }),
         startY: lastY + 20,
         headStyles: { fillColor: [220, 38, 38] }, // Destructive color
+        columnStyles: { 4: { halign: 'right' } }
     });
 
     lastY = (doc as any).autoTable.previous.finalY;
@@ -215,6 +216,10 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         }),
         startY: lastY + 20,
         headStyles: { fillColor: [22, 163, 74] }, // Success color
+        columnStyles: { 
+            3: { halign: 'right' },
+            4: { halign: 'right' }
+        }
     });
 
 
