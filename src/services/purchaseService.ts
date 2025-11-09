@@ -11,8 +11,19 @@ export const getPurchases = async (): Promise<Purchase[]> => {
     return data as Purchase[];
 };
 
-export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 'updatedAt'>): Promise<Purchase | null> => {
-    const { data, error } = await supabase.from('purchases').insert([purchase]).select().single();
+export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 'updatedAt' | 'user_id'>): Promise<Purchase | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("User not authenticated to add a purchase.");
+        return null;
+    }
+    
+    const purchaseData = {
+        ...purchase,
+        user_id: user.id
+    };
+
+    const { data, error } = await supabase.from('purchases').insert([purchaseData]).select().single();
     if (error) {
         console.error('Error adding purchase:', error);
         return null;
