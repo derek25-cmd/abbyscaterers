@@ -15,7 +15,7 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         console.error("User not authenticated to add a purchase.");
-        return null;
+        throw new Error("You must be logged in to add a purchase.");
     }
     
     const purchaseData = {
