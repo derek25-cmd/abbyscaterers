@@ -31,7 +31,17 @@ export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'upda
 };
 
 export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>): Promise<boolean> => {
-    const { error } = await supabase.from('stock_logs').update(updatedLog).eq('id', id);
+    const updatePayload = { ...updatedLog };
+    if (updatePayload.quantity) {
+        updatePayload.quantity = Number(updatePayload.quantity);
+    }
+    if (updatePayload.price) {
+        updatePayload.price = Number(updatePayload.price);
+    }
+     if (updatePayload.actual_unit_price) {
+        updatePayload.actual_unit_price = Number(updatePayload.actual_unit_price);
+    }
+    const { error } = await supabase.from('stock_logs').update(updatePayload).eq('id', id);
     if (error) {
         console.error('Error updating stock log:', error);
     }

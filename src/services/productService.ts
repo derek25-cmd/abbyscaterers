@@ -20,7 +20,7 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
       quantity: Number(quantity),
       unit,
       unitPrice: Number(unitPrice),
-      minStock,
+      minStock: Number(minStock),
       maxStock,
       expiryDate,
       sku: `SKU-${Date.now()}`
@@ -43,6 +43,9 @@ export const updateProduct = async (id: string, updatedProduct: Partial<Product>
     if (updatePayload.unitPrice) {
         updatePayload.unitPrice = Number(updatePayload.unitPrice);
     }
+     if (updatePayload.minStock) {
+        updatePayload.minStock = Number(updatePayload.minStock);
+    }
 
     const { error } = await supabase.from('products').update(updatePayload).eq('id', id);
     if (error) {
@@ -50,4 +53,3 @@ export const updateProduct = async (id: string, updatedProduct: Partial<Product>
     }
     return !error;
 };
-
