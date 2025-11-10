@@ -3,6 +3,7 @@
 
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -428,6 +429,7 @@ export interface Purchase {
     expenseCategory: string;
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
+    user_id: string;
 }
 
 export interface Sale {
