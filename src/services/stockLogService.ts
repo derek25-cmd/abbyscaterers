@@ -31,7 +31,7 @@ export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'upda
 };
 
 export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>): Promise<boolean> => {
-    const updatePayload = { ...updatedLog };
+    const updatePayload: { [key: string]: any } = { ...updatedLog };
     if (updatePayload.quantity) {
         updatePayload.quantity = Number(updatePayload.quantity);
     }
@@ -47,3 +47,4 @@ export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>):
     }
     return !error;
 };
+

@@ -21,7 +21,7 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
       unit,
       unitPrice: Number(unitPrice),
       minStock: Number(minStock),
-      maxStock,
+      maxStock: maxStock ? Number(maxStock) : null,
       expiryDate,
       sku: `SKU-${Date.now()}`
     };
@@ -36,14 +36,15 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
 
 
 export const updateProduct = async (id: string, updatedProduct: Partial<Product>): Promise<boolean> => {
-    const updatePayload = { ...updatedProduct };
-    if (updatePayload.quantity) {
+    const updatePayload: { [key: string]: any } = { ...updatedProduct };
+    
+    if (updatePayload.quantity !== undefined) {
         updatePayload.quantity = Number(updatePayload.quantity);
     }
-    if (updatePayload.unitPrice) {
+    if (updatePayload.unitPrice !== undefined) {
         updatePayload.unitPrice = Number(updatePayload.unitPrice);
     }
-     if (updatePayload.minStock) {
+     if (updatePayload.minStock !== undefined) {
         updatePayload.minStock = Number(updatePayload.minStock);
     }
 
@@ -53,3 +54,4 @@ export const updateProduct = async (id: string, updatedProduct: Partial<Product>
     }
     return !error;
 };
+
