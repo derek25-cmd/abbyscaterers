@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 'use client'
 import {
@@ -17,14 +16,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
-import { PlusCircle, Trash2, Check, ChevronsUpDown, ArrowRight } from "lucide-react";
+import { PlusCircle, Trash2, Check, ChevronsUpDown, ArrowRight, CalendarIcon } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { cn } from "@/lib/utils";
+import { Calendar } from "../ui/calendar";
+import { format } from "date-fns";
 
 export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
   const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
+  const [date, setDate] = useState(new Date());
   const { orders } = useOrderStorage();
   
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
@@ -34,12 +36,19 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   useEffect(() => {
     if (isOpen) {
         setItems([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
+        setDate(new Date());
     }
   }, [isOpen]);
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
-    newItems[index][field] = value;
+    const numericValue = parseFloat(value);
+
+    if (field === 'quantity' || field === 'actual_unit_price') {
+      newItems[index][field] = isNaN(numericValue) ? 0 : numericValue;
+    } else {
+      newItems[index][field] = value;
+    }
     
     if (field === 'productId') {
         const product = getProduct(value);
@@ -82,6 +91,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         quantity: Number(item.quantity),
         price: Number(item.actual_unit_price) * Number(item.quantity),
         actual_unit_price: Number(item.actual_unit_price),
+        date: format(date, 'yyyy-MM-dd'),
       });
     });
 
@@ -112,6 +122,31 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
           </DialogHeader>
           <ScrollArea className="h-[60vh] p-1">
           <div className="space-y-4 py-4">
+             <div className="p-2">
+                <Label>Date of Movement</Label>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
+            </div>
             {items.map((item, index) => {
                 const product = getProduct(item.productId);
                 const catalogPrice = product?.unitPrice || 0;
