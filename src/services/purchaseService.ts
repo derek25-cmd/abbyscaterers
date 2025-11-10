@@ -20,6 +20,10 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
     
     const purchaseData = {
         ...purchase,
+        quantity: Number(purchase.quantity),
+        unitCost: Number(purchase.unitCost),
+        totalCost: Number(purchase.totalCost),
+        taxAmount: Number(purchase.taxAmount),
         user_id: user.id
     };
 
@@ -32,7 +36,17 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
 };
 
 export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<Purchase, 'id' | 'createdAt' | 'updatedAt'>>): Promise<boolean> => {
-    const { error } = await supabase.from('purchases').update({ ...updatedPurchase, updatedAt: new Date().toISOString() }).eq('id', id);
+    const updateData = {
+        ...updatedPurchase,
+        quantity: Number(updatedPurchase.quantity),
+        unitCost: Number(updatedPurchase.unitCost),
+        totalCost: Number(updatedPurchase.totalCost),
+        taxAmount: Number(updatedPurchase.taxAmount),
+        updatedAt: new Date().toISOString()
+    };
+    
+    const { error } = await supabase.from('purchases').update(updateData).eq('id', id);
+    
     if (error) {
         console.error('Error updating purchase:', error);
     }
