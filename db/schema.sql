@@ -1,7 +1,8 @@
 
--- ### Purchases Table ###
--- This table stores records of all goods and services bought.
--- It's the primary source for the "Purchases Book".
+-- Drop existing tables if they exist to ensure a clean slate.
+DROP TABLE IF EXISTS purchases, sales, stock_logs, costing_reports CASCADE;
+
+-- Create the 'purchases' table
 CREATE TABLE IF NOT EXISTS purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
@@ -20,19 +21,17 @@ CREATE TABLE IF NOT EXISTS purchases (
     updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
+-- Enable RLS for 'purchases'
 ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
 
--- Policies for purchases
+-- Create Policies for 'purchases'
 CREATE POLICY "Authenticated users can manage their own purchases" ON purchases
 FOR ALL
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 
-
--- ### Sales Table ###
--- This table records all revenue-generating activities.
--- It's the primary source for the "Sales Book".
+-- Create the 'sales' table
 CREATE TABLE IF NOT EXISTS sales (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
@@ -50,83 +49,76 @@ CREATE TABLE IF NOT EXISTS sales (
     updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
+-- Enable RLS for 'sales'
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 
--- Policies for sales
+-- Create Policies for 'sales'
 CREATE POLICY "Authenticated users can manage their own sales" ON sales
 FOR ALL
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 
--- ### Costing Reports Table ###
--- Stores miscellaneous income and expenses for costing reports.
+
+-- Create the 'stock_logs' table
+CREATE TABLE IF NOT EXISTS stock_logs (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    productId TEXT NOT NULL,
+    productName TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('Stock In', 'Stock Out')),
+    quantity NUMERIC NOT NULL,
+    price NUMERIC NOT NULL,
+    actual_unit_price NUMERIC,
+    reason TEXT,
+    date DATE NOT NULL,
+    status TEXT,
+    createdAt TIMESTAMPTZ DEFAULT now(),
+    updatedAt TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create the 'costing_reports' table
 CREATE TABLE IF NOT EXISTS costing_reports (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     report_date DATE NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
     description TEXT NOT NULL,
     amount NUMERIC(12, 2) NOT NULL,
-    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid(),
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(report_date, type, description)
 );
 
--- Enable RLS
+-- Enable RLS for 'costing_reports'
 ALTER TABLE costing_reports ENABLE ROW LEVEL SECURITY;
 
--- Policies for costing_reports
-CREATE POLICY "Authenticated users can manage their own costing reports" ON costing_reports
+-- Create Policies for 'costing_reports'
+CREATE POLICY "Users can manage their own costing reports" ON costing_reports
 FOR ALL
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 
 
--- ### SQL LOGIC TO ALTER TABLES FOR BOOKING-PROFORMA INTEGRATION ###
+-- ACCOUNTS RECEIVABLE LEDGER
+-- This is not a separate table. It's a VIEW or a query on the 'sales' table.
+-- The logic is: SELECT * FROM sales WHERE paymentStatus = 'unpaid';
+-- This gives you a real-time list of all outstanding balances from customers.
 
--- Add a column to the 'bookings' table to store the ID of the generated proforma invoice.
--- A UNIQUE constraint is added to enforce a one-to-one relationship.
-ALTER TABLE public.bookings
-ADD COLUMN IF NOT EXISTS proforma_invoice_id TEXT,
-ADD CONSTRAINT bookings_proforma_invoice_id_unique UNIQUE (proforma_invoice_id);
+-- ACCOUNTS PAYABLE LEDGER
+-- This is not a separate table. It's a VIEW or a query on the 'purchases' table.
+-- The logic is: SELECT * FROM purchases WHERE paymentStatus = 'unpaid';
+-- This gives you a real-time list of all amounts owed to suppliers.
 
--- Add a column to the 'proforma_invoices' table to link back to the booking.
-ALTER TABLE public.proforma_invoices
-ADD COLUMN IF NOT EXISTS booking_id TEXT;
+-- Add user_id to existing tables if it's not there
+ALTER TABLE IF EXISTS purchases ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
+ALTER TABLE IF EXISTS sales ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
 
--- Add a foreign key constraint to link bookings and proforma invoices.
--- This ensures data integrity.
-ALTER TABLE public.bookings
-ADD CONSTRAINT fk_proforma_invoice
-FOREIGN KEY (proforma_invoice_id)
-REFERENCES public.proforma_invoices(id)
-ON DELETE SET NULL;
+-- Alter bookings table to add proforma_invoice_id
+ALTER TABLE IF EXISTS bookings ADD COLUMN IF NOT EXISTS proforma_invoice_id TEXT;
+ALTER TABLE IF EXISTS bookings ADD CONSTRAINT bookings_proforma_invoice_id_unique UNIQUE (proforma_invoice_id);
 
--- Add a foreign key constraint from proforma_invoices to bookings.
-ALTER TABLE public.proforma_invoices
-ADD CONSTRAINT fk_booking
-FOREIGN KEY (booking_id)
-REFERENCES public.bookings(id)
-ON DELETE SET NULL;
+-- Alter proforma_invoices table to add booking_id
+ALTER TABLE IF EXISTS proforma_invoices ADD COLUMN IF NOT EXISTS booking_id TEXT;
 
--- Add a 'booking_id' column to the 'orders' table to link daily orders to a booking.
-ALTER TABLE public.orders
-ADD COLUMN IF NOT EXISTS booking_id TEXT;
-
--- Add a foreign key constraint from orders to bookings.
-ALTER TABLE public.orders
-ADD CONSTRAINT fk_booking
-FOREIGN KEY (booking_id)
-REFERENCES public.bookings(id)
-ON DELETE CASCADE;
-
-
--- Note on Ledgers:
--- Accounts Receivable and Accounts Payable are not separate tables.
--- They are "views" derived from the sales and purchases tables.
-
--- To get Accounts Receivable (customers who owe money):
--- SELECT * FROM sales WHERE paymentStatus = 'unpaid';
-
--- To get Accounts Payable (money owed to suppliers):
--- SELECT * FROM purchases WHERE paymentStatus = 'unpaid';
+-- Alter orders table to add booking_id
+ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS booking_id TEXT;

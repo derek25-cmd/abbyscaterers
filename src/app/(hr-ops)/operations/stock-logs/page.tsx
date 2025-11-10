@@ -67,8 +67,11 @@ export default function StockLogsPage() {
         updatedProduct.quantity -= movement.quantity;
     }
     
-    // We only update the quantity in the product catalog, not its base unitPrice
-    await updateProductInStore(product.id, { quantity: updatedProduct.quantity });
+    // We update both quantity and unitPrice in the product catalog
+    await updateProductInStore(product.id, { 
+        quantity: updatedProduct.quantity,
+        unitPrice: movement.actual_unit_price,
+    });
   };
 
   const handleEditLog = async (updatedLog: any) => {

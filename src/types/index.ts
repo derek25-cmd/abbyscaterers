@@ -4,6 +4,7 @@
 
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -396,7 +397,7 @@ export interface StockLog {
     type: 'Stock In' | 'Stock Out';
     quantity: number;
     price: number;
-    actual_unit_price?: number;
+    actual_unit_price: number;
     reason: string;
     date: string;
     status: string;
