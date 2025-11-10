@@ -1,333 +1,341 @@
--- This is the schema for the CaterSmart Client Manager app.
---
--- ** Clients Table **
--- Stores primary information about each client company.
-CREATE TABLE IF NOT EXISTS clients (
-    id TEXT PRIMARY KEY, -- User-defined Customer Registration Number, e.g., "CUST-001"
-    "companyName" TEXT NOT NULL,
-    "companyEmail" TEXT,
-    "phoneNumber" TEXT,
-    address1 TEXT NOT NULL,
-    address2 TEXT,
-    "postalCode" TEXT,
-    "primaryLocation" TEXT NOT NULL,
-    "typeOfOrganization" TEXT,
-    contacts JSONB, -- Array of { name, email, phone }
-    "lastContacted" TIMESTAMPTZ,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage clients" ON clients FOR ALL TO authenticated USING (true);
+-- Enable the pgcrypto extension to use gen_random_uuid()
+create extension if not exists pgcrypto with schema extensions;
 
+-- Create the clients table
+create table
+  public.clients (
+    id text not null,
+    "companyName" text not null,
+    "companyEmail" text null,
+    "phoneNumber" text null,
+    address1 text not null,
+    address2 text null,
+    "postalCode" text null,
+    "primaryLocation" text not null,
+    "typeOfOrganization" text not null,
+    contacts jsonb null,
+    "lastContacted" date not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint clients_pkey primary key (id)
+  ) tablespace pg_default;
 
--- ** Equipment Table **
--- Stores information about catering equipment.
-CREATE TABLE IF NOT EXISTS equipment (
-    "equipmentNumber" TEXT PRIMARY KEY,
-    "equipmentName" TEXT NOT NULL,
-    oem TEXT,
-    model TEXT,
-    "powerRating" TEXT,
-    quantity INTEGER NOT NULL,
-    "yearOfManufacture" TEXT,
-    "equipmentSource" TEXT,
-    capacity TEXT,
-    commitment TEXT,
-    "registrationNumber" TEXT,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage equipment" ON equipment FOR ALL TO authenticated USING (true);
+-- Create the equipment table
+create table
+  public.equipment (
+    "equipmentNumber" text not null,
+    "equipmentName" text not null,
+    oem text null,
+    model text null,
+    "powerRating" text null,
+    quantity integer not null,
+    "yearOfManufacture" text null,
+    "equipmentSource" text not null,
+    capacity text null,
+    commitment text not null,
+    "registrationNumber" text null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint equipment_pkey primary key ("equipmentNumber")
+  ) tablespace pg_default;
 
+-- Create the ingredients table
+create table
+  public.ingredients (
+    "itemNumber" text not null,
+    "itemDescription" text not null,
+    "itemClassification" text not null,
+    units jsonb not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    "quantityUsed" numeric(10, 2) null default 0,
+    user_id uuid null,
+    constraint ingredients_pkey primary key ("itemNumber")
+  ) tablespace pg_default;
 
--- ** Ingredients Table **
--- Stores information about ingredients for recipes.
-CREATE TABLE IF NOT EXISTS ingredients (
-    "itemNumber" TEXT PRIMARY KEY,
-    "itemDescription" TEXT NOT NULL,
-    "itemClassification" TEXT,
-    units JSONB, -- Array of { unit, price }
-    "quantityUsed" NUMERIC(10, 2) DEFAULT 0,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now(),
-    user_id UUID REFERENCES auth.users(id)
-);
-ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage ingredients" ON ingredients FOR ALL TO authenticated USING (auth.uid() = user_id);
+-- Create the recipes table
+create table
+  public.recipes (
+    "recipeNumber" text not null,
+    "recipeName" text not null,
+    "recipeType" text null,
+    ingredients jsonb null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    user_id uuid null,
+    constraint recipes_pkey primary key ("recipeNumber")
+  ) tablespace pg_default;
 
--- ** Recipes Table **
--- Stores recipe information.
-CREATE TABLE IF NOT EXISTS recipes (
-    "recipeNumber" TEXT PRIMARY KEY,
-    "recipeName" TEXT NOT NULL,
-    "recipeType" TEXT,
-    ingredients JSONB, -- Array of { ingredientId, quantity, unit }
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now(),
-    user_id UUID REFERENCES auth.users(id)
-);
-ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage recipes" ON recipes FOR ALL TO authenticated USING (auth.uid() = user_id);
+-- Create the orders table
+create table
+  public.orders (
+    id text not null default replace(uuid_generate_v4()::text, '-', ''),
+    name text not null,
+    description text null,
+    "proformaId" text null,
+    "clientEvents" jsonb not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    booking_id text null,
+    constraint orders_pkey primary key (id)
+  ) tablespace pg_default;
 
+-- Create the proforma_invoices table
+create table
+  public.proforma_invoices (
+    id text not null,
+    "invoiceDate" date not null,
+    "clientId" text null,
+    "receiverName" text null,
+    "receiverPosition" text null,
+    "lpoNumber" text null,
+    location text null,
+    "numberOfDays" integer not null,
+    "multiplyByDays" boolean not null,
+    "serviceCharge" numeric(10, 2) not null,
+    "transportCosts" numeric(10, 2) not null,
+    "vatType" text not null,
+    "selectedEventType" text null,
+    "customEventType" text null,
+    "startDate" date not null,
+    "endDate" date not null,
+    "serviceFields" jsonb not null,
+    "serviceDesc" text null,
+    items jsonb not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    "isInvoiced" boolean null default false,
+    booking_id text null,
+    constraint proforma_invoices_pkey primary key (id)
+  ) tablespace pg_default;
 
--- ** Orders Table **
--- A flexible table to store single or multi-event orders.
-CREATE TABLE IF NOT EXISTS orders (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  "proformaId" TEXT,
-  "clientEvents" JSONB, -- Array of ClientEvent objects
-  "createdAt" TIMESTAMPTZ DEFAULT now(),
-  "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage orders" ON orders FOR ALL TO authenticated USING (true);
+-- Create the invoices table
+create table
+  public.invoices (
+    id text not null,
+    "proformaId" text null,
+    status text not null,
+    "invoiceDate" date not null,
+    "clientId" text null,
+    "receiverName" text null,
+    "receiverPosition" text null,
+    "lpoNumber" text null,
+    location text null,
+    "numberOfDays" integer not null,
+    "multiplyByDays" boolean not null,
+    "serviceCharge" numeric(10, 2) not null,
+    "transportCosts" numeric(10, 2) not null,
+    "vatType" text not null,
+    "selectedEventType" text null,
+    "customEventType" text null,
+    "startDate" date null,
+    "endDate" date null,
+    "serviceFields" jsonb not null,
+    "serviceDesc" text null,
+    items jsonb not null,
+    "signedAtDate" date null,
+    "signedAtLocation" text null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint invoices_pkey primary key (id)
+  ) tablespace pg_default;
 
+-- Create the bookings table
+create table
+  public.bookings (
+    id text not null,
+    client_id text not null,
+    user_id uuid not null,
+    name text not null,
+    start_date date not null,
+    end_date date not null,
+    status text not null,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    proforma_invoice_id text null,
+    constraint bookings_pkey primary key (id),
+    constraint bookings_proforma_invoice_id_key unique (proforma_invoice_id)
+  ) tablespace pg_default;
 
--- ** Bookings Table (for continuous contracts) **
-CREATE TABLE IF NOT EXISTS bookings (
-  id TEXT PRIMARY KEY,
-  client_id TEXT REFERENCES clients(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id),
-  name TEXT NOT NULL,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  status TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  proforma_invoice_id TEXT UNIQUE
-);
-ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage bookings" ON bookings FOR ALL TO authenticated USING (auth.uid() = user_id);
+-- Create the delivery_notes table
+create table
+  public.delivery_notes (
+    id text not null,
+    order_id text not null,
+    client_id text not null,
+    client_name text not null,
+    delivery_date date not null,
+    delivery_location text not null,
+    vehicle_reg_no text null,
+    delivered_by text not null,
+    items jsonb not null,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    user_id uuid not null,
+    constraint delivery_notes_pkey primary key (id)
+  ) tablespace pg_default;
 
+-- Create the assets table
+create table
+  public.assets (
+    id uuid not null default gen_random_uuid (),
+    name text not null,
+    type text not null,
+    unit text not null,
+    "unitPrice" numeric(12, 2) not null,
+    quantity integer not null,
+    status text not null,
+    branch text not null,
+    "lastMaintenance" date null,
+    "nextMaintenance" date null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint assets_pkey primary key (id)
+  ) tablespace pg_default;
 
--- ** Proforma Invoices Table **
-CREATE TABLE IF NOT EXISTS proforma_invoices (
-  id TEXT PRIMARY KEY,
-  "invoiceDate" TIMESTAMPTZ NOT NULL,
-  "clientId" TEXT REFERENCES clients(id),
-  "receiverName" TEXT,
-  "receiverPosition" TEXT,
-  "lpoNumber" TEXT,
-  location TEXT,
-  "numberOfDays" INTEGER,
-  "multiplyByDays" BOOLEAN,
-  "serviceCharge" NUMERIC,
-  "transportCosts" NUMERIC,
-  "vatType" TEXT,
-  "selectedEventType" TEXT,
-  "customEventType" TEXT,
-  "startDate" TIMESTAMPTZ,
-  "endDate" TIMESTAMPTZ,
-  "serviceFields" JSONB,
-  "serviceDesc" TEXT,
-  items JSONB,
-  "createdAt" TIMESTAMPTZ DEFAULT now(),
-  "updatedAt" TIMESTAMPTZ DEFAULT now(),
-  "isInvoiced" BOOLEAN DEFAULT false,
-   booking_id TEXT UNIQUE REFERENCES bookings(id) ON DELETE SET NULL
-);
-ALTER TABLE proforma_invoices ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage proforma invoices" ON proforma_invoices FOR ALL TO authenticated USING (true);
+-- Create the issuance table
+create table
+  public.issuance (
+    id uuid not null default gen_random_uuid (),
+    orderId text not null,
+    issuedTo text not null,
+    date date not null,
+    status text not null,
+    branch text not null,
+    items jsonb not null,
+    totalValue numeric(12, 2) not null,
+    notes text null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint issuance_pkey primary key (id)
+  ) tablespace pg_default;
 
+-- Create the products table
+create table
+  public.products (
+    id text not null,
+    sku text not null,
+    name text not null,
+    category text not null,
+    quantity integer not null,
+    unit text not null,
+    "unitPrice" integer not null,
+    "minStock" integer not null,
+    "maxStock" integer null,
+    "expiryDate" date null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint products_pkey primary key (id),
+    constraint products_sku_key unique (sku)
+  ) tablespace pg_default;
 
--- ** Final Invoices Table **
-CREATE TABLE IF NOT EXISTS invoices (
-  id TEXT PRIMARY KEY,
-  "proformaId" TEXT,
-  status TEXT NOT NULL,
-  "invoiceDate" TIMESTAMPTZ NOT NULL,
-  "clientId" TEXT REFERENCES clients(id),
-  "receiverName" TEXT,
-  "receiverPosition" TEXT,
-  "lpoNumber" TEXT,
-  location TEXT,
-  "numberOfDays" INTEGER,
-  "multiplyByDays" BOOLEAN,
-  "serviceCharge" NUMERIC,
-  "transportCosts" NUMERIC,
-  "vatType" TEXT,
-  "selectedEventType" TEXT,
-  "customEventType" TEXT,
-  "startDate" TIMESTAMPTZ,
-  "endDate" TIMESTAMPTZ,
-  "serviceFields" JSONB,
-  "serviceDesc" TEXT,
-  items JSONB,
-  "signedAtDate" TIMESTAMPTZ,
-  "signedAtLocation" TEXT,
-  "createdAt" TIMESTAMPTZ DEFAULT now(),
-  "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage final invoices" ON invoices FOR ALL TO authenticated USING (true);
+-- Create the stock_logs table
+create table
+  public.stock_logs (
+    id text not null,
+    "productId" text not null,
+    "productName" text not null,
+    type text not null,
+    quantity integer not null,
+    price integer not null,
+    reason text not null,
+    date date not null,
+    status text not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    actual_unit_price integer null,
+    constraint stock_logs_pkey primary key (id)
+  ) tablespace pg_default;
 
--- Add booking_id to orders table
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS booking_id TEXT REFERENCES bookings(id) ON DELETE SET NULL;
+-- Create the daily_menus table
+create table
+  public.daily_menus (
+    id bigint generated by default as identity,
+    order_id text not null,
+    menu_date date not null,
+    recipes jsonb null,
+    created_at timestamp with time zone not null default now(),
+    updated_at timestamp with time zone not null default now(),
+    constraint daily_menus_pkey primary key (id),
+    constraint daily_menus_order_id_menu_date_key unique (order_id, menu_date)
+  ) tablespace pg_default;
 
+-- Create the employees table
+create table
+  public.employees (
+    id text not null,
+    "firstName" text not null,
+    "middleName" text null,
+    "lastName" text not null,
+    dob date null,
+    gender text null,
+    nationality text null,
+    "nationalId" text null,
+    tin text null,
+    phone text null,
+    email text null,
+    address text null,
+    "emergencyContactName" text null,
+    "emergencyContactRelationship" text null,
+    "emergencyContactPhone" text null,
+    role text not null,
+    department text not null,
+    status text not null,
+    "monthlySalary" numeric(12, 2) null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint employees_pkey primary key (id)
+  ) tablespace pg_default;
 
--- HR & Operations Tables
-CREATE TABLE IF NOT EXISTS assets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    type TEXT,
-    unit TEXT,
-    "unitPrice" NUMERIC(10, 2),
-    quantity NUMERIC(10, 2),
-    status TEXT,
-    branch TEXT,
-    "lastMaintenance" DATE,
-    "nextMaintenance" DATE,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage assets" ON assets FOR ALL TO authenticated USING (true);
+-- Create the attendance table
+create table
+  public.attendance (
+    id uuid not null default gen_random_uuid (),
+    employee text not null,
+    date date not null,
+    "clockIn" text not null,
+    "clockOut" text not null,
+    "totalHours" text not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint attendance_pkey primary key (id)
+  ) tablespace pg_default;
 
+-- Create the positions table
+create table
+  public.positions (
+    id uuid not null default gen_random_uuid (),
+    title text not null,
+    department text not null,
+    location text not null,
+    type text not null,
+    applicants integer not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint positions_pkey primary key (id)
+  ) tablespace pg_default;
 
-CREATE TABLE IF NOT EXISTS issuance (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "orderId" TEXT NOT NULL,
-    "issuedTo" TEXT NOT NULL,
-    date DATE NOT NULL,
-    status TEXT,
-    branch TEXT,
-    items JSONB,
-    "totalValue" NUMERIC(12, 2),
-    notes TEXT,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE issuance ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage issuances" ON issuance FOR ALL TO authenticated USING (true);
+-- Create the payroll table
+create table
+  public.payroll (
+    id text not null,
+    "employeeId" text not null,
+    "employeeName" text not null,
+    "payPeriodStart" date not null,
+    "payPeriodEnd" date not null,
+    "basicSalary" numeric(12, 2) not null,
+    allowances numeric(12, 2) not null,
+    deductions numeric(12, 2) not null,
+    "grossSalary" numeric(12, 2) not null,
+    "netSalary" numeric(12, 2) not null,
+    status text not null,
+    "paymentDate" date null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint payroll_pkey primary key (id)
+  ) tablespace pg_default;
 
-
-CREATE TABLE IF NOT EXISTS employees (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "firstName" TEXT NOT NULL,
-    "middleName" TEXT,
-    "lastName" TEXT NOT NULL,
-    dob DATE,
-    gender TEXT,
-    nationality TEXT,
-    "nationalId" TEXT,
-    tin TEXT,
-    phone TEXT,
-    email TEXT,
-    address TEXT,
-    "emergencyContactName" TEXT,
-    "emergencyContactRelationship" TEXT,
-    "emergencyContactPhone" TEXT,
-    role TEXT NOT NULL,
-    department TEXT NOT NULL,
-    status TEXT NOT NULL,
-    "monthlySalary" NUMERIC(10, 2),
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage employees" ON employees FOR ALL TO authenticated USING (true);
-
-
-CREATE TABLE IF NOT EXISTS attendance (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee TEXT NOT NULL,
-    date DATE NOT NULL,
-    "clockIn" TIME,
-    "clockOut" TIME,
-    "totalHours" TEXT,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage attendance" ON attendance FOR ALL TO authenticated USING (true);
-
-
-CREATE TABLE IF NOT EXISTS positions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title TEXT NOT NULL,
-    department TEXT,
-    location TEXT,
-    type TEXT,
-    applicants INTEGER,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE positions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage positions" ON positions FOR ALL TO authenticated USING (true);
-
-
-CREATE TABLE IF NOT EXISTS payroll (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "employeeId" UUID,
-    "employeeName" TEXT,
-    "payPeriodStart" DATE,
-    "payPeriodEnd" DATE,
-    "basicSalary" NUMERIC(12, 2),
-    allowances NUMERIC(12, 2),
-    deductions NUMERIC(12, 2),
-    "grossSalary" NUMERIC(12, 2),
-    "netSalary" NUMERIC(12, 2),
-    status TEXT,
-    "paymentDate" DATE,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE payroll ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage payroll" ON payroll FOR ALL TO authenticated USING (true);
-
-
-CREATE TABLE IF NOT EXISTS products (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sku TEXT,
-    name TEXT NOT NULL,
-    category TEXT,
-    quantity NUMERIC(10, 2),
-    unit TEXT,
-    "unitPrice" NUMERIC(10, 2),
-    "minStock" NUMERIC(10, 2),
-    "maxStock" INTEGER,
-    "expiryDate" DATE,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage products" ON products FOR ALL TO authenticated USING (true);
-
-
-CREATE TABLE IF NOT EXISTS stock_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "productId" UUID,
-    "productName" TEXT,
-    type TEXT,
-    quantity NUMERIC(10, 2),
-    price NUMERIC(12, 2),
-    actual_unit_price NUMERIC(10, 2),
-    reason TEXT,
-    date DATE,
-    status TEXT,
-    "createdAt" TIMESTAMPTZ DEFAULT now(),
-    "updatedAt" TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE stock_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage stock logs" ON stock_logs FOR ALL TO authenticated USING (true);
-
-CREATE TABLE IF NOT EXISTS daily_menus (
-    id BIGSERIAL PRIMARY KEY,
-    order_id TEXT NOT NULL,
-    menu_date DATE NOT NULL,
-    recipes JSONB,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(order_id, menu_date)
-);
-ALTER TABLE daily_menus ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage daily menus" ON daily_menus FOR ALL TO authenticated USING (true);
-
-
+-- Create the purchases table
 CREATE TABLE IF NOT EXISTS purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
@@ -346,48 +354,45 @@ CREATE TABLE IF NOT EXISTS purchases (
     updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
-ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+-- Create the sales table
+create table
+  public.sales (
+    id uuid not null default gen_random_uuid (),
+    date date not null,
+    "customerId" text not null,
+    "invoiceNumber" text not null,
+    description text not null,
+    quantity numeric(10, 2) not null,
+    "unitPrice" numeric(10, 2) not null,
+    "totalAmount" numeric(12, 2) not null,
+    "taxAmount" numeric(10, 2) null default 0,
+    "paymentMethod" text null,
+    "paymentStatus" text not null,
+    "createdAt" timestamp with time zone not null default now(),
+    "updatedAt" timestamp with time zone not null default now(),
+    constraint sales_pkey primary key (id)
+  ) tablespace pg_default;
 
--- Policies for purchases
-CREATE POLICY "Authenticated users can manage their own purchases" ON purchases
-FOR ALL
-TO authenticated
-USING (auth.uid() = user_id);
+-- Create the costing_reports table
+create table
+  public.costing_reports (
+    id bigint generated by default as identity,
+    report_date date not null,
+    type text not null,
+    description text not null,
+    amount numeric(12, 2) not null,
+    created_at timestamp with time zone not null default now(),
+    constraint costing_reports_pkey primary key (id)
+  ) tablespace pg_default;
 
-CREATE TABLE IF NOT EXISTS sales (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    date DATE NOT NULL,
-    customerId TEXT NOT NULL,
-    invoiceNumber TEXT NOT NULL,
-    description TEXT NOT NULL,
-    quantity NUMERIC(10, 2) NOT NULL,
-    unitPrice NUMERIC(10, 2) NOT NULL,
-    totalAmount NUMERIC(12, 2) NOT NULL,
-    taxAmount NUMERIC(10, 2) DEFAULT 0,
-    paymentMethod TEXT CHECK (paymentMethod IN ('cash', 'bank', 'credit')),
-    paymentStatus TEXT CHECK (paymentStatus IN ('paid', 'unpaid')),
-    createdAt TIMESTAMPTZ DEFAULT now(),
-    updatedAt TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage sales" ON sales FOR ALL TO authenticated USING (true);
+-- Alter products table to allow decimal values for quantity, price and stock levels
+ALTER TABLE products
+ALTER COLUMN quantity TYPE NUMERIC(10, 2),
+ALTER COLUMN "unitPrice" TYPE NUMERIC(10, 2),
+ALTER COLUMN "minStock" TYPE NUMERIC(10, 2);
 
-
-CREATE TABLE IF NOT EXISTS costing_reports (
-    id BIGSERIAL PRIMARY KEY,
-    report_date DATE NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-    description TEXT NOT NULL,
-    amount NUMERIC(12, 2) NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(report_date, type, description)
-);
-ALTER TABLE costing_reports ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users can manage costing reports" ON costing_reports FOR ALL TO authenticated USING (true);
-
--- Convert integer columns to numeric to support decimals
-ALTER TABLE products ALTER COLUMN "unitPrice" TYPE numeric(10, 2);
-ALTER TABLE products ALTER COLUMN "minStock" TYPE numeric(10, 2);
-ALTER TABLE stock_logs ALTER COLUMN price TYPE numeric(12, 2);
-ALTER TABLE stock_logs ALTER COLUMN actual_unit_price TYPE numeric(10, 2);
+-- Alter stock_logs table to allow decimal values for quantity and price
+ALTER TABLE stock_logs
+ALTER COLUMN quantity TYPE NUMERIC(10, 2),
+ALTER COLUMN price TYPE NUMERIC(10, 2),
+ALTER COLUMN actual_unit_price TYPE NUMERIC(10, 2);
