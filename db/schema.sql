@@ -1,8 +1,4 @@
-
--- Drop existing tables if they exist to ensure a clean slate.
-DROP TABLE IF EXISTS purchases, sales, stock_logs, costing_reports CASCADE;
-
--- Create the 'purchases' table
+-- Purchases Table
 CREATE TABLE IF NOT EXISTS purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
@@ -21,17 +17,16 @@ CREATE TABLE IF NOT EXISTS purchases (
     updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS for 'purchases'
+-- Enable RLS
 ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
 
--- Create Policies for 'purchases'
+-- Policies for purchases
 CREATE POLICY "Authenticated users can manage their own purchases" ON purchases
 FOR ALL
 TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+USING (auth.uid() = user_id);
 
--- Create the 'sales' table
+-- Sales Table
 CREATE TABLE IF NOT EXISTS sales (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
@@ -49,76 +44,317 @@ CREATE TABLE IF NOT EXISTS sales (
     updatedAt TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS for 'sales'
+-- Enable RLS
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 
--- Create Policies for 'sales'
+-- Policies for sales
 CREATE POLICY "Authenticated users can manage their own sales" ON sales
 FOR ALL
 TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+USING (auth.uid() = user_id);
 
-
--- Create the 'stock_logs' table
-CREATE TABLE IF NOT EXISTS stock_logs (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    productId TEXT NOT NULL,
-    productName TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('Stock In', 'Stock Out')),
-    quantity NUMERIC NOT NULL,
-    price NUMERIC NOT NULL,
-    actual_unit_price NUMERIC,
-    reason TEXT,
-    date DATE NOT NULL,
-    status TEXT,
-    createdAt TIMESTAMPTZ DEFAULT now(),
-    updatedAt TIMESTAMPTZ DEFAULT now()
-);
-
--- Create the 'costing_reports' table
+-- Costing Reports Table
 CREATE TABLE IF NOT EXISTS costing_reports (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     report_date DATE NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
     description TEXT NOT NULL,
     amount NUMERIC(12, 2) NOT NULL,
-    user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid(),
+    user_id UUID REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid(),
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(report_date, type, description)
 );
 
--- Enable RLS for 'costing_reports'
+-- Enable RLS for costing_reports
 ALTER TABLE costing_reports ENABLE ROW LEVEL SECURITY;
 
--- Create Policies for 'costing_reports'
-CREATE POLICY "Users can manage their own costing reports" ON costing_reports
+-- Policies for costing_reports
+CREATE POLICY "Authenticated users can manage their own costing reports" ON costing_reports
 FOR ALL
 TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+USING (auth.uid() = user_id);
 
 
--- ACCOUNTS RECEIVABLE LEDGER
--- This is not a separate table. It's a VIEW or a query on the 'sales' table.
--- The logic is: SELECT * FROM sales WHERE paymentStatus = 'unpaid';
--- This gives you a real-time list of all outstanding balances from customers.
+-- Accounts Payable and Receivable are not separate tables.
+-- They are derived from the 'purchases' and 'sales' tables respectively.
+-- Accounts Payable can be calculated by:
+-- SELECT * FROM purchases WHERE paymentStatus = 'unpaid';
+--
+-- Accounts Receivable can be calculated by:
+-- SELECT * FROM sales WHERE paymentStatus = 'unpaid';
 
--- ACCOUNTS PAYABLE LEDGER
--- This is not a separate table. It's a VIEW or a query on the 'purchases' table.
--- The logic is: SELECT * FROM purchases WHERE paymentStatus = 'unpaid';
--- This gives you a real-time list of all amounts owed to suppliers.
+-- Proforma Invoices Table
+CREATE TABLE IF NOT EXISTS proforma_invoices (
+    id TEXT PRIMARY KEY,
+    "invoiceDate" TEXT,
+    "clientId" TEXT,
+    "receiverName" TEXT,
+    "receiverPosition" TEXT,
+    "lpoNumber" TEXT,
+    location TEXT,
+    "numberOfDays" INTEGER,
+    "multiplyByDays" BOOLEAN,
+    "serviceCharge" NUMERIC,
+    "transportCosts" NUMERIC,
+    "vatType" TEXT,
+    "selectedEventType" TEXT,
+    "customEventType" TEXT,
+    "startDate" TEXT,
+    "endDate" TEXT,
+    "serviceFields" JSONB,
+    "serviceDesc" TEXT,
+    items JSONB,
+    "createdAt" TEXT,
+    "updatedAt" TEXT,
+    "isInvoiced" BOOLEAN DEFAULT false,
+    booking_id TEXT UNIQUE REFERENCES bookings(id)
+);
 
--- Add user_id to existing tables if it's not there
-ALTER TABLE IF EXISTS purchases ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
-ALTER TABLE IF EXISTS sales ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
+-- Invoices Table
+CREATE TABLE IF NOT EXISTS invoices (
+    id TEXT PRIMARY KEY,
+    "proformaId" TEXT,
+    status TEXT,
+    "invoiceDate" TEXT,
+    "clientId" TEXT,
+    "receiverName" TEXT,
+    "receiverPosition" TEXT,
+    "lpoNumber" TEXT,
+    location TEXT,
+    "numberOfDays" INTEGER,
+    "multiplyByDays" BOOLEAN,
+    "serviceCharge" NUMERIC,
+    "transportCosts" NUMERIC,
+    "vatType" TEXT,
+    "selectedEventType" TEXT,
+    "customEventType" TEXT,
+    "startDate" TEXT,
+    "endDate" TEXT,
+    "serviceFields" JSONB,
+    "serviceDesc" TEXT,
+    items JSONB,
+    "signedAtDate" TEXT,
+    "signedAtLocation" TEXT,
+    "createdAt" TEXT,
+    "updatedAt" TEXT
+);
 
--- Alter bookings table to add proforma_invoice_id
-ALTER TABLE IF EXISTS bookings ADD COLUMN IF NOT EXISTS proforma_invoice_id TEXT;
-ALTER TABLE IF EXISTS bookings ADD CONSTRAINT bookings_proforma_invoice_id_unique UNIQUE (proforma_invoice_id);
+-- Clients Table
+CREATE TABLE IF NOT EXISTS clients (
+    id TEXT PRIMARY KEY,
+    "companyName" TEXT,
+    "companyEmail" TEXT,
+    "phoneNumber" TEXT,
+    address1 TEXT,
+    address2 TEXT,
+    "postalCode" TEXT,
+    "primaryLocation" TEXT,
+    "typeOfOrganization" TEXT,
+    contacts JSONB,
+    "lastContacted" TEXT,
+    "createdAt" TEXT,
+    "updatedAt" TEXT
+);
 
--- Alter proforma_invoices table to add booking_id
-ALTER TABLE IF EXISTS proforma_invoices ADD COLUMN IF NOT EXISTS booking_id TEXT;
+-- Orders Table
+CREATE TABLE IF NOT EXISTS orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT,
+    description TEXT,
+    "proformaId" TEXT,
+    "clientEvents" JSONB,
+    "createdAt" TEXT,
+    "updatedAt" TEXT,
+    booking_id TEXT REFERENCES bookings(id) ON DELETE SET NULL
+);
 
--- Alter orders table to add booking_id
-ALTER TABLE IF EXISTS orders ADD COLUMN IF NOT EXISTS booking_id TEXT;
+-- Recipes Table
+CREATE TABLE IF NOT EXISTS recipes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "recipeNumber" TEXT UNIQUE,
+    "recipeName" TEXT,
+    "recipeType" TEXT,
+    ingredients JSONB,
+    "createdAt" TEXT,
+    "updatedAt" TEXT,
+    user_id UUID REFERENCES auth.users(id)
+);
+
+-- Ingredients Table
+CREATE TABLE IF NOT EXISTS ingredients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "itemNumber" TEXT UNIQUE,
+    "itemDescription" TEXT,
+    "itemClassification" TEXT,
+    units JSONB,
+    "createdAt" TEXT,
+    "updatedAt" TEXT,
+    user_id UUID REFERENCES auth.users(id)
+);
+
+-- Delivery Notes Table
+CREATE TABLE IF NOT EXISTS delivery_notes (
+    id TEXT PRIMARY KEY,
+    order_id TEXT,
+    client_id TEXT,
+    client_name TEXT,
+    delivery_date TEXT,
+    delivery_location TEXT,
+    vehicle_reg_no TEXT,
+    delivered_by TEXT,
+    items JSONB,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    user_id UUID REFERENCES auth.users(id)
+);
+
+
+-- Bookings Table
+CREATE TABLE IF NOT EXISTS bookings (
+    id TEXT PRIMARY KEY,
+    client_id TEXT,
+    user_id UUID REFERENCES auth.users(id),
+    name TEXT,
+    start_date TEXT,
+    end_date TEXT,
+    status TEXT,
+    proforma_invoice_id TEXT UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Daily Menus Table
+CREATE TABLE IF NOT EXISTS daily_menus (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    order_id UUID NOT NULL,
+    menu_date DATE NOT NULL,
+    recipes JSONB,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(order_id, menu_date)
+);
+
+-- HR & Operations Tables
+
+CREATE TABLE IF NOT EXISTS employees (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "firstName" TEXT NOT NULL,
+    "middleName" TEXT,
+    "lastName" TEXT NOT NULL,
+    dob DATE,
+    gender TEXT,
+    nationality TEXT,
+    "nationalId" TEXT,
+    tin TEXT,
+    phone TEXT,
+    email TEXT,
+    address TEXT,
+    "emergencyContactName" TEXT,
+    "emergencyContactRelationship" TEXT,
+    "emergencyContactPhone" TEXT,
+    role TEXT NOT NULL,
+    department TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Active',
+    "monthlySalary" NUMERIC(12, 2),
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+
+CREATE TABLE IF NOT EXISTS attendance (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    employee TEXT NOT NULL,
+    date DATE NOT NULL,
+    "clockIn" TEXT,
+    "clockOut" TEXT,
+    "totalHours" TEXT,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS positions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    department TEXT NOT NULL,
+    location TEXT NOT NULL,
+    type TEXT NOT NULL,
+    applicants INTEGER DEFAULT 0,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS payroll (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "employeeId" TEXT NOT NULL,
+    "employeeName" TEXT NOT NULL,
+    "payPeriodStart" DATE NOT NULL,
+    "payPeriodEnd" DATE NOT NULL,
+    "basicSalary" NUMERIC(12, 2) NOT NULL,
+    allowances NUMERIC(12, 2) DEFAULT 0,
+    deductions NUMERIC(12, 2) DEFAULT 0,
+    "grossSalary" NUMERIC(12, 2) NOT NULL,
+    "netSalary" NUMERIC(12, 2) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    "paymentDate" DATE,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    unit TEXT NOT NULL,
+    "unitPrice" NUMERIC(12, 2) NOT NULL,
+    quantity INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    branch TEXT NOT NULL DEFAULT 'Dar es Salaam',
+    "lastMaintenance" DATE,
+    "nextMaintenance" DATE,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS issuance (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "orderId" TEXT NOT NULL,
+    "issuedTo" TEXT NOT NULL,
+    date DATE NOT NULL,
+    status TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    items JSONB NOT NULL,
+    "totalValue" NUMERIC(12, 2) NOT NULL,
+    notes TEXT,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS products (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sku TEXT UNIQUE,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    quantity NUMERIC(10, 2) NOT NULL,
+    unit TEXT NOT NULL,
+    "unitPrice" NUMERIC(12, 2) NOT NULL,
+    "minStock" INTEGER DEFAULT 0,
+    "maxStock" INTEGER DEFAULT 100,
+    "expiryDate" DATE,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS stock_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "productId" UUID REFERENCES products(id),
+    "productName" TEXT,
+    type TEXT NOT NULL,
+    quantity NUMERIC(10, 2) NOT NULL,
+    price NUMERIC(12, 2),
+    actual_unit_price NUMERIC(12, 2),
+    reason TEXT,
+    date DATE NOT NULL,
+    status TEXT,
+    "createdAt" TIMESTAMPTZ DEFAULT now(),
+    "updatedAt" TIMESTAMPTZ DEFAULT now()
+);
