@@ -17,9 +17,9 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
     const productDataForSupabase = {
       name,
       category,
-      quantity,
+      quantity: Number(quantity),
       unit,
-      unitPrice,
+      unitPrice: Number(unitPrice),
       minStock,
       maxStock,
       expiryDate,
@@ -36,9 +36,18 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
 
 
 export const updateProduct = async (id: string, updatedProduct: Partial<Product>): Promise<boolean> => {
-    const { error } = await supabase.from('products').update(updatedProduct).eq('id', id);
+    const updatePayload = { ...updatedProduct };
+    if (updatePayload.quantity) {
+        updatePayload.quantity = Number(updatePayload.quantity);
+    }
+    if (updatePayload.unitPrice) {
+        updatePayload.unitPrice = Number(updatePayload.unitPrice);
+    }
+
+    const { error } = await supabase.from('products').update(updatePayload).eq('id', id);
     if (error) {
         console.error('Error updating product:', error);
     }
     return !error;
 };
+
