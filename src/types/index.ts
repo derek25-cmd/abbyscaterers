@@ -2,6 +2,7 @@
 
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -175,6 +176,7 @@ export interface ProformaInvoice {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
   isInvoiced?: boolean; // New status flag
+  booking_id?: string | null;
 }
 
 
@@ -225,6 +227,7 @@ export interface Booking {
   start_date: string;
   end_date: string;
   status: 'active' | 'closed' | 'pending';
+  proforma_invoice_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -441,4 +444,13 @@ export interface Sale {
     paymentStatus: 'paid' | 'unpaid';
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
+}
+
+export interface CostingReportItem {
+    id: number;
+    report_date: string;
+    type: 'income' | 'expense';
+    description: string;
+    amount: number;
+    created_at: string;
 }

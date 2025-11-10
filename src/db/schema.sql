@@ -1,108 +1,116 @@
--- This SQL schema is designed for a PostgreSQL database, compatible with Supabase.
--- It defines the core tables for the finance module based on IFRS principles.
 
--- =================================================================
--- 1. PURCHASES BOOK
--- Purpose: Records all goods and services bought by the company.
--- Corresponds to the "Purchases Book" in the application.
--- =================================================================
+-- Purchases Table
 CREATE TABLE purchases (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    date DATE NOT NULL,
+    date TIMESTAMP WITH TIME ZONE NOT NULL,
     supplier TEXT NOT NULL,
-    "invoiceNumber" TEXT NOT NULL,
+    invoiceNumber TEXT NOT NULL,
     description TEXT NOT NULL,
-    quantity NUMERIC NOT NULL CHECK (quantity > 0),
-    "unitCost" NUMERIC NOT NULL CHECK ("unitCost" >= 0),
-    "totalCost" NUMERIC NOT NULL CHECK ("totalCost" >= 0),
-    "taxAmount" NUMERIC NOT NULL DEFAULT 0 CHECK ("taxAmount" >= 0),
-    "paymentMethod" TEXT NOT NULL CHECK ("paymentMethod" IN ('cash', 'bank', 'credit')),
-    "paymentStatus" TEXT NOT NULL CHECK ("paymentStatus" IN ('paid', 'unpaid')),
-    "expenseCategory" TEXT NOT NULL,
-    "createdAt" TIMESTAMPTZ DEFAULT now() NOT NULL,
-    "updatedAt" TIMESTAMPTZ DEFAULT now() NOT NULL
+    quantity NUMERIC NOT NULL,
+    unitCost NUMERIC NOT NULL,
+    totalCost NUMERIC NOT NULL,
+    taxAmount NUMERIC DEFAULT 0,
+    paymentMethod TEXT NOT NULL,
+    paymentStatus TEXT NOT NULL,
+    expenseCategory TEXT,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES auth.users(id) NOT NULL
 );
 
-COMMENT ON TABLE purchases IS 'Stores all purchase transactions, forming the basis for the Purchases Book.';
-
-
--- =================================================================
--- 2. SALES BOOK
--- Purpose: Records all revenue-generating activities.
--- Corresponds to the "Sales Book" in the application.
--- =================================================================
+-- Sales Table
 CREATE TABLE sales (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    date DATE NOT NULL,
-    "customerId" TEXT NOT NULL, -- In the app, this links to the clients table/storage.
-    "invoiceNumber" TEXT NOT NULL,
+    date TIMESTAMP WITH TIME ZONE NOT NULL,
+    customerId TEXT NOT NULL,
+    invoiceNumber TEXT NOT NULL,
     description TEXT NOT NULL,
-    quantity NUMERIC NOT NULL CHECK (quantity > 0),
-    "unitPrice" NUMERIC NOT NULL CHECK ("unitPrice" >= 0),
-    "totalAmount" NUMERIC NOT NULL CHECK ("totalAmount" >= 0),
-    "taxAmount" NUMERIC NOT NULL DEFAULT 0 CHECK ("taxAmount" >= 0),
-    "paymentMethod" TEXT NOT NULL CHECK ("paymentMethod" IN ('cash', 'bank', 'credit')),
-    "paymentStatus" TEXT NOT NULL CHECK ("paymentStatus" IN ('paid', 'unpaid')),
-    "createdAt" TIMESTAMPTZ DEFAULT now() NOT NULL,
-    "updatedAt" TIMESTAMPTZ DEFAULT now() NOT NULL
+    quantity NUMERIC NOT NULL,
+    unitPrice NUMERIC NOT NULL,
+    totalAmount NUMERIC NOT NULL,
+    taxAmount NUMERIC DEFAULT 0,
+    paymentMethod TEXT NOT NULL,
+    paymentStatus TEXT NOT NULL,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id UUID REFERENCES auth.users(id) NOT NULL
 );
 
-COMMENT ON TABLE sales IS 'Stores all sales transactions, forming the basis for the Sales Book.';
+-- Costing Reports Table
+CREATE TABLE costing_reports (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    report_date DATE NOT NULL,
+    type TEXT NOT NULL, -- 'income' or 'expense'
+    description TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(report_date, type, description)
+);
+
+-- Bookings Table
+CREATE TABLE bookings (
+    id TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL,
+    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    name TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status TEXT NOT NULL,
+    proforma_invoice_id TEXT, -- Link to the generated proforma invoice
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Proforma Invoices Table (ensure booking_id is present)
+-- If this table already exists, you may need to add the column with ALTER TABLE
+CREATE TABLE proforma_invoices (
+    -- ... other columns
+    booking_id TEXT,
+    -- ... other columns
+);
+-- If the table exists, run this:
+-- ALTER TABLE proforma_invoices ADD COLUMN booking_id TEXT;
 
 
--- =================================================================
--- 3. ACCOUNTS PAYABLE LEDGER (Derived View)
--- Purpose: Tracks amounts the company owes to suppliers.
--- This is not a separate table but a VIEW derived from the 'purchases' table.
--- The application creates this ledger by filtering purchases where paymentStatus = 'unpaid'.
--- =================================================================
-CREATE OR REPLACE VIEW accounts_payable_ledger AS
-SELECT
-    id,
-    supplier,
-    "invoiceNumber",
-    date AS due_date, -- Assuming due date is the purchase date for simplicity
-    "totalCost" AS amount_due
-FROM
-    purchases
-WHERE
-    "paymentStatus" = 'unpaid';
+-- RLS Policies
+-- Enable RLS for all relevant tables
+ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE costing_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
-COMMENT ON VIEW accounts_payable_ledger IS 'A derived view showing all unpaid purchases, representing the accounts payable ledger.';
+-- Policy for Purchases
+CREATE POLICY "Users can manage their own purchases"
+ON purchases FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Policy for Sales
+CREATE POLICY "Users can manage their own sales"
+ON sales FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Policy for Costing Reports
+CREATE POLICY "Users can manage their own costing reports"
+ON costing_reports FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+-- Policy for Bookings
+CREATE POLICY "Users can manage their own bookings"
+ON bookings FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 
 
--- =================================================================
--- 4. ACCOUNTS RECEIVABLE LEDGER (Derived View)
--- Purpose: Tracks amounts owed by customers.
--- This is not a separate table but a VIEW derived from the 'sales' table.
--- The application creates this ledger by filtering sales where paymentStatus = 'unpaid'.
--- =================================================================
-CREATE OR REPLACE VIEW accounts_receivable_ledger AS
-SELECT
-    id,
-    "customerId",
-    "invoiceNumber",
-    date AS due_date, -- Assuming due date is the sale date for simplicity
-    "totalAmount" AS amount_due
-FROM
-    sales
-WHERE
-    "paymentStatus" = 'unpaid';
-
-COMMENT ON VIEW accounts_receivable_ledger IS 'A derived view showing all unpaid sales, representing the accounts receivable ledger.';
-
--- =================================================================
--- NOTES ON INTEGRATION:
+-- Note on Ledgers:
+-- The Accounts Payable and Accounts Receivable Ledgers are not separate tables.
+-- They are derived by querying the 'purchases' and 'sales' tables, respectively.
 --
--- - Inventory/Stock: Stock levels are updated based on 'purchases' (stock in)
---   and 'sales' (stock out). A separate 'stock_logs' table might be used for
---   more granular tracking, as implemented in the HR & Operations module.
+-- To get Accounts Payable (Creditors):
+-- SELECT * FROM purchases WHERE paymentStatus = 'unpaid';
 --
--- - Cash Book: A dedicated 'cash_book' table would be created to log all
---   transactions. When a purchase or sale is marked as 'paid', a corresponding
---   entry would be made in the cash book.
---
--- - General Ledger: In a full-scale accounting system, every transaction
---   from these tables would generate a corresponding double-entry journal
---   in a 'general_ledger' table.
--- =================================================================
+-- To get Accounts Receivable (Debtors):
+-- SELECT * FROM sales WHERE paymentStatus = 'unpaid';

@@ -25,10 +25,10 @@ export function BookingDetailsPageComponent() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { getBookingById, isLoading: bookingsLoading } = useBookingStorage();
+  const { getBookingById, updateBooking, isLoading: bookingsLoading } = useBookingStorage();
   const { orders, getOrdersByBookingId, addOrder, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const { addProformaInvoice } = useProformaInvoiceStorage();
+  const { proformaInvoices, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
 
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
@@ -52,19 +52,63 @@ export function BookingDetailsPageComponent() {
   const handleAddDailyOrder = async (orderData: Partial<OrderFormData>) => {
     if (!bookingId) return;
     try {
-        await addOrder(orderData);
-        toast({ title: "Success", description: "Daily order has been recorded."});
-        setIsAddOrderOpen(false); // Close dialog on success
+        const newOrder = await addOrder(orderData);
+        if (newOrder) {
+          toast({ title: "Success", description: "Daily order has been recorded."});
+          setIsAddOrderOpen(false);
+          
+          if (booking?.proforma_invoice_id) {
+            await updateProformaWithLatestOrders();
+          }
+        }
     } catch(error) {
         console.error(error);
         toast({ variant: "destructive", title: "Error", description: "Failed to record daily order."});
     }
   }
 
+  const updateProformaWithLatestOrders = async () => {
+    if (!booking?.proforma_invoice_id) return;
+    
+    const proforma = proformaInvoices.find(pi => pi.id === booking.proforma_invoice_id);
+    if (!proforma) return;
+
+    const allBookingOrders = getOrdersByBookingId(booking.id);
+
+    const updatedItems = allBookingOrders.flatMap(order => (order.clientEvents || []).map(event => ({
+        id: order.id,
+        particularType: 'meal' as const,
+        eventType: '',
+        mealType: event.mealType,
+        pax: event.numberOfPeople,
+        unitPrice: event.unitPrice,
+        total: event.unitPrice * event.numberOfPeople,
+        date: event.date,
+        vatType: event.vatType,
+        particularDescription: `${event.mealType} on ${format(parseISO(event.date), 'PPP')}`
+    })));
+
+    const updatedProformaData: Partial<ProformaInvoiceFormData> = {
+      items: updatedItems,
+      numberOfDays: allBookingOrders.length,
+    };
+    
+    try {
+      await updateProformaInvoice(proforma.id, updatedProformaData);
+      toast({ title: 'Proforma Updated', description: `Proforma Invoice ${proforma.id} has been updated with the new order.` });
+    } catch (error) {
+       console.error(error);
+       toast({ variant: 'destructive', title: 'Error', description: 'Failed to update proforma invoice.' });
+    }
+  };
+
   const handleDeleteDailyOrder = async (orderId: string) => {
     try {
         await deleteOrderFromStore(orderId);
         toast({ title: "Success", description: "Daily order deleted."});
+        if (booking?.proforma_invoice_id) {
+          await updateProformaWithLatestOrders();
+        }
     } catch(error) {
          console.error(error);
         toast({ variant: "destructive", title: "Error", description: "Failed to delete daily order."});
@@ -102,12 +146,12 @@ export function BookingDetailsPageComponent() {
         ...proformaDetails,
         id: proformaDetails.id!,
         clientId: booking.client_id,
+        booking_id: booking.id,
         items: invoiceItems,
         startDate: booking.start_date,
         endDate: booking.end_date,
         numberOfDays: bookingOrders.length,
         multiplyByDays: false, // Each order is a line item, so we don't multiply
-        // Default other fields that are not in the dialog
         selectedEventType: 'Catering services',
         customEventType: '',
         serviceFields: {},
@@ -117,6 +161,7 @@ export function BookingDetailsPageComponent() {
     try {
         const newProforma = await addProformaInvoice(newProformaData);
         if (newProforma) {
+             await updateBooking(booking.id, { proforma_invoice_id: newProforma.id });
              toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created.` });
              router.push(`/proforma-invoices/${newProforma.id}`);
         } else {
@@ -145,6 +190,7 @@ export function BookingDetailsPageComponent() {
   }
   
   const client = getClientById(booking.client_id);
+  const hasProforma = !!booking.proforma_invoice_id;
 
   return (
     <div className="space-y-6">
@@ -161,10 +207,19 @@ export function BookingDetailsPageComponent() {
                     <PlusCircle className="mr-2 h-4 w-4"/>
                     Record Daily Order
                 </Button>
-                 <Button variant="default" onClick={() => setIsCloseBookingOpen(true)} disabled={bookingOrders.length === 0}>
-                    <FileText className="mr-2 h-4 w-4"/>
-                    Close & Generate Proforma
-                </Button>
+                 {hasProforma ? (
+                    <Button variant="outline" asChild>
+                       <Link href={`/proforma-invoices/${booking.proforma_invoice_id}`}>
+                          <FileText className="mr-2 h-4 w-4"/>
+                          View Proforma
+                       </Link>
+                    </Button>
+                 ) : (
+                    <Button variant="default" onClick={() => setIsCloseBookingOpen(true)} disabled={bookingOrders.length === 0}>
+                        <FileText className="mr-2 h-4 w-4"/>
+                        Close & Generate Proforma
+                    </Button>
+                 )}
             </div>
        </div>
 

@@ -48,18 +48,12 @@ export const addBooking = async (bookingData: BookingFormData): Promise<Booking 
     }
 };
 
-export const updateBooking = async (id: string, updates: Partial<BookingFormData>): Promise<boolean> => {
+export const updateBooking = async (id: string, updates: Partial<Booking>): Promise<boolean> => {
     const updatePayload = {
         ...updates,
-        client_id: updates.clientId,
-        start_date: updates.start_date,
-        end_date: updates.end_date,
         updated_at: new Date().toISOString()
     };
     
-    // remove camelCase properties
-    delete (updatePayload as any).clientId;
-
     try {
         const { error } = await supabase.from('bookings').update(updatePayload).eq('id', id);
         if (error) throw error;
