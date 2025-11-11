@@ -29,6 +29,15 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
   }
 
   const grandTotal = data.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  
+  const sortedData = [...data].sort((a,b) => {
+    const dateA = a.clientEvents?.[0]?.date;
+    const dateB = b.clientEvents?.[0]?.date;
+    if (!dateA || !isValid(parseISO(dateA))) return 1;
+    if (!dateB || !isValid(parseISO(dateB))) return -1;
+    return parseISO(dateA).getTime() - parseISO(dateB).getTime();
+  });
+
 
   return (
     <Card>
@@ -48,7 +57,7 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length > 0 ? data.map(order => {
+            {sortedData.length > 0 ? sortedData.map(order => {
               const eventDate = order.clientEvents?.[0]?.date;
               const event = order.clientEvents?.[0];
               const particular = event?.particularDescription || event?.mealType || order.name || 'N/A';

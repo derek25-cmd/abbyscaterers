@@ -73,10 +73,11 @@ export function AddBulkItemDialog({
   const { isSubmitting } = form.formState;
 
   const handleSubmit = async (data: Partial<OrderFormData>) => {
-    const payload = {
+    const description = data.clientEvents?.[0]?.particularDescription || 'Bulk Item';
+    const payload: Partial<OrderFormData> = {
         ...data,
         id: `ORD-${Date.now()}`,
-        name: data.clientEvents?.[0]?.particularDescription || 'Bulk Item'
+        name: `Bulk Item: ${description}`,
     }
     await onSubmit(payload);
     setIsOpen(false);
@@ -167,5 +168,3 @@ export function AddBulkItemDialog({
     </Dialog>
   );
 }
-
-    
