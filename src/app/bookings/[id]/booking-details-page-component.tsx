@@ -11,11 +11,12 @@ import { LoadingPage } from "@/components/layout/loading-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calendar, User, ArrowLeft, PlusCircle, FileText, ListPlus } from "lucide-react";
+import { Calendar, User, ArrowLeft, PlusCircle, FileText, ListPlus, Package } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
 import { BulkAddOrdersDialog } from "@/components/bookings/bulk-add-orders-dialog";
+import { AddBulkItemDialog } from "@/components/bookings/add-bulk-item-dialog";
 import { OrderFormData, ProformaInvoiceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
@@ -36,6 +37,7 @@ export function BookingDetailsPageComponent() {
   const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
+  const [isBulkItemOpen, setIsBulkItemOpen] = useState(false);
   const [isCloseBookingOpen, setIsCloseBookingOpen] = useState(false);
   const [isBulkCreating, setIsBulkCreating] = useState(false);
   const [bulkCreationProgress, setBulkCreationProgress] = useState({ current: 0, total: 0 });
@@ -250,10 +252,14 @@ export function BookingDetailsPageComponent() {
                 <h1 className="text-3xl font-bold tracking-tight text-foreground">{booking.name}</h1>
                 <p className="text-muted-foreground">Manage daily orders for this continuous contract.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap justify-end">
                  <Button variant="outline" onClick={() => setIsBulkAddOpen(true)}>
                     <ListPlus className="mr-2 h-4 w-4"/>
                     Bulk Add Orders
+                </Button>
+                <Button variant="outline" onClick={() => setIsBulkItemOpen(true)}>
+                    <Package className="mr-2 h-4 w-4"/>
+                    Add Bulk Item
                 </Button>
                 <Button onClick={() => setIsAddOrderOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4"/>
@@ -325,6 +331,14 @@ export function BookingDetailsPageComponent() {
             onSubmit={handleBulkAddOrders}
             bookingStartDate={booking.start_date}
             bookingEndDate={booking.end_date}
+        />
+        
+        <AddBulkItemDialog
+            isOpen={isBulkItemOpen}
+            setIsOpen={setIsBulkItemOpen}
+            onSubmit={handleAddDailyOrder}
+            bookingId={booking.id}
+            clientId={booking.client_id}
         />
 
         <CloseBookingDialog

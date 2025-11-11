@@ -56,6 +56,7 @@ export function AddDailyOrderDialog({
         total: 0,
         vatType: "inclusive",
         recipes: [],
+        particularType: 'meal'
       }]
     },
   });
@@ -96,6 +97,7 @@ export function AddDailyOrderDialog({
           total: 0,
           vatType: "inclusive",
           recipes: [],
+          particularType: 'meal'
         }]
       });
     }
@@ -107,9 +109,9 @@ export function AddDailyOrderDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
             <DialogHeader>
-              <DialogTitle>Record Daily Order</DialogTitle>
+              <DialogTitle>Record Order Item</DialogTitle>
               <DialogDescription>
-                Add a new daily order to this booking contract. This will create a new entry in the main Orders list.
+                Add a new daily order or a custom line item to this booking contract.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">

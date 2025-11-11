@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import type { Order } from "@/types";
 import { format, parseISO, isValid } from "date-fns";
 import Link from "next/link";
+import { Badge } from "../ui/badge";
 
 interface DailyOrdersTableProps {
     data: Order[];
@@ -32,8 +33,8 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Orders</CardTitle>
-        <CardDescription>All individual orders recorded for this booking contract.</CardDescription>
+        <CardTitle>Recorded Order Items</CardTitle>
+        <CardDescription>All individual orders and items recorded for this booking contract.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -49,11 +50,14 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
           <TableBody>
             {data.length > 0 ? data.map(order => {
               const eventDate = order.clientEvents?.[0]?.date;
+              const event = order.clientEvents?.[0];
+              const particular = event?.particularDescription || event?.mealType || order.name || 'N/A';
+              
               return (
               <TableRow key={order.id}>
                 <TableCell className="font-mono">{order.id}</TableCell>
-                <TableCell>{eventDate && isValid(parseISO(eventDate)) ? format(parseISO(eventDate), 'PPP') : 'N/A'}</TableCell>
-                <TableCell className="font-medium">{order.clientEvents?.[0]?.mealType || order.name || 'N/A'}</TableCell>
+                <TableCell>{eventDate && isValid(parseISO(eventDate)) ? format(parseISO(eventDate), 'PPP') : <Badge variant="secondary">N/A (Bulk)</Badge>}</TableCell>
+                <TableCell className="font-medium">{particular}</TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(getOrderTotal(order))}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>

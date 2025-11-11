@@ -17,7 +17,7 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign, Pencil } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, add, sub } from "date-fns";
@@ -25,6 +25,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES } from "@/types";
 import { Textarea } from "../ui/textarea";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 interface ClientEventRecipeFormProps {
     nestIndex: number;
@@ -104,6 +105,8 @@ interface ClientEventFormProps {
 export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange, hideRecipes = false }: ClientEventFormProps) => {
     const { control, watch, setValue } = form;
     const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
+    const particularType = watch(`clientEvents.${nestIndex}.particularType`);
+
 
     const pax = watch(`clientEvents.${nestIndex}.numberOfPeople`);
     const unitPrice = watch(`clientEvents.${nestIndex}.unitPrice`);
@@ -116,60 +119,80 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={control} name={`clientEvents.${nestIndex}.clientId`} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Client</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || singleClientEvent}>
-                                        {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search client..." />
-                                    <CommandList>
-                                        <CommandEmpty>No client found.</CommandEmpty>
-                                        <CommandGroup>
-                                            {availableClients.map((c) => (
-                                                <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
-                                                    <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                    {c.companyName}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
-                 )} />
-                 <FormField control={control} name={`clientEvents.${nestIndex}.date`} render={({ field }) => {
-                     const dateValue = field.value ? parseISO(field.value) : undefined;
-                     return (
-                         <FormItem className="flex flex-col">
-                             <FormLabel>Event Date</FormLabel>
-                             <Popover>
-                                 <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
-                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                 </Button></FormControl></PopoverTrigger>
-                                 <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} initialFocus disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} /></PopoverContent>
-                             </Popover>
-                             <FormMessage />
-                         </FormItem>
-                     )
-                 }} />
-            </div>
+            <FormField control={control} name={`clientEvents.${nestIndex}.particularType`} render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Particulars Display</FormLabel>
+                    <FormControl>
+                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="event" id={`event-${nestIndex}`} /><Label htmlFor={`event-${nestIndex}`}>Event Type</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="meal" id={`meal-${nestIndex}`} /><Label htmlFor={`meal-${nestIndex}`}>Meal Type</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="custom" id={`custom-${nestIndex}`} /><Label htmlFor={`custom-${nestIndex}`}>Custom</Label></div>
+                        </RadioGroup>
+                    </FormControl>
+                </FormItem>
+            )} />
+
+             {particularType === 'custom' ? (
+                 <FormField control={control} name={`clientEvents.${nestIndex}.particularDescription`} render={({ field }) => (
+                    <FormItem><FormLabel>Custom Particulars</FormLabel><FormControl><Input {...field} placeholder="e.g. 93 Cartons of Juice" /></FormControl></FormItem>
+                )} />
+            ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField control={control} name={`clientEvents.${nestIndex}.clientId`} render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Client</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || singleClientEvent}>
+                                            {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Search client..." />
+                                        <CommandList>
+                                            <CommandEmpty>No client found.</CommandEmpty>
+                                            <CommandGroup>
+                                                {availableClients.map((c) => (
+                                                    <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
+                                                        <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                        {c.companyName}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={control} name={`clientEvents.${nestIndex}.date`} render={({ field }) => {
+                        const dateValue = field.value ? parseISO(field.value) : undefined;
+                        return (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Event Date</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                        {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button></FormControl></PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} initialFocus disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} /></PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )
+                    }} />
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={control} name={`clientEvents.${nestIndex}.numberOfPeople`} render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People</FormLabel>
+                        <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People/Qty</FormLabel>
                         <FormControl><Input type="number" placeholder="e.g. 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/></FormControl>
                         <FormMessage />
                     </FormItem>
