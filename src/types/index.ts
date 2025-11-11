@@ -5,6 +5,7 @@
 
 
 
+
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -116,7 +117,7 @@ export const MEAL_TYPES = [
     "Breakfast, lunch and dinner", 
     "Evening tea"
 ] as const;
-export type MealType = (typeof MEAL_TYPES)[number];
+export type MealType = string;
 
 export interface ClientEvent {
   clientId: string; // References Client.id
@@ -149,7 +150,7 @@ export interface InvoiceItem {
   unitPrice: number;
   total: number;
   date?: string; // ISO string
-  particularType: 'event' | 'meal';
+  particularType: 'event' | 'meal' | 'custom';
   particularDescription?: string;
   vatType: 'inclusive' | 'exclusive';
 }

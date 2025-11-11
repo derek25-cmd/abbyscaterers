@@ -123,6 +123,7 @@ export function AddDailyOrderDialog({
                  singleClientEvent={true}
                  dateRange={{ from: fromDate, to: toDate }}
                  hideRecipes={true}
+                 allowCustomMealType={true}
                />
 
             </div>

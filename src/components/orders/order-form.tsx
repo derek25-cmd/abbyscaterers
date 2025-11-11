@@ -101,9 +101,10 @@ interface ClientEventFormProps {
     singleClientEvent?: boolean;
     dateRange?: { from: Date, to: Date };
     hideRecipes?: boolean;
+    allowCustomMealType?: boolean;
 }
 
-export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange, hideRecipes = false }: ClientEventFormProps) => {
+export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange, hideRecipes = false, allowCustomMealType = false }: ClientEventFormProps) => {
     const { control, watch, setValue } = form;
     const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
     const particularType = watch(`clientEvents.${nestIndex}.particularType`);
@@ -198,18 +199,28 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                         <FormMessage />
                     </FormItem>
                 )} />
-                <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )} />
+                 {allowCustomMealType && particularType === 'custom' ? (
+                     <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
+                         <FormItem>
+                             <FormLabel className="flex items-center"><Pencil className="mr-2 h-4 w-4"/>Custom Particulars</FormLabel>
+                             <FormControl><Input {...field} placeholder="e.g., Takeaway Lunch" /></FormControl>
+                             <FormMessage />
+                         </FormItem>
+                     )} />
+                 ) : (
+                    <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                )}
             </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                  <FormField control={control} name={`clientEvents.${nestIndex}.unitPrice`} render={({ field }) => (

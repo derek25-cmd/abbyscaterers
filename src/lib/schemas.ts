@@ -117,16 +117,15 @@ export type RecipeFormData = z.infer<typeof RecipeSchema>;
 
 // MealType enum values
 export const MEAL_TYPES = [
-  "Breakfast only",
-  "Lunch only",
-  "Dinner only",
-  "Breakfast and lunch",
-  "Brunch",
-  "Breakfast, lunch and evening tea",
-  "Breakfast, lunch and dinner",
-  "Evening tea",
+    "Breakfast only", 
+    "Lunch only", 
+    "Dinner only", 
+    "Breakfast and lunch", 
+    "Brunch", 
+    "Breakfast, lunch and evening tea", 
+    "Breakfast, lunch and dinner", 
+    "Evening tea"
 ] as const;
-export const MealTypeSchema = z.enum(MEAL_TYPES);
 
 // ClientEvent schema
 export const ClientEventRecipeSchema = z.object({
@@ -139,7 +138,7 @@ export const ClientEventSchema = z.object({
     message: "A valid date is required",
   }),
   numberOfPeople: z.number().min(1, "Number of people must be at least 1"),
-  mealType: MealTypeSchema,
+  mealType: z.string().min(1, "Meal type is required"),
   recipes: z
     .array(ClientEventRecipeSchema),
   unitPrice: z.number().min(0, "Unit price must be a positive number"),
