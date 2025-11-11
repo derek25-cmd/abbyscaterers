@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState } from 'react';
@@ -73,15 +74,20 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
     const { settings } = useSettingsStorage();
     
     React.useEffect(() => {
-        if(invoiceData.serviceDesc?.startsWith('Provision of')) {
-            setServiceDescription(invoiceData.serviceDesc.replace('Provision of', 'Being Costs of'));
-        } else if (!invoiceData.serviceDesc?.startsWith('Being Costs of')) {
-             setServiceDescription(`Being Costs of ${invoiceData.serviceDesc}`);
+        let desc = invoiceData.serviceDesc || '';
+        if (invoiceData.appendProformaId && invoiceData.proformaId) {
+            desc += ` **as per Pro-Forma Invoice No. ${invoiceData.proformaId}**`;
+        }
+        
+        if(desc.startsWith('Provision of')) {
+            setServiceDescription(desc.replace('Provision of', 'Being Costs of'));
+        } else if (!desc.startsWith('Being Costs of')) {
+             setServiceDescription(`Being Costs of ${desc}`);
         }
         else {
-            setServiceDescription(invoiceData.serviceDesc);
+            setServiceDescription(desc);
         }
-    }, [invoiceData.serviceDesc]);
+    }, [invoiceData.serviceDesc, invoiceData.appendProformaId, invoiceData.proformaId]);
 
     const getParticularText = (item: InvoiceItem): string => {
         if (item.particularType === 'event') {
@@ -157,7 +163,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
                     <hr className="border-t-2 border-gray-800" />
                     
                     <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
-                        <p>{serviceDescription}</p>
+                         <p dangerouslySetInnerHTML={{ __html: serviceDescription?.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') || '' }} />
                     </div>
 
                     <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed', borderWidth: '1px' }}>

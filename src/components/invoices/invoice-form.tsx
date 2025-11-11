@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -105,7 +106,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             serviceDesc: '',
             items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' }],
             signedAtDate: format(new Date(), 'yyyy-MM-dd'),
-            signedAtLocation: 'Dar es Salaam'
+            signedAtLocation: 'Dar es Salaam',
+            appendProformaId: true,
         }
     });
     
@@ -256,7 +258,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         vatType: pi.vatType,
                     })),
                     signedAtDate: format(new Date(), 'yyyy-MM-dd'),
-                    signedAtLocation: 'Dar es Salaam'
+                    signedAtLocation: 'Dar es Salaam',
+                    appendProformaId: true,
                 };
             }
         } else if (bookingId) {
@@ -616,6 +619,18 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                             <Textarea {...field} rows={3} />
                                         )}
                                     />
+                                    {proformaId && (
+                                        <FormField
+                                            control={form.control}
+                                            name="appendProformaId"
+                                            render={({ field }) => (
+                                                <div className="flex items-center space-x-2 pt-2">
+                                                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                    <FormLabel>Append "as per Pro-Forma Invoice No. {proformaId}"</FormLabel>
+                                                </div>
+                                            )}
+                                        />
+                                    )}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -841,7 +856,3 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         </Card>
     );
 }
-
-    
-
-    

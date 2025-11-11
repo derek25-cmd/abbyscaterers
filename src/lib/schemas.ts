@@ -1,4 +1,5 @@
 
+
 import { z } from "zod";
 import { RECIPE_TYPES } from "@/types";
 
@@ -235,6 +236,7 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     status: z.enum(['outstanding', 'paid']),
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
+    appendProformaId: z.boolean().optional(),
 });
 
 
