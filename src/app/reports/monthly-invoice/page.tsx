@@ -5,18 +5,17 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, Search, ListFilter, CalendarIcon } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, Search, CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { Invoice } from "@/types";
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -38,10 +37,7 @@ export default function MonthlyInvoiceReportPage() {
   
   const [clientSearch, setClientSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "outstanding">("all");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
 
   const filteredInvoices = useMemo(() => {
@@ -74,14 +70,15 @@ export default function MonthlyInvoiceReportPage() {
   }, [invoices, dateRange, clientSearch, statusFilter, getClientById]);
 
   const summary = useMemo(() => {
-    const paidInvoices = filteredInvoices.filter(inv => inv.status === 'paid');
-    const outstandingInvoices = filteredInvoices.filter(inv => inv.status === 'outstanding');
+    const totalOutstanding = filteredInvoices
+      .filter(inv => inv.status === 'outstanding')
+      .reduce((sum, inv) => sum + calculateTotal(inv), 0);
 
     return {
-        totalInvoiced: filteredInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0),
-        totalPaid: paidInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0),
-        totalOutstanding: outstandingInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0),
-    }
+      totalInvoiced: filteredInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0),
+      totalPaid: filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + calculateTotal(inv), 0),
+      totalOutstanding,
+    };
   }, [filteredInvoices]);
 
   const formatCurrency = (amount: number) => {
@@ -96,24 +93,24 @@ export default function MonthlyInvoiceReportPage() {
       doc.text(reportTitle, 14, 15);
 
       (doc as any).autoTable({
-        head: [['Invoice No.', 'Client', 'Date', 'Status', 'Amount']],
-        body: filteredInvoices.map(invoice => {
+        head: [['S/N', 'Client Name', 'Invoice No.', 'Invoice Date', 'Payment Made On', 'Outstanding Amount']],
+        body: filteredInvoices.map((invoice, index) => {
           const client = getClientById(invoice.clientId || "");
+          const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
           return [
-            invoice.id,
+            index + 1,
             client?.companyName || "N/A",
+            invoice.id,
             invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
-            invoice.status,
-            formatCurrency(calculateTotal(invoice)),
+            invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A',
+            formatCurrency(outstandingAmount),
           ];
         }),
         startY: 25,
         foot: [
-            ['', '', '', 'Total Invoiced', formatCurrency(summary.totalInvoiced)],
-            ['', '', '', 'Total Paid', formatCurrency(summary.totalPaid)],
-            ['', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
+            ['', '', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
         ],
-        footStyles: { fontStyle: 'bold' }
+        footStyles: { fontStyle: 'bold', halign: 'right' }
       });
 
       doc.save(`Invoice_Report.pdf`);
@@ -150,7 +147,7 @@ export default function MonthlyInvoiceReportPage() {
 
       <Card>
           <CardHeader>
-            <CardTitle>Invoices for: {dateRange?.from ? format(dateRange.from, "PPP") : ''}{dateRange?.to ? ` - ${format(dateRange.to, "PPP")}`: ''}</CardTitle>
+            <CardTitle>Invoices</CardTitle>
              <div className="flex items-center gap-2 pt-4 flex-wrap">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -218,35 +215,38 @@ export default function MonthlyInvoiceReportPage() {
            <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>S/N</TableHead>
+                <TableHead>Client Name</TableHead>
                 <TableHead>Invoice No.</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Invoice Date</TableHead>
+                <TableHead>Payment Made On</TableHead>
+                <TableHead className="text-right">Outstanding</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-              ) : filteredInvoices.length > 0 ? filteredInvoices.map((invoice) => {
+                <TableRow><TableCell colSpan={6} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+              ) : filteredInvoices.length > 0 ? filteredInvoices.map((invoice, index) => {
                 const client = getClientById(invoice.clientId || "");
+                const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
                 return (
                   <TableRow key={invoice.id}>
-                    <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
+                    <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
+                    <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
                     <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
-                    <TableCell>{invoice.status}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(calculateTotal(invoice))}</TableCell>
+                    <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : "N/A"}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(outstandingAmount)}</TableCell>
                   </TableRow>
                 )
               }) : (
-                <TableRow><TableCell colSpan={5} className="text-center h-24">No invoices found for the selected criteria.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center h-24">No invoices found for the selected criteria.</TableCell></TableRow>
               )}
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={4} className="text-right font-bold text-lg">Total for Period</TableCell>
-                <TableCell className="text-right font-bold text-lg text-primary">{formatCurrency(summary.totalInvoiced)}</TableCell>
+                <TableCell colSpan={5} className="text-right font-bold text-lg">Total Outstanding</TableCell>
+                <TableCell className="text-right font-bold text-lg text-primary">{formatCurrency(summary.totalOutstanding)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>

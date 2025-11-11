@@ -108,6 +108,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             signedAtDate: format(new Date(), 'yyyy-MM-dd'),
             signedAtLocation: 'Dar es Salaam',
             appendProformaId: true,
+            paymentDate: null,
         }
     });
     
@@ -116,6 +117,13 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const watchedFormValues = form.watch();
     const selectedClientId = form.watch('clientId');
     const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
+    const invoiceStatus = form.watch('status');
+
+    useEffect(() => {
+        if (invoiceStatus === 'paid' && !form.getValues('paymentDate')) {
+            form.setValue('paymentDate', format(new Date(), 'yyyy-MM-dd'));
+        }
+    }, [invoiceStatus, form]);
 
     const handleSaveAndCreateOrder = async (itemIndex: number) => {
         const itemData = form.getValues(`items.${itemIndex}`);
@@ -366,7 +374,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         <AccordionItem value="item-1">
                             <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Invoice Details</AccordionTrigger>
                             <AccordionContent className="pt-4 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="id"
@@ -417,6 +425,29 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                             </FormItem>
                                         )}
                                     />
+                                    {invoiceStatus === 'paid' && (
+                                         <FormField
+                                            control={form.control}
+                                            name="paymentDate"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Payment Date</FormLabel>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
+                                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                                </Button>
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
+                                                    </Popover>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    )}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>

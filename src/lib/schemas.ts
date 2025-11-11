@@ -234,6 +234,7 @@ export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
 export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     proformaId: z.string().optional(),
     status: z.enum(['outstanding', 'paid']),
+    paymentDate: z.string().optional().nullable(),
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
     appendProformaId: z.boolean().optional(),

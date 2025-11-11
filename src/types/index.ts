@@ -183,6 +183,7 @@ export interface Invoice {
   proformaId?: string; // Optional link to the source proforma
   status: 'outstanding' | 'paid';
   invoiceDate: string; // ISO string
+  paymentDate?: string | null; // ISO string
   clientId: string | null;
   receiverName: string;
   receiverPosition: string;
