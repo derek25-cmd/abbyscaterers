@@ -1,5 +1,4 @@
 
-
 import { z } from "zod";
 import { RECIPE_TYPES } from "@/types";
 
@@ -169,10 +168,8 @@ export const InvoiceItemSchema = z.object({
   pax: z.number().min(0),
   unitPrice: z.number().min(0),
   total: z.number(),
-  date: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: "A valid date is required",
-  }),
-  particularType: z.enum(['event', 'meal']),
+  date: z.string().optional(),
+  particularType: z.enum(['event', 'meal', 'custom']),
   particularDescription: z.string().optional(),
   vatType: z.enum(['inclusive', 'exclusive']),
 });
@@ -217,10 +214,11 @@ export const ProformaInvoiceSchema = baseInvoiceSchema.refine(data => {
 
     // Check if each item date is within the range (inclusive)
     for (const item of data.items) {
-        if (!item.date) return false;
-        const itemDate = new Date(item.date);
-        if (itemDate < start || itemDate > end) {
-            return false;
+        if (item.date && isValidDate(item.date)) {
+            const itemDate = new Date(item.date);
+             if (itemDate < start || itemDate > end) {
+                return false;
+            }
         }
     }
     return true;

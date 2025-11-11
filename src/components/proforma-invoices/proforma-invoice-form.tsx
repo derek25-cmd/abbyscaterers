@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -200,12 +200,14 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                              form.setValue(`items.${index}.total`, newTotal, { shouldValidate: true });
                          }
                     }
-                    if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date') {
-                        if (item.particularType === 'event') {
-                            form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
-                        } else {
-                            form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
-                        }
+                    if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date' || fieldName === 'customEventType') {
+                         if (item.particularType === 'event') {
+                             form.setValue(`items.${index}.particularDescription`, item.eventType === 'Custom' ? item.customEventType || '' : `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
+                         } else if (item.particularType === 'meal') {
+                             form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
+                         } else { // Custom
+                            // particularDescription will be edited directly
+                         }
                     }
                 }
             }
@@ -548,53 +550,91 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         <Card className="p-4 border-primary/20">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
-                                <Button type="button" onClick={() => { 
-                                    const newIndex = fields.length;
-                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' });
-                                    setOpenAccordionItems([`item-${newIndex}`]);
-                                }} size="sm">
-                                    <Plus className="w-4 h-4 mr-2" /> Add Item
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button type="button" variant="outline" onClick={() => { 
+                                        const newIndex = fields.length;
+                                        append({ id: '', particularType: 'custom', eventType: '', mealType: '', pax: 1, unitPrice: 0, total: 0, date: undefined, particularDescription: 'New Bulk Item', vatType: 'inclusive' });
+                                        setOpenAccordionItems([`item-${newIndex}`]);
+                                    }} size="sm">
+                                        <Pencil className="w-4 h-4 mr-2" /> Add Bulk Item
+                                    </Button>
+                                    <Button type="button" onClick={() => { 
+                                        const newIndex = fields.length;
+                                        append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' });
+                                        setOpenAccordionItems([`item-${newIndex}`]);
+                                    }} size="sm">
+                                        <Plus className="w-4 h-4 mr-2" /> Add Event Item
+                                    </Button>
+                                </div>
                             </div>
                             <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
                                 {fields.map((item, index) => {
                                     const orderId = form.getValues(`items.${index}.id`);
                                     const isSaved = orderId ? orders.some(o => o.id === orderId) : false;
+                                    const particularType = form.watch(`items.${index}.particularType`);
                                     return (
                                     <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
                                         <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
                                             <div className="flex items-center gap-2">
                                                 {isSaved && <CheckCircle className="h-5 w-5 text-green-500"/>}
                                                 <span className="font-semibold">Order Item #{index + 1}</span>
-                                                <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.eventType`)}</span>
+                                                <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.particularDescription`)}</span>
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-2 space-y-4">
+                                             <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Particulars Display</FormLabel>
+                                                    <FormControl>
+                                                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="event" id={`event-${index}`} /><Label htmlFor={`event-${index}`}>Event Type</Label></div>
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="meal" id={`meal-${index}`} /><Label htmlFor={`meal-${index}`}>Meal Type</Label></div>
+                                                             <div className="flex items-center space-x-2"><RadioGroupItem value="custom" id={`custom-${index}`} /><Label htmlFor={`custom-${index}`}>Custom</Label></div>
+                                                        </RadioGroup>
+                                                    </FormControl>
+                                                </FormItem>
+                                            )} />
+
+                                            {particularType === 'custom' ? (
+                                                 <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Custom Particulars</FormLabel><FormControl><Input {...field} placeholder="e.g. 93 Cartons of Juice" /></FormControl></FormItem>
+                                                )} />
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                                                     <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Event Type</FormLabel>
+                                                            <FormControl>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                                                    <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                                                </Select>
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )} />
+                                                     <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Meal Type</FormLabel>
+                                                            <FormControl>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                                                    <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                                                </Select>
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
+                                            )}
+                                           
                                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                                <FormField control={form.control} name={`items.${index}.id`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Order ID</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>
+                                                <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Qty/Pax</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} /></FormControl></FormItem>
                                                 )} />
-                                                <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Event Type</FormLabel>
-                                                        <FormControl>
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                                <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </FormItem>
+                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Unit Price</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
                                                 )} />
-                                                <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Meal Type</FormLabel>
-                                                        <FormControl>
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                                <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </FormItem>
+                                                <FormField control={form.control} name={`items.${index}.total`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" {...field} readOnly /></FormControl></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
                                                     <FormItem>
@@ -613,48 +653,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                     </FormItem>
                                                 )} />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                                <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
-                                                    <FormItem><FormLabel>No. of People</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Unit Price</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.total`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" {...field} readOnly /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.vatType`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>VAT</FormLabel>
-                                                        <FormControl>
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="inclusive">Inclusive</SelectItem>
-                                                                    <SelectItem value="exclusive">Exclusive</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )} />
-                                            </div>
-                                            <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Particulars Display</FormLabel>
-                                                    <FormControl>
-                                                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
-                                                            <div className="flex items-center space-x-2">
-                                                                <RadioGroupItem value="event" id={`event-${index}`} />
-                                                                <Label htmlFor={`event-${index}`}>Event Type</Label>
-                                                            </div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <RadioGroupItem value="meal" id={`meal-${index}`} />
-                                                                <Label htmlFor={`meal-${index}`}>Meal Type</Label>
-                                                            </div>
-                                                        </RadioGroup>
-                                                    </FormControl>
-                                                </FormItem>
-                                            )} />
+
                                             <div className="flex justify-between items-center pt-2 border-t">
                                                 <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="h-4 w-4 mr-2" />Remove</Button>
                                                 <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />{isSaved ? 'Update Order' : 'Save as Order'}</Button>
@@ -743,7 +742,3 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         </Card>
     );
 }
-
-    
-
-    
