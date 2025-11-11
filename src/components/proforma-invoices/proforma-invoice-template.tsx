@@ -111,7 +111,14 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
 
     const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceDesc, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType } = invoiceData;
 
-    const subtotal = localItems.reduce((sum, item) => sum + (item.total || 0), 0);
+    const sortedItems = React.useMemo(() => {
+        return [...localItems].sort((a, b) => {
+            if (!a.date || !b.date) return 0;
+            return parseISO(a.date).getTime() - parseISO(b.date).getTime();
+        });
+    }, [localItems]);
+
+    const subtotal = sortedItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
     const totalBeforeVAT = totalForDays + (serviceCharge || 0) + (transportCosts || 0);
     const vat = vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
@@ -186,7 +193,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                             </tr>
                         </thead>
                             <tbody>
-                            {localItems.map((item, index) => (
+                            {sortedItems.map((item, index) => (
                                 <tr key={item.id}>
                                     <td className="border border-black p-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
                                     <td className="border border-black p-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>

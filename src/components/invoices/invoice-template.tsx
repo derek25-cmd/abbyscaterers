@@ -93,7 +93,14 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
 
     const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation, items: localItems } = invoiceData;
 
-    const subtotal = localItems.reduce((sum, item) => sum + (item.total || 0), 0);
+    const sortedItems = React.useMemo(() => {
+        return [...localItems].sort((a, b) => {
+            if (!a.date || !b.date) return 0;
+            return parseISO(a.date).getTime() - parseISO(b.date).getTime();
+        });
+    }, [localItems]);
+
+    const subtotal = sortedItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
     const totalBeforeVat = totalForDays + (serviceCharge || 0) + (transportCosts || 0);
     const vat = vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
@@ -165,7 +172,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
                             </tr>
                         </thead>
                         <tbody>
-                            {localItems.map((item, index) => (
+                            {sortedItems.map((item, index) => (
                                 <tr key={item.id}>
                                     <td className="border border-black p-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
                                     <td className="border border-black p-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>
@@ -202,7 +209,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
                                 <td className="p-1 text-right border" style={{borderWidth: '1px'}}>Add Transportation Costs (TSHS)</td>
                                 <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
-                            <tr>
+                                <tr>
                                 <td className="p-1 text-right border" style={{borderWidth: '1px'}}>Total Before VAT (TSHS)</td>
                                 <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{formatCurrency(totalBeforeVat)}</td>
                             </tr>
