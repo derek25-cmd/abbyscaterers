@@ -89,18 +89,21 @@ export default function MonthlyInvoiceReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      const reportTitle = `Invoice Report: ${dateRange?.from ? format(dateRange.from, "PPP") : ''}${dateRange?.to ? ` - ${format(dateRange.to, "PPP")}`: ''}`;
+      const reportTitle = `Invoice statement as of ${dateRange?.to ? format(dateRange.to, "PPP") : format(new Date(), "PPP")}`;
       doc.text(reportTitle, 14, 15);
 
       (doc as any).autoTable({
-        head: [['S/N', 'Client Name', 'Invoice No.', 'Invoice Date', 'Payment Made On', 'Outstanding Amount']],
+        theme: 'grid',
+        head: [['S/N', 'Client Name', 'Invoice No.', 'Amount', 'Invoice Date', 'Payment Made On', 'Outstanding Amount']],
         body: filteredInvoices.map((invoice, index) => {
           const client = clients.find(c => c.id === invoice.clientId);
-          const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
+          const totalAmount = calculateTotal(invoice);
+          const outstandingAmount = invoice.status === 'paid' ? 0 : totalAmount;
           return [
             index + 1,
             client?.companyName || "N/A",
             invoice.id,
+            formatCurrency(totalAmount),
             invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
             invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A',
             formatCurrency(outstandingAmount),
@@ -108,12 +111,12 @@ export default function MonthlyInvoiceReportPage() {
         }),
         startY: 25,
         foot: [
-            ['', '', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
+            ['', '', '', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
         ],
         footStyles: { fontStyle: 'bold', halign: 'right' }
       });
 
-      doc.save(`Invoice_Report.pdf`);
+      doc.save(`Invoice_Statement.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -296,4 +299,3 @@ export default function MonthlyInvoiceReportPage() {
     </div>
   );
 }
-
