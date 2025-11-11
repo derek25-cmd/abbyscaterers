@@ -11,10 +11,11 @@ import { LoadingPage } from "@/components/layout/loading-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calendar, User, ArrowLeft, PlusCircle, FileText } from "lucide-react";
+import { Calendar, User, ArrowLeft, PlusCircle, FileText, ListPlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
+import { BulkAddOrdersDialog } from "@/components/bookings/bulk-add-orders-dialog";
 import { OrderFormData, ProformaInvoiceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
@@ -33,6 +34,7 @@ export function BookingDetailsPageComponent() {
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const [isCloseBookingOpen, setIsCloseBookingOpen] = useState(false);
   
   const bookingId = typeof params.id === 'string' ? params.id : undefined;
@@ -66,6 +68,38 @@ export function BookingDetailsPageComponent() {
         toast({ variant: "destructive", title: "Error", description: "Failed to record daily order."});
     }
   }
+
+  const handleBulkAddOrders = async (bulkData: { dates: Date[], pax: number, unitPrice: number, mealType: string, vatType: 'inclusive' | 'exclusive' }) => {
+    if (!bookingId || !booking) return;
+
+    try {
+        for (const date of bulkData.dates) {
+            const orderData: Partial<OrderFormData> = {
+                booking_id: bookingId,
+                clientEvents: [{
+                    clientId: booking.client_id,
+                    date: format(date, 'yyyy-MM-dd'),
+                    mealType: bulkData.mealType,
+                    numberOfPeople: bulkData.pax,
+                    unitPrice: bulkData.unitPrice,
+                    total: bulkData.pax * bulkData.unitPrice,
+                    vatType: bulkData.vatType,
+                    recipes: [] // Recipes can be added later by editing the order
+                }]
+            };
+            await addOrder(orderData);
+        }
+        toast({ title: "Success", description: `${bulkData.dates.length} daily orders have been created.`});
+        setIsBulkAddOpen(false);
+
+        if (booking?.proforma_invoice_id) {
+            await updateProformaWithLatestOrders();
+        }
+    } catch(error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to create bulk orders." });
+    }
+  };
 
   const updateProformaWithLatestOrders = async () => {
     if (!booking?.proforma_invoice_id) return;
@@ -203,6 +237,10 @@ export function BookingDetailsPageComponent() {
                 <p className="text-muted-foreground">Manage daily orders for this continuous contract.</p>
             </div>
             <div className="flex gap-2">
+                 <Button variant="outline" onClick={() => setIsBulkAddOpen(true)}>
+                    <ListPlus className="mr-2 h-4 w-4"/>
+                    Bulk Add Orders
+                </Button>
                 <Button onClick={() => setIsAddOrderOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4"/>
                     Record Daily Order
@@ -265,6 +303,14 @@ export function BookingDetailsPageComponent() {
             bookingEndDate={booking.end_date}
             clientId={booking.client_id}
             bookingId={booking.id}
+        />
+
+        <BulkAddOrdersDialog
+            isOpen={isBulkAddOpen}
+            setIsOpen={setIsBulkAddOpen}
+            onSubmit={handleBulkAddOrders}
+            bookingStartDate={booking.start_date}
+            bookingEndDate={booking.end_date}
         />
 
         <CloseBookingDialog
