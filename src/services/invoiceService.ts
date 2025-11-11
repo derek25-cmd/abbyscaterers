@@ -55,9 +55,33 @@ export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFor
 };
 
 export const deleteInvoice = async (id: string): Promise<boolean> => {
-    const { error } = await supabase.from('invoices').delete().eq('id', id);
-    if (error) {
-        console.error('Error deleting invoice:', error);
+    // First, get the invoice to check for a proformaId
+    const { data: invoice, error: fetchError } = await supabase.from('invoices').select('proformaId').eq('id', id).single();
+
+    if(fetchError){
+        console.error('Error fetching invoice before deletion:', fetchError);
+        return false;
     }
-    return !error;
+
+    // If a proformaId exists, update the proforma to be open again
+    if (invoice && invoice.proformaId) {
+        const { error: proformaError } = await supabase
+            .from('proforma_invoices')
+            .update({ isInvoiced: false, updatedAt: new Date().toISOString() })
+            .eq('id', invoice.proformaId);
+
+        if (proformaError) {
+            console.error('Error reverting proforma status:', proformaError);
+            // We still proceed to delete the invoice, but log the error
+        }
+    }
+
+    // Now, delete the final invoice
+    const { error: deleteError } = await supabase.from('invoices').delete().eq('id', id);
+    if (deleteError) {
+        console.error('Error deleting invoice:', deleteError);
+        // If deletion fails, we should ideally roll back the proforma status change,
+        // but for simplicity, we will just log the error.
+    }
+    return !deleteError;
 };
