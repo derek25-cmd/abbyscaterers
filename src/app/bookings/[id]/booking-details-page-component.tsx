@@ -20,6 +20,7 @@ import { OrderFormData, ProformaInvoiceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
 import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
+import { BulkOrderLoading } from "@/components/bookings/bulk-order-loading";
 
 
 export function BookingDetailsPageComponent() {
@@ -36,6 +37,8 @@ export function BookingDetailsPageComponent() {
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const [isCloseBookingOpen, setIsCloseBookingOpen] = useState(false);
+  const [isBulkCreating, setIsBulkCreating] = useState(false);
+  const [bulkCreationProgress, setBulkCreationProgress] = useState({ current: 0, total: 0 });
   
   const bookingId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -72,8 +75,14 @@ export function BookingDetailsPageComponent() {
   const handleBulkAddOrders = async (bulkData: { dates: Date[], pax: number, unitPrice: number, mealType: string, vatType: 'inclusive' | 'exclusive' }) => {
     if (!bookingId || !booking) return;
 
+    setIsBulkCreating(true);
+    setBulkCreationProgress({ current: 0, total: bulkData.dates.length });
+    setIsBulkAddOpen(false);
+
     try {
-        for (const date of bulkData.dates) {
+        for (const [index, date] of bulkData.dates.entries()) {
+            setBulkCreationProgress({ current: index + 1, total: bulkData.dates.length });
+            
             const orderData: Partial<OrderFormData> = {
                 booking_id: bookingId,
                 clientEvents: [{
@@ -90,7 +99,6 @@ export function BookingDetailsPageComponent() {
             await addOrder(orderData);
         }
         toast({ title: "Success", description: `${bulkData.dates.length} daily orders have been created.`});
-        setIsBulkAddOpen(false);
 
         if (booking?.proforma_invoice_id) {
             await updateProformaWithLatestOrders();
@@ -98,6 +106,8 @@ export function BookingDetailsPageComponent() {
     } catch(error) {
         console.error(error);
         toast({ variant: "destructive", title: "Error", description: "Failed to create bulk orders." });
+    } finally {
+        setIsBulkCreating(false);
     }
   };
 
@@ -211,6 +221,10 @@ export function BookingDetailsPageComponent() {
   
   if (isLoading) {
     return <LoadingPage title="Loading Booking Details..." />;
+  }
+
+  if (isBulkCreating) {
+    return <BulkOrderLoading progress={bulkCreationProgress} />;
   }
 
   if (!booking) {
