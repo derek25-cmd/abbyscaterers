@@ -125,7 +125,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
                 </div>
 
                 <div id="invoice-main-content">
-                    <div className="flex justify-between items-start mb-2" style={{ marginTop: '-1.5rem' }}>
+                    <div className="flex justify-between items-start mb-2" style={{ marginTop: '-30px' }}>
                         <div className="flex-1"></div>
                         <div className="text-right">
                             <h2 className="font-bold text-4xl text-primary">INVOICE</h2>
