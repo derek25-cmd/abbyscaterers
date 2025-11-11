@@ -63,6 +63,7 @@ export function BookingDetailsPageComponent() {
         if (newOrder) {
           toast({ title: "Success", description: "Daily order has been recorded."});
           setIsAddOrderOpen(false);
+           if(isBulkItemOpen) setIsBulkItemOpen(false);
           
           if (booking?.proforma_invoice_id) {
             await updateProformaWithLatestOrders();
@@ -349,3 +350,5 @@ export function BookingDetailsPageComponent() {
     </div>
   );
 }
+
+    

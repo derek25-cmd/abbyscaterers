@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { OrderSchema, type OrderFormData } from "@/lib/schemas";
+import { format } from "date-fns";
 
 interface AddBulkItemDialogProps {
   isOpen: boolean;
@@ -51,7 +52,7 @@ export function AddBulkItemDialog({
         vatType: "inclusive",
         recipes: [],
         particularType: 'custom',
-        date: new Date().toISOString()
+        date: format(new Date(), 'yyyy-MM-dd')
       }]
     },
   });
@@ -74,6 +75,7 @@ export function AddBulkItemDialog({
   const handleSubmit = async (data: Partial<OrderFormData>) => {
     const payload = {
         ...data,
+        id: `ORD-${Date.now()}`,
         name: data.clientEvents?.[0]?.particularDescription || 'Bulk Item'
     }
     await onSubmit(payload);
@@ -93,7 +95,7 @@ export function AddBulkItemDialog({
           vatType: "inclusive",
           recipes: [],
           particularType: 'custom',
-          date: new Date().toISOString()
+          date: format(new Date(), 'yyyy-MM-dd')
         }]
       });
     }
@@ -165,3 +167,5 @@ export function AddBulkItemDialog({
     </Dialog>
   );
 }
+
+    
