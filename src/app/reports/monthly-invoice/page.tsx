@@ -1,11 +1,12 @@
 
+
 "use client";
 
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, Search, CalendarIcon } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, CalendarIcon, ChevronsUpDown, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -15,10 +16,11 @@ import type { Invoice } from "@/types";
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
 import { DateRange } from "react-day-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const calculateTotal = (inv: Invoice) => {
@@ -32,12 +34,13 @@ const calculateTotal = (inv: Invoice) => {
 export default function MonthlyInvoiceReportPage() {
   const { toast } = useToast();
   const { invoices, isLoading: invoicesLoading } = useInvoiceStorage();
-  const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { clients, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
   
-  const [clientSearch, setClientSearch] = useState("");
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "outstanding">("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
 
 
   const filteredInvoices = useMemo(() => {
@@ -52,13 +55,10 @@ export default function MonthlyInvoiceReportPage() {
         });
     }
 
-    // Filter by Client Name
-    if (clientSearch) {
-        const lowercasedQuery = clientSearch.toLowerCase();
-        filtered = filtered.filter(inv => {
-            const clientName = getClientById(inv.clientId || "")?.companyName.toLowerCase() || "";
-            return clientName.includes(lowercasedQuery);
-        });
+    // Filter by selected Clients
+    if (selectedClientIds.length > 0) {
+        const clientSet = new Set(selectedClientIds);
+        filtered = filtered.filter(inv => inv.clientId && clientSet.has(inv.clientId));
     }
     
     // Filter by Status
@@ -67,7 +67,7 @@ export default function MonthlyInvoiceReportPage() {
     }
 
     return filtered;
-  }, [invoices, dateRange, clientSearch, statusFilter, getClientById]);
+  }, [invoices, dateRange, selectedClientIds, statusFilter]);
 
   const summary = useMemo(() => {
     const totalOutstanding = filteredInvoices
@@ -95,7 +95,7 @@ export default function MonthlyInvoiceReportPage() {
       (doc as any).autoTable({
         head: [['S/N', 'Client Name', 'Invoice No.', 'Invoice Date', 'Payment Made On', 'Outstanding Amount']],
         body: filteredInvoices.map((invoice, index) => {
-          const client = getClientById(invoice.clientId || "");
+          const client = clients.find(c => c.id === invoice.clientId);
           const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
           return [
             index + 1,
@@ -149,16 +149,41 @@ export default function MonthlyInvoiceReportPage() {
           <CardHeader>
             <CardTitle>Invoices</CardTitle>
              <div className="flex items-center gap-2 pt-4 flex-wrap">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search by client name..."
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
-                />
-              </div>
+              <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full md:w-[240px] justify-between">
+                    Select Clients...
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search client..." />
+                    <CommandList>
+                      <CommandEmpty>No clients found.</CommandEmpty>
+                      <CommandGroup>
+                        {clients.map((client) => (
+                          <CommandItem
+                            key={client.id}
+                            value={client.companyName}
+                            onSelect={() => {
+                              setSelectedClientIds((prev) =>
+                                prev.includes(client.id)
+                                  ? prev.filter((id) => id !== client.id)
+                                  : [...prev, client.id]
+                              );
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedClientIds.includes(client.id) ? "opacity-100" : "opacity-0")} />
+                            {client.companyName}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
               <Select onValueChange={(value: "all" | "paid" | "outstanding") => setStatusFilter(value)} value={statusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="Filter by Status" />
@@ -210,6 +235,22 @@ export default function MonthlyInvoiceReportPage() {
                  {isExporting ? 'Exporting...' : 'Export PDF'}
               </Button>
             </div>
+             <div className="flex flex-wrap gap-2 pt-2">
+                {selectedClientIds.map((id) => {
+                    const client = clients.find((c) => c.id === id);
+                    return (
+                        <Badge key={id} variant="secondary" className="pl-2">
+                            {client?.companyName}
+                            <button
+                                onClick={() => setSelectedClientIds(selectedClientIds.filter((cid) => cid !== id))}
+                                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </Badge>
+                    )
+                })}
+             </div>
         </CardHeader>
         <CardContent>
            <Table>
@@ -227,7 +268,7 @@ export default function MonthlyInvoiceReportPage() {
               {isLoading ? (
                 <TableRow><TableCell colSpan={6} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
               ) : filteredInvoices.length > 0 ? filteredInvoices.map((invoice, index) => {
-                const client = getClientById(invoice.clientId || "");
+                const client = clients.find((c) => c.id === invoice.clientId);
                 const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
                 return (
                   <TableRow key={invoice.id}>
@@ -235,7 +276,7 @@ export default function MonthlyInvoiceReportPage() {
                     <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
                     <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
                     <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
-                    <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : "N/A"}</TableCell>
+                    <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A'}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(outstandingAmount)}</TableCell>
                   </TableRow>
                 )
@@ -255,3 +296,4 @@ export default function MonthlyInvoiceReportPage() {
     </div>
   );
 }
+
