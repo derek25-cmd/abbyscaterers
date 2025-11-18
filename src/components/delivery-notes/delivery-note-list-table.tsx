@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarIcon, X } from "lucide-react";
 import { getDeliveryNoteColumns } from "./columns";
 import { useDeliveryNoteStorage } from "@/hooks/use-delivery-note-storage";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar } from "../ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from 'date-fns';
+
 
 export function DeliveryNoteListTable() {
   const { deliveryNotes, isLoading, deleteDeliveryNote } = useDeliveryNoteStorage();
@@ -47,6 +52,7 @@ export function DeliveryNoteListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
 
   const handleDeleteRequest = React.useCallback((id: string) => {
     setItemToDelete(id);
@@ -60,10 +66,18 @@ export function DeliveryNoteListTable() {
     }
   }, [itemToDelete, deleteDeliveryNote, toast]);
 
+  const filteredData = React.useMemo(() => {
+    if (!selectedDate) {
+        return deliveryNotes;
+    }
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return deliveryNotes.filter(note => note.delivery_date.startsWith(dateStr));
+  }, [deliveryNotes, selectedDate]);
+
+
   const tableData = React.useMemo(() => {
-    // No extra mapping needed if the service already returns the correct structure
-    return deliveryNotes;
-  }, [deliveryNotes]);
+    return filteredData;
+  }, [filteredData]);
   
   const columns = React.useMemo(() => getDeliveryNoteColumns(handleDeleteRequest), [handleDeleteRequest]);
 
@@ -96,14 +110,30 @@ export function DeliveryNoteListTable() {
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Input
-            placeholder="Filter by client name..."
-            value={(table.getColumn("client_name")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("client_name")?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-        />
+        <div className="flex items-center gap-2">
+            <Input
+                placeholder="Filter by client name..."
+                value={(table.getColumn("client_name")?.getFilterValue() as string) ?? ""}
+                onChange={(event) =>
+                table.getColumn("client_name")?.setFilterValue(event.target.value)
+                }
+                className="max-w-sm"
+            />
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal h-9",!selectedDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP") : <span>Filter by date</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus />
+                </PopoverContent>
+            </Popover>
+            {selectedDate && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}><X className="h-4 w-4 mr-1"/>Show All</Button>
+            )}
+        </div>
       </div>
       <div className="rounded-md border shadow-sm bg-card">
         <Table>
@@ -129,7 +159,7 @@ export function DeliveryNoteListTable() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">No delivery notes found.</TableCell>
+                <TableCell colSpan={columns.length} className="h-24 text-center">No delivery notes found for the selected date.</TableCell>
               </TableRow>
             )}
           </TableBody>

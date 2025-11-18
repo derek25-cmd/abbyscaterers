@@ -41,10 +41,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Calendar } from "../ui/calendar";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
@@ -65,7 +63,7 @@ export function ProformaInvoiceListTable() {
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
   
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [filterType, setFilterType] = React.useState("clientName");
   const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -241,7 +239,7 @@ export function ProformaInvoiceListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {clientIdFilter ? `No proformas found for client ID: ${clientIdFilter}.` : 'No proforma invoices found.'}
+                 No proforma invoices found for the selected criteria.
                 </TableCell>
               </TableRow>
             )}

@@ -67,7 +67,7 @@ export function InvoiceListTable() {
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
 
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [filterType, setFilterType] = React.useState("clientName");
   const [searchQuery, setSearchQuery] = React.useState("");
 
@@ -279,7 +279,7 @@ export function InvoiceListTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {clientIdFilter ? `No invoices found for client ID: ${clientIdFilter}.` : 'No final invoices found.'}
+                  No final invoices found for the selected criteria.
                 </TableCell>
               </TableRow>
             )}
