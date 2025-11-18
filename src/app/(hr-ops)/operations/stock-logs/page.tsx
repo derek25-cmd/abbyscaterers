@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign } from "lucide-react";
+import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { LogStockMovementDialog } from "@/components/hr/log-stock-movement-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -19,26 +19,38 @@ import { format, parseISO } from "date-fns";
 import { StockLog } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
+import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 
 export default function StockLogsPage() {
-  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore } = useStockLogStorage();
+  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, refreshLogs } = useStockLogStorage();
   const { products, isLoading: productsLoading, updateProduct: updateProductInStore } = useProductStorage();
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
   const [logType, setLogType] = useState<'Stock In' | 'Stock Out'>('Stock In');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [newTransferDate, setNewTransferDate] = useState<Date | undefined>(new Date());
+  const [isTransferring, setIsTransferring] = useState(false);
   const [selectedLog, setSelectedLog] = useState<StockLog | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState("productName");
-
+  
+  // Table State
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
+  
   useEffect(() => {
     setLoading(logsLoading || productsLoading);
   }, [logsLoading, productsLoading]);
-
+  
   const handleOpenLogDialog = (type: 'Stock In' | 'Stock Out') => {
     setLogType(type);
     setIsLogDialogOpen(true);
@@ -94,12 +106,10 @@ export default function StockLogsPage() {
   }
   
   const dailySummary = useMemo(() => {
-    if (!selectedDate) return { stockedIn: { items: 0, value: 0 }, stockedOut: { items: 0, value: 0 }, closingValue: 0 };
-
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-    const dailyLogs = logs.filter(log => log.date === dateStr);
+    const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
+    const currentLogs = selectedDate ? logs.filter(log => log.date === selectedDate) : logs;
     
-    const summary = dailyLogs.reduce((acc, log) => {
+    const summary = currentLogs.reduce((acc, log) => {
       const price = Number(log.price) || 0;
       const quantity = Number(log.quantity) || 0;
       if (log.type === 'Stock In') {
@@ -112,42 +122,125 @@ export default function StockLogsPage() {
       return acc;
     }, { stockedIn: { items: 0, value: 0 }, stockedOut: { items: 0, value: 0 } });
     
-    const currentTotalValue = products.reduce((total, p) => total + (p.quantity * p.unitPrice), 0);
-    
-    const logsAfterDate = logs.filter(log => {
-      if(!log.date) return false;
-      const logDate = parseISO(log.date);
-      return logDate > selectedDate;
-    });
-    
-    const valueOfFutureLogs = logsAfterDate.reduce((total, log) => {
-        if (log.type === 'Stock In') {
-            return total - log.price; 
-        } else {
-            return total + log.price;
-        }
-    }, 0);
-
-    (summary as any).closingValue = currentTotalValue + valueOfFutureLogs;
-    
     return summary;
-  }, [selectedDate, logs, products]);
+  }, [logs, columnFilters]);
 
+  const columns = useMemo(() => [
+      {
+          id: 'select',
+          header: ({ table } : { table: any }) => (
+              <Checkbox
+                  checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
+                  onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                  aria-label="Select all"
+              />
+          ),
+          cell: ({ row } : { row: any }) => (
+              <Checkbox
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(value) => row.toggleSelected(!!value)}
+                  aria-label="Select row"
+              />
+          ),
+          enableSorting: false,
+          enableHiding: false,
+      },
+      { accessorKey: 'id', header: 'Stock Issue ID' },
+      { accessorKey: 'productName', header: 'Product' },
+      { accessorKey: 'type', header: 'Type' },
+      { accessorKey: 'quantity', header: 'Quantity', cell: (info: any) => <div className="text-right">{info.getValue()}</div> },
+      { accessorKey: 'price', header: 'Price (TZS)', cell: (info: any) => <div className="text-right">{formatCurrency(info.getValue())}</div> },
+      { accessorKey: 'reason', header: 'Reason' },
+      { accessorKey: 'date', header: 'Date' },
+      { accessorKey: 'status', header: 'Status' },
+      {
+          id: 'actions',
+          cell: ({ row } : { row: any }) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button aria-haspopup="true" size="icon" variant="ghost">
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => openViewDialog(row.original)}>View Details</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditDialog(row.original)}>Edit</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ),
+      },
+  ], []);
+  
+  const table = useReactTable({
+      data: logs,
+      columns,
+      state: {
+          sorting,
+          columnVisibility,
+          rowSelection,
+          columnFilters,
+      },
+      enableRowSelection: true,
+      onRowSelectionChange: setRowSelection,
+      onSortingChange: setSorting,
+      onColumnFiltersChange: setColumnFilters,
+      onColumnVisibilityChange: setColumnVisibility,
+      getCoreRowModel: getCoreRowModel(),
+      getFilteredRowModel: getFilteredRowModel(),
+      getSortedRowModel: getSortedRowModel(),
+  });
+  
+  const handleDateFilterChange = (date: Date | undefined) => {
+      const dateString = date ? format(date, "yyyy-MM-dd") : undefined;
+      table.getColumn('date')?.setFilterValue(dateString);
+  };
+  
+  const handleTransferSelected = async () => {
+    if (!newTransferDate) {
+        toast({
+            variant: "destructive",
+            title: "No Date Selected",
+            description: "Please select a date to transfer the logs to.",
+        });
+        return;
+    }
 
-  const filteredLogs = useMemo(() => {
-     const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
-     return logs.filter((log) => {
-        if (!log.date) return false;
-        const matchesDate = dateStr ? log.date === dateStr : true;
-        if (!matchesDate) return false;
-
-        if (!searchQuery) return true;
-        const lowercasedQuery = searchQuery.toLowerCase();
+    setIsTransferring(true);
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+    const newDate = format(newTransferDate, 'yyyy-MM-dd');
+    
+    try {
+        const updatePromises = selectedRows.map(row => 
+            updateStockLogInStore(row.original.id, { date: newDate })
+        );
+        await Promise.all(updatePromises);
         
-        const valueToFilter = log[filterType as keyof typeof log] || '';
-        return valueToFilter.toString().toLowerCase().includes(lowercasedQuery);
-    });
-  }, [logs, selectedDate, searchQuery, filterType]);
+        toast({
+            title: "Transfer Successful",
+            description: `${selectedRows.length} log(s) have been moved to ${format(newTransferDate, 'PPP')}.`,
+        });
+
+        // Reset selection and close dialog
+        table.resetRowSelection();
+        setIsTransferDialogOpen(false);
+        // Refresh logs to show updated data
+        await refreshLogs();
+        // Update the date filter to show the new date
+        handleDateFilterChange(newTransferDate);
+
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Transfer Failed",
+            description: "An error occurred while transferring the logs.",
+        });
+    } finally {
+        setIsTransferring(false);
+    }
+  };
+
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -200,7 +293,7 @@ export default function StockLogsPage() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency((dailySummary as any).closingValue)}</div>
+                    <div className="text-2xl font-bold">{formatCurrency(0)}</div>
                     <p className="text-xs text-muted-foreground">
                         Total value at end of day
                     </p>
@@ -213,60 +306,69 @@ export default function StockLogsPage() {
           <CardHeader>
             <CardTitle>Movement History</CardTitle>
             <CardDescription>
-              {selectedDate ? `Showing stock movements for ${format(selectedDate, "MMMM dd, yyyy")}` : 'Track all inventory coming in and going out.'}
+              {table.getColumn('date')?.getFilterValue() ? `Showing stock movements for ${format(parseISO(table.getColumn('date')?.getFilterValue() as string), "MMMM dd, yyyy")}` : 'Track all inventory coming in and going out.'}
             </CardDescription>
           </CardHeader>
-          <div className="p-6 pt-0 flex items-center gap-2">
-              <div className="relative flex-1 md:grow-0">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-                />
+          <div className="p-6 pt-0 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 gap-1">
+                        <ListFilter className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Filter by {columnFilters.find(f => f.id !== 'date')?.id || 'Product'}
+                        </span>
+                    </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem onCheckedChange={() => table.getColumn('productName')?.setFilterValue('')}>Product</DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem onCheckedChange={() => table.getColumn('reason')?.setFilterValue('')}>Reason</DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem onCheckedChange={() => table.getColumn('status')?.setFilterValue('')}>Status</DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <div className="relative flex-1 md:grow-0">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                    type="search"
+                    placeholder="Search..."
+                    value={(table.getColumn('productName')?.getFilterValue() as string) ?? ''}
+                    onChange={(event) => table.getColumn('productName')?.setFilterValue(event.target.value)}
+                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                    />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                        "w-[240px] justify-start text-left font-normal h-9",
+                        !table.getColumn('date')?.getFilterValue() && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {table.getColumn('date')?.getFilterValue() ? format(parseISO(table.getColumn('date')?.getFilterValue() as string), "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        mode="single"
+                        selected={table.getColumn('date')?.getFilterValue() as Date}
+                        onSelect={(date) => handleDateFilterChange(date)}
+                        initialFocus
+                    />
+                    </PopoverContent>
+                </Popover>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 gap-1">
-                    <ListFilter className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                      Filter by {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>ID</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={filterType === 'productName'} onCheckedChange={() => setFilterType('productName')}>Product</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={filterType === 'reason'} onCheckedChange={() => setFilterType('reason')}>Reason</DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={filterType === 'status'} onCheckedChange={() => setFilterType('status')}>Status</DropdownMenuCheckboxItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal h-9",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div>
+                {table.getFilteredSelectedRowModel().rows.length > 0 && (
+                     <Button size="sm" onClick={() => setIsTransferDialogOpen(true)}>
+                        <MoveRight className="mr-2 h-4 w-4" />
+                        Transfer {table.getFilteredSelectedRowModel().rows.length} Selected
+                    </Button>
+                )}
+              </div>
           </div>
           <CardContent>
             {loading ? (
@@ -275,53 +377,24 @@ export default function StockLogsPage() {
             <div className="relative w-full overflow-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Stock Issue ID</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Price (TZS)</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
-                  </TableRow>
+                  {table.getHeaderGroups().map(headerGroup => (
+                      <TableRow key={headerGroup.id}>
+                          {headerGroup.headers.map(header => (
+                              <TableHead key={header.id}>
+                                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                              </TableHead>
+                          ))}
+                      </TableRow>
+                  ))}
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-medium">{log.id}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{log.productName}</div>
-                        <div className="text-sm text-muted-foreground">{log.productId}</div>
-                      </TableCell>
-                      <TableCell>{log.type}</TableCell>
-                      <TableCell className="text-right">{log.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(log.price)}</TableCell>
-                      <TableCell>{log.reason}</TableCell>
-                      <TableCell>{log.date}</TableCell>
-                      <TableCell>
-                        <Badge variant={log.status === 'Stock In' ? 'default' : 'secondary'} className={log.status === 'Stock In' ? 'bg-green-500/80' : 'bg-red-500/80'}>
-                            {log.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => openViewDialog(log)}>View Details</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditDialog(log)}>Edit</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                  {table.getRowModel().rows.map(row => (
+                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                      {row.getVisibleCells().map(cell => (
+                          <TableCell key={cell.id}>
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                      ))}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -354,6 +427,32 @@ export default function StockLogsPage() {
             log={selectedLog}
         />
       )}
+       <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Transfer Stock Logs</DialogTitle>
+                    <DialogDescription>
+                        Select a new date to move the selected {table.getFilteredSelectedRowModel().rows.length} log(s) to.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 flex justify-center">
+                    <Calendar
+                        mode="single"
+                        selected={newTransferDate}
+                        onSelect={setNewTransferDate}
+                        initialFocus
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)} disabled={isTransferring}>Cancel</Button>
+                    <Button onClick={handleTransferSelected} disabled={isTransferring}>
+                        {isTransferring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirm Transfer
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </main>
   );
 }
+
