@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon, X } from "lucide-react";
 import { getBookingColumns } from "./columns";
 import { useBookingStorage } from "@/hooks/use-booking-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddBookingDialog } from "./add-booking-dialog";
 import type { BookingFormData } from "@/lib/schemas";
+import { startOfMonth, endOfMonth, areIntervalsOverlapping, parseISO } from "date-fns";
+import { DatePicker } from "../ui/date-picker";
 
 export function BookingListTable() {
   const { bookings, isLoading: bookingsLoading, addBooking, deleteBooking } = useBookingStorage();
@@ -52,13 +54,35 @@ export function BookingListTable() {
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+  const [selectedMonth, setSelectedMonth] = React.useState<Date>(new Date());
+
+  const filteredBookings = React.useMemo(() => {
+    if (!selectedMonth) {
+      return bookings;
+    }
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+
+    return bookings.filter(booking => {
+      try {
+        const bookingStart = parseISO(booking.start_date);
+        const bookingEnd = parseISO(booking.end_date);
+        return areIntervalsOverlapping(
+          { start: bookingStart, end: bookingEnd },
+          { start: monthStart, end: monthEnd }
+        );
+      } catch (error) {
+        return false; // Invalid date format in booking data
+      }
+    });
+  }, [bookings, selectedMonth]);
 
   const tableData = React.useMemo(() => {
-    return bookings.map(booking => ({
+    return filteredBookings.map(booking => ({
       ...booking,
       clientName: getClientById(booking.client_id)?.companyName || "Unknown Client"
     }));
-  }, [bookings, getClientById]);
+  }, [filteredBookings, getClientById]);
 
 
   const handleDeleteRequest = React.useCallback((bookingId: string) => {
@@ -120,14 +144,27 @@ export function BookingListTable() {
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Input
-          placeholder="Filter by booking name..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+        <div className="flex items-center gap-2">
+            <Input
+              placeholder="Filter by booking name..."
+              value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                table.getColumn("name")?.setFilterValue(event.target.value)
+              }
+              className="max-w-sm"
+            />
+            <DatePicker
+                selectedDate={selectedMonth}
+                onDateChange={setSelectedMonth}
+                labelFormat="MMMM yyyy"
+                isMonthPicker
+            />
+            {selectedMonth && (
+                <Button variant="ghost" size="sm" onClick={() => setSelectedMonth(null as any)}>
+                    <X className="h-4 w-4 mr-1"/>Show All
+                </Button>
+            )}
+        </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
           <PlusCircle className="mr-2 h-4 w-4" />
           New Booking
@@ -158,7 +195,7 @@ export function BookingListTable() {
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No bookings found.
+                  No bookings found for the selected month.
                 </TableCell>
               </TableRow>
             )}
