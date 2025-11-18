@@ -19,7 +19,7 @@ import { format, parseISO } from "date-fns";
 import { StockLog } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
-import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table";
+import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState, ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +46,7 @@ export default function StockLogsPage() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
   
   useEffect(() => {
     setLoading(logsLoading || productsLoading);
@@ -60,11 +61,10 @@ export default function StockLogsPage() {
     const product = products.find(p => p.id === movement.productId);
     
     if(!product) {
-        alert("Product not found");
+        toast({ variant: 'destructive', title: "Product not found" });
         return;
     }
 
-    // The price for the log is determined by the actual_unit_price
     const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
     await addStockLog(logData);
 
@@ -73,13 +73,12 @@ export default function StockLogsPage() {
         updatedProduct.quantity += movement.quantity;
     } else {
         if(product.quantity < movement.quantity) {
-            alert('Not enough stock to log out');
+            toast({ variant: 'destructive', title: "Not enough stock to log out" });
             return;
         }
         updatedProduct.quantity -= movement.quantity;
     }
     
-    // We update both quantity and unitPrice in the product catalog
     await updateProductInStore(product.id, { 
         quantity: updatedProduct.quantity,
         unitPrice: movement.actual_unit_price,
@@ -106,8 +105,8 @@ export default function StockLogsPage() {
   }
   
   const dailySummary = useMemo(() => {
-    const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
-    const currentLogs = selectedDate ? logs.filter(log => log.date === selectedDate) : logs;
+    const selectedDateStr = table.getColumn('date')?.getFilterValue() as string | undefined;
+    const currentLogs = selectedDateStr ? logs.filter(log => log.date === selectedDateStr) : logs;
     
     const summary = currentLogs.reduce((acc, log) => {
       const price = Number(log.price) || 0;
@@ -125,17 +124,22 @@ export default function StockLogsPage() {
     return summary;
   }, [logs, columnFilters]);
 
-  const columns = useMemo(() => [
+  const totalStockValue = useMemo(() => {
+    return products.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
+  }, [products]);
+
+
+  const columns: ColumnDef<StockLog>[] = useMemo(() => [
       {
           id: 'select',
-          header: ({ table } : { table: any }) => (
+          header: ({ table } ) => (
               <Checkbox
                   checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
                   onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                   aria-label="Select all"
               />
           ),
-          cell: ({ row } : { row: any }) => (
+          cell: ({ row } ) => (
               <Checkbox
                   checked={row.getIsSelected()}
                   onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -148,14 +152,14 @@ export default function StockLogsPage() {
       { accessorKey: 'id', header: 'Stock Issue ID' },
       { accessorKey: 'productName', header: 'Product' },
       { accessorKey: 'type', header: 'Type' },
-      { accessorKey: 'quantity', header: 'Quantity', cell: (info: any) => <div className="text-right">{info.getValue()}</div> },
-      { accessorKey: 'price', header: 'Price (TZS)', cell: (info: any) => <div className="text-right">{formatCurrency(info.getValue())}</div> },
+      { accessorKey: 'quantity', header: 'Quantity', cell: (info) => <div className="text-right">{info.getValue() as number}</div> },
+      { accessorKey: 'price', header: 'Price (TZS)', cell: (info) => <div className="text-right">{formatCurrency(info.getValue() as number)}</div> },
       { accessorKey: 'reason', header: 'Reason' },
       { accessorKey: 'date', header: 'Date' },
       { accessorKey: 'status', header: 'Status' },
       {
           id: 'actions',
-          cell: ({ row } : { row: any }) => (
+          cell: ({ row } ) => (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -181,22 +185,37 @@ export default function StockLogsPage() {
           columnVisibility,
           rowSelection,
           columnFilters,
+          globalFilter,
       },
       enableRowSelection: true,
       onRowSelectionChange: setRowSelection,
       onSortingChange: setSorting,
       onColumnFiltersChange: setColumnFilters,
+      onGlobalFilterChange: setGlobalFilter,
       onColumnVisibilityChange: setColumnVisibility,
       getCoreRowModel: getCoreRowModel(),
       getFilteredRowModel: getFilteredRowModel(),
       getSortedRowModel: getSortedRowModel(),
+      getPaginationRowModel: getPaginationRowModel(),
   });
   
   const handleDateFilterChange = (date: Date | undefined) => {
       const dateString = date ? format(date, "yyyy-MM-dd") : undefined;
-      table.getColumn('date')?.setFilterValue(dateString);
+      // When date is selected, clear other filters
+      if (dateString) {
+        setColumnFilters([{ id: 'date', value: dateString }]);
+        setGlobalFilter(''); // Clear global search
+      } else {
+        setColumnFilters([]); // Clear all filters
+      }
+      table.resetRowSelection();
   };
   
+  useEffect(() => {
+    const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
+    table.setPagination(selectedDate ? false : { pageIndex: 0, pageSize: 10 });
+  }, [columnFilters, table]);
+
   const handleTransferSelected = async () => {
     if (!newTransferDate) {
         toast({
@@ -222,12 +241,9 @@ export default function StockLogsPage() {
             description: `${selectedRows.length} log(s) have been moved to ${format(newTransferDate, 'PPP')}.`,
         });
 
-        // Reset selection and close dialog
         table.resetRowSelection();
         setIsTransferDialogOpen(false);
-        // Refresh logs to show updated data
         await refreshLogs();
-        // Update the date filter to show the new date
         handleDateFilterChange(newTransferDate);
 
     } catch (error) {
@@ -289,13 +305,13 @@ export default function StockLogsPage() {
             </Card>
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Stock Value</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(0)}</div>
+                    <div className="text-2xl font-bold">{formatCurrency(totalStockValue)}</div>
                     <p className="text-xs text-muted-foreground">
-                        Total value at end of day
+                        Current value of all products
                     </p>
                 </CardContent>
             </Card>
@@ -311,31 +327,20 @@ export default function StockLogsPage() {
           </CardHeader>
           <div className="p-6 pt-0 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 gap-1">
-                        <ListFilter className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Filter by {columnFilters.find(f => f.id !== 'date')?.id || 'Product'}
-                        </span>
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuCheckboxItem onCheckedChange={() => table.getColumn('productName')?.setFilterValue('')}>Product</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem onCheckedChange={() => table.getColumn('reason')?.setFilterValue('')}>Reason</DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem onCheckedChange={() => table.getColumn('status')?.setFilterValue('')}>Status</DropdownMenuCheckboxItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
                 <div className="relative flex-1 md:grow-0">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                    type="search"
-                    placeholder="Search..."
-                    value={(table.getColumn('productName')?.getFilterValue() as string) ?? ''}
-                    onChange={(event) => table.getColumn('productName')?.setFilterValue(event.target.value)}
-                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+                      type="search"
+                      placeholder="Search all logs..."
+                      value={globalFilter}
+                      onChange={(event) => {
+                          setGlobalFilter(event.target.value);
+                          // Clear date filter when searching globally
+                          if (event.target.value) {
+                             table.getColumn('date')?.setFilterValue(undefined);
+                          }
+                      }}
+                      className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                 </div>
                 <Popover>
@@ -354,7 +359,7 @@ export default function StockLogsPage() {
                     <PopoverContent className="w-auto p-0" align="end">
                     <Calendar
                         mode="single"
-                        selected={table.getColumn('date')?.getFilterValue() as Date}
+                        selected={table.getColumn('date')?.getFilterValue() ? parseISO(table.getColumn('date')?.getFilterValue() as string) : undefined}
                         onSelect={(date) => handleDateFilterChange(date)}
                         initialFocus
                     />
@@ -402,6 +407,26 @@ export default function StockLogsPage() {
             </div>
             )}
           </CardContent>
+           {!table.getColumn('date')?.getFilterValue() && (
+                <div className="flex justify-end items-center space-x-2 p-4">
+                    <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
+                    >
+                    Previous
+                    </Button>
+                    <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
+                    >
+                    Next
+                    </Button>
+                </div>
+            )}
         </Card>
       
       <LogStockMovementDialog
@@ -456,3 +481,6 @@ export default function StockLogsPage() {
   );
 }
 
+
+
+    
