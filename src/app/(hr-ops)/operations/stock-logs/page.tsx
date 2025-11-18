@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
@@ -19,7 +19,7 @@ import { format, parseISO } from "date-fns";
 import { StockLog } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
-import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState, ColumnDef } from "@tanstack/react-table";
+import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState, ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -103,31 +103,6 @@ export default function StockLogsPage() {
     if(typeof amount !== 'number') return 'TZS 0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
-  
-  const dailySummary = useMemo(() => {
-    const selectedDateStr = table.getColumn('date')?.getFilterValue() as string | undefined;
-    const currentLogs = selectedDateStr ? logs.filter(log => log.date === selectedDateStr) : logs;
-    
-    const summary = currentLogs.reduce((acc, log) => {
-      const price = Number(log.price) || 0;
-      const quantity = Number(log.quantity) || 0;
-      if (log.type === 'Stock In') {
-        acc.stockedIn.items += quantity;
-        acc.stockedIn.value += price;
-      } else {
-        acc.stockedOut.items += quantity;
-        acc.stockedOut.value += price;
-      }
-      return acc;
-    }, { stockedIn: { items: 0, value: 0 }, stockedOut: { items: 0, value: 0 } });
-    
-    return summary;
-  }, [logs, columnFilters]);
-
-  const totalStockValue = useMemo(() => {
-    return products.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
-  }, [products]);
-
 
   const columns: ColumnDef<StockLog>[] = useMemo(() => [
       {
@@ -199,6 +174,30 @@ export default function StockLogsPage() {
       getPaginationRowModel: getPaginationRowModel(),
   });
   
+  const dailySummary = useMemo(() => {
+    const selectedDateStr = table.getColumn('date')?.getFilterValue() as string | undefined;
+    const currentLogs = selectedDateStr ? logs.filter(log => log.date === selectedDateStr) : logs;
+    
+    const summary = currentLogs.reduce((acc, log) => {
+      const price = Number(log.price) || 0;
+      const quantity = Number(log.quantity) || 0;
+      if (log.type === 'Stock In') {
+        acc.stockedIn.items += quantity;
+        acc.stockedIn.value += price;
+      } else {
+        acc.stockedOut.items += quantity;
+        acc.stockedOut.value += price;
+      }
+      return acc;
+    }, { stockedIn: { items: 0, value: 0 }, stockedOut: { items: 0, value: 0 } });
+    
+    return summary;
+  }, [logs, columnFilters]);
+
+  const totalStockValue = useMemo(() => {
+    return products.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
+  }, [products]);
+
   const handleDateFilterChange = (date: Date | undefined) => {
       const dateString = date ? format(date, "yyyy-MM-dd") : undefined;
       // When date is selected, clear other filters
@@ -213,8 +212,8 @@ export default function StockLogsPage() {
   
   useEffect(() => {
     const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
-    table.setPagination(selectedDate ? false : { pageIndex: 0, pageSize: 10 });
-  }, [columnFilters, table]);
+    table.setPagination(selectedDate ? { pageIndex: 0, pageSize: logs.length } : { pageIndex: 0, pageSize: 10 });
+  }, [columnFilters, table, logs.length]);
 
   const handleTransferSelected = async () => {
     if (!newTransferDate) {
@@ -393,22 +392,30 @@ export default function StockLogsPage() {
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows.map(row => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                      {row.getVisibleCells().map(cell => (
-                          <TableCell key={cell.id}>
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                      ))}
+                  {table.getRowModel().rows?.length > 0 ? (
+                    table.getRowModel().rows.map(row => (
+                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                        {row.getVisibleCells().map(cell => (
+                            <TableCell key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                        ))}
+                        </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                            No results.
+                        </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
             )}
           </CardContent>
            {!table.getColumn('date')?.getFilterValue() && (
-                <div className="flex justify-end items-center space-x-2 p-4">
+                <CardFooter className="flex justify-end space-x-2 py-4">
                     <Button
                     variant="outline"
                     size="sm"
@@ -425,7 +432,7 @@ export default function StockLogsPage() {
                     >
                     Next
                     </Button>
-                </div>
+                </CardFooter>
             )}
         </Card>
       
@@ -481,6 +488,6 @@ export default function StockLogsPage() {
   );
 }
 
-
+    
 
     
