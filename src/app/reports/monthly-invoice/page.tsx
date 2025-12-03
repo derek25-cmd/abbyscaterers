@@ -89,7 +89,7 @@ export default function MonthlyInvoiceReportPage() {
   }, [filteredInvoices]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   }
 
   const handlePdfExport = () => {
@@ -101,7 +101,7 @@ export default function MonthlyInvoiceReportPage() {
 
       (doc as any).autoTable({
         theme: 'grid',
-        head: [['S/N', 'Client Name', 'Invoice No.', 'Amount', 'Invoice Date', 'Payment Made On', 'Outstanding Amount']],
+        head: [['S/N', 'Client Name', 'Invoice No.', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding Amount (TZS)']],
         body: filteredInvoices.map((invoice, index) => {
           const client = clients.find(c => c.id === invoice.clientId);
           const totalAmount = calculateTotal(invoice);
@@ -132,6 +132,27 @@ export default function MonthlyInvoiceReportPage() {
       setIsExporting(false);
     }
   };
+  
+  const generateDynamicTitle = () => {
+    let title = "Invoices";
+    if (selectedClientIds.length > 0) {
+      const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName;
+      title = `For ${clientName}${selectedClientIds.length > 1 ? ` & ${selectedClientIds.length - 1} more` : ''}`;
+    }
+    if (dateRange?.from) {
+      title += ` from ${format(dateRange.from, 'PPP')}`;
+    }
+    if (dateRange?.to) {
+      title += ` to ${format(dateRange.to, 'PPP')}`;
+    }
+    if (statusFilter !== 'all') {
+      title += ` | Status: ${statusFilter}`;
+    }
+    if (regionFilter !== 'all') {
+      title += ` | Region: ${regionFilter}`;
+    }
+    return title;
+  };
 
   const isLoading = invoicesLoading || clientsLoading;
 
@@ -157,7 +178,7 @@ export default function MonthlyInvoiceReportPage() {
 
       <Card>
           <CardHeader>
-            <CardTitle>Invoices</CardTitle>
+            <CardTitle>{generateDynamicTitle()}</CardTitle>
              <div className="flex items-center gap-2 pt-4 flex-wrap">
               <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
                 <PopoverTrigger asChild>
@@ -282,7 +303,7 @@ export default function MonthlyInvoiceReportPage() {
                 <TableHead>Invoice No.</TableHead>
                 <TableHead>Invoice Date</TableHead>
                 <TableHead>Payment Made On</TableHead>
-                <TableHead className="text-right">Outstanding</TableHead>
+                <TableHead className="text-right">Outstanding (TZS)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -317,3 +338,4 @@ export default function MonthlyInvoiceReportPage() {
     </div>
   );
 }
+
