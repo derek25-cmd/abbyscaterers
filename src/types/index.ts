@@ -7,6 +7,9 @@ export const ORGANIZATION_TYPES = [
 ] as const;
 export type OrganizationType = (typeof ORGANIZATION_TYPES)[number];
 
+export const REGIONS = ["Dar es Salaam", "Arusha", "Dodoma", "Morogoro", "Mwanza", "Mbeya", "Pwani"] as const;
+export type Region = (typeof REGIONS)[number];
+
 export interface DietaryClassification {
   restriction: string;
   category: string;
@@ -158,6 +161,7 @@ export interface ProformaInvoice {
   receiverPosition: string;
   lpoNumber: string;
   location: string;
+  region?: Region;
   numberOfDays: number;
   multiplyByDays: boolean;
   serviceCharge: number;
@@ -189,6 +193,7 @@ export interface Invoice {
   receiverPosition: string;
   lpoNumber: string;
   location: string;
+  region?: Region;
   numberOfDays: number;
   multiplyByDays: boolean;
   serviceCharge: number;

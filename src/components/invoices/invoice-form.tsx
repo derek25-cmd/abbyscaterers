@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -29,6 +29,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { REGIONS } from '@/types';
 
 interface InvoiceFormProps {
     invoiceId?: string;
@@ -93,6 +94,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             receiverPosition: '',
             lpoNumber: '',
             location: '',
+            region: 'Dar es Salaam',
             numberOfDays: 1,
             multiplyByDays: true,
             serviceCharge: 0,
@@ -533,7 +535,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         <AccordionItem value="item-3">
                             <AccordionTrigger className="text-lg font-semibold"><Settings2 className="mr-2 h-5 w-5 text-primary" />Service Customization</AccordionTrigger>
                             <AccordionContent className="pt-4 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="startDate"
@@ -576,6 +578,20 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                     />
                                     <FormField
                                         control={form.control}
+                                        name="numberOfDays"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Number of Days</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                     <FormField
+                                        control={form.control}
                                         name="location"
                                         render={({ field }) => (
                                             <FormItem>
@@ -586,15 +602,22 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                             </FormItem>
                                         )}
                                     />
-                                    <FormField
+                                     <FormField
                                         control={form.control}
-                                        name="numberOfDays"
+                                        name="region"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Number of Days</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} />
-                                                </FormControl>
+                                                <FormLabel>Region</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a region" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {REGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
                                         )}
                                     />

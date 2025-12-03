@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -26,6 +27,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { REGIONS } from '@/types';
 
 interface ProformaInvoiceFormProps {
     invoiceId?: string;
@@ -84,6 +86,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             receiverPosition: '',
             lpoNumber: '',
             location: '',
+            region: 'Dar es Salaam',
             numberOfDays: 1,
             multiplyByDays: true,
             serviceCharge: 0,
@@ -425,7 +428,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         <AccordionItem value="item-3">
                             <AccordionTrigger className="text-lg font-semibold"><Settings2 className="mr-2 h-5 w-5 text-primary" />Service Customization</AccordionTrigger>
                             <AccordionContent className="pt-4 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="startDate"
@@ -468,6 +471,20 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                     />
                                     <FormField
                                         control={form.control}
+                                        name="numberOfDays"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Number of Days</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                     <FormField
+                                        control={form.control}
                                         name="location"
                                         render={({ field }) => (
                                             <FormItem>
@@ -478,15 +495,22 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                             </FormItem>
                                         )}
                                     />
-                                    <FormField
+                                     <FormField
                                         control={form.control}
-                                        name="numberOfDays"
+                                        name="region"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Number of Days</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} />
-                                                </FormControl>
+                                                <FormLabel>Region</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select a region" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {REGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
                                             </FormItem>
                                         )}
                                     />
@@ -682,7 +706,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 </FormItem>
                             )}/>
                         </div>
-                         <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
+                        <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
                             <div className="flex items-center space-x-2 pt-2">
                                 <FormControl>
                                     <Checkbox id="multiply-days" checked={field.value} onCheckedChange={field.onChange} />

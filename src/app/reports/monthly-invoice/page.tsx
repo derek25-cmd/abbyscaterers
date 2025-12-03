@@ -12,7 +12,7 @@ import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import type { Invoice } from "@/types";
+import type { Invoice, Region } from "@/types";
 import { format, parseISO, isWithinInterval } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
@@ -22,6 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { REGIONS } from "@/types";
 
 const calculateTotal = (inv: Invoice) => {
     const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -39,6 +40,7 @@ export default function MonthlyInvoiceReportPage() {
   
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "outstanding">("all");
+  const [regionFilter, setRegionFilter] = useState<Region | "all">("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
 
@@ -66,8 +68,13 @@ export default function MonthlyInvoiceReportPage() {
         filtered = filtered.filter(inv => inv.status === statusFilter);
     }
 
+    // Filter by Region
+    if (regionFilter !== 'all') {
+        filtered = filtered.filter(inv => inv.region === regionFilter);
+    }
+
     return filtered;
-  }, [invoices, dateRange, selectedClientIds, statusFilter]);
+  }, [invoices, dateRange, selectedClientIds, statusFilter, regionFilter]);
 
   const summary = useMemo(() => {
     const totalOutstanding = filteredInvoices
@@ -195,6 +202,17 @@ export default function MonthlyInvoiceReportPage() {
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="outstanding">Outstanding</SelectItem>
+                </SelectContent>
+              </Select>
+               <Select onValueChange={(value: Region | "all") => setRegionFilter(value)} value={regionFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Filter by Region" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Regions</SelectItem>
+                    {REGIONS.map(region => (
+                       <SelectItem key={region} value={region}>{region}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <Popover>

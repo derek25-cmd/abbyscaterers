@@ -1,7 +1,7 @@
 
 
 import { z } from "zod";
-import { RECIPE_TYPES } from "@/types";
+import { RECIPE_TYPES, REGIONS } from "@/types";
 
 // DietaryClassification schema
 export const DietaryClassificationSchema = z.object({
@@ -190,6 +190,7 @@ export const baseInvoiceSchema = z.object({
     receiverPosition: z.string().optional(),
     lpoNumber: z.string().optional(),
     location: z.string().optional(),
+    region: z.enum(REGIONS).optional(),
     numberOfDays: z.number().min(1),
     multiplyByDays: z.boolean(),
     serviceCharge: z.number().min(0),
