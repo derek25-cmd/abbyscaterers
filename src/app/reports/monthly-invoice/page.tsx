@@ -101,7 +101,7 @@ export default function MonthlyInvoiceReportPage() {
 
       (doc as any).autoTable({
         theme: 'grid',
-        head: [['S/N', 'Client Name', 'Invoice No.', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding Amount (TZS)']],
+        head: [['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding Amount (TZS)']],
         body: filteredInvoices.map((invoice, index) => {
           const client = clients.find(c => c.id === invoice.clientId);
           const totalAmount = calculateTotal(invoice);
@@ -110,6 +110,8 @@ export default function MonthlyInvoiceReportPage() {
             index + 1,
             client?.companyName || "N/A",
             invoice.id,
+            invoice.proformaId || "N/A",
+            invoice.region || "N/A",
             formatCurrency(totalAmount),
             invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
             invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A',
@@ -118,7 +120,7 @@ export default function MonthlyInvoiceReportPage() {
         }),
         startY: 25,
         foot: [
-            ['', '', '', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
+            ['', '', '', '', '', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
         ],
         footStyles: { fontStyle: 'bold', halign: 'right' }
       });
@@ -301,14 +303,16 @@ export default function MonthlyInvoiceReportPage() {
                 <TableHead>S/N</TableHead>
                 <TableHead>Client Name</TableHead>
                 <TableHead>Invoice No.</TableHead>
+                <TableHead>Proforma No.</TableHead>
+                <TableHead>Region</TableHead>
                 <TableHead>Invoice Date</TableHead>
                 <TableHead>Payment Made On</TableHead>
-                <TableHead className="text-right">Outstanding (TZS)</TableHead>
+                <TableHead>Outstanding (TZS)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
               ) : filteredInvoices.length > 0 ? filteredInvoices.map((invoice, index) => {
                 const client = clients.find((c) => c.id === invoice.clientId);
                 const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
@@ -317,19 +321,21 @@ export default function MonthlyInvoiceReportPage() {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
                     <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
+                    <TableCell className="font-mono text-xs">{invoice.proformaId || 'N/A'}</TableCell>
+                    <TableCell>{invoice.region || 'N/A'}</TableCell>
                     <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
                     <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A'}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(outstandingAmount)}</TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(outstandingAmount)}</TableCell>
                   </TableRow>
                 )
               }) : (
-                <TableRow><TableCell colSpan={6} className="text-center h-24">No invoices found for the selected criteria.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center h-24">No invoices found for the selected criteria.</TableCell></TableRow>
               )}
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={5} className="text-right font-bold text-lg">Total Outstanding</TableCell>
-                <TableCell className="text-right font-bold text-lg text-primary">{formatCurrency(summary.totalOutstanding)}</TableCell>
+                <TableCell colSpan={7} className="text-right font-bold text-lg">Total Outstanding (TZS)</TableCell>
+                <TableCell className="font-bold text-lg text-primary">{formatCurrency(summary.totalOutstanding)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
@@ -338,4 +344,3 @@ export default function MonthlyInvoiceReportPage() {
     </div>
   );
 }
-
