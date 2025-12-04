@@ -91,52 +91,9 @@ export default function MonthlyInvoiceReportPage() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   }
-
-  const handlePdfExport = () => {
-    setIsExporting(true);
-    try {
-      const doc = new jsPDF({ orientation: 'landscape' });
-      const reportTitle = `Invoice statement as of ${dateRange?.to ? format(dateRange.to, "PPP") : format(new Date(), "PPP")}`;
-      doc.text(reportTitle, 14, 15);
-
-      (doc as any).autoTable({
-        theme: 'grid',
-        head: [['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding Amount (TZS)']],
-        body: filteredInvoices.map((invoice, index) => {
-          const client = clients.find(c => c.id === invoice.clientId);
-          const totalAmount = calculateTotal(invoice);
-          const outstandingAmount = invoice.status === 'paid' ? 0 : totalAmount;
-          return [
-            index + 1,
-            client?.companyName || "N/A",
-            invoice.id,
-            invoice.proformaId || "N/A",
-            invoice.region || "N/A",
-            formatCurrency(totalAmount),
-            invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
-            invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A',
-            formatCurrency(outstandingAmount),
-          ];
-        }),
-        startY: 25,
-        foot: [
-            ['', '', '', '', '', '', '', 'Total Outstanding', formatCurrency(summary.totalOutstanding)],
-        ],
-        footStyles: { fontStyle: 'bold', halign: 'right' }
-      });
-
-      doc.save(`Invoice_Statement.pdf`);
-      toast({ title: "Export Successful", description: "Report exported to PDF." });
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
-    } finally {
-      setIsExporting(false);
-    }
-  };
   
   const generateDynamicTitle = () => {
-    let title = "Invoices";
+    let title = "Invoice Report";
     if (selectedClientIds.length > 0) {
       const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName;
       title = `For ${clientName}${selectedClientIds.length > 1 ? ` & ${selectedClientIds.length - 1} more` : ''}`;
@@ -154,6 +111,56 @@ export default function MonthlyInvoiceReportPage() {
       title += ` | Region: ${regionFilter}`;
     }
     return title;
+  };
+
+  const handlePdfExport = () => {
+    setIsExporting(true);
+    try {
+      const doc = new jsPDF({ orientation: 'landscape' });
+      const reportTitle = generateDynamicTitle();
+      doc.text(reportTitle, 14, 15);
+
+      const tableColumns = ['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding Amount (TZS)'];
+      const tableRows = filteredInvoices.map((invoice, index) => {
+          const client = clients.find(c => c.id === invoice.clientId);
+          const totalAmount = calculateTotal(invoice);
+          const outstandingAmount = invoice.status === 'paid' ? 0 : totalAmount;
+          return [
+            index + 1,
+            client?.companyName || "N/A",
+            invoice.id,
+            invoice.proformaId || "N/A",
+            invoice.region || "N/A",
+            formatCurrency(totalAmount),
+            invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
+            invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A',
+            formatCurrency(outstandingAmount),
+          ];
+        });
+
+      (doc as any).autoTable({
+        theme: 'grid',
+        head: [tableColumns],
+        body: tableRows,
+        startY: 25,
+        columnStyles: {
+            5: { halign: 'left' }, // Amount (TZS)
+            8: { halign: 'left' }, // Outstanding Amount (TZS)
+        },
+        foot: [
+            ['', '', '', '', '', '', '', 'Total Outstanding (TZS)', formatCurrency(summary.totalOutstanding)],
+        ],
+        footStyles: { fontStyle: 'bold', halign: 'left' }
+      });
+
+      doc.save(`Invoice_Statement.pdf`);
+      toast({ title: "Export Successful", description: "Report exported to PDF." });
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const isLoading = invoicesLoading || clientsLoading;
@@ -325,7 +332,7 @@ export default function MonthlyInvoiceReportPage() {
                     <TableCell>{invoice.region || 'N/A'}</TableCell>
                     <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
                     <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A'}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(outstandingAmount)}</TableCell>
+                    <TableCell className="font-semibold text-left">{formatCurrency(outstandingAmount)}</TableCell>
                   </TableRow>
                 )
               }) : (
@@ -335,7 +342,7 @@ export default function MonthlyInvoiceReportPage() {
             <TableFooter>
               <TableRow>
                 <TableCell colSpan={7} className="text-right font-bold text-lg">Total Outstanding (TZS)</TableCell>
-                <TableCell className="font-bold text-lg text-primary">{formatCurrency(summary.totalOutstanding)}</TableCell>
+                <TableCell className="font-bold text-lg text-primary text-left">{formatCurrency(summary.totalOutstanding)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
