@@ -151,8 +151,15 @@ export default function MonthlyInvoiceReportPage() {
         ],
         footStyles: { fontStyle: 'bold', halign: 'left' }
       });
+      
+      let fileName = "Invoice_Report";
+      if (selectedClientIds.length === 1) {
+          const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
+          fileName = clientName.replace(/ /g, '_');
+      }
+      fileName += `_${statusFilter}.pdf`;
 
-      doc.save(`Invoice_Statement.pdf`);
+      doc.save(fileName);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -350,5 +357,3 @@ export default function MonthlyInvoiceReportPage() {
     </div>
   );
 }
-
-    
