@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -120,7 +119,7 @@ export default function MonthlyInvoiceReportPage() {
       const reportTitle = generateDynamicTitle();
       doc.text(reportTitle, 14, 15);
 
-      const tableColumns = ['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding Amount (TZS)'];
+      const tableColumns = ['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding (TZS)'];
       const tableRows = filteredInvoices.map((invoice, index) => {
           const client = clients.find(c => c.id === invoice.clientId);
           const totalAmount = calculateTotal(invoice);
@@ -144,8 +143,8 @@ export default function MonthlyInvoiceReportPage() {
         body: tableRows,
         startY: 25,
         columnStyles: {
-            5: { halign: 'left' }, // Amount (TZS)
-            8: { halign: 'left' }, // Outstanding Amount (TZS)
+            5: { halign: 'left' },
+            8: { halign: 'left' },
         },
         foot: [
             ['', '', '', '', '', '', '', 'Total Outstanding (TZS)', formatCurrency(summary.totalOutstanding)],
@@ -180,9 +179,9 @@ export default function MonthlyInvoiceReportPage() {
       </div>
       
       <div className="grid gap-4 md:grid-cols-3">
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Invoiced</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(summary.totalInvoiced)}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Paid</CardTitle><CheckCircle className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid)}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Outstanding</CardTitle><AlertCircle className="h-4 w-4 text-orange-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalOutstanding)}</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Invoiced (TZS)</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(summary.totalInvoiced)}</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Paid (TZS)</CardTitle><CheckCircle className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid)}</div></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Outstanding (TZS)</CardTitle><AlertCircle className="h-4 w-4 text-orange-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalOutstanding)}</div></CardContent></Card>
       </div>
 
       <Card>
@@ -351,3 +350,5 @@ export default function MonthlyInvoiceReportPage() {
     </div>
   );
 }
+
+    
