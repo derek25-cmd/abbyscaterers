@@ -7,9 +7,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { User, Users, Loader2 } from 'lucide-react';
+import { User, Users, Loader2, CalendarIcon } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 import { Client } from '@/types';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { cn } from '@/lib/utils';
 
 type CostingFormProps = {
     clients: Client[];
@@ -22,9 +24,13 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
   const [clientId, setClientId] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState('daily');
   const [dates, setDates] = useState<Date[]>([]);
+  const [month, setMonth] = useState<Date>(new Date());
   
   const handleSubmit = () => {
-    if (!periodType || dates.length === 0) {
+    const isDaily = periodType === 'daily';
+    const selection = isDaily ? dates : (month ? [month] : []);
+
+    if (!periodType || selection.length === 0) {
       alert("Please select a period type and at least one date or month.");
       return;
     }
@@ -33,8 +39,8 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
       return;
     }
 
-    const formattedDates = dates.map(d => {
-      if(periodType === 'daily') return format(d, 'yyyy-MM-dd');
+    const formattedDates = selection.map(d => {
+      if (isDaily) return format(d, 'yyyy-MM-dd');
       return format(d, 'yyyy-MM');
     })
 
@@ -45,21 +51,6 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
       dates: formattedDates
     });
   }
-
-  const handleMonthSelect = (monthDate: Date) => {
-    const isSelected = dates.some(d => d.getTime() === monthDate.getTime());
-    if (isSelected) {
-      setDates(dates.filter(d => d.getTime() !== monthDate.getTime()));
-    } else {
-      setDates([...dates, monthDate]);
-    }
-  }
-  
-  const availableMonths = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(i);
-    return startOfMonth(date);
-  });
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -119,7 +110,7 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
 
                 <div>
                     <Label>Period</Label>
-                    <RadioGroup defaultValue="daily" onValueChange={(val) => { setPeriodType(val); setDates([]); }} className="flex gap-4 mt-2">
+                    <RadioGroup defaultValue="daily" onValueChange={(val) => { setPeriodType(val); setDates([]); setMonth(new Date()); }} className="flex gap-4 mt-2">
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="daily" id="daily" />
                             <Label htmlFor="daily">Daily</Label>
@@ -146,24 +137,32 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                         </>
                     ) : (
                          <>
-                        <Label>Select Month(s)</Label>
-                        <div className="p-4 border rounded-md grid grid-cols-2 md:grid-cols-4 gap-4">
-                           {availableMonths.map((month, i) => (
-                               <div key={`${month.toString()}-${i}`} className="flex items-center space-x-2">
-                                   <Checkbox
-                                        id={month.toString()}
-                                        checked={dates.some(d => d.getTime() === month.getTime())}
-                                        onCheckedChange={() => handleMonthSelect(month)}
-                                   />
-                                   <label htmlFor={month.toString()} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                       {format(month, 'MMMM')}
-                                   </label>
-                               </div>
-                           ))}
-                        </div>
-                         <p className="text-center text-sm text-muted-foreground p-2">
-                            You selected {dates.length} month(s): {dates.map(d => format(d, 'MMM')).join(', ')}
-                        </p>
+                        <Label>Select Month</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-[280px] justify-start text-left font-normal",
+                                    !month && "text-muted-foreground"
+                                )}
+                                >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {month ? format(month, "MMMM yyyy") : <span>Pick a month</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                mode="single"
+                                selected={month}
+                                onSelect={(d) => setMonth(d || new Date())}
+                                initialFocus
+                                fromYear={2020}
+                                toYear={new Date().getFullYear() + 5}
+                                captionLayout="dropdown-buttons"
+                                />
+                            </PopoverContent>
+                            </Popover>
                         </>
                     )}
                 </div>
