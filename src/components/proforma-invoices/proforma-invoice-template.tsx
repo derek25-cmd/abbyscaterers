@@ -168,7 +168,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                                 {lpoNumber && <p className="mb-2 ml-6 pt-2 font-bold text-lg">LPO No.: {lpoNumber}</p>}
                             </div>
                         </div>
-                        <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '-5px' }}>
+                        <div style={{ width: 220, position: "relative", zIndex: 10, marginBottom: '0' }}>
                             <div className="border border-gray-800 flex flex-col items-center justify-center text-sm p-2 bg-white shadow-sm text-center">
                                 <div><strong>TIN: 151-209-696</strong></div>
                                 <div><strong>VRN: 40-050290-L</strong></div>

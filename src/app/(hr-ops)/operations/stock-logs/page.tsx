@@ -174,8 +174,13 @@ export default function StockLogsPage() {
       getPaginationRowModel: getPaginationRowModel(),
   });
   
+  useEffect(() => {
+    const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
+    table.setPagination(selectedDate ? { pageIndex: 0, pageSize: logs.length } : { pageIndex: 0, pageSize: 10 });
+  }, [columnFilters, table, logs.length]);
+  
   const dailySummary = useMemo(() => {
-    const selectedDateStr = table.getColumn('date')?.getFilterValue() as string | undefined;
+    const selectedDateStr = columnFilters.find(f => f.id === 'date')?.value as string | undefined;
     const currentLogs = selectedDateStr ? logs.filter(log => log.date === selectedDateStr) : logs;
     
     const summary = currentLogs.reduce((acc, log) => {
@@ -210,11 +215,6 @@ export default function StockLogsPage() {
       table.resetRowSelection();
   };
   
-  useEffect(() => {
-    const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
-    table.setPagination(selectedDate ? { pageIndex: 0, pageSize: logs.length } : { pageIndex: 0, pageSize: 10 });
-  }, [columnFilters, table, logs.length]);
-
   const handleTransferSelected = async () => {
     if (!newTransferDate) {
         toast({
@@ -304,7 +304,7 @@ export default function StockLogsPage() {
             </Card>
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Stock Value</CardTitle>
+                    <CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -487,7 +487,3 @@ export default function StockLogsPage() {
     </main>
   );
 }
-
-    
-
-    

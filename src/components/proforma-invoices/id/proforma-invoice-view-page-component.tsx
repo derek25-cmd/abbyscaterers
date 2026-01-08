@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { ProformaInvoiceTemplate } from "@/components/proforma-invoices/proforma-invoice-template";
-import type { ProformaInvoice, Client } from "@/types";
+import type { ProformaInvoice, Client, Region } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Eye, EyeOff } from "lucide-react";
@@ -29,6 +29,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { CreateInvoiceDialog } from "../create-invoice-dialog";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -46,6 +47,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [exporting, setExporting] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passcode, setPasscode] = useState("");
+  const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
 
@@ -83,79 +85,91 @@ export function ProformaInvoiceViewPageComponent() {
       setPasscode("");
   };
 
-
   const handleExportPDF = async () => {
     const headerElement = document.getElementById('proforma-header');
     const contentElement = document.getElementById('proforma-main-content');
     const footerElement = document.getElementById('proforma-footer');
-    
+
     if (!contentElement || !headerElement || !footerElement) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the proforma to export.' });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not find all required parts of the proforma to export.',
+      });
+      return;
     }
-    
+
     setExporting(true);
 
     try {
-        const pdf = new jsPDF('p', 'pt', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const marginX = 30;
-        const marginTop = 20;
-        const marginBottom = 5;
-        const usableWidth = pageWidth - (marginX * 2);
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 30;
+      const marginTop = 20;
+      const marginBottom = 5;
+      const usableWidth = pageWidth - (marginX * 2);
 
-        const headerCanvas = await html2canvas(headerElement, { scale: 2 });
-        const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-        const footerCanvas = await html2canvas(footerElement, { scale: 2 });
+      const headerCanvas = await html2canvas(headerElement, { scale: 2 });
+      const contentCanvas = await html2canvas(contentElement, { scale: 2 });
+      const footerCanvas = await html2canvas(footerElement, { scale: 2 });
 
-        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+      const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+      const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-        const contentDataURL = contentCanvas.toDataURL('image/png');
-        const headerDataURL = headerCanvas.toDataURL('image/png');
-        const footerDataURL = footerCanvas.toDataURL('image/png');
+      const contentDataURL = contentCanvas.toDataURL('image/png', 1.0);
+      const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
+      const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+      
+      let yOffset = 0;
+      let pageNumber = 1;
 
-        let yOffset = 0;
-        let pageNumber = 1;
-
-        while (yOffset < contentImgHeight) {
+      while (yOffset < contentImgHeight) {
           if (pageNumber > 1) pdf.addPage();
-        
-          pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
-          pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-
-          if (!showHeaders) {
-              pdf.setFillColor(255, 255, 255);
-              pdf.rect(marginX, marginTop, usableWidth, headerHeight, 'F');
-              pdf.rect(marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight, 'F');
+          
+          if (showHeaders) {
+              pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
           }
-
+          
           const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
           
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = contentCanvas.width;
           sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
-
           const sliceCtx = sliceCanvas.getContext('2d');
+          
           if (sliceCtx) {
-            sliceCtx.drawImage(contentCanvas, 0, (yOffset / usableWidth) * contentCanvas.width, contentCanvas.width, sliceCanvas.height, 0, 0, sliceCanvas.width, sliceCanvas.height);
+            sliceCtx.drawImage(
+              contentCanvas,
+              0, (yOffset / usableWidth) * contentCanvas.width, // sourceY
+              contentCanvas.width, sliceCanvas.height,
+              0, 0,
+              sliceCanvas.width, sliceCanvas.height
+            );
+             pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop + (showHeaders ? headerHeight : 0), usableWidth, sliceHeight);
           }
-          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
 
+           if (showHeaders) {
+             pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+           }
+          
           yOffset += sliceHeight;
           pageNumber++;
-        }
-      
-        pdf.save(`proforma_${invoice?.id}.pdf`);
-        toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
+      }
+
+      pdf.save(`proforma_${invoice?.id}.pdf`);
+      toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
 
     } catch (error) {
-        console.error("PDF Export Error:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
+      console.error('PDF Export Error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to export PDF.',
+      });
     }
     setExporting(false);
   };
@@ -168,32 +182,17 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async () => {
+  const handleCreateFinalInvoice = async (details: { invoiceId: string, invoiceDate: string, region: Region }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
         const newInvoiceData = {
-            id: `INV-${Date.now()}`,
+            ...invoice, // Spread all properties from proforma
+            id: details.invoiceId, // Override with new ID
+            invoiceDate: details.invoiceDate, // Override with new date
+            region: details.region, // Add region
             proformaId: invoice.id,
             status: 'outstanding' as const,
-            invoiceDate: new Date().toISOString(),
-            clientId: invoice.clientId,
-            receiverName: invoice.receiverName,
-            receiverPosition: invoice.receiverPosition,
-            lpoNumber: invoice.lpoNumber,
-            location: invoice.location,
-            numberOfDays: invoice.numberOfDays,
-            multiplyByDays: invoice.multiplyByDays,
-            serviceCharge: invoice.serviceCharge,
-            transportCosts: invoice.transportCosts,
-            vatType: invoice.vatType,
-            selectedEventType: invoice.selectedEventType,
-            customEventType: invoice.customEventType,
-            startDate: invoice.startDate,
-            endDate: invoice.endDate,
-            serviceFields: invoice.serviceFields,
-            serviceDesc: invoice.serviceDesc,
-            items: invoice.items.map(item => ({ ...item })),
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         };
@@ -223,6 +222,7 @@ export function ProformaInvoiceViewPageComponent() {
         });
     } finally {
         setIsCreatingInvoice(false);
+        setIsCreateInvoiceDialogOpen(false);
     }
   }
 
@@ -304,26 +304,31 @@ export function ProformaInvoiceViewPageComponent() {
             )}
             
             <Button variant="outline" onClick={() => router.push(`/proforma-invoices/${invoiceId}/edit`)} disabled={isLocked}>
-              <Edit className="w-4 h-4 mr-2" /> Edit
+              <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
-              <Trash2 className="w-4 h-4 mr-2" /> Delete
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
             </Button>
             <Button variant="outline" onClick={handleExportPDF} disabled={exporting}>
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={handleCreateFinalInvoice} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+             <Button onClick={() => setIsCreateInvoiceDialogOpen(true)} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
-                {isCreatingInvoice ? "Creating..." : invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
+                {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
           </div>
         </div>
         <div ref={printRef}>
           <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders}/>
         </div>
+        <CreateInvoiceDialog
+            isOpen={isCreateInvoiceDialogOpen}
+            setIsOpen={setIsCreateInvoiceDialogOpen}
+            onSubmit={handleCreateFinalInvoice}
+            isCreating={isCreatingInvoice}
+            proformaId={invoice.id}
+        />
     </>
   );
 }
-
-    
