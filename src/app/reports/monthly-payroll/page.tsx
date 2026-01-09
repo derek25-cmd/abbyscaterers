@@ -12,12 +12,12 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { ProformaInvoice as Payroll } from "@/types";
 import { format, parseISO } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export default function MonthlyPayrollReportPage() {
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -34,14 +34,9 @@ export default function MonthlyPayrollReportPage() {
     fetchPayrolls();
   }, []);
 
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    payrolls.forEach(p => months.add(format(parseISO(p.payPeriodStart), 'yyyy-MM')));
-    return Array.from(months).sort().reverse();
-  }, [payrolls]);
-
   const monthlyPayrolls = useMemo(() => {
-    let filtered = payrolls.filter(p => format(parseISO(p.payPeriodStart), 'yyyy-MM') === selectedMonth);
+    const monthStr = format(selectedMonth, 'yyyy-MM');
+    let filtered = payrolls.filter(p => format(parseISO(p.payPeriodStart), 'yyyy-MM') === monthStr);
     if(searchQuery){
         filtered = filtered.filter(p => p.employeeName.toLowerCase().includes(searchQuery.toLowerCase()));
     }
@@ -59,7 +54,7 @@ export default function MonthlyPayrollReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     const doc = new jsPDF({ orientation: 'landscape' });
-    doc.text(`Monthly Payroll Report - ${format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}`, 14, 15);
+    doc.text(`Monthly Payroll Report - ${format(selectedMonth, 'MMMM yyyy')}`, 14, 15);
     (doc as any).autoTable({
         head: [['Employee', 'Gross Salary', 'Deductions', 'Net Salary', 'Status']],
         body: monthlyPayrolls.map(p => [p.employeeName, formatCurrency(p.grossSalary), formatCurrency(p.deductions), formatCurrency(p.netSalary), p.status]),
@@ -67,7 +62,7 @@ export default function MonthlyPayrollReportPage() {
         foot: [[{ content: `Total Net Payroll: ${formatCurrency(totalNetSalary)}`, colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }]],
         showFoot: 'lastPage'
     });
-    doc.save(`Monthly_Payroll_Report_${selectedMonth}.pdf`);
+    doc.save(`Monthly_Payroll_Report_${format(selectedMonth, 'yyyy-MM')}.pdf`);
     toast({ title: "Export Successful", description: "Report exported to PDF." });
     setIsExporting(false);
   };
@@ -86,7 +81,7 @@ export default function MonthlyPayrollReportPage() {
       
       <Card>
         <CardHeader>
-            <CardTitle>Payroll for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+            <CardTitle>Payroll for: {format(selectedMonth, 'MMMM yyyy')}</CardTitle>
              <div className="flex items-center gap-2 pt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -98,10 +93,12 @@ export default function MonthlyPayrollReportPage() {
                   className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
                 />
               </div>
-              <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-                  <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
-                  <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
-              </Select>
+              <DatePicker
+                selectedDate={selectedMonth}
+                onDateChange={setSelectedMonth}
+                labelFormat="MMMM yyyy"
+                isMonthPicker
+              />
               <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                  {isExporting ? 'Exporting...' : 'Export PDF'}

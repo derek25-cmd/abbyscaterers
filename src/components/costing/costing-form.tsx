@@ -12,6 +12,7 @@ import { format, startOfMonth } from 'date-fns';
 import { Client } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
+import { DatePicker } from '../ui/date-picker';
 
 type CostingFormProps = {
     clients: Client[];
@@ -136,34 +137,17 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                         </div>
                         </>
                     ) : (
-                         <>
-                        <Label>Select Month</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "w-[280px] justify-start text-left font-normal",
-                                    !month && "text-muted-foreground"
-                                )}
-                                >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {month ? format(month, "MMMM yyyy") : <span>Pick a month</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                mode="single"
-                                selected={month}
-                                onSelect={(d) => setMonth(d || new Date())}
-                                initialFocus
-                                fromYear={2020}
-                                toYear={new Date().getFullYear() + 5}
-                                captionLayout="dropdown-buttons"
+                        <div>
+                            <Label>Select Month</Label>
+                            <div>
+                                <DatePicker
+                                    selectedDate={month}
+                                    onDateChange={setMonth}
+                                    labelFormat="MMMM yyyy"
+                                    isMonthPicker
                                 />
-                            </PopoverContent>
-                            </Popover>
-                        </>
+                            </div>
+                        </div>
                     )}
                 </div>
 

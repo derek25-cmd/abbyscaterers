@@ -12,13 +12,13 @@ import { getEmployees } from "@/services/employeeService";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { format, parseISO, getDaysInMonth } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export default function MonthlyAttendanceReportPage() {
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [records, setRecords] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,19 +37,14 @@ export default function MonthlyAttendanceReportPage() {
     fetchData();
   }, []);
 
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    records.forEach(rec => months.add(format(parseISO(rec.date), 'yyyy-MM')));
-    return Array.from(months).sort().reverse();
-  }, [records]);
-
   const reportData = useMemo(() => {
+    const monthStr = format(selectedMonth, 'yyyy-MM');
     const activeEmployees = employees.filter(e => e.status === 'Active');
-    const daysInMonth = getDaysInMonth(parseISO(`${selectedMonth}-01`));
+    const daysInMonth = getDaysInMonth(selectedMonth);
     
     let filteredData = activeEmployees.map(emp => {
       const empName = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(' ');
-      const empRecords = records.filter(r => r.employee === empName && r.date.startsWith(selectedMonth));
+      const empRecords = records.filter(r => r.employee === empName && r.date.startsWith(monthStr));
       
       const attendance = Array(daysInMonth).fill('A'); // A for Absent
       empRecords.forEach(rec => {
@@ -80,13 +75,13 @@ export default function MonthlyAttendanceReportPage() {
   const handlePdfExport = () => {
     setIsExporting(true);
     const doc = new jsPDF({ orientation: 'landscape' });
-    doc.text(`Monthly Attendance Report - ${format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}`, 14, 15);
+    doc.text(`Monthly Attendance Report - ${format(selectedMonth, 'MMMM yyyy')}`, 14, 15);
     (doc as any).autoTable({
         head: [['Employee', 'Present Days', 'Absent Days']],
         body: reportData.map(d => [d.name, d.presentDays, d.absentDays]),
         startY: 25,
     });
-    doc.save(`Monthly_Attendance_Report_${selectedMonth}.pdf`);
+    doc.save(`Monthly_Attendance_Report_${format(selectedMonth, 'yyyy-MM')}.pdf`);
     toast({ title: "Export Successful", description: "Report exported to PDF." });
     setIsExporting(false);
   };
@@ -105,7 +100,7 @@ export default function MonthlyAttendanceReportPage() {
       
       <Card>
         <CardHeader>
-            <CardTitle>Attendance Summary for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+            <CardTitle>Attendance Summary for: {format(selectedMonth, 'MMMM yyyy')}</CardTitle>
             <div className="flex items-center gap-2 pt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -117,10 +112,12 @@ export default function MonthlyAttendanceReportPage() {
                   className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
                 />
               </div>
-              <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-                  <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
-                  <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
-              </Select>
+              <DatePicker
+                selectedDate={selectedMonth}
+                onDateChange={setSelectedMonth}
+                labelFormat="MMMM yyyy"
+                isMonthPicker
+              />
               <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                  {isExporting ? 'Exporting...' : 'Export PDF'}

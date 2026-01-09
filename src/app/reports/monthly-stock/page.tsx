@@ -10,30 +10,25 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { format, parseISO } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export default function MonthlyStockReportPage() {
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const { toast } = useToast();
   const { logs, isLoading: logsLoading } = useStockLogStorage();
   const { products, isLoading: productsLoading } = useProductStorage();
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    logs.forEach(log => months.add(format(parseISO(log.date), 'yyyy-MM')));
-    return Array.from(months).sort().reverse();
-  }, [logs]);
   
   const reportData = useMemo(() => {
+    const monthStr = format(selectedMonth, 'yyyy-MM');
     const stockOutLogs = logs.filter(log => 
         log.type === 'Stock Out' && 
-        log.date.startsWith(selectedMonth)
+        log.date.startsWith(monthStr)
     );
     
     const usageMap = new Map<string, { quantity: number; value: number; unit: string }>();
@@ -74,7 +69,7 @@ export default function MonthlyStockReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      const monthFormatted = format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy');
+      const monthFormatted = format(selectedMonth, 'MMMM yyyy');
       doc.text(`Monthly Stock Usage Report - ${monthFormatted}`, 14, 15);
       
       const tableColumn = ["Product Name", "Quantity Used", "Unit", "Total Value"];
@@ -95,7 +90,7 @@ export default function MonthlyStockReportPage() {
         showFoot: 'lastPage'
       });
 
-      doc.save(`Monthly_Stock_Usage_${selectedMonth}.pdf`);
+      doc.save(`Monthly_Stock_Usage_${format(selectedMonth, 'yyyy-MM')}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("PDF export error:", error);
@@ -144,7 +139,7 @@ export default function MonthlyStockReportPage() {
 
       <Card>
         <CardHeader>
-            <CardTitle>Stock Usage for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+            <CardTitle>Stock Usage for: {format(selectedMonth, 'MMMM yyyy')}</CardTitle>
             <div className="flex items-center gap-2 pt-4">
                  <div className="relative flex-1">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -156,10 +151,12 @@ export default function MonthlyStockReportPage() {
                       className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
                     />
                   </div>
-                 <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-                  <SelectTrigger className="w-[240px]"><SelectValue placeholder="Select a month" /></SelectTrigger>
-                  <SelectContent>{availableMonths.map(month => (<SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>))}</SelectContent>
-                </Select>
+                 <DatePicker
+                    selectedDate={selectedMonth}
+                    onDateChange={setSelectedMonth}
+                    labelFormat="MMMM yyyy"
+                    isMonthPicker
+                  />
                 <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
                     {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     {isExporting ? 'Exporting...' : 'Export PDF'}

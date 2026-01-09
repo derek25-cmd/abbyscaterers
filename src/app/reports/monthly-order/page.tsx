@@ -13,38 +13,28 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { ClientEvent, Order } from "@/types";
 import { format, parseISO } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const calculateTotal = (events: ClientEvent[]) => {
     return events.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
 };
 
 export default function MonthlyOrderReportPage() {
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const { toast } = useToast();
   const { orders, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("customerName");
-  
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    orders.forEach(order => {
-        if(order.createdAt) {
-            months.add(format(parseISO(order.createdAt), 'yyyy-MM'));
-        }
-    });
-    return Array.from(months).sort().reverse();
-  }, [orders]);
-
 
   const monthlyOrders = useMemo(() => {
-    let filtered = orders.filter(order => order.createdAt && format(parseISO(order.createdAt), 'yyyy-MM') === selectedMonth);
+    const monthStr = format(selectedMonth, 'yyyy-MM');
+    let filtered = orders.filter(order => order.createdAt && format(parseISO(order.createdAt), 'yyyy-MM') === monthStr);
     
     if (searchQuery) {
         const lowercasedQuery = searchQuery.toLowerCase();
@@ -88,7 +78,7 @@ export default function MonthlyOrderReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      const monthFormatted = format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy');
+      const monthFormatted = format(selectedMonth, 'MMMM yyyy');
       doc.text(`Monthly Order Report - ${monthFormatted}`, 14, 15);
 
       (doc as any).autoTable({
@@ -109,7 +99,7 @@ export default function MonthlyOrderReportPage() {
         footStyles: { fontStyle: 'bold' }
       });
 
-      doc.save(`Monthly_Order_Report_${selectedMonth}.pdf`);
+      doc.save(`Monthly_Order_Report_${format(selectedMonth, 'yyyy-MM')}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -144,7 +134,7 @@ export default function MonthlyOrderReportPage() {
 
       <Card>
           <CardHeader>
-            <CardTitle>Orders for: {format(parseISO(`${selectedMonth}-01`), 'MMMM yyyy')}</CardTitle>
+            <CardTitle>Orders for: {format(selectedMonth, 'MMMM yyyy')}</CardTitle>
              <div className="flex items-center gap-2 pt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -165,16 +155,12 @@ export default function MonthlyOrderReportPage() {
                   <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>Order ID</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Select onValueChange={setSelectedMonth} value={selectedMonth}>
-                  <SelectTrigger className="w-[240px]">
-                      <SelectValue placeholder="Select a month" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {availableMonths.map(month => (
-                          <SelectItem key={month} value={month}>{format(parseISO(`${month}-01`), 'MMMM yyyy')}</SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
+              <DatePicker
+                selectedDate={selectedMonth}
+                onDateChange={setSelectedMonth}
+                labelFormat="MMMM yyyy"
+                isMonthPicker
+              />
               <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                  {isExporting ? 'Exporting...' : 'Export PDF'}
