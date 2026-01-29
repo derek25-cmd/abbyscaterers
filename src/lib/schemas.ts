@@ -135,12 +135,12 @@ export const ClientEventRecipeSchema = z.object({
 export const ClientEventSchema = z.object({
   clientId: z.string().optional().nullable(),
   date: z.string().optional(),
-  numberOfPeople: z.number().min(0, "Number of people cannot be negative.").default(0),
+  numberOfPeople: z.number().min(0, "Number of people cannot be negative.").optional(),
   mealType: z.string().optional(),
   recipes: z.array(ClientEventRecipeSchema).optional(),
-  unitPrice: z.number().min(0, "Unit price must be a positive number").default(0),
+  unitPrice: z.number().min(0, "Unit price must be a positive number").optional(),
   total: z.number().optional(),
-  vatType: z.enum(['inclusive', 'exclusive']).default('inclusive'),
+  vatType: z.enum(['inclusive', 'exclusive']).optional(),
   particularType: z.enum(['event', 'meal', 'custom']).optional(),
   particularDescription: z.string().optional(),
   eventType: z.string().optional(),
@@ -308,3 +308,5 @@ export const EmployeeSchema = z.object({
   address: z.string().optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
+
+    

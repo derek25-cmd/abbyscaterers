@@ -303,7 +303,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     if (order) {
       form.reset(order);
     }
-  }, [order, form]);
+  }, [order]);
   
   useEffect(() => {
       const sub = form.watch((value, {name}) => {
@@ -344,12 +344,21 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
       setIsSubmitting(false);
     }
   }
+
+   const onValidationErrors = (errors: any) => {
+    console.error("Form Validation Errors:", errors);
+    toast({
+        variant: "destructive",
+        title: "Invalid Data",
+        description: "Please check the form for errors and try again. Some fields may be missing."
+    });
+  }
   
   const isLoading = isSubmitting;
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit, onValidationErrors)} className="space-y-8">
         <Card>
           <CardHeader>
             <CardTitle>{order ? `Edit Order: ${order.name}` : "Add New Order"}</CardTitle>
@@ -434,3 +443,5 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     </Form>
   );
 }
+
+    
