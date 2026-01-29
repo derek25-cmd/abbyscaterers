@@ -321,23 +321,25 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     setIsSubmitting(true);
     try {
       if (order) {
-        const success = await updateOrder(order.id, data);
-        if (success) {
-          toast({ title: "Order Updated", description: `${data.name} (ID: ${data.id}) has been updated.` });
-          router.push(`/orders/${data.id}`);
+        const updatedOrder = await updateOrder(order.id, data);
+        if (updatedOrder) {
+          toast({ title: "Order Updated", description: `${updatedOrder.name} (ID: ${updatedOrder.id}) has been updated.` });
+          router.push(`/orders/${updatedOrder.id}`);
+        } else {
+            toast({ variant: "destructive", title: "Update Failed", description: "The order could not be saved. Please try again."});
         }
       } else {
         const newOrderData = await addOrder(data);
         if (newOrderData) {
             toast({ title: "Order Added", description: `${newOrderData!.name} (ID: ${newOrderData!.id}) has been added.` });
             router.push("/orders");
+        } else {
+            toast({ variant: "destructive", title: "Creation Failed", description: "The order could not be created. Please try again."});
         }
       }
-    } catch (error) {
+    } catch (error: any) {
        console.error("Submission error:", error);
-       let errorMessage = "An unexpected error occurred.";
-       if (error instanceof Error) { errorMessage = error.message; }
-       toast({ variant: "destructive", title: "Submission Error", description: errorMessage });
+       toast({ variant: "destructive", title: "Submission Error", description: error.message || "An unexpected error occurred." });
     } finally {
       setIsSubmitting(false);
     }

@@ -141,6 +141,10 @@ export const ClientEventSchema = z.object({
   unitPrice: z.number().min(0, "Unit price must be a positive number").default(0),
   total: z.number().optional(),
   vatType: z.enum(['inclusive', 'exclusive']).default('inclusive'),
+  particularType: z.enum(['event', 'meal', 'custom']).optional(),
+  particularDescription: z.string().optional(),
+  eventType: z.string().optional(),
+  customEventType: z.string().optional(),
 });
 
 // Order schema
@@ -150,7 +154,7 @@ export const OrderSchema = z.object({
   description: z.string().optional(),
   proformaId: z.string().optional(),
   booking_id: z.string().optional(),
-  clientEvents: z.array(ClientEventSchema),
+  clientEvents: z.array(ClientEventSchema).optional(),
 });
 export type OrderFormData = z.infer<typeof OrderSchema>;
 
