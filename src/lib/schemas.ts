@@ -1,5 +1,4 @@
 
-
 import { z } from "zod";
 import { RECIPE_TYPES, REGIONS } from "@/types";
 
@@ -134,17 +133,14 @@ export const ClientEventRecipeSchema = z.object({
 });
 
 export const ClientEventSchema = z.object({
-  clientId: z.string().min(1, "Client must be selected"),
-  date: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: "A valid date is required",
-  }),
-  numberOfPeople: z.number().min(1, "Number of people must be at least 1"),
-  mealType: z.string().min(1, "Meal type is required"),
-  recipes: z
-    .array(ClientEventRecipeSchema),
-  unitPrice: z.number().min(0, "Unit price must be a positive number"),
+  clientId: z.string().optional().nullable(),
+  date: z.string().optional(),
+  numberOfPeople: z.number().min(0, "Number of people cannot be negative.").default(0),
+  mealType: z.string().optional(),
+  recipes: z.array(ClientEventRecipeSchema).optional(),
+  unitPrice: z.number().min(0, "Unit price must be a positive number").default(0),
   total: z.number().optional(),
-  vatType: z.enum(['inclusive', 'exclusive']),
+  vatType: z.enum(['inclusive', 'exclusive']).default('inclusive'),
 });
 
 // Order schema
@@ -154,7 +150,7 @@ export const OrderSchema = z.object({
   description: z.string().optional(),
   proformaId: z.string().optional(),
   booking_id: z.string().optional(),
-  clientEvents: z.array(ClientEventSchema).min(1, "At least one client event is required"),
+  clientEvents: z.array(ClientEventSchema),
 });
 export type OrderFormData = z.infer<typeof OrderSchema>;
 
