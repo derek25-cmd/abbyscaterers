@@ -33,14 +33,17 @@ export const addProformaInvoice = async (invoiceData: ProformaInvoiceFormData): 
 };
 
 export const updateProformaInvoice = async (id: string, updates: Partial<ProformaInvoiceFormData>): Promise<ProformaInvoice | null> => {
-    const { data, error } = await supabase.from('proforma_invoices').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
+    const { id: proformaId, ...updatePayload } = updates;
+    const { data, error } = await supabase.from('proforma_invoices').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
     if (error) {
         console.error('Error updating proforma invoice:', error);
+        return null;
     } else if (data) {
         // Cascade update to final invoice if it exists
         const { data: finalInvoice } = await supabase.from('invoices').select('id').eq('proformaId', id).single();
         if(finalInvoice) {
-            await supabase.from('invoices').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
+            const { id: ignoredId, ...finalInvoiceUpdatePayload } = updates;
+            await supabase.from('invoices').update({ ...finalInvoiceUpdatePayload, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
         }
     }
     return data as ProformaInvoice | null;

@@ -46,7 +46,8 @@ export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Inv
 };
 
 export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFormData>): Promise<Invoice | null> => {
-    const { data, error } = await supabase.from('invoices').update({ ...updates, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
+    const { id: invoiceId, ...updatePayload } = updates;
+    const { data, error } = await supabase.from('invoices').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
     if (error) {
         console.error('Error updating invoice:', error);
         return null;

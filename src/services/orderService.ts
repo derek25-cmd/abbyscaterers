@@ -42,7 +42,7 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
-    const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date), 'PPP') : 'Unknown Date'}`;
+    const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date!), 'PPP') : 'Unknown Date'}`;
     
     const newOrderData = {
         ...orderData,
@@ -68,18 +68,14 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
 
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<Order | null> => {
-    const updatePayload: { [key: string]: any } = {
-      name: updates.name,
-      description: updates.description,
-      proformaId: updates.proformaId,
-      booking_id: updates.booking_id,
-      clientEvents: updates.clientEvents,
+    const { id: orderId, ...updatePayload } = updates;
+    
+    const payloadWithTimestamp = {
+      ...updatePayload,
       updatedAt: new Date().toISOString()
     };
     
-    Object.keys(updatePayload).forEach(key => updatePayload[key] === undefined && delete updatePayload[key]);
-    
-    const { data, error } = await supabase.from('orders').update(updatePayload).eq('id', id).select().single();
+    const { data, error } = await supabase.from('orders').update(payloadWithTimestamp).eq('id', id).select().single();
     if (error) {
         console.error('Error updating order:', JSON.stringify(error, null, 2));
         return null;
