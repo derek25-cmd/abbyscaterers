@@ -131,7 +131,7 @@ export interface Order {
   name: string;
   description?: string;
   proformaId?: string;
-  booking_id?: string;
+  booking_id?: string | null;
   clientEvents: ClientEvent[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string

@@ -153,7 +153,7 @@ export const OrderSchema = z.object({
   name: z.string().min(1, "Order name is required"),
   description: z.string().optional(),
   proformaId: z.string().optional(),
-  booking_id: z.string().optional(),
+  booking_id: z.string().nullable().optional(),
   clientEvents: z.array(ClientEventSchema).optional(),
 });
 export type OrderFormData = z.infer<typeof OrderSchema>;
@@ -308,5 +308,3 @@ export const EmployeeSchema = z.object({
   address: z.string().optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
-
-    
