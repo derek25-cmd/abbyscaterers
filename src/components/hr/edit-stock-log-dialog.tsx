@@ -30,6 +30,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
   const [orderId, setOrderId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [date, setDate] = useState('');
+  const [actualUnitPrice, setActualUnitPrice] = useState(0);
   const { orders } = useOrderStorage();
 
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
@@ -41,6 +42,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
       setProductId(log.productId);
       setQuantity(log.quantity);
       setDate(log.date);
+      setActualUnitPrice(log.actual_unit_price || 0);
 
       if (log.reason.startsWith('Customer Order: ')) {
         const parts = log.reason.split(': ');
@@ -87,7 +89,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
       productName: product ? product.name : log.productName,
       quantity: Number(quantity),
       reason: finalReason,
-      price: product ? product.unitPrice * Number(quantity) : log.price,
+      actual_unit_price: Number(actualUnitPrice),
       date,
     });
 
@@ -166,7 +168,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                     </CardHeader>
                     <CardContent className="p-0">
                         <p><strong>Current Stock:</strong> {selectedProduct.quantity} {selectedProduct.unit}</p>
-                        <p><strong>Unit Price:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(selectedProduct.unitPrice).replace('TZS', 'TZS ')}</p>
+                        <p><strong>Catalog Price:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(selectedProduct.unitPrice).replace('TZS', 'TZS ')}</p>
                     </CardContent>
                 </Card>
             )}
@@ -182,6 +184,20 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                 onChange={(e) => setQuantity(Number(e.target.value))}
                 className="col-span-3"
                 min="1"
+              />
+            </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="actual_unit_price" className="text-right">
+                Unit Price
+              </Label>
+              <Input
+                id="actual_unit_price"
+                type="number"
+                value={actualUnitPrice}
+                onChange={(e) => setActualUnitPrice(Number(e.target.value))}
+                className="col-span-3"
+                min="0"
+                step="any"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">

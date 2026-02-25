@@ -4,7 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight } from "lucide-react";
+import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { LogStockMovementDialog } from "@/components/hr/log-stock-movement-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -22,12 +22,13 @@ import { useProductStorage } from "@/hooks/use-product-storage";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState, ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogHeader as AlertDialogHeaderComponent, AlertDialogTitle as AlertDialogTitleComponent, AlertDialogDescription as AlertDialogDescriptionComponent, AlertDialogFooter as AlertDialogFooterComponent, AlertDialogContent as AlertDialogContentComponent } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 
 export default function StockLogsPage() {
-  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, refreshLogs } = useStockLogStorage();
+  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, deleteStockLog, refreshLogs } = useStockLogStorage();
   const { products, isLoading: productsLoading, updateProduct: updateProductInStore } = useProductStorage();
   const { toast } = useToast();
 
@@ -37,9 +38,14 @@ export default function StockLogsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false);
   const [newTransferDate, setNewTransferDate] = useState<Date | undefined>(new Date());
+  const [pasteDate, setPasteDate] = useState<Date | undefined>(new Date());
   const [isTransferring, setIsTransferring] = useState(false);
+  const [isPasting, setIsPasting] = useState(false);
   const [selectedLog, setSelectedLog] = useState<StockLog | null>(null);
+  const [logToDelete, setLogToDelete] = useState<StockLog | null>(null);
+  const [copiedLogs, setCopiedLogs] = useState<StockLog[] | null>(null);
   
   // Table State
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -86,8 +92,17 @@ export default function StockLogsPage() {
   };
 
   const handleEditLog = async (updatedLog: any) => {
-    await updateStockLogInStore(updatedLog.id, updatedLog);
+    const newPrice = updatedLog.quantity * updatedLog.actual_unit_price;
+    await updateStockLogInStore(updatedLog.id, { ...updatedLog, price: newPrice });
   };
+  
+  const handleDeleteConfirm = async () => {
+    if (logToDelete) {
+        await deleteStockLog(logToDelete.id);
+        toast({ title: "Log Deleted", description: "The stock log entry has been removed." });
+        setLogToDelete(null);
+    }
+  }
 
   const openEditDialog = (log: StockLog) => {
     setSelectedLog(log);
@@ -146,6 +161,8 @@ export default function StockLogsPage() {
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => openViewDialog(row.original)}>View Details</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => openEditDialog(row.original)}>Edit</DropdownMenuItem>
+                <DropdownMenuSeparator/>
+                <DropdownMenuItem onClick={() => setLogToDelete(row.original)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ),
@@ -205,12 +222,11 @@ export default function StockLogsPage() {
 
   const handleDateFilterChange = (date: Date | undefined) => {
       const dateString = date ? format(date, "yyyy-MM-dd") : undefined;
-      // When date is selected, clear other filters
       if (dateString) {
         setColumnFilters([{ id: 'date', value: dateString }]);
-        setGlobalFilter(''); // Clear global search
+        setGlobalFilter(''); 
       } else {
-        setColumnFilters([]); // Clear all filters
+        setColumnFilters([]);
       }
       table.resetRowSelection();
   };
@@ -256,6 +272,46 @@ export default function StockLogsPage() {
     }
   };
 
+  const handleCopySelected = () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+    setCopiedLogs(selectedRows);
+    toast({
+      title: "Logs Copied",
+      description: `${selectedRows.length} log(s) have been copied to the clipboard.`
+    });
+  };
+
+  const handlePasteConfirm = async () => {
+    if (!pasteDate || !copiedLogs) {
+      toast({ variant: "destructive", title: "Paste Error", description: "No date selected or no logs to paste." });
+      return;
+    }
+    setIsPasting(true);
+    const newDateStr = format(pasteDate, 'yyyy-MM-dd');
+    try {
+      for (const logToCopy of copiedLogs) {
+        const { id, createdAt, updatedAt, ...logData } = logToCopy;
+        await addStockLog({
+          ...logData,
+          date: newDateStr,
+        });
+      }
+      toast({
+        title: "Paste Successful",
+        description: `${copiedLogs.length} log(s) have been pasted to ${format(pasteDate, 'PPP')}.`
+      });
+      setCopiedLogs(null);
+      table.resetRowSelection();
+      setIsPasteDialogOpen(false);
+      await refreshLogs();
+      handleDateFilterChange(pasteDate);
+    } catch(error) {
+      toast({ variant: "destructive", title: "Paste Failed", description: "An error occurred while pasting logs." });
+    } finally {
+      setIsPasting(false);
+    }
+  };
+
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -278,42 +334,9 @@ export default function StockLogsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Stocked In</CardTitle>
-                    <ArrowDown className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(dailySummary.stockedIn.value)}</div>
-                    <p className="text-xs text-muted-foreground">
-                        {dailySummary.stockedIn.items} items received
-                    </p>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Stocked Out</CardTitle>
-                    <ArrowUp className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(dailySummary.stockedOut.value)}</div>
-                    <p className="text-xs text-muted-foreground">
-                        {dailySummary.stockedOut.items} items issued
-                    </p>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(totalStockValue)}</div>
-                    <p className="text-xs text-muted-foreground">
-                        Current value of all products
-                    </p>
-                </CardContent>
-            </Card>
+             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stocked In</CardTitle><ArrowDown className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(dailySummary.stockedIn.value)}</div><p className="text-xs text-muted-foreground">{dailySummary.stockedIn.items} items received</p></CardContent></Card>
+             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stocked Out</CardTitle><ArrowUp className="h-4 w-4 text-red-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(dailySummary.stockedOut.value)}</div><p className="text-xs text-muted-foreground">{dailySummary.stockedOut.items} items issued</p></CardContent></Card>
+             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(totalStockValue)}</div><p className="text-xs text-muted-foreground">Current value of all products</p></CardContent></Card>
         </div>
 
 
@@ -328,162 +351,79 @@ export default function StockLogsPage() {
               <div className="flex items-center gap-2">
                 <div className="relative flex-1 md:grow-0">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search all logs..."
-                      value={globalFilter}
+                    <Input type="search" placeholder="Search all logs..." value={globalFilter}
                       onChange={(event) => {
                           setGlobalFilter(event.target.value);
-                          // Clear date filter when searching globally
-                          if (event.target.value) {
-                             table.getColumn('date')?.setFilterValue(undefined);
-                          }
+                          if (event.target.value) { table.getColumn('date')?.setFilterValue(undefined); }
                       }}
                       className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                 </div>
                 <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className={cn(
-                        "w-[240px] justify-start text-left font-normal h-9",
-                        !table.getColumn('date')?.getFilterValue() && "text-muted-foreground"
-                        )}
-                    >
+                    <PopoverTrigger asChild><Button variant={"outline"} className={cn( "w-[240px] justify-start text-left font-normal h-9", !table.getColumn('date')?.getFilterValue() && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {table.getColumn('date')?.getFilterValue() ? format(parseISO(table.getColumn('date')?.getFilterValue() as string), "PPP") : <span>Pick a date</span>}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                    <Calendar
-                        mode="single"
-                        selected={table.getColumn('date')?.getFilterValue() ? parseISO(table.getColumn('date')?.getFilterValue() as string) : undefined}
-                        onSelect={(date) => handleDateFilterChange(date)}
-                        initialFocus
-                    />
-                    </PopoverContent>
+                    </Button></PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end"><Calendar mode="single" selected={table.getColumn('date')?.getFilterValue() ? parseISO(table.getColumn('date')?.getFilterValue() as string) : undefined} onSelect={(date) => handleDateFilterChange(date)} initialFocus /></PopoverContent>
                 </Popover>
               </div>
-              <div>
+              <div className="flex items-center gap-2">
                 {table.getFilteredSelectedRowModel().rows.length > 0 && (
-                     <Button size="sm" onClick={() => setIsTransferDialogOpen(true)}>
-                        <MoveRight className="mr-2 h-4 w-4" />
-                        Transfer {table.getFilteredSelectedRowModel().rows.length} Selected
-                    </Button>
+                    <>
+                    <Button size="sm" variant="outline" onClick={handleCopySelected}><Copy className="mr-2 h-4 w-4" /> Copy {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
+                    <Button size="sm" onClick={() => setIsTransferDialogOpen(true)}><MoveRight className="mr-2 h-4 w-4" />Transfer {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
+                    </>
+                )}
+                {copiedLogs && copiedLogs.length > 0 && (
+                    <Button size="sm" onClick={() => setIsPasteDialogOpen(true)}><CopyCheck className="mr-2 h-4 w-4" />Paste {copiedLogs.length} Copied</Button>
                 )}
               </div>
           </div>
           <CardContent>
-            {loading ? (
-                <p>Loading stock logs...</p>
-            ) : (
+            {loading ? ( <p>Loading stock logs...</p> ) : (
             <div className="relative w-full overflow-auto">
               <Table>
-                <TableHeader>
-                  {table.getHeaderGroups().map(headerGroup => (
-                      <TableRow key={headerGroup.id}>
-                          {headerGroup.headers.map(header => (
-                              <TableHead key={header.id}>
-                                  {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                              </TableHead>
-                          ))}
-                      </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody>
-                  {table.getRowModel().rows?.length > 0 ? (
-                    table.getRowModel().rows.map(row => (
-                        <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                        {row.getVisibleCells().map(cell => (
-                            <TableCell key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                        ))}
-                        </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                        <TableCell colSpan={columns.length} className="h-24 text-center">
-                            No results.
-                        </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
+                <TableHeader>{table.getHeaderGroups().map(headerGroup => ( <TableRow key={headerGroup.id}>{headerGroup.headers.map(header => (<TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
+                <TableBody>{table.getRowModel().rows?.length > 0 ? (table.getRowModel().rows.map(row => (<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No results.</TableCell></TableRow>)}</TableBody>
               </Table>
             </div>
             )}
           </CardContent>
            {!table.getColumn('date')?.getFilterValue() && (
                 <CardFooter className="flex justify-end space-x-2 py-4">
-                    <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                    >
-                    Previous
-                    </Button>
-                    <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                    >
-                    Next
-                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Previous</Button>
+                    <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Next</Button>
                 </CardFooter>
             )}
         </Card>
       
-      <LogStockMovementDialog
-        isOpen={isLogDialogOpen}
-        setIsOpen={setIsLogDialogOpen}
-        logType={logType}
-        onLogMovement={handleLogMovement}
-        products={products}
-      />
-      {selectedLog && (
-        <EditStockLogDialog
-            isOpen={isEditDialogOpen}
-            setIsOpen={setIsEditDialogOpen}
-            log={selectedLog}
-            onEditLog={handleEditLog}
-            products={products}
-        />
-      )}
-      {selectedLog && (
-        <ViewStockLogDialog
-            isOpen={isViewDialogOpen}
-            setIsOpen={setIsViewDialogOpen}
-            log={selectedLog}
-        />
-      )}
+      <LogStockMovementDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} logType={logType} onLogMovement={handleLogMovement} products={products}/>
+      {selectedLog && ( <EditStockLogDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} log={selectedLog} onEditLog={handleEditLog} products={products} /> )}
+      {selectedLog && ( <ViewStockLogDialog isOpen={isViewDialogOpen} setIsOpen={setIsViewDialogOpen} log={selectedLog} /> )}
+       
        <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
             <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Transfer Stock Logs</DialogTitle>
-                    <DialogDescription>
-                        Select a new date to move the selected {table.getFilteredSelectedRowModel().rows.length} log(s) to.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 flex justify-center">
-                    <Calendar
-                        mode="single"
-                        selected={newTransferDate}
-                        onSelect={setNewTransferDate}
-                        initialFocus
-                    />
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)} disabled={isTransferring}>Cancel</Button>
-                    <Button onClick={handleTransferSelected} disabled={isTransferring}>
-                        {isTransferring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirm Transfer
-                    </Button>
-                </DialogFooter>
+                <DialogHeader><DialogTitle>Transfer Stock Logs</DialogTitle><DialogDescription>Select a new date to move the selected {table.getFilteredSelectedRowModel().rows.length} log(s) to.</DialogDescription></DialogHeader>
+                <div className="py-4 flex justify-center"><Calendar mode="single" selected={newTransferDate} onSelect={setNewTransferDate} initialFocus/></div>
+                <DialogFooter><Button variant="outline" onClick={() => setIsTransferDialogOpen(false)} disabled={isTransferring}>Cancel</Button><Button onClick={handleTransferSelected} disabled={isTransferring}>{isTransferring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm Transfer</Button></DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <Dialog open={isPasteDialogOpen} onOpenChange={setIsPasteDialogOpen}>
+            <DialogContent>
+                <DialogHeader><DialogTitle>Paste Stock Logs</DialogTitle><DialogDescription>Select a date to paste the {copiedLogs?.length || 0} copied log(s) to.</DialogDescription></DialogHeader>
+                <div className="py-4 flex justify-center"><Calendar mode="single" selected={pasteDate} onSelect={setPasteDate} initialFocus/></div>
+                <DialogFooter><Button variant="outline" onClick={() => setIsPasteDialogOpen(false)} disabled={isPasting}>Cancel</Button><Button onClick={handlePasteConfirm} disabled={isPasting}>{isPasting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm Paste</Button></DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={!!logToDelete} onOpenChange={(open) => !open && setLogToDelete(null)}>
+            <AlertDialogContentComponent>
+                <AlertDialogHeaderComponent><AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent><AlertDialogDescriptionComponent>This action cannot be undone. This will permanently delete the stock log.</AlertDialogDescriptionComponent></AlertDialogHeaderComponent>
+                <AlertDialogFooterComponent><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction></AlertDialogFooterComponent>
+            </AlertDialogContentComponent>
+        </AlertDialog>
+
     </main>
   );
 }

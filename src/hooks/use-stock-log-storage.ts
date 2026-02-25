@@ -7,6 +7,7 @@ import {
   getStockLogs as getAllFromStorage,
   addStockLog as addToStorage,
   updateStockLog as updateInStorage,
+  deleteStockLog as deleteFromStorage,
 } from '@/services/stockLogService';
 
 export function useStockLogStorage() {
@@ -41,6 +42,14 @@ export function useStockLogStorage() {
     }
     return updatedItem;
   }, [refreshLogs]);
+
+  const deleteStockLog = useCallback(async (id: string) => {
+    const success = await deleteFromStorage(id);
+    if (success) {
+      refreshLogs();
+    }
+    return success;
+  }, [refreshLogs]);
   
   const getStockLogById = useCallback((id: string) => {
      return logs.find(l => l.id === id);
@@ -50,7 +59,8 @@ export function useStockLogStorage() {
     logs, 
     isLoading, 
     addStockLog, 
-    updateStockLog, 
+    updateStockLog,
+    deleteStockLog,
     getStockLogById,
     refreshLogs 
   };

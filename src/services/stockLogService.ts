@@ -48,3 +48,10 @@ export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>):
     return !error;
 };
 
+export const deleteStockLog = async (id: string): Promise<boolean> => {
+    const { error } = await supabase.from('stock_logs').delete().eq('id', id);
+    if (error) {
+        console.error('Error deleting stock log:', error);
+    }
+    return !error;
+}
