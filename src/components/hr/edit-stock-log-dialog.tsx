@@ -43,7 +43,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
       setDate(log.date);
       setActualUnitPrice(log.actual_unit_price || 0);
 
-      if (log.reason.startsWith('Customer Order: ')) {
+      if (log.reason && log.reason.startsWith('Customer Order: ')) {
         const parts = log.reason.split(': ');
         setReason('Customer Order');
         setOrderId(parts[1] || '');
@@ -180,9 +180,10 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                     <Input
                         id="quantity"
                         type="number"
+                        step="any"
                         value={quantity}
-                        onChange={(e) => setQuantity(Number(e.target.value))}
-                        min="1"
+                        onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+                        min="0.01"
                     />
                 </div>
                 <div className="grid gap-2">
