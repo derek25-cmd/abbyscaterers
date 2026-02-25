@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -222,11 +221,11 @@ export default function StockLogsPage() {
 
   const handleDateFilterChange = (date: Date | undefined) => {
       const dateString = date ? format(date, "yyyy-MM-dd") : undefined;
+      const currentFilters = columnFilters.filter(f => f.id !== 'date');
       if (dateString) {
-        setColumnFilters([{ id: 'date', value: dateString }]);
-        setGlobalFilter(''); 
+        setColumnFilters([...currentFilters, { id: 'date', value: dateString }]);
       } else {
-        setColumnFilters([]);
+        setColumnFilters(currentFilters);
       }
       table.resetRowSelection();
   };
@@ -351,11 +350,8 @@ export default function StockLogsPage() {
               <div className="flex items-center gap-2">
                 <div className="relative flex-1 md:grow-0">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input type="search" placeholder="Search all logs..." value={globalFilter}
-                      onChange={(event) => {
-                          setGlobalFilter(event.target.value);
-                          if (event.target.value) { table.getColumn('date')?.setFilterValue(undefined); }
-                      }}
+                    <Input type="search" placeholder="Search logs..." value={globalFilter}
+                      onChange={(event) => setGlobalFilter(event.target.value)}
                       className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                     />
                 </div>
