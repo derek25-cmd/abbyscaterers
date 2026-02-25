@@ -14,9 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
-import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -98,7 +97,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Stock Log</DialogTitle>
@@ -106,13 +105,13 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
               Update the details for the stock log entry.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="date" className="text-right">Date</Label>
-                <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="col-span-3"/>
+          <div className="space-y-4 py-4">
+            <div className="grid gap-2">
+                <Label htmlFor="date">Date</Label>
+                <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="product" className="text-right">
+            <div className="grid gap-2">
+              <Label htmlFor="product">
                 Product
               </Label>
                <Popover>
@@ -121,7 +120,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                         variant="outline"
                         role="combobox"
                         className={cn(
-                            "w-full justify-between col-span-3",
+                            "w-full justify-between",
                             !productId && "text-muted-foreground"
                         )}
                         >
@@ -162,50 +161,51 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
             </div>
 
             {selectedProduct && (
-                <Card className="col-span-4 bg-muted/50 p-3 text-sm">
+                <Card className="bg-muted/50 p-3 text-sm">
                     <CardHeader className="p-0 pb-2">
                         <CardTitle className="text-base">{selectedProduct.name}</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-0">
+                    <CardContent className="p-0 grid grid-cols-2 gap-4">
                         <p><strong>Current Stock:</strong> {selectedProduct.quantity} {selectedProduct.unit}</p>
                         <p><strong>Catalog Price:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(selectedProduct.unitPrice).replace('TZS', 'TZS ')}</p>
                     </CardContent>
                 </Card>
             )}
 
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="quantity" className="text-right">
-                Quantity
-              </Label>
-              <Input
-                id="quantity"
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                className="col-span-3"
-                min="1"
-              />
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="quantity">
+                        Quantity
+                    </Label>
+                    <Input
+                        id="quantity"
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Number(e.target.value))}
+                        min="1"
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="actual_unit_price">
+                        Unit Price
+                    </Label>
+                    <Input
+                        id="actual_unit_price"
+                        type="number"
+                        value={actualUnitPrice}
+                        onChange={(e) => setActualUnitPrice(Number(e.target.value))}
+                        min="0"
+                        step="any"
+                    />
+                </div>
             </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="actual_unit_price" className="text-right">
-                Unit Price
-              </Label>
-              <Input
-                id="actual_unit_price"
-                type="number"
-                value={actualUnitPrice}
-                onChange={(e) => setActualUnitPrice(Number(e.target.value))}
-                className="col-span-3"
-                min="0"
-                step="any"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="reason" className="text-right">
+
+            <div className="grid gap-2">
+              <Label htmlFor="reason">
                 Reason
               </Label>
               <Select onValueChange={setReason} value={reason}>
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger>
                   <SelectValue placeholder="Select a reason" />
                 </SelectTrigger>
                 <SelectContent>
@@ -215,13 +215,14 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                 </SelectContent>
               </Select>
             </div>
+
              {reason === 'Customer Order' && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="order" className="text-right">
+                <div className="grid gap-2">
+                    <Label htmlFor="order">
                         Order
                     </Label>
                     <Select onValueChange={setOrderId} value={orderId}>
-                        <SelectTrigger className="col-span-3">
+                        <SelectTrigger>
                             <SelectValue placeholder="Select a customer order" />
                         </SelectTrigger>
                         <SelectContent>
