@@ -8,6 +8,7 @@ import {
   addStockLog as addToStorage,
   updateStockLog as updateInStorage,
   deleteStockLog as deleteFromStorage,
+  deleteStockLogs as deleteBulkFromStorage,
 } from '@/services/stockLogService';
 
 export function useStockLogStorage() {
@@ -50,6 +51,14 @@ export function useStockLogStorage() {
     }
     return success;
   }, [refreshLogs]);
+
+  const deleteStockLogs = useCallback(async (ids: string[]) => {
+    const success = await deleteBulkFromStorage(ids);
+    if (success) {
+      refreshLogs();
+    }
+    return success;
+  }, [refreshLogs]);
   
   const getStockLogById = useCallback((id: string) => {
      return logs.find(l => l.id === id);
@@ -61,7 +70,8 @@ export function useStockLogStorage() {
     addStockLog, 
     updateStockLog,
     deleteStockLog,
-    getStockLogById,
-    refreshLogs 
+    deleteStockLogs,
+    refreshLogs,
+    getStockLogById
   };
 }

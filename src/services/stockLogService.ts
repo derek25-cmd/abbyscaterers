@@ -55,3 +55,11 @@ export const deleteStockLog = async (id: string): Promise<boolean> => {
     }
     return !error;
 }
+
+export const deleteStockLogs = async (ids: string[]): Promise<boolean> => {
+    const { error } = await supabase.from('stock_logs').delete().in('id', ids);
+    if (error) {
+        console.error('Error bulk deleting stock logs:', error);
+    }
+    return !error;
+}

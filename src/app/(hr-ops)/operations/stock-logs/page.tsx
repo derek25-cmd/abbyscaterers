@@ -1,9 +1,10 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2 } from "lucide-react";
+import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2, Loader2 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { LogStockMovementDialog } from "@/components/hr/log-stock-movement-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +24,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogHeader as AlertDialogHeaderComponent, AlertDialogTitle as AlertDialogTitleComponent, AlertDialogDescription as AlertDialogDescriptionComponent, AlertDialogFooter as AlertDialogFooterComponent, AlertDialogContent as AlertDialogContentComponent } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
 
 
 export default function StockLogsPage() {
-  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, deleteStockLog, refreshLogs } = useStockLogStorage();
+  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, deleteStockLog, deleteStockLogs, refreshLogs } = useStockLogStorage();
   const { products, isLoading: productsLoading, updateProduct: updateProductInStore } = useProductStorage();
   const { toast } = useToast();
 
@@ -38,10 +38,15 @@ export default function StockLogsPage() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  
   const [newTransferDate, setNewTransferDate] = useState<Date | undefined>(new Date());
   const [pasteDate, setPasteDate] = useState<Date | undefined>(new Date());
+  
   const [isTransferring, setIsTransferring] = useState(false);
   const [isPasting, setIsPasting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const [selectedLog, setSelectedLog] = useState<StockLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<StockLog | null>(null);
   const [copiedLogs, setCopiedLogs] = useState<StockLog[] | null>(null);
@@ -57,62 +62,6 @@ export default function StockLogsPage() {
     setLoading(logsLoading || productsLoading);
   }, [logsLoading, productsLoading]);
   
-  const handleOpenLogDialog = (type: 'Stock In' | 'Stock Out') => {
-    setLogType(type);
-    setIsLogDialogOpen(true);
-  };
-  
-  const handleLogMovement = async (movement: any) => {
-    const product = products.find(p => p.id === movement.productId);
-    
-    if(!product) {
-        toast({ variant: 'destructive', title: "Product not found" });
-        return;
-    }
-
-    const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
-    await addStockLog(logData);
-
-    const updatedProduct = { ...product };
-    if(movement.type === 'Stock In') {
-        updatedProduct.quantity += movement.quantity;
-    } else {
-        if(product.quantity < movement.quantity) {
-            toast({ variant: 'destructive', title: "Not enough stock to log out" });
-            return;
-        }
-        updatedProduct.quantity -= movement.quantity;
-    }
-    
-    await updateProductInStore(product.id, { 
-        quantity: updatedProduct.quantity,
-        unitPrice: movement.actual_unit_price,
-    });
-  };
-
-  const handleEditLog = async (updatedLog: any) => {
-    const newPrice = updatedLog.quantity * updatedLog.actual_unit_price;
-    await updateStockLogInStore(updatedLog.id, { ...updatedLog, price: newPrice });
-  };
-  
-  const handleDeleteConfirm = async () => {
-    if (logToDelete) {
-        await deleteStockLog(logToDelete.id);
-        toast({ title: "Log Deleted", description: "The stock log entry has been removed." });
-        setLogToDelete(null);
-    }
-  }
-
-  const openEditDialog = (log: StockLog) => {
-    setSelectedLog(log);
-    setIsEditDialogOpen(true);
-  };
-  
-  const openViewDialog = (log: StockLog) => {
-    setSelectedLog(log);
-    setIsViewDialogOpen(true);
-  };
-
   const formatCurrency = (amount: number) => {
     if(typeof amount !== 'number') return 'TZS 0.00';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
@@ -190,6 +139,83 @@ export default function StockLogsPage() {
       getPaginationRowModel: getPaginationRowModel(),
   });
   
+  const handleOpenLogDialog = (type: 'Stock In' | 'Stock Out') => {
+    setLogType(type);
+    setIsLogDialogOpen(true);
+  };
+  
+  const handleLogMovement = async (movement: any) => {
+    const product = products.find(p => p.id === movement.productId);
+    
+    if(!product) {
+        toast({ variant: 'destructive', title: "Product not found" });
+        return;
+    }
+
+    const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
+    await addStockLog(logData);
+
+    const updatedProduct = { ...product };
+    if(movement.type === 'Stock In') {
+        updatedProduct.quantity += movement.quantity;
+    } else {
+        if(product.quantity < movement.quantity) {
+            toast({ variant: 'destructive', title: "Not enough stock to log out" });
+            return;
+        }
+        updatedProduct.quantity -= movement.quantity;
+    }
+    
+    await updateProductInStore(product.id, { 
+        quantity: updatedProduct.quantity,
+        unitPrice: movement.actual_unit_price,
+    });
+  };
+
+  const handleEditLog = async (updatedLog: any) => {
+    const newPrice = updatedLog.quantity * updatedLog.actual_unit_price;
+    await updateStockLogInStore(updatedLog.id, { ...updatedLog, price: newPrice });
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (logToDelete) {
+        await deleteStockLog(logToDelete.id);
+        toast({ title: "Log Deleted", description: "The stock log entry has been removed." });
+        setLogToDelete(null);
+    }
+  }
+
+  const handleBulkDeleteConfirm = async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+    const idsToDelete = selectedRows.map(row => row.original.id);
+    
+    setIsDeleting(true);
+    try {
+        const success = await deleteStockLogs(idsToDelete);
+        if (success) {
+            toast({ title: "Logs Deleted", description: `${idsToDelete.length} stock log entries have been removed.` });
+            table.resetRowSelection();
+        } else {
+            throw new Error("Bulk delete failed");
+        }
+    } catch (error) {
+        toast({ variant: "destructive", title: "Deletion Failed", description: "An error occurred while deleting the logs." });
+    } finally {
+        setIsDeleting(false);
+        setIsBulkDeleteDialogOpen(false);
+    }
+  };
+
+  const openEditDialog = (log: StockLog) => {
+    setSelectedLog(log);
+    setIsEditDialogOpen(true);
+  };
+  
+  const openViewDialog = (log: StockLog) => {
+    setSelectedLog(log);
+    setIsViewDialogOpen(true);
+  };
+
   useEffect(() => {
     const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
     table.setPagination(selectedDate ? { pageIndex: 0, pageSize: logs.length } : { pageIndex: 0, pageSize: 10 });
@@ -346,8 +372,8 @@ export default function StockLogsPage() {
               {table.getColumn('date')?.getFilterValue() ? `Showing stock movements for ${format(parseISO(table.getColumn('date')?.getFilterValue() as string), "MMMM dd, yyyy")}` : 'Track all inventory coming in and going out.'}
             </CardDescription>
           </CardHeader>
-          <div className="p-6 pt-0 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+          <div className="p-6 pt-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 <div className="relative flex-1 md:grow-0">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input type="search" placeholder="Search logs..." value={globalFilter}
@@ -356,16 +382,17 @@ export default function StockLogsPage() {
                     />
                 </div>
                 <Popover>
-                    <PopoverTrigger asChild><Button variant={"outline"} className={cn( "w-[240px] justify-start text-left font-normal h-9", !table.getColumn('date')?.getFilterValue() && "text-muted-foreground")}>
+                    <PopoverTrigger asChild><Button variant={"outline"} className={cn( "w-full md:w-[240px] justify-start text-left font-normal h-9", !table.getColumn('date')?.getFilterValue() && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {table.getColumn('date')?.getFilterValue() ? format(parseISO(table.getColumn('date')?.getFilterValue() as string), "PPP") : <span>Pick a date</span>}
                     </Button></PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="end"><Calendar mode="single" selected={table.getColumn('date')?.getFilterValue() ? parseISO(table.getColumn('date')?.getFilterValue() as string) : undefined} onSelect={(date) => handleDateFilterChange(date)} initialFocus /></PopoverContent>
                 </Popover>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
                 {table.getFilteredSelectedRowModel().rows.length > 0 && (
                     <>
+                    <Button size="sm" variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
                     <Button size="sm" variant="outline" onClick={handleCopySelected}><Copy className="mr-2 h-4 w-4" /> Copy {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
                     <Button size="sm" onClick={() => setIsTransferDialogOpen(true)}><MoveRight className="mr-2 h-4 w-4" />Transfer {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
                     </>
@@ -417,6 +444,24 @@ export default function StockLogsPage() {
             <AlertDialogContentComponent>
                 <AlertDialogHeaderComponent><AlertDialogTitleComponent>Are you sure?</AlertDialogTitleComponent><AlertDialogDescriptionComponent>This action cannot be undone. This will permanently delete the stock log.</AlertDialogDescriptionComponent></AlertDialogHeaderComponent>
                 <AlertDialogFooterComponent><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction></AlertDialogFooterComponent>
+            </AlertDialogContentComponent>
+        </AlertDialog>
+
+        <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+            <AlertDialogContentComponent>
+                <AlertDialogHeaderComponent>
+                    <AlertDialogTitleComponent>Are you absolutely sure?</AlertDialogTitleComponent>
+                    <AlertDialogDescriptionComponent>
+                        This will permanently delete {table.getFilteredSelectedRowModel().rows.length} selected stock log entries. This action cannot be undone.
+                    </AlertDialogDescriptionComponent>
+                </AlertDialogHeaderComponent>
+                <AlertDialogFooterComponent>
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBulkDeleteConfirm} className="bg-destructive hover:bg-destructive/90" disabled={isDeleting}>
+                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Delete All
+                    </AlertDialogAction>
+                </AlertDialogFooterComponent>
             </AlertDialogContentComponent>
         </AlertDialog>
 
