@@ -98,7 +98,7 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Stock Log</DialogTitle>
