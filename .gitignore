@@ -43,3 +43,9 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.logmy-electron-app/dist/
+# Build artifacts
+my-electron-app/dist/
+*.AppImage
+*.snap
+*.deb
+*.rpm
