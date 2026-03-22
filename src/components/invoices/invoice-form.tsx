@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -11,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -29,7 +28,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { REGIONS } from '@/types';
+import { REGIONS, type Order } from '@/types';
+import { Alert, AlertDescription, AlertTitle } from "@/components/hr/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface InvoiceFormProps {
     invoiceId?: string;
@@ -82,6 +84,11 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
 
+    // Suggestion state
+    const [matchingOrders, setMatchingOrders] = useState<Order[]>([]);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+    const [selectedOrderIdsForImport, setSelectedOrderIdsForImport] = useState<string[]>([]);
+
     const form = useForm<FinalInvoiceFormData>({
         resolver: zodResolver(FinalInvoiceSchema),
         defaultValues: {
@@ -121,6 +128,65 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
     const invoiceStatus = form.watch('status');
 
+    // Check for matching orders
+    useEffect(() => {
+        if (!selectedClientId || !watchedFormValues.startDate || !watchedFormValues.endDate || isEditMode || !!proformaId) {
+            setMatchingOrders([]);
+            return;
+        }
+
+        const start = watchedFormValues.startDate;
+        const end = watchedFormValues.endDate;
+
+        const matches = orders.filter(order => {
+            const belongsToClient = order.clientEvents.some(e => e.clientId === selectedClientId);
+            if (!belongsToClient) return false;
+
+            const inDateRange = order.clientEvents.some(e => e.date && e.date >= start && e.date <= end);
+            if (!inDateRange) return false;
+
+            // Don't suggest if already in items list
+            const alreadyAdded = fields.some(f => f.id === order.id);
+            if (alreadyAdded) return false;
+
+            return true;
+        });
+
+        setMatchingOrders(matches);
+    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, orders, fields, isEditMode, proformaId]);
+
+    const handleImportSelected = (orderList: Order[]) => {
+        const currentItems = form.getValues('items');
+        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1;
+
+        if (isFirstItemEmpty) {
+            remove(0);
+        }
+
+        orderList.forEach(order => {
+            order.clientEvents.forEach(event => {
+                if (event.clientId === selectedClientId && event.date && event.date >= watchedFormValues.startDate && event.date <= watchedFormValues.endDate) {
+                    append({
+                        id: order.id || '',
+                        particularType: 'event',
+                        eventType: 'Catering services',
+                        mealType: event.mealType || '',
+                        pax: event.numberOfPeople || 0,
+                        unitPrice: event.unitPrice || 0,
+                        total: (event.numberOfPeople || 0) * (event.unitPrice || 0),
+                        date: event.date,
+                        vatType: event.vatType || 'inclusive',
+                        particularDescription: `${event.mealType || 'Event'} on ${event.date ? format(parseISO(event.date), 'PPP') : ''}`
+                    });
+                }
+            });
+        });
+
+        setMatchingOrders([]);
+        setIsImportDialogOpen(false);
+        toast({ title: "Orders Imported", description: `Added events from ${orderList.length} orders.` });
+    };
+
     useEffect(() => {
         if (invoiceStatus === 'paid' && !form.getValues('paymentDate')) {
             form.setValue('paymentDate', format(new Date(), 'yyyy-MM-dd'));
@@ -145,7 +211,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             const orderPayload = {
                 id: itemData.id,
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
-                description: `Order related to proforma ${proformaId || 'N/A'}`,
+                description: `Order related to invoice ${watchedFormValues.id}`,
                 proformaId: proformaId || "",
                 clientEvents: [{
                     clientId: client_id,
@@ -320,22 +386,28 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
         try {
+            let result;
             if (isEditMode && invoiceId) {
-                const updatedInvoice = await updateInvoice(invoiceId, data);
-                if(updatedInvoice) {
-                    toast({ title: 'Success', description: 'Invoice updated successfully.' });
-                    router.push(`/invoices/${updatedInvoice.id}`);
-                } else {
-                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to update invoice.' });
-                }
+                result = await updateInvoice(invoiceId, data);
             } else {
-                const newInvoice = await addInvoice(data);
-                if (newInvoice) {
-                    toast({ title: 'Success', description: 'Invoice created successfully.' });
-                    router.push(`/invoices/${newInvoice.id}`);
-                } else {
-                     toast({ variant: 'destructive', title: 'Error', description: 'Failed to create invoice.' });
+                result = await addInvoice(data);
+            }
+
+            if (result) {
+                // Link orders to the parent proforma or record invoice involvement
+                // The proformaId is usually enough to trace everything
+                const uniqueOrderIds = Array.from(new Set(data.items.map(i => i.id).filter(id => id && id.startsWith('ORD-'))));
+                for (const oid of uniqueOrderIds) {
+                    // If there's a proformaId, ensure it's set on the order
+                    if (data.proformaId) {
+                        await updateOrder(oid, { proformaId: data.proformaId });
+                    }
                 }
+
+                toast({ title: 'Success', description: `Invoice ${isEditMode ? 'updated' : 'created'} successfully.` });
+                router.push(`/invoices/${result.id}`);
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to save invoice.' });
             }
         } catch (error) {
             console.error("Failed to save invoice", error);
@@ -690,6 +762,24 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         </AccordionItem>
                         </Accordion>
                         
+                        {/* Matching Orders Alert */}
+                        {matchingOrders.length > 0 && !proformaId && (
+                            <Alert className="bg-primary/5 border-primary/20">
+                                <AlertCircle className="h-4 w-4 text-primary" />
+                                <AlertTitle>Orders Found</AlertTitle>
+                                <AlertDescription className="flex items-center justify-between">
+                                    <span>We found {matchingOrders.length} additional orders for this client in the selected date range.</span>
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => handleImportSelected(matchingOrders)}>Import All</Button>
+                                        <Button type="button" variant="secondary" size="sm" onClick={() => {
+                                            setSelectedOrderIdsForImport(matchingOrders.map(o => o.id));
+                                            setIsImportDialogOpen(true);
+                                        }}>Review & Select</Button>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
                         <Card className="p-4 border-primary/20">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
@@ -708,10 +798,12 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                     return (
                                     <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
                                         <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
-                                            <div className="flex items-center gap-2">
-                                                {isSaved && <CheckCircle className="h-5 w-5 text-green-500"/>}
-                                                <span className="font-semibold">Order Item #{index + 1}</span>
-                                                <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.eventType`)}</span>
+                                            <div className="flex items-center gap-2 text-left">
+                                                {isSaved && <CheckCircle className="h-5 w-5 text-green-500 shrink-0"/>}
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold">Order Item #{index + 1}</span>
+                                                    <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.particularDescription`)}</span>
+                                                </div>
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-2 space-y-4">
@@ -907,6 +999,38 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     </form>
                 </Form>
             </CardContent>
+
+            {/* Import Dialog */}
+            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Import Orders</DialogTitle>
+                        <DialogDescription>Select which orders you want to include in this invoice.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {matchingOrders.map(order => (
+                            <div key={order.id} className="flex items-center space-x-3 p-3 border rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => {
+                                setSelectedOrderIdsForImport(prev => 
+                                    prev.includes(order.id) ? prev.filter(id => id !== order.id) : [...prev, order.id]
+                                );
+                            }}>
+                                <Checkbox checked={selectedOrderIdsForImport.includes(order.id)} onCheckedChange={() => {}} />
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-medium">{order.name}</p>
+                                        <Badge variant="outline" className="text-[10px]">{order.id}</Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{order.clientEvents.length} event(s) found</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
+                        <Button onClick={() => handleImportSelected(matchingOrders.filter(o => selectedOrderIdsForImport.includes(o.id)))}>Import Selected</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
