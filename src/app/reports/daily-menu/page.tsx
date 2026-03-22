@@ -1,5 +1,3 @@
-
-
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
@@ -8,7 +6,7 @@ import { useRecipeStorage } from '@/hooks/use-recipe-storage';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck, Filter, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -18,15 +16,18 @@ import Link from 'next/link';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { getMenusByDate, upsertDailyMenu } from '@/services/dailyMenuService';
-import { DailyMenu } from '@/types';
+import { DailyMenu, REGIONS, Region } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type MenuCell = { content: string; mealType: string };
-type OrderMenu = {
+type EventMenu = {
   orderId: string;
+  eventIndex: number;
   clientName: string;
   pax: number;
   mealType: string;
+  region: Region;
   menu: MenuCell[];
 };
 
@@ -38,10 +39,11 @@ const MEAL_SECTIONS = {
 
 export default function DailyMenuPlannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [regionFilter, setRegionFilter] = useState<Region | "All">("All");
   const { orders, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { recipes: availableRecipes, isLoading: recipesLoading } = useRecipeStorage();
-  const [menuData, setMenuData] = useState<OrderMenu[]>([]);
+  const [menuData, setMenuData] = useState<EventMenu[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -63,76 +65,97 @@ export default function DailyMenuPlannerPage() {
       
       const savedMenus = await getMenusByDate(dateStr);
 
-      const initialMenuData: OrderMenu[] = todaysOrders.map(order => {
-          const event = order.clientEvents.find(e => e.date.startsWith(dateStr));
-          if (!event) return null;
+      const allEventMenus: EventMenu[] = [];
 
-          const client = getClientById(event.clientId);
-          const savedMenu = savedMenus.find(m => m.order_id === order.id);
-          
-          const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
+      todaysOrders.forEach(order => {
+          order.clientEvents.forEach((event, eventIndex) => {
+              if (event.date.startsWith(dateStr)) {
+                  const client = getClientById(event.clientId);
+                  const savedMenu = savedMenus.find(m => m.order_id === order.id); // Note: Current DB limited to one menu per order/day
+                  
+                  const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
 
-          menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
-          menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
-          menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
+                  menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
+                  menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
+                  menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
 
-          const recipesToUse = savedMenu ? savedMenu.recipes.map(r => r.recipeId) : event.recipes.map(r => r.recipeId);
-          
-          const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
-            return recipesToUse
-              .map(recipeId => {
-                  const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
-                  return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
-              })
-              .filter((name): name is string => name !== null);
-          };
+                  const recipesToUse = savedMenu ? savedMenu.recipes.map(r => r.recipeId) : event.recipes.map(r => r.recipeId);
+                  
+                  const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
+                    return recipesToUse
+                      .map(recipeId => {
+                          const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
+                          return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
+                      })
+                      .filter((name): name is string => name !== null);
+                  };
 
-          const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
-              recipes.forEach((recipeName, i) => {
-                  if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
-                      menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
+                  const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
+                      recipes.forEach((recipeName, i) => {
+                          if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
+                              menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
+                          }
+                      })
                   }
-              })
-          }
-          
-          const orderMealType = event.mealType.toLowerCase();
+                  
+                  const orderMealType = event.mealType.toLowerCase();
 
-          if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
-              addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
-          }
-          if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
-              addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
-          }
-          if (orderMealType.includes('evening tea')) {
-              addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
-          }
+                  if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
+                      addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
+                  }
+                  if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
+                      addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
+                  }
+                  if (orderMealType.includes('evening tea')) {
+                      addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
+                  }
 
-          return {
-              orderId: order.id,
-              clientName: client?.companyName || 'Unknown Client',
-              pax: event.numberOfPeople,
-              mealType: event.mealType,
-              menu: menu,
-          };
-      }).filter((item): item is OrderMenu => item !== null);
+                  allEventMenus.push({
+                      orderId: order.id,
+                      eventIndex,
+                      clientName: client?.companyName || 'Unknown Client',
+                      pax: event.numberOfPeople,
+                      mealType: event.mealType,
+                      region: event.region || "Dar es Salaam",
+                      menu: menu,
+                  });
+              }
+          });
+      });
 
-      setMenuData(initialMenuData);
+      setMenuData(allEventMenus);
       setSelectedColumn(null);
       setClipboard(null);
     }
     fetchAndSetMenuData();
   }, [selectedDate, orders, getClientById, isLoading, availableRecipes]);
 
+  const filteredMenuData = useMemo(() => {
+      if (regionFilter === "All") return menuData;
+      return menuData.filter(m => m.region === regionFilter);
+  }, [menuData, regionFilter]);
+
   const handleMenuChange = (orderIndex: number, rowIndex: number, value: string) => {
     const newMenuData = [...menuData];
-    newMenuData[orderIndex].menu[rowIndex].content = value;
-    setMenuData(newMenuData);
+    // Find the actual item index in the original menuData array since we might be looking at a filtered list
+    const actualIndex = menuData.indexOf(filteredMenuData[orderIndex]);
+    if (actualIndex !== -1) {
+        newMenuData[actualIndex].menu[rowIndex].content = value;
+        setMenuData(newMenuData);
+    }
   };
   
   const handleSaveMenus = async () => {
     setIsSaving(true);
     try {
-        for (const orderMenu of menuData) {
+        // Group by order_id because current DB schema only supports one menu per order per day
+        const uniqueOrders = Array.from(new Set(menuData.map(m => m.orderId)));
+        
+        for (const orderId of uniqueOrders) {
+            // Find the first event menu for this order
+            const orderMenu = menuData.find(m => m.orderId === orderId);
+            if (!orderMenu) continue;
+
             const getRecipeId = (name: string) => availableRecipes.find(r => r.recipeName === name)?.recipeNumber || null;
 
             const breakfastRecipes = orderMenu.menu.slice(MEAL_SECTIONS.BREAKFAST.start, MEAL_SECTIONS.BREAKFAST.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
@@ -142,7 +165,8 @@ export default function DailyMenuPlannerPage() {
             const menuToSave: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'> = {
               order_id: orderMenu.orderId,
               menu_date: format(selectedDate, 'yyyy-MM-dd'),
-              recipes: [...breakfastRecipes, ...lunchRecipes, ...teaRecipes]
+              recipes: [...breakfastRecipes, ...lunchRecipes, ...teaRecipes],
+              region: orderMenu.region
             };
 
             await upsertDailyMenu(menuToSave);
@@ -161,7 +185,7 @@ export default function DailyMenuPlannerPage() {
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
       const COLUMNS_PER_PAGE = 5;
-      const totalColumns = menuData.length;
+      const totalColumns = filteredMenuData.length;
       let startColumn = 0;
 
       while (startColumn < totalColumns) {
@@ -169,12 +193,12 @@ export default function DailyMenuPlannerPage() {
             doc.addPage();
         }
         
-        doc.text(`Daily Menu Report - ${selectedDate ? format(selectedDate, "PPP") : 'N/A'}`, 14, 15);
+        doc.text(`Daily Menu Report (${regionFilter}) - ${selectedDate ? format(selectedDate, "PPP") : 'N/A'}`, 14, 15);
         
         const endColumn = Math.min(startColumn + COLUMNS_PER_PAGE, totalColumns);
-        const pageMenuData = menuData.slice(startColumn, endColumn);
+        const pageMenuData = filteredMenuData.slice(startColumn, endColumn);
 
-        const head = [pageMenuData.map(order => `${order.clientName} - #${order.pax} pax\n${order.orderId}`)];
+        const head = [pageMenuData.map(order => `${order.clientName} (${order.region})\n#${order.pax} pax | ${order.orderId}`)];
         
         const body = Array.from({ length: 32 }).map((_, rowIndex) => 
           pageMenuData.map(order => order.menu[rowIndex]?.content || '')
@@ -211,7 +235,7 @@ export default function DailyMenuPlannerPage() {
         startColumn = endColumn;
       }
 
-      doc.save(`Daily_Menu_Report_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
+      doc.save(`Daily_Menu_Report_${regionFilter}_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -228,44 +252,48 @@ export default function DailyMenuPlannerPage() {
 
   const handleCopy = () => {
     if (selectedColumn !== null) {
-      const menuToCopy = menuData[selectedColumn].menu.map(cell => ({...cell}));
+      const menuToCopy = filteredMenuData[selectedColumn].menu.map(cell => ({...cell}));
       setClipboard(menuToCopy);
-      toast({ title: 'Copied!', description: `Menu for ${menuData[selectedColumn].clientName} has been copied.` });
+      toast({ title: 'Copied!', description: `Menu for ${filteredMenuData[selectedColumn].clientName} has been copied.` });
     }
   };
 
   const handlePaste = (targetIndex: number) => {
     if (clipboard) {
-        const newMenuData = [...menuData];
-        const targetOrder = newMenuData[targetIndex];
-        const targetMealType = targetOrder.mealType.toLowerCase();
+        const targetOrder = filteredMenuData[targetIndex];
+        const actualIndex = menuData.indexOf(targetOrder);
+        
+        if (actualIndex !== -1) {
+            const newMenuData = [...menuData];
+            const targetMealType = targetOrder.mealType.toLowerCase();
 
-        const pastedMenu = targetOrder.menu.map((cell, index) => {
-            const row = index + 1;
-            const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
-            const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row < MEAL_SECTIONS.TEA.start;
-            const isTeaSection = row >= MEAL_SECTIONS.TEA.start;
+            const pastedMenu = targetOrder.menu.map((cell, index) => {
+                const row = index + 1;
+                const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
+                const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row < MEAL_SECTIONS.TEA.start;
+                const isTeaSection = row >= MEAL_SECTIONS.TEA.start;
 
-            const copiedCell = clipboard[index];
+                const copiedCell = clipboard[index];
 
-            if (isBreakfastSection && (targetMealType.includes('breakfast') || targetMealType.includes('brunch'))) {
-                return { ...copiedCell };
-            }
-            if (isLunchSection && (targetMealType.includes('lunch') || targetMealType.includes('dinner'))) {
-                return { ...copiedCell };
-            }
-            if (isTeaSection && targetMealType.includes('tea')) {
-                return { ...copiedCell };
-            }
-            // Keep header rows, otherwise clear the cell
-            return cell.mealType === 'header' ? cell : { content: '', mealType: '' };
-        });
+                if (isBreakfastSection && (targetMealType.includes('breakfast') || targetMealType.includes('brunch'))) {
+                    return { ...copiedCell };
+                }
+                if (isLunchSection && (targetMealType.includes('lunch') || targetMealType.includes('dinner'))) {
+                    return { ...copiedCell };
+                }
+                if (isTeaSection && targetMealType.includes('tea')) {
+                    return { ...copiedCell };
+                }
+                // Keep header rows, otherwise clear the cell
+                return cell.mealType === 'header' ? cell : { content: '', mealType: '' };
+            });
 
-        targetOrder.menu = pastedMenu;
-        setMenuData(newMenuData);
-        toast({ title: 'Pasted!', description: `Relevant menu items pasted to ${targetOrder.clientName}.` });
-        setSelectedColumn(null);
-        setClipboard(null);
+            newMenuData[actualIndex].menu = pastedMenu;
+            setMenuData(newMenuData);
+            toast({ title: 'Pasted!', description: `Relevant menu items pasted to ${targetOrder.clientName}.` });
+            setSelectedColumn(null);
+            setClipboard(null);
+        }
     }
   };
 
@@ -280,7 +308,20 @@ export default function DailyMenuPlannerPage() {
             <h1 className="text-2xl font-bold">Daily Menu Planner</h1>
             <p className="text-muted-foreground">Create and manage daily menus for all orders on a selected date.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+            <Select value={regionFilter} onValueChange={(v) => setRegionFilter(v as Region | "All")}>
+                <SelectTrigger className="w-[180px]">
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Filter by Region" />
+                    </div>
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="All">All Regions</SelectItem>
+                    {REGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+            </Select>
+
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -313,30 +354,36 @@ export default function DailyMenuPlannerPage() {
           <div className="flex justify-center items-center h-96">
             <Loader2 className="h-8 w-8 animate-spin text-primary"/>
           </div>
-      ) : menuData.length > 0 ? (
+      ) : filteredMenuData.length > 0 ? (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-sm">
                     <thead>
                         <tr className="bg-muted">
-                            {menuData.map((order, orderIndex) => (
-                                <th key={orderIndex} className={cn("border p-2 font-bold text-center align-top min-w-[200px] cursor-pointer", selectedColumn === orderIndex && "bg-primary/20 ring-2 ring-primary z-10")} onClick={() => handleColumnSelect(orderIndex)}>
-                                    <p className="font-semibold text-base">{order.clientName} - #{order.pax} pax</p>
-                                    <p className="font-mono text-xs text-muted-foreground">{order.orderId}</p>
-                                     <p className="font-sans text-xs text-accent">{order.mealType}</p>
+                            {filteredMenuData.map((order, orderIndex) => (
+                                <th key={`${order.orderId}-${order.eventIndex}`} className={cn("border p-2 font-bold text-center align-top min-w-[200px] cursor-pointer", selectedColumn === orderIndex && "bg-primary/20 ring-2 ring-primary z-10")} onClick={() => handleColumnSelect(orderIndex)}>
+                                    <div className="space-y-1">
+                                        <p className="font-semibold text-base">{order.clientName}</p>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <Badge variant="outline" className="text-[10px] uppercase">{order.region}</Badge>
+                                            <span className="text-[10px] text-muted-foreground">#{order.pax} pax</span>
+                                        </div>
+                                        <p className="font-mono text-[10px] text-muted-foreground">{order.orderId}</p>
+                                        <p className="font-sans text-[10px] text-accent font-medium uppercase">{order.mealType}</p>
+                                    </div>
                                     {selectedColumn === orderIndex && (
                                        <div className="mt-2 flex justify-center gap-2">
-                                          <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleCopy(); }}>
-                                               {clipboard ? <ClipboardCheck className="mr-2 h-4 w-4"/> : <Clipboard className="mr-2 h-4 w-4"/>}
+                                          <Button size="sm" variant="secondary" className="h-7 text-[10px]" onClick={(e) => { e.stopPropagation(); handleCopy(); }}>
+                                               {clipboard ? <ClipboardCheck className="mr-1 h-3 w-3"/> : <Clipboard className="mr-1 h-3 w-3"/>}
                                                Copy
                                            </Button>
                                        </div>
                                     )}
                                      {selectedColumn !== null && selectedColumn !== orderIndex && clipboard && (
                                         <div className="mt-2">
-                                            <Button size="sm" onClick={(e) => { e.stopPropagation(); handlePaste(orderIndex); }}>
-                                               <ClipboardCheck className="mr-2 h-4 w-4"/> Paste Here
+                                            <Button size="sm" className="h-7 text-[10px]" onClick={(e) => { e.stopPropagation(); handlePaste(orderIndex); }}>
+                                               <ClipboardCheck className="mr-1 h-3 w-3"/> Paste Here
                                             </Button>
                                         </div>
                                     )}
@@ -354,7 +401,7 @@ export default function DailyMenuPlannerPage() {
                             
                             return (
                                 <tr key={rowIndex}>
-                                    {menuData.map((order, orderIndex) => {
+                                    {filteredMenuData.map((order, orderIndex) => {
 
                                         const getIsDisabled = () => {
                                             if (isHeaderRow) return false;
@@ -421,11 +468,24 @@ export default function DailyMenuPlannerPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="flex justify-center items-center h-64">
-            <div className="text-center">
-                <CardTitle>No Orders Found</CardTitle>
-                <CardDescription className="mt-2">There are no orders scheduled for {selectedDate ? format(selectedDate, "PPP") : 'the selected date'}.</CardDescription>
+        <Card className="flex flex-col justify-center items-center h-64 space-y-4">
+            <div className="p-4 bg-muted rounded-full">
+                <Utensils className="h-8 w-8 text-muted-foreground" />
             </div>
+            <div className="text-center">
+                <CardTitle>No Events Found</CardTitle>
+                <CardDescription className="mt-2">
+                    {regionFilter !== "All" 
+                        ? `There are no events scheduled for ${regionFilter} on ${format(selectedDate, "PPP")}.`
+                        : `There are no events scheduled for ${format(selectedDate, "PPP")}.`
+                    }
+                </CardDescription>
+            </div>
+            {regionFilter !== "All" && (
+                <Button variant="outline" size="sm" onClick={() => setRegionFilter("All")}>
+                    <X className="mr-2 h-4 w-4" /> Clear Filter
+                </Button>
+            )}
         </Card>
       )}
     </div>

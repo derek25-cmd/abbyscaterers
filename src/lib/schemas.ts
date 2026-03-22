@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 import { RECIPE_TYPES, REGIONS } from "@/types";
 
@@ -145,6 +144,7 @@ export const ClientEventSchema = z.object({
   particularDescription: z.string().optional(),
   eventType: z.string().optional(),
   customEventType: z.string().optional(),
+  region: z.enum(REGIONS).optional(),
 });
 
 // Order schema

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,13 +16,13 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign, Pencil } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign, Pencil, MapPin } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { format, parseISO, add, sub } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { MEAL_TYPES } from "@/types";
+import { MEAL_TYPES, REGIONS } from "@/types";
 import { Textarea } from "../ui/textarea";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Label } from "../ui/label";
@@ -222,7 +221,7 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                     )} />
                 )}
             </div>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <FormField control={control} name={`clientEvents.${nestIndex}.unitPrice`} render={({ field }) => (
                     <FormItem>
                         <FormLabel className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>Unit Price</FormLabel>
@@ -230,6 +229,20 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                         <FormMessage />
                     </FormItem>
                  )}/>
+                  <FormField control={control} name={`clientEvents.${nestIndex}.region`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><MapPin className="mr-2 h-4 w-4"/>Region / Branch</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {REGIONS.map(region => <SelectItem key={region} value={region}>{region}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <FormItem>
                     <FormLabel>Total Price</FormLabel>
                     <Input type="text" readOnly disabled value={`${((watch(`clientEvents.${nestIndex}.unitPrice`) || 0) * (watch(`clientEvents.${nestIndex}.numberOfPeople`) || 0)).toFixed(2)}`} />
@@ -289,7 +302,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
               unitPrice: 0,
               total: 0,
               vatType: "inclusive", 
-              recipes: []
+              recipes: [],
+              region: "Dar es Salaam"
             }],
         },
   });
@@ -426,7 +440,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: format(new Date(), 'yyyy-MM-dd'), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [] })} disabled={isLoading}>
+        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: format(new Date(), 'yyyy-MM-dd'), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [], region: "Dar es Salaam" })} disabled={isLoading}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
         </Button>
 
@@ -443,5 +457,3 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     </Form>
   );
 }
-
-    

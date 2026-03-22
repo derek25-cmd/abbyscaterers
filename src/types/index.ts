@@ -1,5 +1,3 @@
-
-
 export const ORGANIZATION_TYPES = [
   "Industrial", "Commercial", "Financial", "Service", "Agricultural",
   "Educational", "Medical", "Technological", "Entertainment and Media",
@@ -124,6 +122,7 @@ export interface ClientEvent {
   recipes: { recipeId: string }[]; // References Recipe.recipeNumber
   unitPrice: number;
   vatType: 'inclusive' | 'exclusive';
+  region?: Region;
 }
 
 export interface Order {
@@ -414,6 +413,7 @@ export interface DailyMenu {
     recipes: { recipeId: string }[];
     created_at: string;
     updated_at: string;
+    region?: Region;
 }
 
 // --- FINANCE MODULE ---
