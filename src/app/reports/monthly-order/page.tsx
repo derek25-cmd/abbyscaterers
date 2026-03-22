@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -39,7 +38,7 @@ export default function MonthlyOrderReportPage() {
     if (searchQuery) {
         const lowercasedQuery = searchQuery.toLowerCase();
         filtered = filtered.filter(order => {
-            const clientName = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId)?.companyName.toLowerCase() || "" : "";
+            const clientName = getClientById(order.clientId)?.companyName.toLowerCase() || "";
             switch (filterType) {
                 case 'id': return order.id.toLowerCase().includes(lowercasedQuery);
                 case 'customerName': return clientName.includes(lowercasedQuery);
@@ -57,10 +56,8 @@ export default function MonthlyOrderReportPage() {
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
     
     const clientOrderCounts = monthlyOrders.reduce((acc, order) => {
-        if (order.clientEvents.length > 0) {
-            const clientId = order.clientEvents[0].clientId;
-            acc[clientId] = (acc[clientId] || 0) + 1;
-        }
+        const clientId = order.clientId;
+        acc[clientId] = (acc[clientId] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
@@ -84,7 +81,7 @@ export default function MonthlyOrderReportPage() {
       (doc as any).autoTable({
         head: [['Order ID', 'Customer Name', 'Date', 'Amount']],
         body: monthlyOrders.map(order => {
-          const client = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId) : null;
+          const client = getClientById(order.clientId);
           return [
             order.id,
             client?.companyName || "N/A",
@@ -181,7 +178,7 @@ export default function MonthlyOrderReportPage() {
               {isLoading ? (
                 <TableRow><TableCell colSpan={4} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
               ) : monthlyOrders.length > 0 ? monthlyOrders.map((order) => {
-                const client = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId) : null;
+                const client = getClientById(order.clientId);
                 const total = calculateTotal(order.clientEvents);
                 return (
                   <TableRow key={order.id}>

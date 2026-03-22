@@ -47,11 +47,15 @@ export const getOrderColumns = (
           const start = row.original.startDate;
           const end = row.original.endDate;
           if(!start || !end) return 'N/A';
-          return (
-              <div className="text-xs">
-                  {format(parseISO(start), 'MMM d')} - {format(parseISO(end), 'MMM d, yyyy')}
-              </div>
-          )
+          try {
+            return (
+                <div className="text-xs">
+                    {format(parseISO(start), 'MMM d')} - {format(parseISO(end), 'MMM d, yyyy')}
+                </div>
+            )
+          } catch (e) {
+            return <div className="text-xs">{start} - {end}</div>
+          }
       }
     },
     {
