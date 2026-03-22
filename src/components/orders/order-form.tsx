@@ -274,9 +274,14 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
 
   useEffect(() => {
     if (order) {
-      form.reset(order);
+      form.reset({
+          ...order,
+          clientId: order.clientId || "",
+          startDate: order.startDate || format(new Date(), 'yyyy-MM-dd'),
+          endDate: order.endDate || format(new Date(), 'yyyy-MM-dd'),
+      });
     }
-  }, [order]);
+  }, [order, form]);
   
   const watchedClientId = form.watch('clientId');
   const watchedStartDate = form.watch('startDate');
@@ -299,7 +304,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
           toast({ title: "Order Updated", description: `${updatedOrder.name} (ID: ${updatedOrder.id}) has been updated.` });
           router.push(`/orders/${updatedOrder.id}`);
         } else {
-            toast({ variant: "destructive", title: "Update Failed", description: "The order could not be saved. Please try again."});
+            toast({ variant: "destructive", title: "Update Failed", description: "The order could not be saved. This is usually due to a database constraint or missing field."});
         }
       } else {
         const newOrderData = await addOrder(data);
@@ -307,7 +312,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
             toast({ title: "Order Added", description: `${newOrderData!.name} (ID: ${newOrderData!.id}) has been added.` });
             router.push("/orders");
         } else {
-            toast({ variant: "destructive", title: "Creation Failed", description: "The order could not be created. Please try again."});
+            toast({ variant: "destructive", title: "Creation Failed", description: "The order could not be created. Please ensure a customer is selected."});
         }
       }
     } catch (error: any) {
@@ -327,7 +332,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit, (err) => console.log("Validation Errors:", err))} className="space-y-8">
         <Card className="border-primary/20 shadow-md">
           <CardHeader>
             <CardTitle>{order ? `Edit Order: ${order.name}` : "Create New Order"}</CardTitle>

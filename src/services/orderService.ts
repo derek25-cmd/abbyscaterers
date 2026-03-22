@@ -8,11 +8,11 @@ const mapDbToOrder = (dbOrder: any): Order => {
   return {
     id: dbOrder.id,
     name: dbOrder.name,
-    clientId: dbOrder.client_id, // Map from snake_case db column
-    startDate: dbOrder.start_date, // Map from snake_case db column
-    endDate: dbOrder.end_date, // Map from snake_case db column
-    description: dbOrder.description,
-    proformaId: dbOrder.proforma_id, // Map from snake_case db column
+    clientId: dbOrder.client_id || '', // Map from snake_case db column
+    startDate: dbOrder.start_date || '', // Map from snake_case db column
+    endDate: dbOrder.end_date || '', // Map from snake_case db column
+    description: dbOrder.description || '',
+    proformaId: dbOrder.proforma_id || '', // Map from snake_case db column
     booking_id: dbOrder.booking_id,
     clientEvents: dbOrder.clientEvents || [], // Database column is camelCase
     createdAt: dbOrder.createdAt,
@@ -44,9 +44,12 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
+    // Ensure we don't send empty strings for the foreign key
+    const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
+
     const payload = {
         name: orderData.name,
-        client_id: orderData.clientId, // Map to snake_case db column
+        client_id: clientId, // Map to snake_case db column
         start_date: orderData.startDate, // Map to snake_case db column
         end_date: orderData.endDate, // Map to snake_case db column
         description: orderData.description,
@@ -73,9 +76,12 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
 
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<Order | null> => {
+    // Ensure we don't send empty strings for the foreign key
+    const clientId = updates.clientId && updates.clientId.trim() !== '' ? updates.clientId : null;
+
     const payload = {
       name: updates.name,
-      client_id: updates.clientId, // Map to snake_case db column
+      client_id: clientId, // Map to snake_case db column
       start_date: updates.startDate, // Map to snake_case db column
       end_date: updates.endDate, // Map to snake_case db column
       description: updates.description,
