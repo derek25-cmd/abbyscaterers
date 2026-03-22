@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
@@ -27,6 +27,7 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     const fetchEmployees = async () => {
+      setLoading(true);
       const employeesData = await getEmployees();
       setEmployees(employeesData);
       setLoading(false);

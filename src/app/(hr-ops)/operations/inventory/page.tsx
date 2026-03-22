@@ -1,11 +1,10 @@
-
 'use client';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal, Search, Package, ListFilter, TrendingDown, PackageX, CreditCard } from "lucide-react";
-import { useState, useEffect } from "react";
+import { PlusCircle, MoreHorizontal, Search, Package, ListFilter, TrendingDown, PackageX, CreditCard, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { AddProductDialog } from "@/components/hr/add-product-dialog";
 import { EditProductDialog } from "@/components/hr/edit-product-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -26,6 +25,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      setLoading(true);
       const products = await getProducts();
       setStock(products);
       setLoading(false);
@@ -69,27 +69,29 @@ export default function InventoryPage() {
     return 'in stock';
   };
 
-  const filteredStock = stock.filter((item) => {
-    if (!searchQuery) return true;
-    const lowercasedQuery = searchQuery.toLowerCase();
-    
-    switch (filterType) {
-        case 'id':
-            return item.id.toLowerCase().includes(lowercasedQuery);
-        case 'name':
-            return item.name.toLowerCase().includes(lowercasedQuery);
-        case 'type':
-            return item.category.toLowerCase().includes(lowercasedQuery);
-        case 'status':
-            return getStatusText(item).includes(lowercasedQuery);
-        default:
-            return item.name.toLowerCase().includes(lowercasedQuery);
-    }
-  });
+  const filteredStock = useMemo(() => {
+    return stock.filter((item) => {
+        if (!searchQuery) return true;
+        const lowercasedQuery = searchQuery.toLowerCase();
+        
+        switch (filterType) {
+            case 'id':
+                return item.id.toLowerCase().includes(lowercasedQuery);
+            case 'name':
+                return item.name.toLowerCase().includes(lowercasedQuery);
+            case 'type':
+                return item.category.toLowerCase().includes(lowercasedQuery);
+            case 'status':
+                return getStatusText(item).includes(lowercasedQuery);
+            default:
+                return item.name.toLowerCase().includes(lowercasedQuery);
+        }
+    });
+  }, [stock, searchQuery, filterType]);
 
-  const totalInventoryValue = stock.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
-  const lowStockItems = stock.filter(item => item.quantity > 0 && item.quantity < item.minStock).length;
-  const outOfStockItems = stock.filter(item => item.quantity === 0).length;
+  const totalInventoryValue = useMemo(() => stock.reduce((total, item) => total + (item.unitPrice * item.quantity), 0), [stock]);
+  const lowStockItems = useMemo(() => stock.filter(item => item.quantity > 0 && item.quantity < item.minStock).length, [stock]);
+  const outOfStockItems = useMemo(() => stock.filter(item => item.quantity === 0).length, [stock]);
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -127,7 +129,7 @@ export default function InventoryPage() {
                     <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{lowStockItems}</div>
+                    <div className="text-2xl font-bold text-orange-600">{lowStockItems}</div>
                     <p className="text-xs text-muted-foreground">
                         Items below minimum stock level
                     </p>
@@ -139,7 +141,7 @@ export default function InventoryPage() {
                     <PackageX className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{outOfStockItems}</div>
+                    <div className="text-2xl font-bold text-red-600">{outOfStockItems}</div>
                     <p className="text-xs text-muted-foreground">
                         Items with zero quantity
                     </p>
@@ -148,15 +150,15 @@ export default function InventoryPage() {
         </div>
         <Card>
           <CardHeader>
-             <div className="flex items-center justify-between">
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <CardTitle>Product Catalog</CardTitle>
+                    <CardTitle>Inventory List</CardTitle>
                     <CardDescription>
                         Manage your inventory items and their details.
                     </CardDescription>
                 </div>
-                <div className="ml-auto flex items-center gap-2">
-                    <div className="relative ml-auto flex-1 md:grow-0">
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 md:grow-0">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                         type="search"
@@ -194,64 +196,64 @@ export default function InventoryPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="relative w-full overflow-auto">
-              {loading ? (
-                <p>Loading products...</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>
-                        <span className="sr-only">Actions</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStock.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.id}</TableCell>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell>{item.unit}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell>
-                          {item.quantity === 0 ? (
-                            <Badge variant="destructive">Out of Stock</Badge>
-                          ) : item.quantity < item.minStock ? (
-                            <Badge variant="destructive" className="bg-orange-500/80">Low Stock</Badge>
-                          ) : (
-                            <Badge className="bg-green-500/80">In Stock</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => openViewDialog(item)}>View Details</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openEditDialog(item)}>Edit</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
+            {loading ? (
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
+            ) : (
+                <div className="relative w-full overflow-auto">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Product ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Unit</TableHead>
+                        <TableHead className="text-right">Unit Price</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>
+                            <span className="sr-only">Actions</span>
+                        </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredStock.map((item) => (
+                        <TableRow key={item.id}>
+                            <TableCell className="font-medium font-mono text-xs">{item.id}</TableCell>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>{item.category}</TableCell>
+                            <TableCell>{item.unit}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                            <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
+                            <TableCell>
+                            {item.quantity === 0 ? (
+                                <Badge variant="destructive">Out of Stock</Badge>
+                            ) : item.quantity < item.minStock ? (
+                                <Badge className="bg-orange-500 hover:bg-orange-600">Low Stock</Badge>
+                            ) : (
+                                <Badge className="bg-green-600 hover:bg-green-700">In Stock</Badge>
+                            )}
+                            </TableCell>
+                            <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Toggle menu</span>
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => openViewDialog(item)}>View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openEditDialog(item)}>Edit</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </div>
+            )}
           </CardContent>
         </Card>
       

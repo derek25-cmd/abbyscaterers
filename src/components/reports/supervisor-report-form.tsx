@@ -9,14 +9,17 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
 import { addSupervisorReport, getSupervisorReportById, updateSupervisorReport } from "@/services/supervisorReportService";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import type { SupervisorReport, ReportCriterion, ReportRating } from "@/types";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { cn } from "@/lib/utils";
 
 const CRITERIA_DESCRIPTIONS = [
   "All orders submitted to chef as ordered",
@@ -67,7 +70,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       isIssue: false,
       reason: ''
     })),
-    prepared_by: user?.user_metadata.name || user?.email || '',
+    prepared_by: user?.user_metadata?.name || user?.email || '',
     general_comments: '',
     checked_by: ''
   });
@@ -130,8 +133,8 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         ...reportData,
         status,
         supervisor_id: user?.id,
-        supervisor_name: user?.user_metadata.name || user?.email || 'Supervisor',
-        prepared_by: reportData.prepared_by || user?.user_metadata.name || 'Supervisor'
+        supervisor_name: user?.user_metadata?.name || user?.email || 'Supervisor',
+        prepared_by: reportData.prepared_by || user?.user_metadata?.name || 'Supervisor'
       } as Omit<SupervisorReport, 'id' | 'created_at' | 'updated_at'>;
 
       if (reportId) {
@@ -148,7 +151,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       if (status === 'Submitted') router.push('/reports/supervisor-daily');
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save report. You might already have a report for today.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save report. Check connectivity or duplicates.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -167,7 +170,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       
       doc.setFontSize(10);
       doc.text(`Date: ${format(parseISO(reportData.report_date!), 'PPP')}`, 14, 35);
-      doc.text(`Supervisor: ${reportData.supervisor_name || user?.user_metadata.name}`, 14, 40);
+      doc.text(`Supervisor: ${reportData.supervisor_name || user?.user_metadata?.name || 'N/A'}`, 14, 40);
       doc.text(`Status: ${reportData.status}`, 150, 35);
 
       const tableColumn = ["S/N", "Operational Criterion", "Rating / Issue", "Reason/Explanation"];
@@ -264,7 +267,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
             </div>
             <div className="space-y-2">
               <Label>Supervisor Name</Label>
-              <Input value={reportData.supervisor_name || user?.user_metadata.name || ''} disabled />
+              <Input value={reportData.supervisor_name || user?.user_metadata?.name || ''} disabled />
             </div>
           </div>
 
@@ -292,7 +295,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
                                 onCheckedChange={(val) => handleIssueToggle(index, !!val)}
                                 disabled={isLocked}
                             />
-                            <Label htmlFor={`issue-${index}`} className={cn("text-xs", c.isIssue && "text-destructive font-bold")}>Mark as Issue (X)</Label>
+                            <Label htmlFor={`issue-${index}`} className={cn("text-xs cursor-pointer", c.isIssue && "text-destructive font-bold")}>Mark as Issue (X)</Label>
                         </div>
                         {!c.isIssue && (
                             <RadioGroup 
