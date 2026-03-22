@@ -38,12 +38,12 @@ export default function DailyOrderReportPage() {
         const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
         eventsForDate = orders.flatMap((order: Order) =>
             order.clientEvents
-                .filter(event => event.date.startsWith(targetDateStr))
+                .filter(event => event.date?.startsWith(targetDateStr))
                 .map(event => ({
                     ...event,
                     orderId: order.id,
                     proformaId: order.proformaId,
-                    clientId: order.clientId,
+                    clientId: order.clientId, // Pull from parent order
                 }))
         );
     }
@@ -56,7 +56,7 @@ export default function DailyOrderReportPage() {
             switch (filterType) {
                 case 'orderId': return event.orderId.toLowerCase().includes(lowercasedQuery);
                 case 'proformaId': return event.proformaId?.toLowerCase().includes(lowercasedQuery) ?? false;
-                case 'mealType': return event.mealType.toLowerCase().includes(lowercasedQuery);
+                case 'mealType': return event.mealType?.toLowerCase().includes(lowercasedQuery) ?? false;
                 case 'customerName':
                 default:
                     return clientName.includes(lowercasedQuery);
@@ -68,7 +68,7 @@ export default function DailyOrderReportPage() {
   }, [selectedDate, orders, searchQuery, filterType, getClientById]);
 
   const calculateGrandTotal = (event: ClientEvent) => {
-    const total = event.unitPrice * event.numberOfPeople;
+    const total = (event.unitPrice || 0) * (event.numberOfPeople || 0);
     return total;
   };
   
@@ -96,10 +96,10 @@ export default function DailyOrderReportPage() {
               event.orderId,
               client?.companyName || 'N/A',
               event.proformaId || 'N/A',
-              event.mealType,
-              event.numberOfPeople,
-              formatCurrency(event.unitPrice),
-              event.vatType,
+              event.mealType || 'N/A',
+              event.numberOfPeople || 0,
+              formatCurrency(event.unitPrice || 0),
+              event.vatType || 'N/A',
               formatCurrency(calculateGrandTotal(event)),
           ]);
         });
@@ -135,10 +135,10 @@ export default function DailyOrderReportPage() {
         event.orderId,
         `"${client?.companyName.replace(/"/g, '""') || 'N/A'}"`,
         event.proformaId || 'N/A',
-        event.mealType,
-        event.numberOfPeople,
-        event.unitPrice,
-        event.vatType,
+        event.mealType || 'N/A',
+        event.numberOfPeople || 0,
+        event.unitPrice || 0,
+        event.vatType || 'N/A',
         calculateGrandTotal(event),
       ];
       csvRows.push(row.join(','));
@@ -243,10 +243,10 @@ export default function DailyOrderReportPage() {
                       <TableCell className="font-mono text-xs">{event.orderId}</TableCell>
                       <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
                       <TableCell className="font-mono text-xs">{event.proformaId || "N/A"}</TableCell>
-                      <TableCell>{event.mealType}</TableCell>
-                      <TableCell className="text-center">{event.numberOfPeople}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(event.unitPrice)}</TableCell>
-                      <TableCell className="capitalize">{event.vatType}</TableCell>
+                      <TableCell>{event.mealType || 'N/A'}</TableCell>
+                      <TableCell className="text-center">{event.numberOfPeople || 0}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(event.unitPrice || 0)}</TableCell>
+                      <TableCell className="capitalize">{event.vatType || 'N/A'}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(grandTotal)}</TableCell>
                     </TableRow>
                   )

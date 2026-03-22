@@ -59,7 +59,7 @@ export default function DailyMenuPlannerPage() {
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       const todaysOrders = orders.filter(order => 
-          order.clientEvents.some(e => e.date.startsWith(dateStr))
+          order.clientEvents.some(e => e.date?.startsWith(dateStr))
       );
       
       const savedMenus = await getMenusByDate(dateStr);
@@ -67,8 +67,8 @@ export default function DailyMenuPlannerPage() {
 
       todaysOrders.forEach(order => {
           order.clientEvents.forEach((event, eventIndex) => {
-              if (event.date.startsWith(dateStr)) {
-                  const client = getClientById(order.clientId);
+              if (event.date?.startsWith(dateStr)) {
+                  const client = getClientById(order.clientId); // Pull from parent order
                   const savedMenu = savedMenus.find(m => m.order_id === order.id && m.region === event.region);
                   
                   const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
@@ -77,7 +77,7 @@ export default function DailyMenuPlannerPage() {
                   menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
                   menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
 
-                  const recipesToUse = savedMenu ? savedMenu.recipes.map(r => r.recipeId) : event.recipes.map(r => r.recipeId);
+                  const recipesToUse = savedMenu ? savedMenu.recipes.map(r => r.recipeId) : (event.recipes?.map(r => r.recipeId) || []);
                   
                   const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
                     return recipesToUse
@@ -96,7 +96,7 @@ export default function DailyMenuPlannerPage() {
                       })
                   }
                   
-                  const orderMealType = event.mealType.toLowerCase();
+                  const orderMealType = event.mealType?.toLowerCase() || '';
 
                   if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
                       addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
@@ -112,8 +112,8 @@ export default function DailyMenuPlannerPage() {
                       orderId: order.id,
                       eventIndex,
                       clientName: client?.companyName || 'Unknown Client',
-                      pax: event.numberOfPeople,
-                      mealType: event.mealType,
+                      pax: event.numberOfPeople || 0,
+                      mealType: event.mealType || 'N/A',
                       region: event.region || "Dar es Salaam",
                       menu: menu,
                   });
@@ -146,7 +146,6 @@ export default function DailyMenuPlannerPage() {
   const handleSaveMenus = async () => {
     setIsSaving(true);
     try {
-        // Save every event menu in the list
         for (const orderMenu of menuData) {
             const getRecipeId = (name: string) => availableRecipes.find(r => r.recipeName === name)?.recipeNumber || null;
 
