@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -21,6 +20,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLab
 interface DailyEventInfo extends ClientEvent {
   orderId: string;
   proformaId?: string;
+  clientId: string;
 }
 
 export default function DailyOrderReportPage() {
@@ -43,6 +43,7 @@ export default function DailyOrderReportPage() {
                     ...event,
                     orderId: order.id,
                     proformaId: order.proformaId,
+                    clientId: order.clientId,
                 }))
         );
     }

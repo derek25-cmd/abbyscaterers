@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown, CalendarIcon, User, Utensils, Users, DollarSign, Pencil, MapPin } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { format, parseISO, add, sub } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { MEAL_TYPES, REGIONS } from "@/types";
@@ -94,20 +94,15 @@ const ClientEventRecipeForm = ({ nestIndex, control }: ClientEventRecipeFormProp
 }
 
 interface ClientEventFormProps {
-    form: UseFormReturn<any>; // Use 'any' here as it can be a partial form
+    form: UseFormReturn<any>;
     nestIndex: number;
     isSubmitting: boolean;
-    singleClientEvent?: boolean;
     dateRange?: { from: Date, to: Date };
-    hideRecipes?: boolean;
-    allowCustomMealType?: boolean;
 }
 
-export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEvent, dateRange, hideRecipes = false, allowCustomMealType = false }: ClientEventFormProps) => {
+export const ClientEventForm = ({ form, nestIndex, isSubmitting, dateRange }: ClientEventFormProps) => {
     const { control, watch, setValue } = form;
-    const { clients: availableClients, isLoading: clientsLoading } = useClientStorage();
     const particularType = watch(`clientEvents.${nestIndex}.particularType`);
-
 
     const pax = watch(`clientEvents.${nestIndex}.numberOfPeople`);
     const unitPrice = watch(`clientEvents.${nestIndex}.unitPrice`);
@@ -137,99 +132,34 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                  <FormField control={control} name={`clientEvents.${nestIndex}.particularDescription`} render={({ field }) => (
                     <FormItem><FormLabel>Custom Particulars</FormLabel><FormControl><Input {...field} placeholder="e.g. 93 Cartons of Juice" /></FormControl></FormItem>
                 )} />
-            ) : (
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={control} name={`clientEvents.${nestIndex}.clientId`} render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Client</FormLabel>
+            ) : null}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={control} name={`clientEvents.${nestIndex}.date`} render={({ field }) => {
+                    const dateValue = field.value ? parseISO(field.value) : undefined;
+                    return (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Event Date</FormLabel>
                             <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || singleClientEvent}>
-                                            {clientsLoading ? "Loading..." : field.value ? availableClients.find(c => c.id === field.value)?.companyName : "Select client"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Search client..." />
-                                        <CommandList>
-                                            <CommandEmpty>No client found.</CommandEmpty>
-                                            <CommandGroup>
-                                                {availableClients.map((c) => (
-                                                    <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
-                                                        <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                        {c.companyName}
-                                                    </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
+                                <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {dateValue && isValid(dateValue) ? format(dateValue, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button></FormControl></PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar 
+                                        mode="single" 
+                                        selected={dateValue} 
+                                        onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} 
+                                        initialFocus 
+                                        disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} 
+                                    />
                                 </PopoverContent>
                             </Popover>
                             <FormMessage />
                         </FormItem>
-                    )} />
-                    <FormField control={control} name={`clientEvents.${nestIndex}.date`} render={({ field }) => {
-                        const dateValue = field.value ? parseISO(field.value) : undefined;
-                        return (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Event Date</FormLabel>
-                                <Popover>
-                                    <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button></FormControl></PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} initialFocus disabled={dateRange ? (date) => date < dateRange.from || date > dateRange.to : undefined} /></PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                            </FormItem>
-                        )
-                    }} />
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={control} name={`clientEvents.${nestIndex}.numberOfPeople`} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People/Qty</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g. 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-                 {allowCustomMealType && particularType === 'custom' ? (
-                     <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
-                         <FormItem>
-                             <FormLabel className="flex items-center"><Pencil className="mr-2 h-4 w-4"/>Custom Particulars</FormLabel>
-                             <FormControl><Input {...field} placeholder="e.g., Takeaway Lunch" /></FormControl>
-                             <FormMessage />
-                         </FormItem>
-                     )} />
-                 ) : (
-                    <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                )}
-            </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormField control={control} name={`clientEvents.${nestIndex}.unitPrice`} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>Unit Price</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g. 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                 )}/>
-                  <FormField control={control} name={`clientEvents.${nestIndex}.region`} render={({ field }) => (
+                    )
+                }} />
+                <FormField control={control} name={`clientEvents.${nestIndex}.region`} render={({ field }) => (
                     <FormItem>
                         <FormLabel className="flex items-center"><MapPin className="mr-2 h-4 w-4"/>Region / Branch</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -241,12 +171,37 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                         <FormMessage />
                     </FormItem>
                 )} />
-             </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={control} name={`clientEvents.${nestIndex}.numberOfPeople`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><Users className="mr-2 h-4 w-4"/>Number of People/Qty</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 50" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+            </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <FormItem>
-                    <FormLabel>Total Price</FormLabel>
-                    <Input type="text" readOnly disabled value={`${((watch(`clientEvents.${nestIndex}.unitPrice`) || 0) * (watch(`clientEvents.${nestIndex}.numberOfPeople`) || 0)).toFixed(2)}`} />
-                 </FormItem>
+                 <FormField control={control} name={`clientEvents.${nestIndex}.unitPrice`} render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="flex items-center"><DollarSign className="mr-2 h-4 w-4"/>Unit Price</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g. 25.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                 )}/>
                   <FormField control={control} name={`clientEvents.${nestIndex}.vatType`} render={({ field }) => (
                     <FormItem>
                         <FormLabel className="flex items-center">VAT</FormLabel>
@@ -261,12 +216,15 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, singleClientEve
                     </FormItem>
                 )} />
              </div>
-             {!hideRecipes && (
-                <>
-                    <Separator />
-                    <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
-                </>
-             )}
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <FormItem>
+                    <FormLabel>Total Price</FormLabel>
+                    <Input type="text" readOnly disabled value={`${((watch(`clientEvents.${nestIndex}.unitPrice`) || 0) * (watch(`clientEvents.${nestIndex}.numberOfPeople`) || 0)).toFixed(2)}`} />
+                 </FormItem>
+             </div>
+             
+            <Separator />
+            <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
         </div>
     )
 }
@@ -279,11 +237,9 @@ interface OrderFormProps {
 export function OrderForm({ order, clientId }: OrderFormProps) {
   const router = useRouter();
   const { addOrder, updateOrder } = useOrderStorage();
-  const { clients } = useClientStorage();
+  const { clients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const isEditMode = !!order;
 
   const form = useForm<OrderFormData>({
     resolver: zodResolver(OrderSchema),
@@ -292,10 +248,12 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
       : {
           id: "",
           name: "",
+          clientId: clientId || "",
+          startDate: format(new Date(), 'yyyy-MM-dd'),
+          endDate: format(new Date(), 'yyyy-MM-dd'),
           description: "",
           proformaId: "",
           clientEvents: [{ 
-              clientId: clientId || "", 
               date: format(new Date(), 'yyyy-MM-dd'),
               mealType: "Lunch only", 
               numberOfPeople: 10,
@@ -303,7 +261,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
               total: 0,
               vatType: "inclusive", 
               recipes: [],
-              region: "Dar es Salaam"
+              region: "Dar es Salaam",
+              particularType: "event"
             }],
         },
   });
@@ -319,17 +278,17 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     }
   }, [order]);
   
+  const watchedClientId = form.watch('clientId');
+  const watchedStartDate = form.watch('startDate');
+  const watchedEndDate = form.watch('endDate');
+
   useEffect(() => {
-      const sub = form.watch((value, {name}) => {
-          if (name === 'clientEvents.0.date' || name === 'clientEvents.0.clientId') {
-              const event = form.getValues('clientEvents')[0];
-              const clientName = clients.find(c => c.id === event.clientId)?.companyName || 'Client';
-              const dateStr = event.date ? format(parseISO(event.date), 'PPP') : 'Date';
-              form.setValue('name', `${clientName} Order on ${dateStr}`);
-          }
-      });
-      return () => sub.unsubscribe();
-  }, [form, clients]);
+      if (!order && watchedClientId && watchedStartDate) {
+          const clientName = clients.find(c => c.id === watchedClientId)?.companyName || 'Client';
+          const dateStr = watchedStartDate ? format(parseISO(watchedStartDate), 'PPP') : 'Date';
+          form.setValue('name', `${clientName} Order - ${dateStr}`);
+      }
+  }, [watchedClientId, watchedStartDate, clients, order, form]);
 
   async function onSubmit(data: OrderFormData) {
     setIsSubmitting(true);
@@ -359,55 +318,107 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     }
   }
 
-   const onValidationErrors = (errors: any) => {
-    console.error("Form Validation Errors:", errors);
-    toast({
-        variant: "destructive",
-        title: "Invalid Data",
-        description: "Please check the form for errors and try again. Some fields may be missing."
-    });
-  }
-  
-  const isLoading = isSubmitting;
+  const dateRange = React.useMemo(() => {
+      if (watchedStartDate && watchedEndDate && isValid(parseISO(watchedStartDate)) && isValid(parseISO(watchedEndDate))) {
+          return { from: parseISO(watchedStartDate), to: parseISO(watchedEndDate) };
+      }
+      return undefined;
+  }, [watchedStartDate, watchedEndDate]);
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onValidationErrors)} className="space-y-8">
-        <Card>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <Card className="border-primary/20 shadow-md">
           <CardHeader>
-            <CardTitle>{order ? `Edit Order: ${order.name}` : "Add New Order"}</CardTitle>
+            <CardTitle>{order ? `Edit Order: ${order.name}` : "Create New Order"}</CardTitle>
             <CardDescription>
-              An order can contain multiple events for different clients and dates.
+              First select the client and contract duration, then add individual events.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={form.control} name="id" render={({ field }) => (
+                <FormField control={form.control} name="clientId" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Order ID</FormLabel>
-                        <FormControl><Input placeholder="Auto-generated" {...field} readOnly/></FormControl>
-                        <FormDescription><Info className="h-3 w-3 inline-block mr-1"/>The ID is automatically generated upon saving.</FormDescription>
+                        <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4"/>Customer Name</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!order}>
+                                        {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select customer"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Search customer..." />
+                                    <CommandList>
+                                        <CommandEmpty>No customer found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {clients.map((c) => (
+                                                <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
+                                                    <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                    {c.companyName}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                         <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="name" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Order Name</FormLabel>
-                        <FormControl><Input placeholder="e.g. Wedding Weekend Special" {...field} /></FormControl>
+                        <FormLabel>Order Name / Reference</FormLabel>
+                        <FormControl><Input placeholder="e.g. July Lunches for NMB" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="startDate" render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Start Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Select start date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button></FormControl></PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} initialFocus /></PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+                <FormField control={form.control} name="endDate" render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>End Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Select end date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button></FormControl></PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} initialFocus /></PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="proformaId" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Proforma No. (Optional)</FormLabel>
+                        <FormLabel>Link Proforma No. (Optional)</FormLabel>
                         <FormControl><Input placeholder="e.g. PI-2024-001" {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
                  <FormField control={form.control} name="description" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Description (Optional)</FormLabel>
-                        <FormControl><Textarea placeholder="A brief summary of the order..." {...field} /></FormControl>
+                        <FormLabel>Internal Description (Optional)</FormLabel>
+                        <FormControl><Textarea placeholder="Any internal notes about this order..." {...field} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )} />
@@ -415,42 +426,45 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
           </CardContent>
         </Card>
 
-        <Separator />
-        
         <div className="space-y-6">
+             <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-primary flex items-center"><CalendarIcon className="mr-2 h-6 w-6"/>Daily Events / Deliveries</h3>
+                <Button type="button" variant="outline" size="sm" onClick={() => append({ date: watchedStartDate || format(new Date(), 'yyyy-MM-dd'), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [], region: "Dar es Salaam", particularType: "event" })} disabled={isSubmitting}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Event
+                </Button>
+             </div>
              {fields.map((item, index) => (
-                <Card key={item.id} className="relative bg-card/50">
-                    <CardHeader>
-                        <CardTitle className="text-xl">Client Event #{index + 1}</CardTitle>
+                <Card key={item.id} className="relative bg-card/50 border-accent/20">
+                    <CardHeader className="py-3 px-4 border-b bg-muted/30">
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-sm font-semibold uppercase tracking-wider">Event #{index + 1}</CardTitle>
+                            {fields.length > 1 && (
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6">
                         <ClientEventForm
                             form={form}
                             nestIndex={index}
-                            isSubmitting={isLoading}
+                            isSubmitting={isSubmitting}
+                            dateRange={dateRange}
                         />
                     </CardContent>
-                    {fields.length > 1 && (
-                        <Button type="button" variant="ghost" size="icon" className="absolute top-3 right-3 text-destructive hover:bg-destructive/90 hover:text-destructive-foreground" onClick={() => remove(index)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    )}
                 </Card>
              ))}
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 
-        <Button type="button" variant="outline" size="sm" onClick={() => append({ clientId: "", date: format(new Date(), 'yyyy-MM-dd'), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [], region: "Dar es Salaam" })} disabled={isLoading}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Client Event
-        </Button>
-
-        <div className="flex justify-end gap-4 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
+        <div className="flex justify-end gap-4 pt-6 border-t">
+          <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {order ? "Save Changes" : "Save Order"}
+          <Button type="submit" disabled={isSubmitting} size="lg">
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {order ? "Save Changes" : "Create Order"}
           </Button>
         </div>
       </form>

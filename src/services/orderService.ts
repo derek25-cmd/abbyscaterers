@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase-client';
 import type { Order } from '@/types';
 import type { OrderFormData } from '@/lib/schemas';
@@ -9,6 +8,9 @@ const mapDbToOrder = (dbOrder: any): Order => {
   return {
     id: dbOrder.id,
     name: dbOrder.name,
+    clientId: dbOrder.clientId,
+    startDate: dbOrder.startDate,
+    endDate: dbOrder.endDate,
     description: dbOrder.description,
     proformaId: dbOrder.proformaId,
     booking_id: dbOrder.booking_id,
@@ -42,11 +44,8 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     const now = new Date().toISOString();
 
-    const name = orderData.name || `Daily Order for ${orderData.clientEvents && orderData.clientEvents.length > 0 ? format(new Date(orderData.clientEvents[0].date!), 'PPP') : 'Unknown Date'}`;
-    
     const newOrderData = {
         ...orderData,
-        name: name,
         createdAt: now,
         updatedAt: now,
     };

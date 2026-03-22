@@ -1,9 +1,8 @@
-
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye, Utensils } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Order, Client } from "@/types";
+import { format, parseISO, isValid } from 'date-fns';
 
 type OrderWithClientName = Order & { customerName: string };
 
@@ -28,33 +28,38 @@ export const getOrderColumns = (
       cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
     },
     {
-      accessorKey: "proformaId",
-      header: "Proforma No.",
-      cell: ({ row }) => {
-        const proformaId = row.getValue("proformaId") as string;
-        return <div className="font-mono text-xs">{proformaId || 'N/A'}</div>;
-      },
-    },
-    {
       accessorKey: "customerName",
       header: "Customer Name",
       cell: ({ row }) => {
         const order = row.original;
-        const client = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId) : null;
+        const client = getClientById(order.clientId);
         return (
-          <div className="font-medium">
+          <div className="font-medium text-primary">
             {client ? client.companyName : "N/A"}
           </div>
         );
       },
     },
     {
-      accessorKey: "description",
-      header: "Description",
+      accessorKey: "startDate",
+      header: "Period",
       cell: ({ row }) => {
-        const description = row.getValue("description") as string;
-        const name = row.original.name;
-        return <div className="text-muted-foreground truncate" style={{maxWidth: '250px'}}>{description || name}</div>;
+          const start = row.original.startDate;
+          const end = row.original.endDate;
+          if(!start || !end) return 'N/A';
+          return (
+              <div className="text-xs">
+                  {format(parseISO(start), 'MMM d')} - {format(parseISO(end), 'MMM d, yyyy')}
+              </div>
+          )
+      }
+    },
+    {
+      accessorKey: "proformaId",
+      header: "Proforma",
+      cell: ({ row }) => {
+        const proformaId = row.getValue("proformaId") as string;
+        return <div className="font-mono text-xs text-muted-foreground">{proformaId || 'N/A'}</div>;
       },
     },
     {

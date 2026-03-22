@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -43,7 +42,7 @@ import { useClientStorage } from "@/hooks/use-client-storage";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 export function OrderListTable() {
@@ -53,6 +52,7 @@ export function OrderListTable() {
   const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore } = useOrderStorage();
   const { clients, isLoading: clientsLoading, getClientById } = useClientStorage();
   const { toast } = useToast();
+  
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -74,22 +74,22 @@ export function OrderListTable() {
       let filtered = orders;
 
       if (clientIdFilter) {
-          filtered = filtered.filter(order => 
-              order.clientEvents.some(event => event.clientId === clientIdFilter)
-          );
+          filtered = filtered.filter(order => order.clientId === clientIdFilter);
       }
       
       if (selectedDate) {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        filtered = filtered.filter(order => 
-            order.clientEvents.some(event => event.date.startsWith(dateStr))
-        );
+        filtered = filtered.filter(order => {
+            const start = order.startDate;
+            const end = order.endDate;
+            return (start && start <= dateStr && end && end >= dateStr) || (start === dateStr);
+        });
       }
       
       if(searchQuery) {
           const lowercasedQuery = searchQuery.toLowerCase();
           filtered = filtered.filter(order => {
-              const clientName = order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId).toLowerCase() : '';
+              const clientName = getClientName(order.clientId).toLowerCase();
               switch (filterType) {
                   case 'id':
                       return order.id.toLowerCase().includes(lowercasedQuery);
@@ -104,7 +104,7 @@ export function OrderListTable() {
       
       return filtered.map(order => ({
         ...order,
-        customerName: order.clientEvents.length > 0 ? getClientName(order.clientEvents[0].clientId) : 'N/A',
+        customerName: getClientName(order.clientId),
       }));
 
   }, [orders, clientIdFilter, selectedDate, searchQuery, filterType, getClientName]);
@@ -196,7 +196,7 @@ export function OrderListTable() {
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                    {selectedDate ? format(selectedDate, "PPP") : <span>Filter by date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
@@ -219,7 +219,7 @@ export function OrderListTable() {
           <Link href="/orders/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Order
+              New Order
             </Button>
           </Link>
         </div>

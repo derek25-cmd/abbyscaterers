@@ -1,12 +1,11 @@
-
 "use client";
 
 import React, { useState } from "react";
 import type { Order, ClientEvent } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { BookOpen, CalendarDays, DollarSign, FileText, Loader2, SquarePen, Users, UtensilsCrossed, Truck } from "lucide-react";
+import { BookOpen, CalendarDays, DollarSign, FileText, Loader2, SquarePen, Users, UtensilsCrossed, Truck, MapPin, User } from "lucide-react";
 import { format, parseISO, isValid } from "date-fns";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -23,10 +22,8 @@ interface OrderDetailsViewProps {
 }
 
 function ClientEventCard({ event }: { event: ClientEvent }) {
-    const { getClientById, isLoading: clientsLoading } = useClientStorage();
     const { getRecipeById, isLoading: recipesLoading } = useRecipeStorage();
 
-    const client = getClientById(event.clientId);
     const totalPrice = event.unitPrice * event.numberOfPeople;
 
     const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy") => {
@@ -40,35 +37,48 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
     }
 
     return (
-        <Card className="bg-card/50 shadow-md">
-            <CardHeader className="border-b">
-                {clientsLoading ? <Skeleton className="h-6 w-3/4" /> :
-                <CardTitle className="text-xl text-primary flex items-center">{client?.companyName || "Unknown Client"}</CardTitle>
-                }
-                <div className="flex items-center gap-4 pt-1 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><CalendarDays className="h-4 w-4 text-accent" /> {formatDateSafe(event.date)}</span>
-                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Users className="h-4 w-4 text-accent" /> {event.numberOfPeople} People</span>
-                    <Badge variant="secondary">{event.mealType}</Badge>
+        <Card className="bg-card/50 shadow-sm border-accent/10">
+            <CardHeader className="py-3 bg-muted/20 border-b">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1.5 text-sm font-semibold"><CalendarDays className="h-4 w-4 text-primary" /> {formatDateSafe(event.date)}</span>
+                        <Badge variant="outline" className="bg-primary/5">{event.mealType}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3" /> {event.region}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="pt-4 grid md:grid-cols-2 gap-6">
                  <div>
-                    <h4 className="font-semibold text-foreground mb-2 flex items-center"><UtensilsCrossed className="mr-2 h-4 w-4 text-primary"/>Recipes</h4>
+                    <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-2"><UtensilsCrossed className="h-3.5 w-3.5 text-primary"/>Included Recipes</h4>
                     {recipesLoading ? <Skeleton className="h-20 w-full" /> : (
-                        <ul className="space-y-1 list-disc list-inside text-muted-foreground">
-                            {event.recipes.map((r, index) => {
+                        <ul className="space-y-1.5 list-disc list-inside text-sm text-foreground">
+                            {event.recipes.length > 0 ? event.recipes.map((r, index) => {
                                 const recipe = getRecipeById(r.recipeId);
-                                return <li key={index}>{recipe?.recipeName || "Unknown Recipe"}</li>
-                            })}
+                                return <li key={index} className="pl-1">{recipe?.recipeName || "Unknown Recipe"}</li>
+                            }) : <li className="text-muted-foreground italic list-none">No recipes assigned.</li>}
                         </ul>
                     )}
                  </div>
-                 <div className="border-l border-border pl-6">
-                     <h4 className="font-semibold text-foreground mb-2 flex items-center"><DollarSign className="mr-2 h-4 w-4 text-primary"/>Pricing</h4>
-                     <div className="text-sm space-y-2 text-muted-foreground">
-                        <div className="flex justify-between"><span>Unit Price:</span> <span className="font-medium text-foreground">{formatCurrency(event.unitPrice)}</span></div>
-                        <div className="flex justify-between"><span>Total Price:</span> <span className="font-medium text-foreground">{formatCurrency(totalPrice)}</span></div>
-                        <div className="flex justify-between"><span>VAT:</span> <Badge variant="outline">{event.vatType}</Badge></div>
+                 <div className="md:border-l md:pl-6">
+                     <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-2"><DollarSign className="h-3.5 w-3.5 text-primary"/>Pricing & Volume</h4>
+                     <div className="text-sm space-y-3">
+                        <div className="flex justify-between border-b border-dashed pb-1">
+                            <span className="text-muted-foreground flex items-center gap-1.5"><Users className="h-3.5 w-3.5"/> Pax:</span> 
+                            <span className="font-semibold">{event.numberOfPeople}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-dashed pb-1">
+                            <span className="text-muted-foreground">Unit Price:</span> 
+                            <span className="font-semibold">{formatCurrency(event.unitPrice)}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-accent pt-1">
+                            <span>Event Total:</span> 
+                            <span>{formatCurrency(totalPrice)}</span>
+                        </div>
+                        <div className="text-[10px] text-right text-muted-foreground">
+                            VAT: <span className="uppercase">{event.vatType}</span>
+                        </div>
                      </div>
                  </div>
             </CardContent>
@@ -80,44 +90,22 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeliveryNoteDialogOpen, setIsDeliveryNoteDialogOpen] = useState(false);
+  const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
+
+  const client = getClientById(order.clientId);
 
   const handlePdfExport = async () => {
     if (!printRef.current) return;
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: null
-      });
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
       const imgData = canvas.toDataURL('image/png');
-      
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
       const imgProps = pdf.getImageProperties(imgData);
       const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-      
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
       pdf.save(`${order.name.replace(/ /g, '_')}_order.pdf`);
       toast({ title: "Export Successful", description: "Order exported to PDF." });
     } catch (error) {
@@ -129,16 +117,14 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
   };
   
   return (
-    <>
-      <div className="flex justify-between items-start mb-4">
-        <div>
-           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center">
-             <BookOpen className="mr-3 h-8 w-8 text-primary" />
-             {order.name}
-           </h1>
-           <p className="text-muted-foreground ml-11">
-             Order ID: {order.id}
-           </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+           <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
+                <Link href="/orders"><BookOpen className="mr-2 h-4 w-4" /> Back to Orders</Link>
+           </Button>
+           <h1 className="text-3xl font-bold tracking-tight text-foreground">{order.name}</h1>
+           <p className="text-sm font-mono text-muted-foreground">ID: {order.id}</p>
         </div>
         <div className="flex gap-2">
              <Button variant="outline" onClick={() => setIsDeliveryNoteDialogOpen(true)}>
@@ -146,7 +132,7 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
             </Button>
             <Button variant="outline" onClick={handlePdfExport} disabled={isExporting}>
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-               {isExporting ? 'Exporting...' : 'Export as PDF'}
+               {isExporting ? 'Exporting...' : 'Export PDF'}
             </Button>
             <Link href={`/orders/${order.id}/edit`}>
               <Button>
@@ -156,24 +142,47 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
         </div>
       </div>
       
-      <div ref={printRef} className="space-y-6">
-        {order.clientEvents && order.clientEvents.length > 0 ? (
-            order.clientEvents.map((event, index) => (
-                <ClientEventCard key={index} event={event} />
-            ))
-        ) : (
-            <Card>
-                <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground">No client events have been added to this order yet.</p>
-                </CardContent>
-            </Card>
-        )}
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-1 border-primary/10">
+              <CardHeader>
+                  <CardTitle className="text-lg">Customer Info</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-primary/10 text-primary"><User className="h-5 w-5" /></div>
+                      <div>
+                          <p className="text-xs text-muted-foreground uppercase font-bold">Client Name</p>
+                          <p className="font-semibold">{clientsLoading ? <Skeleton className="h-4 w-32" /> : client?.companyName || "N/A"}</p>
+                      </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-accent/10 text-accent"><CalendarDays className="h-5 w-5" /></div>
+                      <div>
+                          <p className="text-xs text-muted-foreground uppercase font-bold">Service Period</p>
+                          <p className="font-semibold">
+                              {order.startDate ? format(parseISO(order.startDate), 'PPP') : 'N/A'} - 
+                              <br/>
+                              {order.endDate ? format(parseISO(order.endDate), 'PPP') : 'N/A'}
+                          </p>
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
 
-      <div className="mt-6 flex justify-end">
-         <Link href="/orders">
-            <Button variant="ghost">Back to Order List</Button>
-          </Link>
+          <div ref={printRef} className="md:col-span-2 space-y-4">
+            {order.clientEvents && order.clientEvents.length > 0 ? (
+                order.clientEvents.map((event, index) => (
+                    <ClientEventCard key={index} event={event} />
+                ))
+            ) : (
+                <Card>
+                    <CardContent className="py-10 text-center text-muted-foreground">
+                        <UtensilsCrossed className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                        <p>No events have been added to this order yet.</p>
+                    </CardContent>
+                </Card>
+            )}
+          </div>
       </div>
 
       <CreateDeliveryNoteDialog
@@ -181,6 +190,6 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
         setIsOpen={setIsDeliveryNoteDialogOpen}
         order={order}
       />
-    </>
+    </div>
   );
 }

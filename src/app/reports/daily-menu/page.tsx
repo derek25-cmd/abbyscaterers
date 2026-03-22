@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
@@ -69,7 +68,7 @@ export default function DailyMenuPlannerPage() {
       todaysOrders.forEach(order => {
           order.clientEvents.forEach((event, eventIndex) => {
               if (event.date.startsWith(dateStr)) {
-                  const client = getClientById(event.clientId);
+                  const client = getClientById(order.clientId);
                   const savedMenu = savedMenus.find(m => m.order_id === order.id && m.region === event.region);
                   
                   const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));

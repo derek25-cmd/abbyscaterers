@@ -115,7 +115,6 @@ export const MEAL_TYPES = [
 export type MealType = string;
 
 export interface ClientEvent {
-  clientId: string; // References Client.id
   date: string; // ISO date string
   numberOfPeople: number;
   mealType: MealType;
@@ -123,11 +122,18 @@ export interface ClientEvent {
   unitPrice: number;
   vatType: 'inclusive' | 'exclusive';
   region?: Region;
+  particularType?: 'event' | 'meal' | 'custom';
+  particularDescription?: string;
+  eventType?: string;
+  customEventType?: string;
 }
 
 export interface Order {
   id: string; // User-facing unique ID
   name: string;
+  clientId: string; // Added to top level
+  startDate: string; // Added to top level
+  endDate: string; // Added to top level
   description?: string;
   proformaId?: string;
   booking_id?: string | null;
