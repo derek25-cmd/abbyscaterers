@@ -1,12 +1,22 @@
-
 "use client";
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils } from "lucide-react";
+import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils, ClipboardCheck } from "lucide-react";
 
 const reportCategories = [
+  {
+    category: "Management & Quality Reports",
+    reports: [
+      {
+        title: "Supervisor Daily Report",
+        description: "Standardized checklist for operational excellence and kitchen compliance.",
+        href: "/reports/supervisor-daily",
+        icon: ClipboardCheck,
+      },
+    ],
+  },
   {
     category: "Sales & Finance Reports",
     reports: [

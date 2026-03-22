@@ -465,3 +465,28 @@ export interface CostingReportItem {
     amount: number;
     created_at: string;
 }
+
+// --- SUPERVISOR REPORT ---
+export type ReportRating = 'Poor' | 'Fair' | 'Good' | 'Very Good' | 'Excellent';
+
+export interface ReportCriterion {
+    description: string;
+    rating: ReportRating | null;
+    isIssue: boolean;
+    reason?: string;
+}
+
+export interface SupervisorReport {
+    id: string;
+    report_date: string; // ISO date string
+    supervisor_id: string;
+    supervisor_name: string;
+    status: 'Draft' | 'Submitted';
+    criteria: ReportCriterion[];
+    general_comments?: string;
+    prepared_by: string;
+    checked_by?: string;
+    signature?: string;
+    created_at: string;
+    updated_at: string;
+}

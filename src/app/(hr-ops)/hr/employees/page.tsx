@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Search } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
@@ -47,9 +47,17 @@ export default function EmployeesPage() {
     });
   }, [employees, searchQuery, departmentFilter, statusFilter]);
 
+  const stats = useMemo(() => {
+    return {
+        total: employees.length,
+        active: employees.filter(e => e.status === 'Active').length,
+        inactive: employees.filter(e => e.status !== 'Active').length,
+    }
+  }, [employees]);
+
   const handleAddEmployee = async (newEmployee: any) => {
-    const newId = await addEmployee(newEmployee);
-    setEmployees(prevEmployees => [{ id: newId, ...newEmployee }, ...prevEmployees]);
+    const result = await addEmployee(newEmployee);
+    if(result) setEmployees(prevEmployees => [result, ...prevEmployees]);
   };
   
   const handleEditEmployee = async (updatedEmployee: any) => {
@@ -85,11 +93,42 @@ export default function EmployeesPage() {
                 </Button>
             </div>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Staff</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{stats.total}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Active</CardTitle>
+                    <UserCheck className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Inactive</CardTitle>
+                    <UserX className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
+                </CardContent>
+            </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>All Employees</CardTitle>
+            <CardTitle>Staff Directory</CardTitle>
             <CardDescription>
-              Manage your company&apos;s employees and view their details.
+              Manage and view details for all company personnel.
             </CardDescription>
           </CardHeader>
            <div className="p-6 pt-0 flex flex-col md:flex-row items-center gap-2">
@@ -125,7 +164,7 @@ export default function EmployeesPage() {
           </div>
           <CardContent>
             {loading ? (
-                <p>Loading employees...</p>
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
             ) : (
             <Table>
               <TableHeader>
@@ -163,8 +202,6 @@ export default function EmployeesPage() {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => openViewDialog(employee)}>View Details</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">Deactivate</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
