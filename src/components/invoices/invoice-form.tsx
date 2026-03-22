@@ -137,27 +137,28 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
         const start = watchedFormValues.startDate;
         const end = watchedFormValues.endDate;
+        const currentItemIds = new Set(watchedFormValues.items.map(item => item.id));
 
         const matches = orders.filter(order => {
-            const belongsToClient = order.clientEvents.some(e => e.clientId === selectedClientId);
+            const belongsToClient = order.clientId === selectedClientId;
             if (!belongsToClient) return false;
 
-            const inDateRange = order.clientEvents.some(e => e.date && e.date >= start && e.date <= end);
+            const inDateRange = (order.startDate && order.startDate >= start && order.startDate <= end) || 
+                               (order.endDate && order.endDate >= start && order.endDate <= end);
             if (!inDateRange) return false;
 
-            // Don't suggest if already in items list
-            const alreadyAdded = fields.some(f => f.id === order.id);
-            if (alreadyAdded) return false;
+            // Don't suggest if already present in the form's items list
+            if (currentItemIds.has(order.id)) return false;
 
             return true;
         });
 
         setMatchingOrders(matches);
-    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, orders, fields, isEditMode, proformaId]);
+    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, isEditMode, proformaId]);
 
     const handleImportSelected = (orderList: Order[]) => {
         const currentItems = form.getValues('items');
-        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1;
+        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1 && currentItems[0].id.includes('ORD-');
 
         if (isFirstItemEmpty) {
             remove(0);
@@ -165,9 +166,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
         orderList.forEach(order => {
             order.clientEvents.forEach(event => {
-                if (event.clientId === selectedClientId && event.date && event.date >= watchedFormValues.startDate && event.date <= watchedFormValues.endDate) {
+                if (event.date && event.date >= watchedFormValues.startDate && event.date <= watchedFormValues.endDate) {
                     append({
-                        id: order.id || '',
+                        id: order.id,
                         particularType: 'event',
                         eventType: 'Catering services',
                         mealType: event.mealType || '',
@@ -213,8 +214,10 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
                 description: `Order related to invoice ${watchedFormValues.id}`,
                 proformaId: proformaId || "",
+                clientId: client_id,
+                startDate: itemData.date || watchedFormValues.startDate,
+                endDate: itemData.date || watchedFormValues.endDate,
                 clientEvents: [{
-                    clientId: client_id,
                     date: itemData.date || format(new Date(), 'yyyy-MM-dd'),
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
@@ -287,7 +290,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date') {
                         if (item.particularType === 'event') {
                             form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
-                        } else {
+                        } else if (item.particularType === 'meal') {
                             form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
                         }
                     }

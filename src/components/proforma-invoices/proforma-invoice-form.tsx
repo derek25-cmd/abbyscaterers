@@ -115,7 +115,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const selectedClientId = form.watch('clientId');
     const selectedClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : undefined;
     
-    // Check for matching orders when client or dates change
+    // Check for matching orders when client, dates, or current items change
     useEffect(() => {
         if (!selectedClientId || !watchedFormValues.startDate || !watchedFormValues.endDate || isEditMode) {
             setMatchingOrders([]);
@@ -124,30 +124,31 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
         const start = watchedFormValues.startDate;
         const end = watchedFormValues.endDate;
+        const currentItemIds = new Set(watchedFormValues.items.map(item => item.id));
 
         const matches = orders.filter(order => {
-            const belongsToClient = order.clientEvents.some(e => e.clientId === selectedClientId);
+            const belongsToClient = order.clientId === selectedClientId;
             if (!belongsToClient) return false;
 
-            const inDateRange = order.clientEvents.some(e => e.date && e.date >= start && e.date <= end);
+            const inDateRange = (order.startDate && order.startDate >= start && order.startDate <= end) || 
+                               (order.endDate && order.endDate >= start && order.endDate <= end);
             if (!inDateRange) return false;
 
-            // Don't suggest if already linked to a proforma
+            // Don't suggest if already linked to a proforma in DB
             if (order.proformaId) return false;
 
-            // Don't suggest if already in current items
-            const alreadyAdded = fields.some(f => f.id === order.id);
-            if (alreadyAdded) return false;
+            // Don't suggest if already present in the form's items list
+            if (currentItemIds.has(order.id)) return false;
 
             return true;
         });
 
         setMatchingOrders(matches);
-    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, orders, fields, isEditMode]);
+    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, isEditMode]);
 
     const handleImportSelected = (orderList: Order[]) => {
         const currentItems = form.getValues('items');
-        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1;
+        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1 && currentItems[0].id.includes('ORD-');
 
         if (isFirstItemEmpty) {
             remove(0);
@@ -155,9 +156,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
         orderList.forEach(order => {
             order.clientEvents.forEach(event => {
-                if (event.clientId === selectedClientId && event.date && event.date >= watchedFormValues.startDate && event.date <= watchedFormValues.endDate) {
+                // Ensure we only import events within the range
+                if (event.date && event.date >= watchedFormValues.startDate && event.date <= watchedFormValues.endDate) {
                     append({
-                        id: order.id || '',
+                        id: order.id,
                         particularType: 'event',
                         eventType: 'Catering services',
                         mealType: event.mealType || '',
@@ -201,8 +203,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
                 description: `Order related to proforma ${proformaId}`,
                 proformaId: proformaId,
+                clientId: client_id,
+                startDate: itemData.date || watchedFormValues.startDate,
+                endDate: itemData.date || watchedFormValues.endDate,
                 clientEvents: [{
-                    clientId: client_id,
                     date: itemData.date || format(new Date(), 'yyyy-MM-dd'),
                     numberOfPeople: itemData.pax,
                     mealType: itemData.mealType,
@@ -277,8 +281,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                              form.setValue(`items.${index}.particularDescription`, item.eventType === 'Custom' ? item.customEventType || '' : `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
                          } else if (item.particularType === 'meal') {
                              form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
-                         } else { // Custom
-                            // particularDescription will be edited directly
                          }
                     }
                 }
@@ -666,7 +668,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                 <div className="flex gap-2">
                                     <Button type="button" variant="outline" onClick={() => { 
                                         const newIndex = fields.length;
-                                        append({ id: '', particularType: 'custom', eventType: '', mealType: '', pax: 1, unitPrice: 0, total: 0, date: undefined, particularDescription: 'New Bulk Item', vatType: 'inclusive' });
+                                        append({ id: `BULK-${Date.now()}`, particularType: 'custom', eventType: '', mealType: '', pax: 1, unitPrice: 0, total: 0, date: undefined, particularDescription: 'New Bulk Item', vatType: 'inclusive' });
                                         setOpenAccordionItems([`item-${newIndex}`]);
                                     }} size="sm">
                                         <Pencil className="w-4 h-4 mr-2" /> Add Bulk Item
