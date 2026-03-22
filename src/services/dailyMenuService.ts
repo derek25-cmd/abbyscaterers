@@ -1,7 +1,6 @@
 
 import { supabase } from '@/lib/supabase-client';
 import { DailyMenu } from '@/types';
-import { format } from 'date-fns';
 
 export const getMenusByDate = async (date: string): Promise<DailyMenu[]> => {
     const { data, error } = await supabase
@@ -17,13 +16,19 @@ export const getMenusByDate = async (date: string): Promise<DailyMenu[]> => {
 };
 
 export const upsertDailyMenu = async (menuData: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>): Promise<DailyMenu | null> => {
-    const { order_id, menu_date, recipes } = menuData;
+    const { order_id, menu_date, recipes, region } = menuData;
     
     const { data, error } = await supabase
         .from('daily_menus')
         .upsert(
-            { order_id, menu_date, recipes, updated_at: new Date().toISOString() },
-            { onConflict: 'order_id, menu_date' }
+            { 
+                order_id, 
+                menu_date, 
+                recipes, 
+                region, 
+                updated_at: new Date().toISOString() 
+            },
+            { onConflict: 'order_id, menu_date, region' }
         )
         .select()
         .single();

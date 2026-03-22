@@ -1,12 +1,13 @@
+
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { useClientStorage } from '@/hooks/use-client-storage';
 import { useRecipeStorage } from '@/hooks/use-recipe-storage';
-import { format, parseISO, startOfDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck, Filter, X } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck, Filter, X, Utensils } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -18,7 +19,7 @@ import "jspdf-autotable";
 import { getMenusByDate, upsertDailyMenu } from '@/services/dailyMenuService';
 import { DailyMenu, REGIONS, Region } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { Badge } from '@/components/ui/badge';
 
 type MenuCell = { content: string; mealType: string };
 type EventMenu = {
@@ -58,20 +59,18 @@ export default function DailyMenuPlannerPage() {
       if (isLoading) return;
       
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      
       const todaysOrders = orders.filter(order => 
           order.clientEvents.some(e => e.date.startsWith(dateStr))
       );
       
       const savedMenus = await getMenusByDate(dateStr);
-
       const allEventMenus: EventMenu[] = [];
 
       todaysOrders.forEach(order => {
           order.clientEvents.forEach((event, eventIndex) => {
               if (event.date.startsWith(dateStr)) {
                   const client = getClientById(event.clientId);
-                  const savedMenu = savedMenus.find(m => m.order_id === order.id); // Note: Current DB limited to one menu per order/day
+                  const savedMenu = savedMenus.find(m => m.order_id === order.id && m.region === event.region);
                   
                   const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
 
@@ -137,8 +136,8 @@ export default function DailyMenuPlannerPage() {
 
   const handleMenuChange = (orderIndex: number, rowIndex: number, value: string) => {
     const newMenuData = [...menuData];
-    // Find the actual item index in the original menuData array since we might be looking at a filtered list
-    const actualIndex = menuData.indexOf(filteredMenuData[orderIndex]);
+    const targetOrder = filteredMenuData[orderIndex];
+    const actualIndex = menuData.indexOf(targetOrder);
     if (actualIndex !== -1) {
         newMenuData[actualIndex].menu[rowIndex].content = value;
         setMenuData(newMenuData);
@@ -148,14 +147,8 @@ export default function DailyMenuPlannerPage() {
   const handleSaveMenus = async () => {
     setIsSaving(true);
     try {
-        // Group by order_id because current DB schema only supports one menu per order per day
-        const uniqueOrders = Array.from(new Set(menuData.map(m => m.orderId)));
-        
-        for (const orderId of uniqueOrders) {
-            // Find the first event menu for this order
-            const orderMenu = menuData.find(m => m.orderId === orderId);
-            if (!orderMenu) continue;
-
+        // Save every event menu in the list
+        for (const orderMenu of menuData) {
             const getRecipeId = (name: string) => availableRecipes.find(r => r.recipeName === name)?.recipeNumber || null;
 
             const breakfastRecipes = orderMenu.menu.slice(MEAL_SECTIONS.BREAKFAST.start, MEAL_SECTIONS.BREAKFAST.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
@@ -247,7 +240,7 @@ export default function DailyMenuPlannerPage() {
   
   const handleColumnSelect = (index: number) => {
     setSelectedColumn(index);
-    setClipboard(null); // Clear clipboard when a new column is selected
+    setClipboard(null); 
   };
 
   const handleCopy = () => {
@@ -284,7 +277,6 @@ export default function DailyMenuPlannerPage() {
                 if (isTeaSection && targetMealType.includes('tea')) {
                     return { ...copiedCell };
                 }
-                // Keep header rows, otherwise clear the cell
                 return cell.mealType === 'header' ? cell : { content: '', mealType: '' };
             });
 
