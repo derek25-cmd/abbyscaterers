@@ -33,7 +33,12 @@ export default function MonthlyOrderReportPage() {
 
   const monthlyOrders = useMemo(() => {
     const monthStr = format(selectedMonth, 'yyyy-MM');
-    let filtered = orders.filter(order => order.createdAt && format(parseISO(order.createdAt), 'yyyy-MM') === monthStr);
+    // Filter orders whose contract overlaps with the selected month
+    let filtered = orders.filter(order => {
+        const start = order.startDate?.substring(0, 7);
+        const end = order.endDate?.substring(0, 7);
+        return (start && start <= monthStr) && (end && end >= monthStr);
+    });
     
     if (searchQuery) {
         const lowercasedQuery = searchQuery.toLowerCase();
@@ -79,13 +84,13 @@ export default function MonthlyOrderReportPage() {
       doc.text(`Monthly Order Report - ${monthFormatted}`, 14, 15);
 
       (doc as any).autoTable({
-        head: [['Order ID', 'Customer Name', 'Date', 'Amount']],
+        head: [['Order ID', 'Customer Name', 'Period', 'Amount']],
         body: monthlyOrders.map(order => {
           const client = getClientById(order.clientId);
           return [
             order.id,
             client?.companyName || "N/A",
-            order.createdAt ? format(parseISO(order.createdAt), 'PPP') : "N/A",
+            `${order.startDate} - ${order.endDate}`,
             formatCurrency(calculateTotal(order.clientEvents)),
           ];
         }),
@@ -170,7 +175,7 @@ export default function MonthlyOrderReportPage() {
               <TableRow>
                 <TableHead>Order ID</TableHead>
                 <TableHead>Customer</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Period</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
               </TableRow>
             </TableHeader>
@@ -184,7 +189,7 @@ export default function MonthlyOrderReportPage() {
                   <TableRow key={order.id}>
                     <TableCell className="font-mono text-xs">{order.id}</TableCell>
                     <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
-                    <TableCell>{order.createdAt ? format(parseISO(order.createdAt), 'PPP') : "N/A"}</TableCell>
+                    <TableCell className="text-xs">{order.startDate} to {order.endDate}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(total)}</TableCell>
                   </TableRow>
                 )

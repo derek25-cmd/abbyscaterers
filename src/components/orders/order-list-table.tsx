@@ -80,6 +80,7 @@ export function OrderListTable() {
       if (selectedDate) {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         filtered = filtered.filter(order => {
+            // Check if the selected date falls within the order's top-level start/end dates
             const start = order.startDate;
             const end = order.endDate;
             return (start && start <= dateStr && end && end >= dateStr) || (start === dateStr);

@@ -8,13 +8,13 @@ const mapDbToOrder = (dbOrder: any): Order => {
   return {
     id: dbOrder.id,
     name: dbOrder.name,
-    clientId: dbOrder.client_id, // Map from snake_case
-    startDate: dbOrder.start_date, // Map from snake_case
-    endDate: dbOrder.end_date, // Map from snake_case
+    clientId: dbOrder.client_id, // Map from snake_case db column
+    startDate: dbOrder.start_date, // Map from snake_case db column
+    endDate: dbOrder.end_date, // Map from snake_case db column
     description: dbOrder.description,
-    proformaId: dbOrder.proforma_id, // Map from snake_case
+    proformaId: dbOrder.proforma_id, // Map from snake_case db column
     booking_id: dbOrder.booking_id,
-    clientEvents: dbOrder.clientEvents || [],
+    clientEvents: dbOrder.clientEvents || [], // Database column is camelCase
     createdAt: dbOrder.createdAt,
     updatedAt: dbOrder.updatedAt,
   };
@@ -46,13 +46,13 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
     const payload = {
         name: orderData.name,
-        client_id: orderData.clientId,
-        start_date: orderData.startDate,
-        end_date: orderData.endDate,
+        client_id: orderData.clientId, // Map to snake_case db column
+        start_date: orderData.startDate, // Map to snake_case db column
+        end_date: orderData.endDate, // Map to snake_case db column
         description: orderData.description,
-        proforma_id: orderData.proformaId,
+        proforma_id: orderData.proformaId, // Map to snake_case db column
         booking_id: orderData.bookingId,
-        clientEvents: orderData.clientEvents,
+        clientEvents: orderData.clientEvents, // Database column is camelCase
         createdAt: now,
         updatedAt: now,
     };
@@ -75,13 +75,13 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 export const updateOrder = async (id: string, updates: Partial<OrderFormData>): Promise<Order | null> => {
     const payload = {
       name: updates.name,
-      client_id: updates.clientId,
-      start_date: updates.startDate,
-      end_date: updates.endDate,
+      client_id: updates.clientId, // Map to snake_case db column
+      start_date: updates.startDate, // Map to snake_case db column
+      end_date: updates.endDate, // Map to snake_case db column
       description: updates.description,
-      proforma_id: updates.proformaId,
+      proforma_id: updates.proformaId, // Map to snake_case db column
       booking_id: updates.bookingId,
-      clientEvents: updates.clientEvents,
+      clientEvents: updates.clientEvents, // Database column is camelCase
       updatedAt: new Date().toISOString()
     };
     

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -43,7 +43,7 @@ export default function DailyOrderReportPage() {
                     ...event,
                     orderId: order.id,
                     proformaId: order.proformaId,
-                    clientId: order.clientId, // Pull from parent order
+                    clientId: order.clientId, // Pull customer ID from the top-level order
                 }))
         );
     }
@@ -52,7 +52,7 @@ export default function DailyOrderReportPage() {
         const lowercasedQuery = searchQuery.toLowerCase();
         return eventsForDate.filter(event => {
             const client = getClientById(event.clientId);
-            const clientName = client?.companyName.toLowerCase() || "";
+            const clientName = client?.companyName.toLowerCase() || "unknown";
             switch (filterType) {
                 case 'orderId': return event.orderId.toLowerCase().includes(lowercasedQuery);
                 case 'proformaId': return event.proformaId?.toLowerCase().includes(lowercasedQuery) ?? false;
