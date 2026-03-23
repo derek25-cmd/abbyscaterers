@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { History, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { StockLog } from "@/types";
 import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface RecentStockLogsProps {
   logs: StockLog[];
@@ -59,5 +60,3 @@ export function RecentStockLogs({ logs }: RecentStockLogsProps) {
     </Card>
   );
 }
-
-import { cn } from "@/lib/utils";

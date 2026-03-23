@@ -6,7 +6,6 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
-import { useAttendanceService } from "@/services/attendanceService"; // Assuming existence based on other files
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { RecentOrders } from "@/components/dashboard/recent-orders";
 import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
@@ -21,9 +20,9 @@ import {
 import { useMemo, useEffect, useState } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays, format } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
-import { SalesChart } from "@/components/dashboard/sales-chart";
-import { ExpensesChart } from "@/components/dashboard/expenses-chart";
-import { SalesVsExpensesChart } from "@/components/dashboard/sales-vs-expenses-chart";
+import { SalesChart } from "@/components/dashboard/salesChart";
+import { ExpensesChart } from "@/components/dashboard/expensesChart";
+import { SalesVsExpensesChart } from "@/components/dashboard/salesVsExpensesChart";
 import { WelcomeCard } from "@/components/dashboard/welcome-card";
 import { RevenueByClientChart } from "@/components/dashboard/revenue-by-client-chart";
 import { AssetStatusChart } from "@/components/dashboard/asset-status-chart";
@@ -32,6 +31,7 @@ import { getAssets } from "@/services/assetService";
 import { getAttendanceRecords } from "@/services/attendanceService";
 import { getEmployees } from "@/services/employeeService";
 import { Asset, Attendance, Employee } from "@/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DashboardPage() {
   const { orders: menus, isLoading: menusLoading } = useOrderStorage();
@@ -52,9 +52,9 @@ export default function DashboardPage() {
             getAttendanceRecords(),
             getEmployees()
         ]);
-        setAssets(assetsData);
-        setAttendance(attendanceData);
-        setEmployees(empsData);
+        setAssets(assetsData || []);
+        setAttendance(attendanceData || []);
+        setEmployees(empsData || []);
         setExtraLoading(false);
     }
     fetchExtras();
