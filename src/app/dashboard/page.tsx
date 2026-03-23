@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -214,16 +215,17 @@ export default function DashboardPage() {
             />
         </motion.div>
 
-        {/* Sales & Financial Zone - Reduced Sales card weight, maximized Top Clients clarity */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            <div className="lg:col-span-5">
+        {/* Balanced Financial Zone - Rebalanced to 1:2 ratio */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            <div className="lg:col-span-1">
                 <SalesVsExpensesChart />
             </div>
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-2">
                 <RevenueByClientChart invoices={invoices} clients={clients} />
             </div>
         </div>
 
+        {/* Detailed Trend Zone */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SalesChart />
             <ExpensesChart />
@@ -231,13 +233,9 @@ export default function DashboardPage() {
 
         {/* Operational & Logistics Zone */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-                <AssetStatusChart assets={assets} />
-            </div>
-            <div className="lg:col-span-1">
-                <RecentStockLogs logs={stockLogs} />
-            </div>
-            <div className="lg:col-span-1 space-y-6">
+            <AssetStatusChart assets={assets} />
+            <RecentStockLogs logs={stockLogs} />
+            <div className="space-y-6">
                 <StatsCard
                     title="Inventory Alerts"
                     value={stats.lowStockItems}

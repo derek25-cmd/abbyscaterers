@@ -1,4 +1,5 @@
+
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/classify-dietary-restrictions.ts';
+import '@/ai/flows/business-insight-flow.ts';

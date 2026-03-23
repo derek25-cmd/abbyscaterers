@@ -1,8 +1,9 @@
+
 "use client"
 
 import * as React from "react"
-import { Bar, ComposedChart, Line, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
-import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns"
+import { Bar, ComposedChart, Line, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { format, startOfWeek, startOfMonth, parseISO } from "date-fns"
 import { motion } from "framer-motion"
 
 import {
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/card"
 import {
   ChartConfig,
-  ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { useOrderStorage } from "@/hooks/use-order-storage"
@@ -22,7 +22,7 @@ import { useStockLogStorage } from "@/hooks/use-stock-log-storage"
 import { Button } from "@/components/ui/button"
 import { ChartDialog } from "./chart-dialog"
 
-type TimeUnit = "daily" | "weekly" | "monthly" | "yearly"
+type TimeUnit = "daily" | "weekly" | "monthly"
 
 const chartConfig = {
   sales: {
@@ -47,18 +47,18 @@ export function SalesVsExpensesChart() {
 
     const dataMap = new Map<string, { sales: number, expenses: number }>()
 
-    // Process Sales
     orders.forEach(order => {
       order.clientEvents.forEach(event => {
+        if (!event.date) return;
         const date = parseISO(event.date)
-        const saleAmount = event.unitPrice * event.numberOfPeople
+        const saleAmount = (event.unitPrice || 0) * (event.numberOfPeople || 0)
 
         let key: string;
         switch (timeUnit) {
           case "daily": key = format(date, "yyyy-MM-dd"); break;
           case "weekly": key = format(startOfWeek(date), "yyyy-MM-dd"); break;
           case "monthly": key = format(startOfMonth(date), "yyyy-MM"); break;
-          case "yearly": key = format(startOfYear(date), "yyyy"); break;
+          default: key = format(date, "yyyy-MM");
         }
 
         const current = dataMap.get(key) || { sales: 0, expenses: 0 }
@@ -66,17 +66,17 @@ export function SalesVsExpensesChart() {
       })
     })
 
-    // Process Expenses
     stockLogs.filter(log => log.type === 'Stock Out').forEach(log => {
+      if (!log.date) return;
       const date = parseISO(log.date)
-      const expenseAmount = log.price
+      const expenseAmount = log.price || 0
 
       let key: string;
        switch (timeUnit) {
           case "daily": key = format(date, "yyyy-MM-dd"); break;
           case "weekly": key = format(startOfWeek(date), "yyyy-MM-dd"); break;
           case "monthly": key = format(startOfMonth(date), "yyyy-MM"); break;
-          case "yearly": key = format(startOfYear(date), "yyyy"); break;
+          default: key = format(date, "yyyy-MM");
         }
 
       const current = dataMap.get(key) || { sales: 0, expenses: 0 }
@@ -94,18 +94,18 @@ export function SalesVsExpensesChart() {
             case "daily": displayDate = format(dateObj, 'MMM d'); break;
             case "weekly": displayDate = `W/C ${format(dateObj, 'MMM d')}`; break;
             case "monthly": displayDate = format(dateObj, 'MMM yyyy'); break;
-            case "yearly": displayDate = format(dateObj, 'yyyy'); break;
+            default: displayDate = format(dateObj, 'MMM yyyy');
         }
         return { ...item, date: displayDate };
     });
 
   }, [orders, stockLogs, timeUnit])
 
-  const Chart = (
+  const ChartContent = (
     <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
             data={combinedData}
-            margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+            margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
         >
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
             <XAxis
@@ -126,14 +126,16 @@ export function SalesVsExpensesChart() {
                 cursor={{ fill: 'transparent' }}
                 content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={24} />
+            <Legend verticalAlign="top" height={36}/>
+            <Bar dataKey="expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} barSize={24} name="Stock Out Costs" />
             <Line
                 dataKey="sales"
                 type="monotone"
-                stroke="var(--color-sales)"
+                stroke="hsl(var(--primary))"
                 strokeWidth={3}
-                dot={{ fill: 'var(--color-sales)', r: 4 }}
+                dot={{ fill: 'hsl(var(--primary))', r: 4 }}
                 activeDot={{ r: 6 }}
+                name="Gross Sales"
             />
         </ComposedChart>
     </ResponsiveContainer>
@@ -149,19 +151,19 @@ export function SalesVsExpensesChart() {
         <Card className="h-full flex flex-col shadow-elegant border-primary/10 overflow-hidden">
             <CardHeader className="bg-muted/10 border-b pb-4">
                 <div className="flex justify-between items-start">
-                    <div className="cursor-pointer flex-1 text-center" onClick={() => setIsDialogOpen(true)}>
+                    <div className="cursor-pointer flex-1" onClick={() => setIsDialogOpen(true)}>
                         <CardTitle className="text-xl font-bold text-primary">Sales vs. Expenses</CardTitle>
                         <CardDescription>Income vs. Stock costs.</CardDescription>
                     </div>
                     <div className="flex gap-1">
-                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>M</Button>
-                        <Button size="xs" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('daily')}>D</Button>
+                        <Button size="sm" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>M</Button>
+                        <Button size="sm" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('daily')}>D</Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 pt-6 min-h-[300px] flex justify-center items-center">
-                <div className="h-full w-full">
-                    {Chart}
+            <CardContent className="flex-1 pt-6 min-h-[350px] flex justify-center items-center">
+                <div className="h-full w-full max-w-[95%]">
+                    {ChartContent}
                 </div>
             </CardContent>
             <ChartDialog
@@ -171,7 +173,7 @@ export function SalesVsExpensesChart() {
                 description="Detailed view of income vs costs."
                 chartConfig={chartConfig}
             >
-                {Chart}
+                {ChartContent}
             </ChartDialog>
         </Card>
     </motion.div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -35,19 +36,21 @@ const formatCurrency = (amount: number) => {
   }).format(amount).replace('TZS', 'Tsh');
 };
 
+const calculateInvoiceTotal = (inv: Invoice): number => {
+    const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
+    const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
+    const vat = inv.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
+    return totalBeforeVAT + vat;
+};
+
 export function RevenueByClientChart({ invoices, clients }: RevenueByClientChartProps) {
   const chartData = React.useMemo(() => {
     const revenueMap = new Map<string, number>();
 
     invoices.forEach((inv) => {
       if (!inv.clientId) return;
-      
-      const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-      const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-      const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-      const vat = inv.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
-      const grandTotal = totalBeforeVAT + vat;
-
+      const grandTotal = calculateInvoiceTotal(inv);
       revenueMap.set(inv.clientId, (revenueMap.get(inv.clientId) || 0) + grandTotal);
     });
 
@@ -91,7 +94,7 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                 data={chartData}
                 margin={{
                   top: 5,
-                  right: 120,
+                  right: 140,
                   left: 20,
                   bottom: 5,
                 }}
@@ -129,6 +132,7 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                   dataKey="revenue" 
                   radius={[0, 6, 6, 0]}
                   animationDuration={1500}
+                  fill="hsl(var(--primary))"
                 >
                   {chartData.map((entry, index) => (
                     <Cell 

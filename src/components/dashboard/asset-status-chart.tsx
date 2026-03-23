@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { Label, Pie, PieChart, ResponsiveContainer, Cell, Tooltip } from "recharts";
+import { Label, Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import {
   Card,
   CardContent,
@@ -11,8 +12,6 @@ import {
 } from "@/components/ui/card";
 import {
   ChartConfig,
-  ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Asset } from "@/types";
@@ -43,9 +42,9 @@ interface AssetStatusChartProps {
 export function AssetStatusChart({ assets }: AssetStatusChartProps) {
   const chartData = React.useMemo(() => {
     return [
-      { status: "available", count: assets.filter(a => a.status === 'Available').length, fill: "var(--color-available)" },
-      { status: "inUse", count: assets.filter(a => a.status === 'In Use').length, fill: "var(--color-inUse)" },
-      { status: "maintenance", count: assets.filter(a => a.status === 'Under Maintenance').length, fill: "var(--color-maintenance)" },
+      { status: "available", count: assets.filter(a => a.status === 'Available').length, fill: "hsl(142, 71%, 45%)" },
+      { status: "inUse", count: assets.filter(a => a.status === 'In Use').length, fill: "hsl(var(--primary))" },
+      { status: "maintenance", count: assets.filter(a => a.status === 'Under Maintenance').length, fill: "hsl(0, 84.2%, 60.2%)" },
     ];
   }, [assets]);
 
@@ -82,6 +81,9 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
                                 cx="50%"
                                 cy="50%"
                             >
+                                {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
                                 <Label
                                     content={({ viewBox }) => {
                                         if (viewBox && "cx" in viewBox && "cy" in viewBox) {

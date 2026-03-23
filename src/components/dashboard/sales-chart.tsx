@@ -1,8 +1,9 @@
+
 "use client"
 
 import * as React from "react"
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
-import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns"
+import { format, startOfWeek, startOfMonth, parseISO } from "date-fns"
 import { motion } from "framer-motion"
 
 import {
@@ -21,7 +22,7 @@ import { useOrderStorage } from "@/hooks/use-order-storage"
 import { Button } from "@/components/ui/button"
 import { ChartDialog } from "./chart-dialog"
 
-type TimeUnit = "daily" | "weekly" | "monthly" | "yearly"
+type TimeUnit = "daily" | "weekly" | "monthly"
 
 const chartConfig = {
   sales: {
@@ -43,8 +44,9 @@ export function SalesChart() {
 
     orders.forEach(order => {
       order.clientEvents.forEach(event => {
+        if (!event.date) return;
         const date = parseISO(event.date)
-        const saleAmount = event.unitPrice * event.numberOfPeople
+        const saleAmount = (event.unitPrice || 0) * (event.numberOfPeople || 0)
 
         let key: string;
         switch (timeUnit) {
@@ -57,9 +59,8 @@ export function SalesChart() {
           case "monthly":
             key = format(startOfMonth(date), "yyyy-MM")
             break
-          case "yearly":
-            key = format(startOfYear(date), "yyyy")
-            break
+          default:
+            key = format(date, "yyyy-MM")
         }
 
         dataMap.set(key, (dataMap.get(key) || 0) + saleAmount)
@@ -83,20 +84,17 @@ export function SalesChart() {
             case "monthly":
                 displayDate = format(dateObj, 'MMM yyyy');
                 break;
-            case "yearly":
-                 displayDate = format(dateObj, 'yyyy');
-                break;
         }
         return { ...item, date: displayDate };
     });
 
   }, [orders, timeUnit])
 
-  const Chart = (
+  const ChartInner = (
     <ResponsiveContainer width="100%" height="100%">
         <LineChart
             data={salesData}
-            margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+            margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
         >
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
             <XAxis
@@ -120,9 +118,9 @@ export function SalesChart() {
             <Line
                 dataKey="sales"
                 type="monotone"
-                stroke="var(--color-sales)"
+                stroke="hsl(var(--primary))"
                 strokeWidth={3}
-                dot={{ fill: 'var(--color-sales)', r: 4 }}
+                dot={{ fill: 'hsl(var(--primary))', r: 4 }}
                 activeDot={{ r: 6 }}
             />
         </LineChart>
@@ -144,13 +142,15 @@ export function SalesChart() {
                         <CardDescription>Order value over time.</CardDescription>
                     </div>
                     <div className="flex gap-1">
-                        <Button size="xs" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('weekly')}>W</Button>
-                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>M</Button>
+                        <Button size="sm" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('weekly')}>W</Button>
+                        <Button size="sm" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>M</Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 pt-6 min-h-[250px] flex justify-center items-center">
-                {Chart}
+            <CardContent className="flex-1 pt-6 min-h-[300px] flex justify-center items-center">
+                <div className="h-full w-full max-w-[95%]">
+                    {ChartInner}
+                </div>
             </CardContent>
             <ChartDialog
                 isOpen={isDialogOpen}
@@ -159,7 +159,7 @@ export function SalesChart() {
                 description={`Visual analysis of sales grouped by ${timeUnit}.`}
                 chartConfig={chartConfig}
             >
-                {Chart}
+                {ChartInner}
             </ChartDialog>
         </Card>
     </motion.div>

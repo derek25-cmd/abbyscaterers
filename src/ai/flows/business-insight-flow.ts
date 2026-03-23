@@ -2,7 +2,7 @@
 /**
  * @fileOverview Business Growth Insight AI agent.
  *
- * - generateBusinessInsight - A function that analyzes business metrics and provides growth advice.
+ * - generateBusinessInsightAction - The server action that handles the business analysis process.
  * - BusinessInsightInput - The input type for the analysis function.
  * - BusinessInsightOutput - The return type containing analysis and advice.
  */
@@ -29,10 +29,6 @@ const BusinessInsightOutputSchema = z.object({
 });
 export type BusinessInsightOutput = z.infer<typeof BusinessInsightOutputSchema>;
 
-export async function generateBusinessInsight(input: BusinessInsightInput): Promise<BusinessInsightOutput> {
-  return generateBusinessInsightFlow(input);
-}
-
 const prompt = ai.definePrompt({
   name: 'generateBusinessInsightPrompt',
   input: {schema: BusinessInsightInputSchema},
@@ -54,7 +50,7 @@ Instructions:
 Be concise but professional. Use Tanzanian Shillings (TZS) as the currency context.`,
 });
 
-const generateBusinessInsightFlow = ai.defineFlow(
+export const generateBusinessInsightFlow = ai.defineFlow(
   {
     name: 'generateBusinessInsightFlow',
     inputSchema: BusinessInsightInputSchema,
@@ -65,3 +61,7 @@ const generateBusinessInsightFlow = ai.defineFlow(
     return output!;
   }
 );
+
+export async function generateBusinessInsightAction(input: BusinessInsightInput): Promise<BusinessInsightOutput> {
+  return generateBusinessInsightFlow(input);
+}
