@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts"
 import { format, startOfWeek, startOfMonth, parseISO } from "date-fns"
 import { motion } from "framer-motion"
 
@@ -90,41 +90,39 @@ export function SalesChart() {
 
   }, [orders, timeUnit])
 
-  const ChartInner = (
-    <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-            data={salesData}
-            margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
-        >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
-            <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                fontSize={11}
-            />
-            <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                fontSize={11}
-                tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
-            />
-            <Tooltip
-                cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
-                content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Line
-                dataKey="sales"
-                type="monotone"
-                stroke="hsl(var(--primary))"
-                strokeWidth={3}
-                dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                activeDot={{ r: 6 }}
-            />
-        </LineChart>
-    </ResponsiveContainer>
+  const renderChart = (
+    <LineChart
+        data={salesData}
+        margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
+    >
+        <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+        <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            fontSize={11}
+        />
+        <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            fontSize={11}
+            tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+        />
+        <Tooltip
+            cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
+            content={<ChartTooltipContent indicator="dot" />}
+        />
+        <Line
+            dataKey="sales"
+            type="monotone"
+            stroke="hsl(var(--primary))"
+            strokeWidth={3}
+            dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+            activeDot={{ r: 6 }}
+        />
+    </LineChart>
   )
 
   return (
@@ -148,9 +146,9 @@ export function SalesChart() {
                 </div>
             </CardHeader>
             <CardContent className="flex-1 pt-6 min-h-[300px] flex justify-center items-center">
-                <div className="h-full w-full max-w-[95%]">
-                    {ChartInner}
-                </div>
+                <ChartContainer config={chartConfig} className="h-full w-full max-w-[95%]">
+                    {renderChart}
+                </ChartContainer>
             </CardContent>
             <ChartDialog
                 isOpen={isDialogOpen}
@@ -159,7 +157,7 @@ export function SalesChart() {
                 description={`Visual analysis of sales grouped by ${timeUnit}.`}
                 chartConfig={chartConfig}
             >
-                {ChartInner}
+                {renderChart}
             </ChartDialog>
         </Card>
     </motion.div>

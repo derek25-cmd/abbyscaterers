@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Label, Pie, PieChart, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { Label, Pie, PieChart, Tooltip, Cell } from "recharts";
 import {
   Card,
   CardContent,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import {
   ChartConfig,
+  ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Asset } from "@/types";
@@ -66,7 +67,7 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
             </CardHeader>
             <CardContent className="flex-1 flex justify-center items-center pb-6 min-h-[300px]">
                 <div className="w-full aspect-square max-h-[280px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ChartContainer config={chartConfig} className="w-full h-full">
                         <PieChart>
                             <Tooltip content={<ChartTooltipContent hideLabel />} />
                             <Pie
@@ -115,7 +116,7 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
                                 />
                             </Pie>
                         </PieChart>
-                    </ResponsiveContainer>
+                    </ChartContainer>
                 </div>
             </CardContent>
         </Card>

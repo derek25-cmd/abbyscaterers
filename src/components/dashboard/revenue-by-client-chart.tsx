@@ -8,7 +8,6 @@ import {
   CartesianGrid, 
   XAxis, 
   YAxis, 
-  ResponsiveContainer, 
   Tooltip, 
   Cell,
   LabelList
@@ -20,8 +19,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { 
+  ChartConfig,
+  ChartContainer,
+  ChartTooltipContent
+} from "@/components/ui/chart";
 import { Invoice, Client } from "@/types";
 import { motion } from "framer-motion";
+
+const chartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
 
 interface RevenueByClientChartProps {
   invoices: Invoice[];
@@ -74,6 +85,57 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
     );
   }
 
+  const renderChart = (
+    <BarChart
+      layout="vertical"
+      data={chartData}
+      margin={{
+        top: 5,
+        right: 140,
+        left: 20,
+        bottom: 5,
+      }}
+      barSize={32}
+    >
+      <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.2} />
+      <XAxis type="number" hide />
+      <YAxis
+        dataKey="client"
+        type="category"
+        tickLine={false}
+        tickMargin={10}
+        axisLine={false}
+        fontSize={12}
+        fontWeight={600}
+        width={140}
+      />
+      <Tooltip
+        cursor={{ fill: 'hsl(var(--primary) / 0.05)' }}
+        content={<ChartTooltipContent indicator="dot" />}
+      />
+      <Bar 
+        dataKey="revenue" 
+        radius={[0, 6, 6, 0]}
+        animationDuration={1500}
+        fill="hsl(var(--primary))"
+      >
+        {chartData.map((entry, index) => (
+          <Cell 
+            key={`cell-${index}`} 
+            fill={index === 0 ? 'hsl(var(--primary))' : `hsl(var(--primary) / ${0.8 - index * 0.12})`} 
+          />
+        ))}
+        <LabelList 
+          dataKey="revenue" 
+          position="right" 
+          formatter={formatCurrency}
+          style={{ fontSize: '12px', fontWeight: 'bold', fill: 'hsl(var(--primary))' }}
+          offset={12}
+        />
+      </Bar>
+    </BarChart>
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -88,68 +150,9 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
         </CardHeader>
         <CardContent className="flex-1 pt-8 pb-4 min-h-[350px]">
           <div className="h-full w-full flex justify-center items-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={chartData}
-                margin={{
-                  top: 5,
-                  right: 140,
-                  left: 20,
-                  bottom: 5,
-                }}
-                barSize={32}
-              >
-                <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.2} />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="client"
-                  type="category"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  fontSize={12}
-                  fontWeight={600}
-                  width={140}
-                />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--primary) / 0.05)' }}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-popover border border-border p-3 rounded-lg shadow-xl">
-                          <p className="text-xs font-bold text-popover-foreground mb-1 uppercase tracking-tight">{payload[0].payload.client}</p>
-                          <p className="text-sm font-mono font-bold text-primary">
-                            {formatCurrency(payload[0].value as number)}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar 
-                  dataKey="revenue" 
-                  radius={[0, 6, 6, 0]}
-                  animationDuration={1500}
-                  fill="hsl(var(--primary))"
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={index === 0 ? 'hsl(var(--primary))' : `hsl(var(--primary) / ${0.8 - index * 0.12})`} 
-                    />
-                  ))}
-                  <LabelList 
-                    dataKey="revenue" 
-                    position="right" 
-                    formatter={formatCurrency}
-                    style={{ fontSize: '12px', fontWeight: 'bold', fill: 'hsl(var(--primary))' }}
-                    offset={12}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <ChartContainer config={chartConfig} className="h-full w-full">
+                {renderChart}
+            </ChartContainer>
           </div>
         </CardContent>
       </Card>

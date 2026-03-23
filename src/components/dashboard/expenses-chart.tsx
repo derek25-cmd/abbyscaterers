@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts"
 import { format, startOfWeek, startOfMonth, parseISO } from "date-fns"
 import { motion } from "framer-motion"
 
@@ -91,39 +91,37 @@ export function ExpensesChart() {
 
   }, [logs, timeUnit])
 
-  const ChartInner = (
-    <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-            data={expensesData}
-            margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
-        >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
-            <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                fontSize={11}
-            />
-            <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                fontSize={11}
-                tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
-            />
-            <Tooltip
-                cursor={{ fill: 'hsl(var(--destructive) / 0.05)' }}
-                content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Bar
-                dataKey="expenses"
-                fill="hsl(var(--destructive))"
-                radius={[4, 4, 0, 0]}
-                barSize={32}
-            />
-        </BarChart>
-    </ResponsiveContainer>
+  const renderChart = (
+    <BarChart
+        data={expensesData}
+        margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
+    >
+        <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+        <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            fontSize={11}
+        />
+        <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            fontSize={11}
+            tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+        />
+        <Tooltip
+            cursor={{ fill: 'hsl(var(--destructive) / 0.05)' }}
+            content={<ChartTooltipContent indicator="dot" />}
+        />
+        <Bar
+            dataKey="expenses"
+            fill="hsl(var(--destructive))"
+            radius={[4, 4, 0, 0]}
+            barSize={32}
+        />
+    </BarChart>
   )
 
   return (
@@ -147,9 +145,9 @@ export function ExpensesChart() {
                 </div>
             </CardHeader>
             <CardContent className="flex-1 pt-6 min-h-[300px] flex justify-center items-center">
-                <div className="h-full w-full max-w-[95%]">
-                    {ChartInner}
-                </div>
+                <ChartContainer config={chartConfig} className="h-full w-full max-w-[95%]">
+                    {renderChart}
+                </ChartContainer>
             </CardContent>
             <ChartDialog
                 isOpen={isDialogOpen}
@@ -158,7 +156,7 @@ export function ExpensesChart() {
                 description={`A bar chart analysis of costs by ${timeUnit}.`}
                 chartConfig={chartConfig}
             >
-                {ChartInner}
+                {renderChart}
             </ChartDialog>
         </Card>
     </motion.div>

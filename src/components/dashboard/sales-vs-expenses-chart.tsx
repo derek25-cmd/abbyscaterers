@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Bar, ComposedChart, Line, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { Bar, ComposedChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { format, startOfWeek, startOfMonth, parseISO } from "date-fns"
 import { motion } from "framer-motion"
 
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card"
 import {
   ChartConfig,
+  ChartContainer,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { useOrderStorage } from "@/hooks/use-order-storage"
@@ -101,44 +102,42 @@ export function SalesVsExpensesChart() {
 
   }, [orders, stockLogs, timeUnit])
 
-  const ChartContent = (
-    <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart
-            data={combinedData}
-            margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
-        >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
-            <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                fontSize={11}
-            />
-            <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                fontSize={11}
-                tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
-            />
-            <Tooltip
-                cursor={{ fill: 'transparent' }}
-                content={<ChartTooltipContent indicator="dot" />}
-            />
-            <Legend verticalAlign="top" height={36}/>
-            <Bar dataKey="expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} barSize={24} name="Stock Out Costs" />
-            <Line
-                dataKey="sales"
-                type="monotone"
-                stroke="hsl(var(--primary))"
-                strokeWidth={3}
-                dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Gross Sales"
-            />
-        </ComposedChart>
-    </ResponsiveContainer>
+  const renderChart = (
+    <ComposedChart
+        data={combinedData}
+        margin={{ left: 10, right: 10, top: 20, bottom: 10 }}
+    >
+        <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
+        <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            fontSize={11}
+        />
+        <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            fontSize={11}
+            tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
+        />
+        <Tooltip
+            cursor={{ fill: 'transparent' }}
+            content={<ChartTooltipContent indicator="dot" />}
+        />
+        <Legend verticalAlign="top" height={36}/>
+        <Bar dataKey="expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} barSize={24} name="Stock Out Costs" />
+        <Line
+            dataKey="sales"
+            type="monotone"
+            stroke="hsl(var(--primary))"
+            strokeWidth={3}
+            dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+            activeDot={{ r: 6 }}
+            name="Gross Sales"
+        />
+    </ComposedChart>
   )
 
   return (
@@ -162,9 +161,9 @@ export function SalesVsExpensesChart() {
                 </div>
             </CardHeader>
             <CardContent className="flex-1 pt-6 min-h-[350px] flex justify-center items-center">
-                <div className="h-full w-full max-w-[95%]">
-                    {ChartContent}
-                </div>
+                <ChartContainer config={chartConfig} className="h-full w-full max-w-[95%]">
+                    {renderChart}
+                </ChartContainer>
             </CardContent>
             <ChartDialog
                 isOpen={isDialogOpen}
@@ -173,7 +172,7 @@ export function SalesVsExpensesChart() {
                 description="Detailed view of income vs costs."
                 chartConfig={chartConfig}
             >
-                {ChartContent}
+                {renderChart}
             </ChartDialog>
         </Card>
     </motion.div>
