@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Label, Pie, PieChart } from "recharts";
+import { Label, Pie, PieChart, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Asset } from "@/types";
+import { motion } from "framer-motion";
 
 const chartConfig = {
   count: {
@@ -54,61 +55,67 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
   }, [chartData]);
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>Asset Logistics Status</CardTitle>
-        <CardDescription>Current availability of fleet & equipment</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 pb-0">
-        <ChartContainer
-          config={chartConfig}
-          className="mx-auto aspect-square max-h-[250px]"
-        >
-          <PieChart>
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Pie
-              data={chartData}
-              dataKey="count"
-              nameKey="status"
-              innerRadius={60}
-              strokeWidth={5}
-            >
-              <Label
-                content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    return (
-                      <text
-                        x={viewBox.cx}
-                        y={viewBox.cy}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        <tspan
-                          x={viewBox.cx}
-                          y={viewBox.cy}
-                          className="fill-foreground text-3xl font-bold"
-                        >
-                          {totalAssets}
-                        </tspan>
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy || 0) + 24}
-                          className="fill-muted-foreground"
-                        >
-                          Total Assets
-                        </tspan>
-                      </text>
-                    );
-                  }
-                }}
-              />
-            </Pie>
-          </PieChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
+    <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="h-full"
+    >
+        <Card className="flex flex-col shadow-elegant border-primary/10 h-full">
+            <CardHeader className="items-center pb-0 border-b bg-muted/10 mb-4">
+                <CardTitle className="text-xl font-bold text-primary">Logistics Health</CardTitle>
+                <CardDescription className="pb-4">Fleet & Equipment Readiness</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 flex justify-center items-center pb-6">
+                <div className="w-full aspect-square max-h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Tooltip content={<ChartTooltipContent hideLabel />} />
+                            <Pie
+                                data={chartData}
+                                dataKey="count"
+                                nameKey="status"
+                                innerRadius="65%"
+                                outerRadius="90%"
+                                stroke="hsl(var(--background))"
+                                strokeWidth={4}
+                                paddingAngle={2}
+                            >
+                                <Label
+                                    content={({ viewBox }) => {
+                                        if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                            return (
+                                                <text
+                                                    x={viewBox.cx}
+                                                    y={viewBox.cy}
+                                                    textAnchor="middle"
+                                                    dominantBaseline="middle"
+                                                >
+                                                    <tspan
+                                                        x={viewBox.cx}
+                                                        y={viewBox.cy}
+                                                        className="fill-foreground text-4xl font-bold"
+                                                    >
+                                                        {totalAssets}
+                                                    </tspan>
+                                                    <tspan
+                                                        x={viewBox.cx}
+                                                        y={(viewBox.cy || 0) + 28}
+                                                        className="fill-muted-foreground text-xs font-semibold uppercase tracking-widest"
+                                                    >
+                                                        Total Assets
+                                                    </tspan>
+                                                </text>
+                                            );
+                                        }
+                                    }}
+                                />
+                            </Pie>
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            </CardContent>
+        </Card>
+    </motion.div>
   );
 }

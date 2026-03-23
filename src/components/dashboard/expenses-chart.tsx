@@ -2,8 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
 import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns"
+import { motion } from "framer-motion"
 
 import {
   Card,
@@ -15,7 +16,6 @@ import {
 import {
   ChartConfig,
   ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage"
@@ -95,75 +95,72 @@ export function ExpensesChart() {
   }, [logs, timeUnit])
 
   const Chart = (
-     <BarChart
-        accessibilityLayer
-        data={expensesData}
-        margin={{
-            left: -20,
-            right: 12,
-        }}
+    <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+            data={expensesData}
+            margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
         >
-        <CartesianGrid vertical={false} />
-        <XAxis
-            dataKey="date"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => value}
-        />
-        <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-        />
-        <ChartTooltip
-            cursor={false}
-            content={
-            <ChartTooltipContent
-                indicator="dot"
-                formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+            <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                fontSize={12}
             />
-            }
-        />
-        <Bar
-            dataKey="expenses"
-            fill="var(--color-expenses)"
-            radius={4}
-        />
-    </BarChart>
+            <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                fontSize={12}
+                tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+            />
+            <Tooltip
+                cursor={{ fill: 'hsl(var(--destructive) / 0.05)' }}
+                content={<ChartTooltipContent indicator="dot" />}
+            />
+            <Bar
+                dataKey="expenses"
+                fill="var(--color-expenses)"
+                radius={[4, 4, 0, 0]}
+                barSize={40}
+            />
+        </BarChart>
+    </ResponsiveContainer>
   )
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
-            <CardTitle>Expenses Overview</CardTitle>
-            <CardDescription>
-            Showing total expenses from stocked-out goods {timeUnit}.
-            </CardDescription>
-        </div>
-        <div className="flex gap-2 pt-2">
-            <Button size="sm" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('daily')}>Daily</Button>
-            <Button size="sm" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('weekly')}>Weekly</Button>
-            <Button size="sm" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('monthly')}>Monthly</Button>
-            <Button size="sm" variant={timeUnit === 'yearly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('yearly')}>Yearly</Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-64">
-          {Chart}
-        </ChartContainer>
-      </CardContent>
-       <ChartDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        title="Expenses Overview"
-        description={`Showing total expenses from stocked-out goods ${timeUnit}.`}
-        chartConfig={chartConfig}
-      >
-        {Chart}
-      </ChartDialog>
-    </Card>
+    <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+    >
+        <Card className="shadow-elegant border-primary/10 overflow-hidden">
+            <CardHeader className="bg-muted/10 border-b">
+                <div className="flex justify-between items-center">
+                    <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+                        <CardTitle className="text-xl font-bold text-primary">Expense Summary</CardTitle>
+                        <CardDescription>Stock-out costs over the chosen period.</CardDescription>
+                    </div>
+                    <div className="flex gap-1">
+                        <Button size="xs" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('weekly')}>Weekly</Button>
+                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>Monthly</Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-6 h-64">
+                {Chart}
+            </CardContent>
+            <ChartDialog
+                isOpen={isDialogOpen}
+                setIsOpen={setIsDialogOpen}
+                title="Expense Summary Details"
+                description={`A bar chart analysis of costs by ${timeUnit}.`}
+                chartConfig={chartConfig}
+            >
+                {Chart}
+            </ChartDialog>
+        </Card>
+    </motion.div>
   )
 }

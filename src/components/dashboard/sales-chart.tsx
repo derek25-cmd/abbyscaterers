@@ -2,8 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
 import { format, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns"
+import { motion } from "framer-motion"
 
 import {
   Card,
@@ -15,7 +16,6 @@ import {
 import {
   ChartConfig,
   ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { useOrderStorage } from "@/hooks/use-order-storage"
@@ -71,7 +71,6 @@ export function SalesChart() {
         .map(([date, sales]) => ({ date, sales }))
         .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         
-    // Format date for display
     return sortedData.map(item => {
         let displayDate = item.date;
         const dateObj = parseISO(item.date);
@@ -95,77 +94,74 @@ export function SalesChart() {
   }, [orders, timeUnit])
 
   const Chart = (
-     <LineChart
-        accessibilityLayer
-        data={salesData}
-        margin={{
-            left: -20,
-            right: 12,
-        }}
+    <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+            data={salesData}
+            margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
         >
-        <CartesianGrid vertical={false} />
-        <XAxis
-            dataKey="date"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => value}
-        />
-        <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
-        />
-        <ChartTooltip
-            cursor={false}
-            content={
-            <ChartTooltipContent
-                indicator="dot"
-                formatter={(value) => `Tsh ${Number(value).toLocaleString()}`}
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+            <XAxis
+                dataKey="date"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                fontSize={12}
             />
-            }
-        />
-        <Line
-            dataKey="sales"
-            type="monotone"
-            stroke="var(--color-sales)"
-            strokeWidth={2}
-            dot={true}
-        />
-    </LineChart>
+            <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                fontSize={12}
+                tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+            />
+            <Tooltip
+                cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1 }}
+                content={<ChartTooltipContent indicator="dot" />}
+            />
+            <Line
+                dataKey="sales"
+                type="monotone"
+                stroke="var(--color-sales)"
+                strokeWidth={3}
+                dot={{ fill: 'var(--color-sales)', r: 4 }}
+                activeDot={{ r: 6 }}
+            />
+        </LineChart>
+    </ResponsiveContainer>
   )
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
-            <CardTitle>Sales Overview</CardTitle>
-            <CardDescription>
-            Showing total sales {timeUnit}.
-            </CardDescription>
-        </div>
-        <div className="flex gap-2 pt-2">
-            <Button size="sm" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('daily')}>Daily</Button>
-            <Button size="sm" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('weekly')}>Weekly</Button>
-            <Button size="sm" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('monthly')}>Monthly</Button>
-            <Button size="sm" variant={timeUnit === 'yearly' ? 'secondary' : 'ghost'} onClick={() => setTimeUnit('yearly')}>Yearly</Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-64">
-          {Chart}
-        </ChartContainer>
-      </CardContent>
-       <ChartDialog
-        isOpen={isDialogOpen}
-        setIsOpen={setIsDialogOpen}
-        title="Sales Overview"
-        description={`Showing total sales ${timeUnit}.`}
-        chartConfig={chartConfig}
-      >
-        {Chart}
-      </ChartDialog>
-    </Card>
+    <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+    >
+        <Card className="shadow-elegant border-primary/10 overflow-hidden">
+            <CardHeader className="bg-muted/10 border-b">
+                <div className="flex justify-between items-center">
+                    <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+                        <CardTitle className="text-xl font-bold text-primary">Sales Trend</CardTitle>
+                        <CardDescription>Total sales value over time.</CardDescription>
+                    </div>
+                    <div className="flex gap-1">
+                        <Button size="xs" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('weekly')}>Weekly</Button>
+                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>Monthly</Button>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-6 h-64">
+                {Chart}
+            </CardContent>
+            <ChartDialog
+                isOpen={isDialogOpen}
+                setIsOpen={setIsDialogOpen}
+                title="Sales Trend Details"
+                description={`Visual analysis of sales grouped by ${timeUnit}.`}
+                chartConfig={chartConfig}
+            >
+                {Chart}
+            </ChartDialog>
+        </Card>
+    </motion.div>
   )
 }

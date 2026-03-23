@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -39,15 +40,12 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
   const chartData = React.useMemo(() => {
     const revenueMap = new Map<string, number>();
 
-    // Factual calculation of revenue from all final invoices
     invoices.forEach((inv) => {
       if (!inv.clientId) return;
       
       const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
       const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
       const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-      
-      // VAT logic: 18% if exclusive, 0 if inclusive (already part of unit price)
       const vat = inv.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
       const grandTotal = totalBeforeVAT + vat;
 
@@ -60,44 +58,45 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
         revenue,
       }))
       .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5); // Focus on Top 5 for clarity
+      .slice(0, 5);
   }, [invoices, clients]);
 
   if (chartData.length === 0) {
     return (
-      <Card className="h-full flex flex-col justify-center items-center text-center p-6 border-dashed">
+      <Card className="h-full flex flex-col justify-center items-center text-center p-6 border-dashed border-2">
         <div className="p-4 bg-muted rounded-full mb-4">
-          <CardTitle className="text-muted-foreground text-sm">No Revenue Data</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm uppercase tracking-wider">Financial Data Empty</CardTitle>
         </div>
-        <CardDescription>Generate final invoices to see your top performing clients here.</CardDescription>
+        <CardDescription>Generate final invoices to visualize your top performers.</CardDescription>
       </Card>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.6 }}
+      className="h-full"
     >
-      <Card className="overflow-hidden shadow-elegant border-primary/10">
+      <Card className="overflow-hidden shadow-elegant border-primary/10 h-full flex flex-col">
         <CardHeader className="bg-muted/10 border-b pb-4">
           <CardTitle className="text-xl font-bold text-primary">Top Performing Clients</CardTitle>
-          <CardDescription>Billed revenue concentration (Top 5)</CardDescription>
+          <CardDescription>Direct billed revenue concentration (Top 5)</CardDescription>
         </CardHeader>
-        <CardContent className="pt-8 pb-4">
-          <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+        <CardContent className="flex-1 pt-8 pb-4 min-h-[300px]">
+          <div className="h-full w-full flex justify-center">
+            <ResponsiveContainer width="95%" height="100%">
               <BarChart
                 layout="vertical"
                 data={chartData}
                 margin={{
                   top: 5,
-                  right: 100, // Extra space for labels
-                  left: 20,
+                  right: 80,
+                  left: 10,
                   bottom: 5,
                 }}
-                barSize={32}
+                barSize={28}
               >
                 <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.3} />
                 <XAxis type="number" hide />
@@ -107,9 +106,9 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                   tickLine={false}
                   tickMargin={10}
                   axisLine={false}
-                  fontSize={13}
+                  fontSize={12}
                   fontWeight={600}
-                  width={140}
+                  width={120}
                 />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
@@ -117,7 +116,7 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                     if (active && payload && payload.length) {
                       return (
                         <div className="bg-popover border border-border p-3 rounded-lg shadow-xl">
-                          <p className="text-sm font-bold text-popover-foreground mb-1">{payload[0].payload.client}</p>
+                          <p className="text-xs font-bold text-popover-foreground mb-1 uppercase tracking-tight">{payload[0].payload.client}</p>
                           <p className="text-sm font-mono font-bold text-primary">
                             {formatCurrency(payload[0].value as number)}
                           </p>
@@ -135,14 +134,14 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                   {chartData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={index === 0 ? 'hsl(var(--primary))' : `hsl(var(--primary) / ${0.9 - index * 0.15})`} 
+                      fill={index === 0 ? 'hsl(var(--primary))' : `hsl(var(--primary) / ${0.8 - index * 0.15})`} 
                     />
                   ))}
                   <LabelList 
                     dataKey="revenue" 
                     position="right" 
                     formatter={formatCurrency}
-                    style={{ fontSize: '12px', fontWeight: 'bold', fill: 'hsl(var(--primary))' }}
+                    style={{ fontSize: '11px', fontWeight: 'bold', fill: 'hsl(var(--primary))' }}
                     offset={10}
                   />
                 </Bar>
