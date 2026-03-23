@@ -6,6 +6,7 @@ import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
+import { useProductStorage } from "@/hooks/use-product-storage";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { RecentOrders } from "@/components/dashboard/recent-orders";
 import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const { ingredients, isLoading: ingredientsLoading } = useIngredientStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();
   const { logs: stockLogs, isLoading: logsLoading } = useStockLogStorage();
+  const { products, isLoading: productsLoading } = useProductStorage();
   
   const [assets, setAssets] = useState<Asset[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -113,7 +115,8 @@ export default function DashboardPage() {
         ).length;
     }, 0);
 
-    const lowStockItems = ingredients.filter(i => (i.quantityUsed || 0) > 0 && (i.quantityUsed || 0) < 5).length;
+    // Get low stock count from Product Catalog
+    const lowStockItems = products.filter(p => p.quantity > 0 && p.quantity < p.minStock).length;
 
     // Find top client name
     const revenueMap = new Map<string, number>();
@@ -137,11 +140,11 @@ export default function DashboardPage() {
       revenueLastMonth,
       topClientName
     };
-  }, [menus, invoices, ingredients, attendance, employees, clients]);
+  }, [menus, invoices, ingredients, attendance, employees, clients, products]);
 
   // Fetch AI Insight when stats are ready
   useEffect(() => {
-    if (!extraLoading && !menusLoading && !invoicesLoading && !clientsLoading) {
+    if (!extraLoading && !menusLoading && !invoicesLoading && !clientsLoading && !productsLoading) {
         const fetchInsight = async () => {
             setIsAiLoading(true);
             const result = await generateBusinessInsightAction({
@@ -155,16 +158,16 @@ export default function DashboardPage() {
                 attendanceRate: stats.attendanceRate,
             });
             
-            if (!('error' in result)) {
+            if (result && !('error' in result)) {
                 setAiInsight(result);
             }
             setIsAiLoading(false);
         };
         fetchInsight();
     }
-  }, [extraLoading, menusLoading, invoicesLoading, clientsLoading, stats]);
+  }, [extraLoading, menusLoading, invoicesLoading, clientsLoading, productsLoading, stats]);
 
-  const isLoading = menusLoading || invoicesLoading || ingredientsLoading || clientsLoading || logsLoading || extraLoading;
+  const isLoading = menusLoading || invoicesLoading || ingredientsLoading || clientsLoading || logsLoading || extraLoading || productsLoading;
 
   if (isLoading) {
     return <LoadingPage title="Loading Your Dashboard" message="Crunching the latest numbers, just for you..."/>;
