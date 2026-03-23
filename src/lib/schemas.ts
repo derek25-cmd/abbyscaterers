@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 import { RECIPE_TYPES, REGIONS } from "@/types";
 
@@ -182,57 +183,11 @@ export const InvoiceItemSchema = z.object({
 });
 export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 
-
-// Proforma Invoice Schema
-export const ProformaInvoiceSchema = z.object({
-    id: z.string().optional(),
-    invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
-    clientId: z.string().nullable().optional(),
-    receiverName: z.string().optional(),
-    receiverPosition: z.string().optional(),
-    lpoNumber: z.string().optional(),
-    location: z.string().optional(),
-    region: z.enum(REGIONS).optional(),
-    numberOfDays: z.number().min(1),
-    multiplyByDays: z.boolean(),
-    serviceCharge: z.number().min(0),
-    transportCosts: z.number().min(0),
-    vatType: z.enum(['inclusive', 'exclusive']),
-    selectedEventType: z.string().optional(),
-    customEventType: z.string().optional(),
-    startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
-    endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
-    serviceFields: z.record(z.boolean()),
-    serviceDesc: z.string().optional(),
-    items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
-}).refine(data => {
-    const start = new Date(data.startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(data.endDate);
-    end.setHours(23, 59, 59, 999);
-
-    if (start > end) return false;
-
-    // Check if each item date is within the range (inclusive)
-    for (const item of data.items) {
-        if (item.date && isValidDate(item.date)) {
-            const itemDate = new Date(item.date);
-             if (itemDate < start || itemDate > end) {
-                return false;
-            }
-        }
-    }
-    return true;
-}, {
-    message: "End date cannot be before start date, and all item dates must be within the start and end date range.",
-    path: ["endDate"], 
-});
-
-export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
-
-
-// Final Invoice Schema
-export const FinalInvoiceSchema = z.object({
+/**
+ * Base Invoice Schema for shared validation across Proforma and Final Invoices.
+ * Required for components like CloseBookingDialog.
+ */
+export const baseInvoiceSchema = z.object({
     id: z.string().optional(),
     invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
     clientId: z.string().nullable().optional(),
@@ -253,6 +208,39 @@ export const FinalInvoiceSchema = z.object({
     serviceFields: z.record(z.boolean()),
     serviceDesc: z.string().optional(),
     items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
+});
+
+// Proforma Invoice Schema
+export const ProformaInvoiceSchema = baseInvoiceSchema.extend({
+    startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
+    endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
+}).refine(data => {
+    const start = new Date(data.startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(data.endDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (start > end) return false;
+
+    for (const item of data.items) {
+        if (item.date && isValidDate(item.date)) {
+            const itemDate = new Date(item.date);
+             if (itemDate < start || itemDate > end) {
+                return false;
+            }
+        }
+    }
+    return true;
+}, {
+    message: "End date cannot be before start date, and all item dates must be within the start and end date range.",
+    path: ["endDate"], 
+});
+
+export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
+
+
+// Final Invoice Schema
+export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     proformaId: z.string().optional(),
     status: z.enum(['outstanding', 'paid']),
     paymentDate: z.string().optional().nullable(),

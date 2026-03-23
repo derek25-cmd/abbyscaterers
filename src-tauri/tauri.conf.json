@@ -1,0 +1,38 @@
+
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "catersmart-client-manager",
+  "version": "0.1.0",
+  "identifier": "com.catersmart.client-manager",
+  "build": {
+    "frontendDist": "https://studio--catersmart-client-manager.us-central1.hosted.app",
+    "devUrl": "https://studio--catersmart-client-manager.us-central1.hosted.app",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Catersmart Client Manager",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' https://studio--catersmart-client-manager.us-central1.hosted.app; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://studio--catersmart-client-manager.us-central1.hosted.app; connect-src 'self' https://studio--catersmart-client-manager.us-central1.hosted.app; img-src 'self' data: https://studio--catersmart-client-manager.us-central1.hosted.app;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
