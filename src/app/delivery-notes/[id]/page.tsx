@@ -14,11 +14,13 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { LoadingPage } from "@/components/layout/loading-page";
+import { useSettingsStorage } from "@/hooks/use-settings-storage";
 
 export default function DeliveryNoteViewPage() {
     const params = useParams();
     const { getDeliveryNoteById, isLoading: notesLoading } = useDeliveryNoteStorage();
     const { getClientById, isLoading: clientsLoading } = useClientStorage();
+    const { settings } = useSettingsStorage();
     const { toast } = useToast();
 
     const [deliveryNote, setDeliveryNote] = useState<DeliveryNote | undefined>(undefined);
@@ -41,7 +43,6 @@ export default function DeliveryNoteViewPage() {
         
         if (foundNote) {
             setDeliveryNote(foundNote);
-            // Use the correct snake_case field name
             if (foundNote.client_id) {
                 const foundClient = getClientById(foundNote.client_id);
                 setClient(foundClient);
@@ -67,8 +68,15 @@ export default function DeliveryNoteViewPage() {
             return;
         }
 
+        const pdfScale = settings.pdfScale || 2.0;
+
         try {
-            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const canvas = await html2canvas(element, { 
+                scale: pdfScale, 
+                useCORS: true,
+                logging: false,
+                allowTaint: true
+            });
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = 210;
@@ -103,7 +111,10 @@ export default function DeliveryNoteViewPage() {
     return (
         <>
             <div className="flex justify-between items-center mb-6 print:hidden">
-                <h1 className="text-2xl font-bold">Delivery Note Preview</h1>
+                <div>
+                    <h1 className="text-2xl font-bold text-primary">Delivery Note Preview</h1>
+                    <p className="text-sm text-muted-foreground">Adjust "Content Scale Factor" in Settings to fit the page better.</p>
+                </div>
                 <div className="space-x-2">
                     <Button variant="outline" onClick={handlePrint}>
                         <Printer className="w-4 h-4 mr-2" /> Print
