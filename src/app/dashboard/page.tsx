@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -20,9 +19,9 @@ import {
 import { useMemo, useEffect, useState } from "react";
 import { isThisMonth, isFuture, isWithinInterval, addDays, format } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
-import { SalesChart } from "@/components/dashboard/salesChart";
-import { ExpensesChart } from "@/components/dashboard/expensesChart";
-import { SalesVsExpensesChart } from "@/components/dashboard/salesVsExpensesChart";
+import { SalesChart } from "@/components/dashboard/sales-chart";
+import { ExpensesChart } from "@/components/dashboard/expenses-chart";
+import { SalesVsExpensesChart } from "@/components/dashboard/sales-vs-expenses-chart";
 import { WelcomeCard } from "@/components/dashboard/welcome-card";
 import { RevenueByClientChart } from "@/components/dashboard/revenue-by-client-chart";
 import { AssetStatusChart } from "@/components/dashboard/asset-status-chart";
@@ -55,10 +54,10 @@ export default function DashboardPage() {
         setAssets(assetsData || []);
         setAttendance(attendanceData || []);
         setEmployees(empsData || []);
-        setExtraLoading(false);
+        extraLoading && setExtraLoading(false);
     }
     fetchExtras();
-  }, []);
+  }, [extraLoading]);
 
   const isLoading = menusLoading || invoicesLoading || ingredientsLoading || clientsLoading || logsLoading || extraLoading;
 

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -6,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { ProformaInvoiceTemplate } from "@/components/proforma-invoices/proforma-invoice-template";
-import type { ProformaInvoice, Client } from "@/types";
+import type { ProformaInvoice, Client, Region } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Eye, EyeOff } from "lucide-react";
@@ -20,7 +19,6 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
@@ -29,6 +27,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { CreateInvoiceDialog } from "@/components/proforma-invoices/create-invoice-dialog";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -46,6 +45,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [exporting, setExporting] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passcode, setPasscode] = useState("");
+  const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
 
@@ -102,76 +102,81 @@ export function ProformaInvoiceViewPageComponent() {
     const pdfScale = settings.pdfScale || 2.0;
 
     try {
-        const pdf = new jsPDF('p', 'pt', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const marginX = 30;
-        const marginTop = 20;
-        const marginBottom = 5;
-        const usableWidth = pageWidth - (marginX * 2);
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 30;
+      const marginTop = 20;
+      const marginBottom = 5;
+      const usableWidth = pageWidth - (marginX * 2);
 
-        const canvasOpts = { 
-            scale: pdfScale, 
-            useCORS: true,
-            logging: false,
-            allowTaint: true
-        };
+      const canvasOpts = { 
+          scale: pdfScale, 
+          useCORS: true,
+          logging: false,
+          allowTaint: true
+      };
 
-        const headerCanvas = await html2canvas(headerElement, canvasOpts);
-        const contentCanvas = await html2canvas(contentElement, canvasOpts);
-        const footerCanvas = await html2canvas(footerElement, canvasOpts);
+      const headerCanvas = await html2canvas(headerElement, canvasOpts);
+      const contentCanvas = await html2canvas(contentElement, canvasOpts);
+      const footerCanvas = await html2canvas(footerElement, canvasOpts);
 
-        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+      const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
 
-        const contentDataURL = contentCanvas.toDataURL('image/png', 1.0);
-        const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
-        const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+      const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-        let yOffset = 0;
-        let pageNumber = 1;
+      const contentDataURL = contentCanvas.toDataURL('image/png', 1.0);
+      const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
+      const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+      
+      let yOffset = 0;
+      let pageNumber = 1;
 
-        while (yOffset < contentImgHeight) {
+      while (yOffset < contentImgHeight) {
           if (pageNumber > 1) pdf.addPage();
-        
+          
           if (showHeaders) {
               pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
           }
-
+          
           const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
           
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = contentCanvas.width;
           sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
-
           const sliceCtx = sliceCanvas.getContext('2d');
+          
           if (sliceCtx) {
             sliceCtx.drawImage(
-                contentCanvas,
-                0, (yOffset / usableWidth) * contentCanvas.width,
-                contentCanvas.width, sliceCanvas.height,
-                0, 0,
-                sliceCanvas.width, sliceCanvas.height
+              contentCanvas,
+              0, (yOffset / usableWidth) * contentCanvas.width, // sourceY
+              contentCanvas.width, sliceCanvas.height,
+              0, 0,
+              sliceCanvas.width, sliceCanvas.height
             );
-            pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop + (showHeaders ? headerHeight : 0), usableWidth, sliceHeight);
+             pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop + (showHeaders ? headerHeight : 0), usableWidth, sliceHeight);
           }
 
-          if (showHeaders) {
-            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-          }
-
+           if (showHeaders) {
+             pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+           }
+          
           yOffset += sliceHeight;
           pageNumber++;
-        }
+      }
 
-        pdf.save(`proforma_${invoice?.id}.pdf`);
-        toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
+      pdf.save(`proforma_${invoice?.id}.pdf`);
+      toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
 
     } catch (error) {
-        console.error("PDF Export Error:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
+      console.error('PDF Export Error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to export PDF.',
+      });
     }
     setExporting(false);
   };
@@ -184,32 +189,17 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async () => {
+  const handleCreateFinalInvoice = async (details: { invoiceId: string, invoiceDate: string, region: Region }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
         const newInvoiceData = {
-            id: `INV-${Date.now()}`,
+            ...invoice,
+            id: details.invoiceId,
+            invoiceDate: details.invoiceDate,
+            region: details.region,
             proformaId: invoice.id,
             status: 'outstanding' as const,
-            invoiceDate: new Date().toISOString(),
-            clientId: invoice.clientId,
-            receiverName: invoice.receiverName,
-            receiverPosition: invoice.receiverPosition,
-            lpoNumber: invoice.lpoNumber,
-            location: invoice.location,
-            numberOfDays: invoice.numberOfDays,
-            multiplyByDays: invoice.multiplyByDays,
-            serviceCharge: invoice.serviceCharge,
-            transportCosts: invoice.transportCosts,
-            vatType: invoice.vatType,
-            selectedEventType: invoice.selectedEventType,
-            customEventType: invoice.customEventType,
-            startDate: invoice.startDate,
-            endDate: invoice.endDate,
-            serviceFields: invoice.serviceFields,
-            serviceDesc: invoice.serviceDesc,
-            items: invoice.items.map(item => ({ ...item })),
             signedAtDate: new Date().toISOString(),
             signedAtLocation: 'Dar es Salaam'
         };
@@ -239,6 +229,7 @@ export function ProformaInvoiceViewPageComponent() {
         });
     } finally {
         setIsCreatingInvoice(false);
+        setIsCreateInvoiceDialogOpen(false);
     }
   }
 
@@ -329,15 +320,22 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={handleCreateFinalInvoice} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+             <Button onClick={() => setIsCreateInvoiceDialogOpen(true)} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
-                {isCreatingInvoice ? "Creating..." : invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
+                {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
           </div>
         </div>
         <div ref={printRef}>
           <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders}/>
         </div>
+        <CreateInvoiceDialog
+            isOpen={isCreateInvoiceDialogOpen}
+            setIsOpen={setIsCreateInvoiceDialogOpen}
+            onSubmit={handleCreateFinalInvoice}
+            isCreating={isCreatingInvoice}
+            proformaId={invoice.id}
+        />
     </>
   );
 }
