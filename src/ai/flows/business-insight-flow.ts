@@ -63,5 +63,5 @@ export const generateBusinessInsightFlow = ai.defineFlow(
 );
 
 export async function generateBusinessInsightAction(input: BusinessInsightInput): Promise<BusinessInsightOutput> {
-  return generateBusinessInsightFlow(input);
+  return await generateBusinessInsightFlow(input);
 }
