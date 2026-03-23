@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -74,31 +73,31 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6 }}
       className="h-full"
     >
       <Card className="overflow-hidden shadow-elegant border-primary/10 h-full flex flex-col">
         <CardHeader className="bg-muted/10 border-b pb-4">
-          <CardTitle className="text-xl font-bold text-primary">Top Performing Clients</CardTitle>
-          <CardDescription>Direct billed revenue concentration (Top 5)</CardDescription>
+          <CardTitle className="text-xl font-bold text-primary text-center">Top Performing Clients</CardTitle>
+          <CardDescription className="text-center">Billed revenue concentration (Top 5)</CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 pt-8 pb-4 min-h-[300px]">
-          <div className="h-full w-full flex justify-center">
-            <ResponsiveContainer width="95%" height="100%">
+        <CardContent className="flex-1 pt-8 pb-4 min-h-[350px]">
+          <div className="h-full w-full flex justify-center items-center">
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
                 data={chartData}
                 margin={{
                   top: 5,
-                  right: 80,
-                  left: 10,
+                  right: 120,
+                  left: 20,
                   bottom: 5,
                 }}
-                barSize={28}
+                barSize={32}
               >
-                <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.3} />
+                <CartesianGrid horizontal={false} strokeDasharray="3 3" opacity={0.2} />
                 <XAxis type="number" hide />
                 <YAxis
                   dataKey="client"
@@ -108,10 +107,10 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                   axisLine={false}
                   fontSize={12}
                   fontWeight={600}
-                  width={120}
+                  width={140}
                 />
                 <Tooltip
-                  cursor={{ fill: 'transparent' }}
+                  cursor={{ fill: 'hsl(var(--primary) / 0.05)' }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       return (
@@ -128,21 +127,21 @@ export function RevenueByClientChart({ invoices, clients }: RevenueByClientChart
                 />
                 <Bar 
                   dataKey="revenue" 
-                  radius={[0, 4, 4, 0]}
+                  radius={[0, 6, 6, 0]}
                   animationDuration={1500}
                 >
                   {chartData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={index === 0 ? 'hsl(var(--primary))' : `hsl(var(--primary) / ${0.8 - index * 0.15})`} 
+                      fill={index === 0 ? 'hsl(var(--primary))' : `hsl(var(--primary) / ${0.8 - index * 0.12})`} 
                     />
                   ))}
                   <LabelList 
                     dataKey="revenue" 
                     position="right" 
                     formatter={formatCurrency}
-                    style={{ fontSize: '11px', fontWeight: 'bold', fill: 'hsl(var(--primary))' }}
-                    offset={10}
+                    style={{ fontSize: '12px', fontWeight: 'bold', fill: 'hsl(var(--primary))' }}
+                    offset={12}
                   />
                 </Bar>
               </BarChart>

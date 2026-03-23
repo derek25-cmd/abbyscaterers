@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -64,9 +63,9 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
         <Card className="flex flex-col shadow-elegant border-primary/10 h-full">
             <CardHeader className="items-center pb-0 border-b bg-muted/10 mb-4">
                 <CardTitle className="text-xl font-bold text-primary">Logistics Health</CardTitle>
-                <CardDescription className="pb-4">Fleet & Equipment Readiness</CardDescription>
+                <CardDescription className="pb-4 text-center">Fleet & Equipment Readiness</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 flex justify-center items-center pb-6">
+            <CardContent className="flex-1 flex justify-center items-center pb-6 min-h-[300px]">
                 <div className="w-full aspect-square max-h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -80,6 +79,8 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
                                 stroke="hsl(var(--background))"
                                 strokeWidth={4}
                                 paddingAngle={2}
+                                cx="50%"
+                                cy="50%"
                             >
                                 <Label
                                     content={({ viewBox }) => {
@@ -101,7 +102,7 @@ export function AssetStatusChart({ assets }: AssetStatusChartProps) {
                                                     <tspan
                                                         x={viewBox.cx}
                                                         y={(viewBox.cy || 0) + 28}
-                                                        className="fill-muted-foreground text-xs font-semibold uppercase tracking-widest"
+                                                        className="fill-muted-foreground text-[10px] font-semibold uppercase tracking-widest"
                                                     >
                                                         Total Assets
                                                     </tspan>

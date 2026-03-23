@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -108,26 +107,26 @@ export function SalesVsExpensesChart() {
             data={combinedData}
             margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
         >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
             <XAxis
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                fontSize={12}
+                fontSize={11}
             />
             <YAxis
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                fontSize={12}
+                fontSize={11}
                 tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
             />
             <Tooltip
                 cursor={{ fill: 'transparent' }}
                 content={<ChartTooltipContent indicator="dot" />}
             />
-            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={30} />
+            <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={24} />
             <Line
                 dataKey="sales"
                 type="monotone"
@@ -142,26 +141,26 @@ export function SalesVsExpensesChart() {
 
   return (
     <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
         className="h-full"
     >
         <Card className="h-full flex flex-col shadow-elegant border-primary/10 overflow-hidden">
             <CardHeader className="bg-muted/10 border-b pb-4">
                 <div className="flex justify-between items-start">
-                    <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
+                    <div className="cursor-pointer flex-1 text-center" onClick={() => setIsDialogOpen(true)}>
                         <CardTitle className="text-xl font-bold text-primary">Sales vs. Expenses</CardTitle>
-                        <CardDescription>Comparison of revenue and direct stock costs.</CardDescription>
+                        <CardDescription>Income vs. Stock costs.</CardDescription>
                     </div>
                     <div className="flex gap-1">
-                        <Button size="xs" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('daily')}>Daily</Button>
-                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>Monthly</Button>
+                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>M</Button>
+                        <Button size="xs" variant={timeUnit === 'daily' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('daily')}>D</Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 pt-6 min-h-[300px]">
-                <div className="h-full w-full flex justify-center">
+            <CardContent className="flex-1 pt-6 min-h-[300px] flex justify-center items-center">
+                <div className="h-full w-full">
                     {Chart}
                 </div>
             </CardContent>

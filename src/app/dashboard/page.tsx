@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -15,14 +14,13 @@ import {
   Package,
   Users,
   Truck,
-  TrendingUp,
   BrainCircuit,
   Loader2,
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
-import { isThisMonth, isLastMonth, isFuture, isWithinInterval, addDays, format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { isThisMonth, isFuture, isWithinInterval, addDays, format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { LoadingPage } from "@/components/layout/loading-page";
 import { SalesChart } from "@/components/dashboard/sales-chart";
 import { ExpensesChart } from "@/components/dashboard/expenses-chart";
@@ -216,10 +214,14 @@ export default function DashboardPage() {
             />
         </motion.div>
 
-        {/* Sales & Financial Zone - Balanced grid span */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-            <SalesVsExpensesChart />
-            <RevenueByClientChart invoices={invoices} clients={clients} />
+        {/* Sales & Financial Zone - Reduced Sales card weight, maximized Top Clients clarity */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div className="lg:col-span-5">
+                <SalesVsExpensesChart />
+            </div>
+            <div className="lg:col-span-7">
+                <RevenueByClientChart invoices={invoices} clients={clients} />
+            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

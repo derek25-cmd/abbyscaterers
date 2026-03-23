@@ -8,7 +8,7 @@
  */
 
 import { ai } from '../genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const BusinessInsightInputSchema = z.object({
   revenueThisMonth: z.number().describe('Total revenue generated this month.'),

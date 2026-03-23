@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -99,19 +98,19 @@ export function SalesChart() {
             data={salesData}
             margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
         >
-            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.2} />
             <XAxis
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                fontSize={12}
+                fontSize={11}
             />
             <YAxis
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                fontSize={12}
+                fontSize={11}
                 tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
             />
             <Tooltip
@@ -135,21 +134,22 @@ export function SalesChart() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        className="h-full"
     >
-        <Card className="shadow-elegant border-primary/10 overflow-hidden">
+        <Card className="shadow-elegant border-primary/10 overflow-hidden h-full flex flex-col">
             <CardHeader className="bg-muted/10 border-b">
                 <div className="flex justify-between items-center">
                     <div className="cursor-pointer" onClick={() => setIsDialogOpen(true)}>
                         <CardTitle className="text-xl font-bold text-primary">Sales Trend</CardTitle>
-                        <CardDescription>Total sales value over time.</CardDescription>
+                        <CardDescription>Order value over time.</CardDescription>
                     </div>
                     <div className="flex gap-1">
-                        <Button size="xs" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('weekly')}>Weekly</Button>
-                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>Monthly</Button>
+                        <Button size="xs" variant={timeUnit === 'weekly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('weekly')}>W</Button>
+                        <Button size="xs" variant={timeUnit === 'monthly' ? 'secondary' : 'ghost'} className="h-7 px-2 text-[10px]" onClick={() => setTimeUnit('monthly')}>M</Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="pt-6 h-64">
+            <CardContent className="flex-1 pt-6 min-h-[250px] flex justify-center items-center">
                 {Chart}
             </CardContent>
             <ChartDialog
