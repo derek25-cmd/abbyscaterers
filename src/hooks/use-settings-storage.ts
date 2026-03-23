@@ -10,6 +10,8 @@ export interface AppSettings {
     headerUrl?: string;
     footerUrl?: string;
     signatureUrl?: string;
+    nextOrderNumber?: number;
+    pdfScale?: number; // Added for PDF fitting
 }
 
 const defaultSettings: AppSettings = {
@@ -17,6 +19,8 @@ const defaultSettings: AppSettings = {
     headerUrl: "",
     footerUrl: "",
     signatureUrl: "",
+    nextOrderNumber: 1,
+    pdfScale: 2.0,
 }
 
 export function useSettingsStorage() {

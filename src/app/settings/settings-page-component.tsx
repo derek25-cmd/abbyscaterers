@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useRef, ChangeEvent, useEffect } from "react";
@@ -11,8 +10,9 @@ import { useSettingsStorage, AppSettings } from "@/hooks/use-settings-storage";
 import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { Loader2, UploadCloud, Hash, RefreshCw } from "lucide-react";
+import { Loader2, UploadCloud, Hash, RefreshCw, FileType } from "lucide-react";
 import { getLatestOrderNumber } from "@/services/orderService";
+import { Slider } from "@/components/ui/slider";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
 type SequenceKey = 'nextOrderNumber';
@@ -195,6 +195,37 @@ export function SettingsPageComponent() {
                     <ImageUploader imageKey="footerUrl" label="Footer Image" />
                     <ImageUploader imageKey="signatureUrl" label="Signature Image" />
                 </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><FileType className="h-5 w-5"/>PDF Generation Settings</CardTitle>
+                    <CardDescription>Adjust the scaling of generated PDF documents to ensure contents fit the page perfectly.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                        <div className="flex justify-between">
+                            <Label>Content Scale Factor</Label>
+                            <span className="text-sm font-mono font-bold text-primary">{(localSettings.pdfScale || 2.0).toFixed(1)}x</span>
+                        </div>
+                        <Slider 
+                            value={[localSettings.pdfScale || 2.0]} 
+                            min={1.0} 
+                            max={4.0} 
+                            step={0.1} 
+                            onValueChange={([val]) => setLocalSettings(prev => ({...prev, pdfScale: val}))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Higher values increase resolution but might make content overflow. Lower values make content smaller to fit more on one page. (Default: 2.0)
+                        </p>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={() => {
+                        updateSettings({ pdfScale: localSettings.pdfScale });
+                        toast({ title: "Settings Saved", description: "PDF scaling settings updated." });
+                    }}>Save PDF Settings</Button>
+                </CardFooter>
             </Card>
             
             <Card>

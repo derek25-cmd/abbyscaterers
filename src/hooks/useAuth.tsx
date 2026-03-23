@@ -17,15 +17,39 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 20 hours in milliseconds: 20 * 60 * 60 * 1000
+const SESSION_TIMEOUT = 72000000; 
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const logout = async () => {
+    localStorage.removeItem('auth_timestamp');
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Error logging out:', error);
+    setUser(null);
+    setSession(null);
+    router.push('/login');
+  };
+
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // Security Check: 20 hour force logout
+      const authTimestamp = localStorage.getItem('auth_timestamp');
+      if (session && authTimestamp) {
+          const now = Date.now();
+          if (now - parseInt(authTimestamp, 10) > SESSION_TIMEOUT) {
+              await logout();
+              setLoading(false);
+              return;
+          }
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -34,6 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN') {
+          localStorage.setItem('auth_timestamp', Date.now().toString());
+      }
+      if (event === 'SIGNED_OUT') {
+          localStorage.removeItem('auth_timestamp');
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -47,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if(error) throw error;
+    localStorage.setItem('auth_timestamp', Date.now().toString());
     router.push('/dashboard');
     return data;
   }
@@ -57,16 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
     });
     if(error) throw error;
-    // The onAuthStateChange listener will handle the user state update
-    // A confirmation email will be sent by Supabase.
     return data;
   }
-
-  const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error('Error logging out:', error);
-    router.push('/login');
-  };
 
   const value = {
     user,
