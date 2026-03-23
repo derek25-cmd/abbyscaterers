@@ -1,4 +1,3 @@
-
 'use client'
 
 import { Button } from "@/components/ui/button";
@@ -259,7 +258,7 @@ export function AttendancePageComponent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRecords.map((record) => (
+                {filteredRecords.length > 0 ? filteredRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">{record.employee}</TableCell>
                     <TableCell>{record.clockIn}</TableCell>
@@ -281,7 +280,11 @@ export function AttendancePageComponent() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No attendance records found for the selected criteria.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
             )}

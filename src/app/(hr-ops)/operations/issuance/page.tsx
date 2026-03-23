@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Badge } from "@/components/ui/badge";
@@ -276,7 +275,7 @@ export default function IssuancePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLog.map((logEntry) => (
+                {filteredLog.length > 0 ? filteredLog.map((logEntry) => (
                   <TableRow key={logEntry.id}>
                     <TableCell className="font-medium">{logEntry.id}</TableCell>
                     <TableCell>{orders.find(o => o.id === logEntry.orderId)?.name || 'N/A'}</TableCell>
@@ -309,7 +308,11 @@ export default function IssuancePage() {
                         </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">No issuance records found.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
             )}

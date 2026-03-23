@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Badge } from "@/components/ui/badge";
@@ -232,7 +231,7 @@ export function PayrollPageComponent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayrolls.map((p) => (
+                {filteredPayrolls.length > 0 ? filteredPayrolls.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.id}</TableCell>
                     <TableCell>{p.employeeName}</TableCell>
@@ -260,7 +259,11 @@ export function PayrollPageComponent() {
                         </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">No payslips found matching your search.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
             )}

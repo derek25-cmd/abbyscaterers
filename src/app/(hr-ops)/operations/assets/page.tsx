@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, MoreHorizontal, Truck, Search, Box, Wrench, CheckCircle } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Truck, Search, Box, Wrench, CheckCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { AddAssetDialog } from '@/components/hr/add-asset-dialog';
 import { EditAssetDialog } from '@/components/hr/edit-asset-dialog';

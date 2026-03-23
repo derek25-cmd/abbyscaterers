@@ -180,7 +180,7 @@ export default function EmployeesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEmployees.map((employee) => (
+                {filteredEmployees.length > 0 ? filteredEmployees.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">{getFullName(employee)}</TableCell>
                     <TableCell>{employee.role}</TableCell>
@@ -207,7 +207,11 @@ export default function EmployeesPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No employees found matching the filters.</TableCell>
+                    </TableRow>
+                )}
               </TableBody>
             </Table>
             )}
