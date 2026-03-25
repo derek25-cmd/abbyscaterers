@@ -63,7 +63,9 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
       : 'Aggregate';
     const reportTitle = `${clientName} Costing Report for ${dateRangeStr}`;
 
-    const allClientEvents = orders.flatMap(order => order.clientEvents);
+    const allClientEvents = orders.flatMap(order =>
+      order.clientEvents.map((event: any) => ({ ...event, clientId: event.clientId || order.clientId }))
+    );
     let eventsForReport = allClientEvents.filter(event => {
       const eventDateStr = event.date?.substring(0, request.periodType === 'daily' ? 10 : 7);
       return eventDateStr && selectedDateStrings.has(eventDateStr);
@@ -102,16 +104,17 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
   const addMiscItem = (type: 'income' | 'expense') => {
       setMiscItems([...miscItems, {
-          id: `temp-${Date.now()}`,
+          id: -Date.now(),
           report_date: reportDate,
           type,
           description: '',
           amount: 0,
+          created_at: new Date().toISOString(),
       } as CostingReportItem]);
   }
   
   const removeMiscItem = async (item: CostingReportItem, index: number) => {
-      if (item.id && !String(item.id).startsWith('temp-')) {
+      if (item.id && item.id > 0) {
           await deleteCostingReport(item.id);
           await fetchMiscItems();
       } else {

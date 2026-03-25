@@ -115,6 +115,7 @@ export const MEAL_TYPES = [
 export type MealType = string;
 
 export interface ClientEvent {
+  clientId?: string; // Populated from parent order when flattening events
   date: string; // ISO date string
   numberOfPeople: number;
   mealType: MealType;
