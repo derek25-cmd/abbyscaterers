@@ -20,19 +20,22 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import type { Issuance, Asset, Employee, Order } from "@/types";
+
+type DetailedIssuance = Issuance & { employee?: Employee; order?: Order };
 
 
 export default function IssuancePage() {
-    const [log, setLog] = useState<any[]>([]);
-    const [assets, setAssets] = useState<any[]>([]);
-    const [employees, setEmployees] = useState<any[]>([]);
-    const [orders, setOrders] = useState<any[]>([]);
+    const [log, setLog] = useState<Issuance[]>([]);
+    const [assets, setAssets] = useState<Asset[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [isIssuanceDialogOpen, setIsIssuanceDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
-    const [selectedLog, setSelectedLog] = useState<any>(null);
+    const [selectedLog, setSelectedLog] = useState<DetailedIssuance | null>(null);
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("assetName");
@@ -101,18 +104,18 @@ export default function IssuancePage() {
         }
     };
     
-    const handleNewIssuance = async (issuanceData: any) => {
+    const handleNewIssuance = async (issuanceData: Omit<Issuance, 'id' | 'createdAt' | 'updatedAt'>) => {
         await addIssuance(issuanceData);
         await fetchData();
     };
 
 
-    const handleEditIssuance = async (updatedLog: any) => {
+    const handleEditIssuance = async (updatedLog: Issuance) => {
         await updateIssuance(updatedLog.id, updatedLog);
         await fetchData();
     };
 
-    const handleReturnIssuance = async (logId: string, returnedItems: any) => {
+    const handleReturnIssuance = async (logId: string, returnedItems: Record<string, number>) => {
         const logEntry = log.find(l => l.id === logId);
         if (!logEntry) return;
 
@@ -142,7 +145,7 @@ export default function IssuancePage() {
         }
         await Promise.all(assetUpdates);
 
-        const newStatus = allReturned ? 'Returned' : 'Partially Returned';
+        const newStatus: Issuance['status'] = allReturned ? 'Returned' : 'Partially Returned';
         const updatedLogEntry = { ...logEntry, items: updatedItems, status: newStatus };
         
         await updateIssuance(logId, updatedLogEntry);
@@ -152,12 +155,12 @@ export default function IssuancePage() {
     };
 
 
-    const openEditDialog = (logEntry: any) => {
+    const openEditDialog = (logEntry: Issuance) => {
       setSelectedLog(logEntry);
       setIsEditDialogOpen(true);
     };
 
-    const openViewDialog = (logEntry: any) => {
+    const openViewDialog = (logEntry: Issuance) => {
       const employee = employees.find(e => {
         const fullName = [e.firstName, e.middleName, e.lastName].filter(Boolean).join(' ');
         return fullName === logEntry.issuedTo;
@@ -172,7 +175,7 @@ export default function IssuancePage() {
       setIsViewDialogOpen(true);
     };
     
-    const openReturnDialog = (logEntry: any) => {
+    const openReturnDialog = (logEntry: Issuance) => {
         setSelectedLog(logEntry);
         setIsReturnDialogOpen(true);
     };
@@ -278,7 +281,12 @@ export default function IssuancePage() {
                 {filteredLog.length > 0 ? filteredLog.map((logEntry) => (
                   <TableRow key={logEntry.id}>
                     <TableCell className="font-medium">{logEntry.id}</TableCell>
-                    <TableCell>{orders.find(o => o.id === logEntry.orderId)?.name || 'N/A'}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">
+                      {logEntry.orderId?.split(',').map((id: string) => {
+                        const order = orders.find(o => o.id === id.trim());
+                        return order ? order.name : id.trim();
+                      }).join(', ') || 'N/A'}
+                    </TableCell>
                     <TableCell>{logEntry.issuedTo}</TableCell>
                     <TableCell><Badge variant="outline">{logEntry.branch}</Badge></TableCell>
                     <TableCell>{logEntry.date}</TableCell>

@@ -35,7 +35,7 @@ export function useInvoiceStorage() {
     return newItem;
   }, [refreshInvoices]);
 
-  const updateInvoice = useCallback(async (originalId: string, updates: FinalInvoiceFormData) => {
+  const updateInvoice = useCallback(async (originalId: string, updates: Partial<FinalInvoiceFormData>) => {
     const success = await updateInStorage(originalId, updates);
     if (success) {
       refreshInvoices();

@@ -98,6 +98,7 @@ export const IngredientSchema = z.object({
   units: z
     .array(UnitAndPriceSchema)
     .min(1, "At least one unit of measure is required"),
+  quantityUsed: z.number().optional(),
 });
 export type IngredientFormData = z.infer<typeof IngredientSchema>;
 
@@ -242,11 +243,12 @@ export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
 // Final Invoice Schema
 export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     proformaId: z.string().optional(),
-    status: z.enum(['outstanding', 'paid']),
+    status: z.enum(['outstanding', 'paid', 'partially paid']),
     paymentDate: z.string().optional().nullable(),
     signedAtDate: z.string().optional(),
     signedAtLocation: z.string().optional(),
     appendProformaId: z.boolean().optional(),
+    amountPaid: z.number().optional().default(0),
 });
 
 

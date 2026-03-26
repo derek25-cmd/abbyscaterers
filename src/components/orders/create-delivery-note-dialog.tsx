@@ -53,7 +53,7 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
 
   useEffect(() => {
     if (order.clientEvents && order.clientEvents.length > 0) {
-      const clientId = order.clientEvents[0].client_id || order.clientEvents[0].clientId;
+      const clientId = (order.clientEvents[0] as any).client_id || order.clientEvents[0].clientId;
       const client = getClientById(clientId);
       if (client?.primaryLocation) {
         form.setValue("location", client.primaryLocation);
@@ -63,15 +63,15 @@ export function CreateDeliveryNoteDialog({ isOpen, setIsOpen, order }: CreateDel
 
   async function onSubmit(data: DeliveryNoteDialogFormData) {
     try {
-      const newNote = await addDeliveryNote(order, data);
+      const newNotes = await addDeliveryNote(order, data);
 
-      if (newNote) {
-        toast({ title: "Success", description: `Delivery note ${newNote.id} created.` });
+      if (newNotes && newNotes.length > 0) {
+        toast({ title: "Success", description: `${newNotes.length} delivery notes created.` });
         setIsOpen(false);
         form.reset();
-        router.push(`/delivery-notes/${newNote.id}`);
+        router.push(`/delivery-notes/${newNotes[0].id}`);
       } else {
-         throw new Error("Failed to create delivery note. The creation service returned null.");
+         throw new Error("Failed to create delivery notes. The creation service returned empty.");
       }
     } catch (error) {
       console.error("Failed to create delivery note:", error);

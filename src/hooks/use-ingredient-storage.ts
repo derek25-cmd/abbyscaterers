@@ -44,7 +44,7 @@ export function useIngredientStorage() {
     return success;
   }, [refreshIngredients]);
 
-  const updateIngredient = useCallback(async (originalId: string, updates: IngredientFormData) => {
+  const updateIngredient = useCallback(async (originalId: string, updates: Partial<IngredientFormData>) => {
     const success = await updateInStorage(originalId, updates);
     if (success) {
       refreshIngredients();

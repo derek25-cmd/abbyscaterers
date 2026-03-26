@@ -31,7 +31,7 @@ export function useStockLogStorage() {
     refreshLogs();
   }, [refreshLogs]);
 
-  const addStockLog = useCallback(async (data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' | 'date'>) => {
+  const addStockLog = useCallback(async (data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>) => {
     await addToStorage(data);
     refreshLogs(); // Refresh after adding
   }, [refreshLogs]);
@@ -59,6 +59,13 @@ export function useStockLogStorage() {
     }
     return success;
   }, [refreshLogs]);
+
+  const bulkUpdateStockLogs = useCallback(async (updates: { id: string, data: Partial<StockLog> }[]) => {
+    for (const update of updates) {
+      await updateInStorage(update.id, update.data);
+    }
+    refreshLogs();
+  }, [refreshLogs]);
   
   const getStockLogById = useCallback((id: string) => {
      return logs.find(l => l.id === id);
@@ -69,6 +76,7 @@ export function useStockLogStorage() {
     isLoading, 
     addStockLog, 
     updateStockLog,
+    bulkUpdateStockLogs,
     deleteStockLog,
     deleteStockLogs,
     refreshLogs,

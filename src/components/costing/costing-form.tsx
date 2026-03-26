@@ -13,6 +13,7 @@ import { Client } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '../ui/date-picker';
+import { CostingReconciliationDialog } from './costing-reconciliation-dialog';
 
 type CostingFormProps = {
     clients: Client[];
@@ -57,13 +58,22 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary" />
-            Aggregate Costing
-          </CardTitle>
-          <CardDescription>
-            Analyze overall profitability across all clients for a selected period.
-          </CardDescription>
+          <div className="flex justify-between items-start">
+              <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-6 h-6 text-primary" />
+                    Aggregate Costing
+                  </CardTitle>
+                  <CardDescription className="pt-2">
+                    Analyze overall profitability across all clients for a selected period.
+                  </CardDescription>
+              </div>
+              <CostingReconciliationDialog>
+                  <Button variant="outline" className="shrink-0" size="sm">
+                      Reconcile Daily Stock
+                  </Button>
+              </CostingReconciliationDialog>
+          </div>
         </CardHeader>
         <CardContent>
             <Button onClick={() => setCostingType('aggregate')} className="w-full" variant={costingType === 'aggregate' ? 'default' : 'outline'}>

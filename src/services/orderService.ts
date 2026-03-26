@@ -47,22 +47,25 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
     // Ensure we don't send empty strings for the foreign key
     const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
 
+    let orderId = orderData.id;
+    if (!orderId) {
+        let nextNum = await getLatestOrderNumber();
+        orderId = `ORD-${String(nextNum).padStart(5, '0')}`;
+    }
+
     const payload = {
+        id: orderId,
         name: orderData.name,
         client_id: clientId, // Map to snake_case db column
         start_date: orderData.startDate, // Map to snake_case db column
         end_date: orderData.endDate, // Map to snake_case db column
         description: orderData.description,
         proforma_id: orderData.proformaId, // Map to snake_case db column
-        booking_id: orderData.bookingId,
+        booking_id: orderData.booking_id,
         clientEvents: orderData.clientEvents, // Database column is camelCase
         createdAt: now,
         updatedAt: now,
     };
-    
-    if(orderData.id){
-      (payload as any).id = orderData.id;
-    }
 
     const { data, error } = await supabase.from('orders').insert([payload]).select().single();
     
@@ -86,7 +89,7 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
       end_date: updates.endDate, // Map to snake_case db column
       description: updates.description,
       proforma_id: updates.proformaId, // Map to snake_case db column
-      booking_id: updates.bookingId,
+      booking_id: updates.booking_id,
       clientEvents: updates.clientEvents, // Database column is camelCase
       updatedAt: new Date().toISOString()
     };
@@ -127,5 +130,5 @@ export const getLatestOrderNumber = async (): Promise<number> => {
         return parseInt(match[1], 10) + 1;
     }
 
-    return 1; // Default if no matching format is found
+    return 589; // Default if no matching format is found
 }

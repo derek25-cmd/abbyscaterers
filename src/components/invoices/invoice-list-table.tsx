@@ -48,6 +48,8 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "../ui/calendar";
 import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { MarkAsPaidDialog } from "./mark-as-paid-dialog";
+import type { Invoice } from "@/types";
 
 
 export function InvoiceListTable() {
@@ -65,6 +67,7 @@ export function InvoiceListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+  const [itemToPay, setItemToPay] = React.useState<Invoice | null>(null);
 
   const [popoverOpen, setPopoverOpen] = React.useState(false);
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
@@ -75,9 +78,9 @@ export function InvoiceListTable() {
     setItemToDelete(invoiceId);
   }, []);
 
-  const confirmDelete = React.useCallback(() => {
+  const confirmDelete = React.useCallback(async () => {
     if (itemToDelete) {
-      const success = deleteInvoice(itemToDelete);
+      const success = await deleteInvoice(itemToDelete);
       if (success) {
         toast({ title: "Invoice Deleted", description: "The invoice has been successfully deleted." });
       } else {
@@ -121,7 +124,7 @@ export function InvoiceListTable() {
     clientName: getClientName(inv.clientId)
   })), [filteredInvoices, getClientName]);
   
-  const columns = React.useMemo(() => getInvoiceColumns(handleDeleteRequest), [handleDeleteRequest]);
+  const columns = React.useMemo(() => getInvoiceColumns(handleDeleteRequest, setItemToPay), [handleDeleteRequest]);
 
   const table = useReactTable({
     data: tableData,
@@ -320,6 +323,11 @@ export function InvoiceListTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MarkAsPaidDialog 
+        invoice={itemToPay} 
+        open={!!itemToPay} 
+        onOpenChange={(open) => !open && setItemToPay(null)} 
+      />
     </div>
   );
 }

@@ -77,35 +77,43 @@ export default function DailyMenuPlannerPage() {
                   menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
                   menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
 
-                  const recipesToUse = savedMenu ? savedMenu.recipes.map(r => r.recipeId) : (event.recipes?.map(r => r.recipeId) || []);
+                  const recipesToUse = savedMenu ? [] : (event.recipes?.map(r => r.recipeId) || []);
                   
-                  const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
-                    return recipesToUse
-                      .map(recipeId => {
-                          const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
-                          return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
-                      })
-                      .filter((name): name is string => name !== null);
-                  };
-
-                  const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
-                      recipes.forEach((recipeName, i) => {
-                          if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
-                              menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
+                  if (savedMenu) {
+                      savedMenu.recipes.forEach(r => {
+                          if (menu[r.rowIndex]) {
+                              menu[r.rowIndex].content = r.name;
                           }
-                      })
-                  }
-                  
-                  const orderMealType = event.mealType?.toLowerCase() || '';
+                      });
+                  } else {
+                      const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
+                        return recipesToUse
+                          .map(recipeId => {
+                              const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
+                              return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
+                          })
+                          .filter((name): name is string => name !== null);
+                      };
 
-                  if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
-                      addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
-                  }
-                  if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
-                      addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
-                  }
-                  if (orderMealType.includes('evening tea')) {
-                      addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
+                      const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
+                          recipes.forEach((recipeName, i) => {
+                              if(MEAL_SECTIONS[section].start + i < MEAL_SECTIONS[section].end) {
+                                  menu[MEAL_SECTIONS[section].start + i] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
+                              }
+                          })
+                      }
+                      
+                      const orderMealType = event.mealType?.toLowerCase() || '';
+
+                      if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
+                          addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
+                      }
+                      if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
+                          addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
+                      }
+                      if (orderMealType.includes('evening tea')) {
+                          addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
+                      }
                   }
 
                   allEventMenus.push({
@@ -147,16 +155,22 @@ export default function DailyMenuPlannerPage() {
     setIsSaving(true);
     try {
         for (const orderMenu of menuData) {
-            const getRecipeId = (name: string) => availableRecipes.find(r => r.recipeName === name)?.recipeNumber || null;
-
-            const breakfastRecipes = orderMenu.menu.slice(MEAL_SECTIONS.BREAKFAST.start, MEAL_SECTIONS.BREAKFAST.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
-            const lunchRecipes = orderMenu.menu.slice(MEAL_SECTIONS.LUNCH.start, MEAL_SECTIONS.LUNCH.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
-            const teaRecipes = orderMenu.menu.slice(MEAL_SECTIONS.TEA.start, MEAL_SECTIONS.TEA.end).map(cell => getRecipeId(cell.content)).filter(Boolean).map(id => ({ recipeId: id! }));
+            const recipesToSave = orderMenu.menu
+                .map((cell, index) => {
+                    if (!cell.content || cell.content.trim() === '' || cell.mealType === 'header') return null;
+                    const recipeId = availableRecipes.find(r => r.recipeName === cell.content)?.recipeNumber;
+                    return {
+                        rowIndex: index,
+                        name: cell.content,
+                        recipeId: recipeId
+                    };
+                })
+                .filter((item): item is { rowIndex: number; name: string; recipeId: string | undefined } => item !== null);
             
             const menuToSave: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'> = {
               order_id: orderMenu.orderId,
               menu_date: format(selectedDate, 'yyyy-MM-dd'),
-              recipes: [...breakfastRecipes, ...lunchRecipes, ...teaRecipes],
+              recipes: recipesToSave as any, // Cast required due to slight mismatch with optional property in DailyMenu
               region: orderMenu.region
             };
 
@@ -208,7 +222,7 @@ export default function DailyMenuPlannerPage() {
           },
           styles: {
               cellPadding: 1,
-              fontSize: 7,
+              fontSize: 10,
           },
           didParseCell: function(data: any) {
               if (data.row.section === 'head') return;
@@ -260,11 +274,16 @@ export default function DailyMenuPlannerPage() {
 
             const pastedMenu = targetOrder.menu.map((cell, index) => {
                 const row = index + 1;
+                const copiedCell = clipboard[index];
+                
+                // If copied cell has no actual content or is a header, keep the target's existing cell
+                if (!copiedCell.content || copiedCell.content.trim() === '' || copiedCell.mealType === 'header') {
+                    return cell;
+                }
+
                 const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
                 const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row < MEAL_SECTIONS.TEA.start;
                 const isTeaSection = row >= MEAL_SECTIONS.TEA.start;
-
-                const copiedCell = clipboard[index];
 
                 if (isBreakfastSection && (targetMealType.includes('breakfast') || targetMealType.includes('brunch'))) {
                     return { ...copiedCell };
@@ -275,7 +294,7 @@ export default function DailyMenuPlannerPage() {
                 if (isTeaSection && targetMealType.includes('tea')) {
                     return { ...copiedCell };
                 }
-                return cell.mealType === 'header' ? cell : { content: '', mealType: '' };
+                return cell;
             });
 
             newMenuData[actualIndex].menu = pastedMenu;

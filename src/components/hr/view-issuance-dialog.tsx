@@ -1,5 +1,5 @@
-// @ts-nocheck
-'use client'
+'use client';
+
 import {
   Dialog,
   DialogContent,
@@ -11,14 +11,21 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "./ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { ScrollArea } from "./ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import jsPDF from 'jspdf';
 import "jspdf-autotable";
-import { Separator } from "./ui/separator";
+import { Separator } from "@/components/ui/separator";
+import type { Issuance, Order, Employee } from "@/types";
 
-export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }) {
+interface ViewIssuanceDialogProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  logEntry: (Issuance & { order?: Order; employee?: Employee }) | null;
+}
+
+export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }: ViewIssuanceDialogProps) {
 
   if (!logEntry) return null;
 
@@ -62,21 +69,22 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }) {
     doc.save(`issuance-note-${logEntry.id}.pdf`);
   };
   
-  const getFullName = (emp) => {
+  const getFullName = (emp: Employee | undefined) => {
     if (!emp) return 'N/A';
     return [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(' ');
   }
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
   
-  const missingItems = logEntry.items?.filter(item => (item.quantityReturned || 0) < item.quantityIssued)
+  const items = logEntry.items || [];
+  const missingItems = items.filter(item => (item.quantityReturned || 0) < item.quantityIssued)
     .map(item => ({...item, missingQty: item.quantityIssued - (item.quantityReturned || 0)}));
     
-  const missingItemsValue = missingItems?.reduce((total, item) => total + (item.missingQty * item.unitPrice), 0);
+  const missingItemsValue = missingItems.length > 0 ? missingItems.reduce((total, item) => total + (item.missingQty * item.unitPrice), 0) : 0;
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: Issuance['status']) => {
       switch (status) {
         case 'Issued':
           return <Badge className="bg-orange-500/20 text-orange-700">{status}</Badge>;

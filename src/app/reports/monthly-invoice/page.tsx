@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, CalendarIcon, ChevronsUpDown, Check, X } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, DollarSign, CheckCircle, AlertCircle, CalendarIcon, ChevronsUpDown, Check, X, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -22,6 +22,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { REGIONS } from "@/types";
+import { InvoiceRegistryDialog } from "@/components/reports/invoice-registry-dialog";
 
 const calculateTotal = (inv: Invoice) => {
     const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -42,6 +43,7 @@ export default function MonthlyInvoiceReportPage() {
   const [regionFilter, setRegionFilter] = useState<Region | "all">("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
+  const [registryInvoice, setRegistryInvoice] = useState<Invoice | null>(null);
 
 
   const filteredInvoices = useMemo(() => {
@@ -76,13 +78,13 @@ export default function MonthlyInvoiceReportPage() {
   }, [invoices, dateRange, selectedClientIds, statusFilter, regionFilter]);
 
   const summary = useMemo(() => {
-    const totalOutstanding = filteredInvoices
-      .filter(inv => inv.status === 'outstanding')
-      .reduce((sum, inv) => sum + calculateTotal(inv), 0);
+    const totalInvoiced = filteredInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0);
+    const totalPaid = filteredInvoices.reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
+    const totalOutstanding = totalInvoiced - totalPaid;
 
     return {
-      totalInvoiced: filteredInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0),
-      totalPaid: filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + calculateTotal(inv), 0),
+      totalInvoiced,
+      totalPaid,
       totalOutstanding,
     };
   }, [filteredInvoices]);
@@ -118,6 +120,7 @@ export default function MonthlyInvoiceReportPage() {
       const doc = new jsPDF({ orientation: 'landscape' });
       const reportTitle = generateDynamicTitle();
       doc.text(reportTitle, 14, 15);
+      // ... (Rest of PDF logic - Snipped for brevity)
 
       const tableColumns = ['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding (TZS)'];
       const tableRows = filteredInvoices.map((invoice, index) => {
@@ -321,6 +324,7 @@ export default function MonthlyInvoiceReportPage() {
                 <TableHead>Invoice Date</TableHead>
                 <TableHead>Payment Made On</TableHead>
                 <TableHead>Outstanding (TZS)</TableHead>
+                <TableHead className="text-right">Registry</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -328,7 +332,8 @@ export default function MonthlyInvoiceReportPage() {
                 <TableRow><TableCell colSpan={8} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
               ) : filteredInvoices.length > 0 ? filteredInvoices.map((invoice, index) => {
                 const client = clients.find((c) => c.id === invoice.clientId);
-                const outstandingAmount = invoice.status === 'paid' ? 0 : calculateTotal(invoice);
+                const totalAmount = calculateTotal(invoice);
+                const outstandingAmount = totalAmount - (invoice.amountPaid || 0);
                 return (
                   <TableRow key={invoice.id}>
                     <TableCell>{index + 1}</TableCell>
@@ -339,6 +344,11 @@ export default function MonthlyInvoiceReportPage() {
                     <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
                     <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A'}</TableCell>
                     <TableCell className="font-semibold text-left">{formatCurrency(outstandingAmount)}</TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => setRegistryInvoice(invoice)}>
+                            <Info className="h-4 w-4 text-primary" />
+                        </Button>
+                    </TableCell>
                   </TableRow>
                 )
               }) : (
@@ -347,13 +357,19 @@ export default function MonthlyInvoiceReportPage() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={7} className="text-right font-bold text-lg">Total Outstanding (TZS)</TableCell>
+                <TableCell colSpan={8} className="text-right font-bold text-lg">Total Outstanding (TZS)</TableCell>
                 <TableCell className="font-bold text-lg text-primary text-left">{formatCurrency(summary.totalOutstanding)}</TableCell>
+                <TableCell></TableCell>
               </TableRow>
             </TableFooter>
           </Table>
         </CardContent>
       </Card>
+      <InvoiceRegistryDialog 
+        invoice={registryInvoice} 
+        open={!!registryInvoice} 
+        onOpenChange={(open) => !open && setRegistryInvoice(null)} 
+      />
     </div>
   );
 }

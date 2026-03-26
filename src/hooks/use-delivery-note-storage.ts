@@ -25,11 +25,11 @@ export function useDeliveryNoteStorage() {
   }, [refreshDeliveryNotes]);
 
   const addDeliveryNote = useCallback(async (order: Order, details: { vehicleRegNo?: string; deliveredBy: string; location: string; }) => {
-    const newDeliveryNote = await createDeliveryNoteInService(order, details);
-    if(newDeliveryNote) {
+    const newDeliveryNotes = await createDeliveryNoteInService(order, details);
+    if(newDeliveryNotes && newDeliveryNotes.length > 0) {
       await refreshDeliveryNotes();
     }
-    return newDeliveryNote;
+    return newDeliveryNotes;
   }, [refreshDeliveryNotes]);
 
   const deleteDeliveryNote = useCallback(async (id: string) => {

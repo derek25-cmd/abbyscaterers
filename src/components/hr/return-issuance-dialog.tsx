@@ -1,6 +1,5 @@
+'use client';
 
-// @ts-nocheck
-'use client'
 import {
   Dialog,
   DialogContent,
@@ -14,15 +13,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "./ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useEffect } from "react";
+import type { Issuance } from "@/types";
 
-export function ReturnIssuanceDialog({ isOpen, setIsOpen, logEntry, onReturnIssuance }) {
-    const [returnedItems, setReturnedItems] = useState({});
+interface ReturnIssuanceDialogProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  logEntry: Issuance | null;
+  onReturnIssuance: (logId: string, returnedItems: Record<string, number>) => void;
+}
+
+export function ReturnIssuanceDialog({ isOpen, setIsOpen, logEntry, onReturnIssuance }: ReturnIssuanceDialogProps) {
+    const [returnedItems, setReturnedItems] = useState<Record<string, number>>({});
 
     useEffect(() => {
         if (logEntry?.items) {
-            const initialReturns = {};
+            const initialReturns: Record<string, number> = {};
             logEntry.items.forEach(item => {
                 // Initialize with the remaining quantity to be returned
                 initialReturns[item.assetId] = 0;
@@ -31,8 +38,11 @@ export function ReturnIssuanceDialog({ isOpen, setIsOpen, logEntry, onReturnIssu
         }
     }, [logEntry]);
 
-    const handleQuantityChange = (assetId, value) => {
+    const handleQuantityChange = (assetId: string, value: string) => {
+        if (!logEntry) return;
         const item = logEntry.items.find(i => i.assetId === assetId);
+        if (!item) return;
+
         const maxReturnable = item.quantityIssued - (item.quantityReturned || 0);
         const returnedValue = Math.max(0, Math.min(Number(value), maxReturnable));
         
@@ -42,8 +52,9 @@ export function ReturnIssuanceDialog({ isOpen, setIsOpen, logEntry, onReturnIssu
         }));
     };
     
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!logEntry) return;
         onReturnIssuance(logEntry.id, returnedItems);
         setIsOpen(false);
     };

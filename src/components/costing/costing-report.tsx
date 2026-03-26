@@ -11,6 +11,8 @@ import CostingSummary from "./CostingSummary";
 import StockLogTable from "./StockLogTable"; 
 import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
+import { useRecipeStorage } from "@/hooks/use-recipe-storage";
+import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import EventIncomeTable from "./EventIncomeTable";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
@@ -35,8 +37,10 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
   
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
   const { products, isLoading: productsLoading } = useProductStorage();
+  const { recipes, isLoading: recipesLoading } = useRecipeStorage();
+  const { ingredients, isLoading: ingredientsLoading, updateIngredient } = useIngredientStorage();
 
-  const isLoading = parentLoading || stockLogsLoading || productsLoading;
+  const isLoading = parentLoading || stockLogsLoading || productsLoading || recipesLoading || ingredientsLoading;
   const reportDate = request?.dates?.[0]; // Assuming single date for now
 
   const fetchMiscItems = async () => {
@@ -51,9 +55,19 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
   }, [reportDate]);
 
 
-  const { title, filteredEvents, filteredStockLogs, ingredientCost } = useMemo(() => {
+  const { title, filteredEvents, filteredStockLogs, spoilageLogs, trainingLogs, spoilageCost, trainingCost, ingredientCost, forecastedIngredientCost } = useMemo(() => {
     if (!request || isLoading) {
-      return { title: "Loading Report...", filteredEvents: [], filteredStockLogs: [], ingredientCost: 0 };
+      return { 
+        title: "Loading Report...", 
+        filteredEvents: [], 
+        filteredStockLogs: [], 
+        spoilageLogs: [],
+        trainingLogs: [],
+        spoilageCost: 0,
+        trainingCost: 0,
+        ingredientCost: 0,
+        forecastedIngredientCost: 0
+      };
     }
 
     const selectedDateStrings = new Set(request.dates);
@@ -81,21 +95,39 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
       return selectedDateStrings.has(logDateStr);
     });
     
-    const stockOutLogs = stockLogsForReport.filter(log => log.type?.toLowerCase() === 'stock out');
-    
-    const calculatedIngredientCost = stockOutLogs.reduce((sum, log) => {
-        return sum + (log.price || 0);
+    // Distinguish waste, training, and regular stock outs
+    const allStockOutLogs = stockLogsForReport.filter(log => log.type?.toLowerCase() === 'stock out');
+    const spoilageLogs = allStockOutLogs.filter(log => log.reason === 'Spoilage');
+    const trainingLogs = allStockOutLogs.filter(log => log.reason === 'Training costs');
+    const regularStockOutLogs = allStockOutLogs.filter(log => log.reason !== 'Spoilage' && log.reason !== 'Training costs');
+
+    const calculatedActualIngredientCost = regularStockOutLogs.reduce((sum, log) => {
+        const qty = log.actual_quantity ?? log.quantity;
+        return sum + (qty * (log.actual_unit_price || 0));
     }, 0);
+
+    const calculatedForecastIngredientCost = regularStockOutLogs.reduce((sum, log) => {
+        return sum + (log.quantity * (log.actual_unit_price || 0));
+    }, 0);
+
+    const spoilageCost = spoilageLogs.reduce((sum, log) => sum + (log.price || 0), 0);
+    const trainingCost = trainingLogs.reduce((sum, log) => sum + (log.price || 0), 0);
     
     return { 
       title: reportTitle,
       filteredEvents: eventsForReport, 
-      filteredStockLogs: stockLogsForReport,
-      ingredientCost: calculatedIngredientCost 
+      filteredStockLogs: regularStockOutLogs,
+      spoilageLogs,
+      trainingLogs,
+      spoilageCost,
+      trainingCost,
+      ingredientCost: calculatedActualIngredientCost,
+      forecastedIngredientCost: calculatedForecastIngredientCost
     };
 
-  }, [request, clients, orders, allLogs, isLoading]);
+  }, [request, clients, orders, allLogs, recipes, ingredients, isLoading]);
   
+  // Destructuring already happened above in useMemo call
   const handleMiscItemChange = (index: number, field: 'description' | 'amount', value: string | number) => {
     const newItems = [...miscItems];
     (newItems[index] as any)[field] = value;
@@ -151,8 +183,12 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
   const incomeFromEvents = filteredEvents.reduce((sum: number, event: any) => sum + (event.unitPrice * event.numberOfPeople), 0);
   const totalIncome = incomeFromEvents + miscIncome;
-  const totalIngredientCost = ingredientCost + miscExpenses;
+  
+  // Total costs includes ingredient usages, explicitly defined misc expenses, and waste pulls.
+  const totalIngredientCost = ingredientCost + miscExpenses + spoilageCost + trainingCost;
   const netProfitLoss = totalIncome - totalIngredientCost;
+  
+  const forecastedTotalCost = forecastedIngredientCost + miscExpenses + spoilageCost + trainingCost;
 
   const handlePdfExport = () => {
     setIsExporting(true);
@@ -211,39 +247,82 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     doc.text("Stock Out Expenses Appendix", 14, lastY + 15);
     (doc as any).autoTable({
         theme: 'grid',
-        head: [['Product', 'Type', 'Qty', 'Unit', 'Total Value (TSHS)']],
-        body: filteredStockLogs.map(log => {
-            const product = products.find(p => p.id === log.productId);
-            return [
-                log.productName,
-                log.type,
-                log.quantity,
-                product?.unit || 'N/A',
-                log.price.toLocaleString(),
-            ];
-        }),
+        head: [['Product', 'Type', 'Forecast Qty', 'Actual Qty', 'Unit', 'Total Actual Value (TSHS)']],
+        body: [
+            ...filteredStockLogs.map(log => {
+                const product = products.find(p => p.id === log.productId);
+                const actualQty = log.actual_quantity ?? log.quantity;
+                const actualCost = actualQty * (log.actual_unit_price || 0);
+                return [
+                    log.productName,
+                    log.type,
+                    log.quantity.toFixed(2),
+                    actualQty.toFixed(2),
+                    product?.unit || 'N/A',
+                    actualCost.toLocaleString(),
+                ];
+            }),
+            ...Array(15).fill(['', '', '', '', '', ''])
+        ],
         startY: lastY + 20,
         headStyles: { fillColor: [220, 38, 38], halign: 'center' },
-        columnStyles: { 4: { halign: 'right' } }
+        columnStyles: { 5: { halign: 'right' } }
     });
-
     lastY = (doc as any).autoTable.previous.finalY;
+    
+    if (spoilageLogs.length > 0) {
+        doc.text("Inventory Waste (Spoilage)", 14, lastY + 15);
+        (doc as any).autoTable({
+            theme: 'grid',
+            head: [['Product', 'Qty', 'Unit', 'Total Waste Value (TSHS)']],
+            body: spoilageLogs.map(log => {
+                const product = products.find(p => p.id === log.productId);
+                return [log.productName, log.quantity, product?.unit || 'N/A', log.price.toLocaleString()];
+            }),
+            startY: lastY + 20,
+            headStyles: { fillColor: [239, 68, 68], halign: 'center' },
+            columnStyles: { 3: { halign: 'right' } }
+        });
+        lastY = (doc as any).autoTable.previous.finalY;
+    }
+
+    if (trainingLogs.length > 0) {
+        doc.text("Training Costs", 14, lastY + 15);
+        (doc as any).autoTable({
+            theme: 'grid',
+            head: [['Product', 'Qty', 'Unit', 'Total Training Cost (TSHS)']],
+            body: trainingLogs.map(log => {
+                const product = products.find(p => p.id === log.productId);
+                return [log.productName, log.quantity, product?.unit || 'N/A', log.price.toLocaleString()];
+            }),
+            startY: lastY + 20,
+            headStyles: { fillColor: [249, 115, 22], halign: 'center' },
+            columnStyles: { 3: { halign: 'right' } }
+        });
+        lastY = (doc as any).autoTable.previous.finalY;
+    }
+
+    // Removed the old HTML table block under forecastMap as per instruction.
+    // The instruction implies that the reconciliation dialog will handle this visualization.
     
     doc.text("Event Income Appendix", 14, lastY + 15);
     (doc as any).autoTable({
         theme: 'grid',
         head: [['Client', 'Pax', 'Meal Type', 'Unit Price (TSHS)', 'Total Price (TSHS)']],
-        body: filteredEvents.map((event: any) => {
-            const client = clients.find(c => c.id === event.clientId)
-            const totalPrice = event.unitPrice * event.numberOfPeople;
-            return [
-                client?.companyName || "N/A", 
-                event.numberOfPeople,
-                event.mealType, 
-                event.unitPrice.toLocaleString(),
-                totalPrice.toLocaleString()
-            ];
-        }),
+        body: [
+            ...filteredEvents.map((event: any) => {
+                const client = clients.find(c => c.id === event.clientId)
+                const totalPrice = event.unitPrice * event.numberOfPeople;
+                return [
+                    client?.companyName || "N/A", 
+                    event.numberOfPeople,
+                    event.mealType, 
+                    event.unitPrice.toLocaleString(),
+                    totalPrice.toLocaleString()
+                ];
+            }),
+            ...Array(6).fill(['', '', '', '', ''])
+        ],
         startY: lastY + 20,
         headStyles: { fillColor: [22, 163, 74], halign: 'center' },
         columnStyles: { 
@@ -281,11 +360,12 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         </div>
       </div>
 
-      <div className="space-y-6 bg-background p-4 rounded-lg">
+        <div className="space-y-6 bg-background p-4 rounded-lg">
         <CostingSummary 
           totalIngredientCost={totalIngredientCost}
           totalIncome={totalIncome}
           netProfitLoss={netProfitLoss}
+          forecastedIngredientCost={forecastedTotalCost}
         />
         
         <Card>

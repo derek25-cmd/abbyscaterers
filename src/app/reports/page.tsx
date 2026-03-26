@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils, ClipboardCheck } from "lucide-react";
+import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils, ClipboardCheck, TrendingUp } from "lucide-react";
 
 const reportCategories = [
   {
@@ -43,6 +43,12 @@ const reportCategories = [
         description: "Analyze ingredient costs against event income.",
         href: "/costing",
         icon: DollarSign,
+      },
+      {
+        title: "Costing Tracker",
+        description: "Trend of costing percentage (forecast vs actual) with AI analysis.",
+        href: "/reports/costing-tracker",
+        icon: TrendingUp,
       },
     ],
   },

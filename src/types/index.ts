@@ -191,7 +191,7 @@ export interface ProformaInvoice {
 export interface Invoice {
   id: string; // The final invoice number
   proformaId?: string; // Optional link to the source proforma
-  status: 'outstanding' | 'paid';
+  status: 'outstanding' | 'paid' | 'partially paid';
   invoiceDate: string; // ISO string
   paymentDate?: string | null; // ISO string
   clientId: string | null;
@@ -217,6 +217,7 @@ export interface Invoice {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
   appendProformaId?: boolean;
+  amountPaid?: number; // Accumulated amount paid
 }
 
 // Daily Costing Snapshot
@@ -404,6 +405,7 @@ export interface StockLog {
     productName: string;
     type: 'Stock In' | 'Stock Out';
     quantity: number;
+    actual_quantity?: number;
     price: number;
     actual_unit_price: number;
     reason: string;
@@ -417,7 +419,7 @@ export interface DailyMenu {
     id: number;
     order_id: string;
     menu_date: string; // YYYY-MM-DD
-    recipes: { recipeId: string }[];
+    recipes: { rowIndex: number; recipeId?: string; name: string }[];
     created_at: string;
     updated_at: string;
     region?: Region;

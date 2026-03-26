@@ -7,26 +7,23 @@ interface CostingSummaryProps {
   totalIngredientCost: number;
   totalIncome: number;
   netProfitLoss: number;
+  forecastedIngredientCost?: number;
 }
 
-const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: CostingSummaryProps) => {
+const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss, forecastedIngredientCost = 0 }: CostingSummaryProps) => {
   const isProfit = netProfitLoss >= 0;
   
   const costingMargin = totalIncome > 0 ? (totalIngredientCost / totalIncome) * 100 : 0;
+  const forecastMargin = totalIncome > 0 ? (forecastedIngredientCost / totalIncome) * 100 : 0;
 
-  let marginStatusText = "";
-  let marginColorClass = "";
+  const getMarginProps = (margin: number) => {
+    if (margin > 30) return { text: "Below break-even", color: "text-destructive" };
+    if (margin >= 25 && margin <= 30) return { text: "Above break-even", color: "text-orange-600" };
+    return { text: "Healthy Margin", color: "text-green-600" };
+  };
 
-  if (costingMargin > 30) {
-    marginStatusText = "Below break-even";
-    marginColorClass = "text-destructive";
-  } else if (costingMargin >= 25 && costingMargin <= 30) {
-    marginStatusText = "Above break-even";
-    marginColorClass = "text-orange-600";
-  } else {
-    marginStatusText = "Healthy Margin";
-    marginColorClass = "text-green-600";
-  }
+  const actualMarginProps = getMarginProps(costingMargin);
+  const forecastedMarginProps = getMarginProps(forecastMargin);
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
@@ -41,12 +38,18 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
           <ShoppingCart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-destructive">
-            {formatCurrency(totalIngredientCost)}
+          <div className="flex flex-col space-y-1">
+             <div className="flex justify-between items-end">
+                <span className="text-xs text-muted-foreground uppercase font-semibold">Actual</span>
+                <span className="text-xl font-bold text-destructive">{formatCurrency(totalIngredientCost)}</span>
+             </div>
+             {forecastedIngredientCost > 0 && (
+                 <div className="flex justify-between items-end">
+                    <span className="text-xs text-muted-foreground uppercase font-semibold">Forecast</span>
+                    <span className="text-md font-semibold text-muted-foreground">{formatCurrency(forecastedIngredientCost)}</span>
+                 </div>
+             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            Ingredient costs + misc. expenses
-          </p>
         </CardContent>
       </Card>
 
@@ -95,15 +98,23 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss }: Cos
           <Percent className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-           <div className={cn(
-               "text-2xl font-bold",
-               marginColorClass
-            )}>
-            {costingMargin.toFixed(1)}%
+          <div className="flex flex-col space-y-1">
+             <div className="flex justify-between items-end">
+                <span className="text-xs text-muted-foreground uppercase font-semibold">Actual</span>
+                <span className={cn("text-xl font-bold", actualMarginProps.color)}>{costingMargin.toFixed(1)}%</span>
+             </div>
+             <p className="text-xs text-right text-muted-foreground mb-1">{actualMarginProps.text}</p>
+             
+             {forecastedIngredientCost > 0 && (
+                 <>
+                  <div className="flex justify-between items-end mt-2">
+                      <span className="text-xs text-muted-foreground uppercase font-semibold">Forecast</span>
+                      <span className={cn("text-md font-semibold", forecastedMarginProps.color)}>{forecastMargin.toFixed(1)}%</span>
+                  </div>
+                  <p className="text-xs text-right text-muted-foreground">{forecastedMarginProps.text}</p>
+                 </>
+             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {marginStatusText}
-          </p>
         </CardContent>
       </Card>
     </div>

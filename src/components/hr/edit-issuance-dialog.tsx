@@ -1,5 +1,5 @@
-// @ts-nocheck
-'use client'
+'use client';
+
 import {
   Dialog,
   DialogContent,
@@ -14,8 +14,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
+import type { Issuance, Employee, Order } from "@/types";
 
-export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance, employees, orders }) {
+interface EditIssuanceDialogProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  logEntry: (Issuance & { order?: Order }) | null;
+  onEditIssuance: (updatedLog: Issuance) => void;
+  employees: Employee[];
+  orders: Order[];
+}
+
+export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance, employees, orders }: EditIssuanceDialogProps) {
   const [issuedTo, setIssuedTo] = useState('');
   const [date, setDate] = useState('');
 
@@ -30,18 +40,22 @@ export function EditIssuanceDialog({ isOpen, setIsOpen, logEntry, onEditIssuance
     }
   }, [logEntry, employees]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if(!issuedTo || !date) {
+    if(!issuedTo || !date || !logEntry) {
         alert("Please fill all required fields");
         return;
     }
 
     const employee = employees.find(e => e.id === issuedTo);
+    if (!employee) return;
+    
     const fullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
     
+    const { order, ...baseIssuance } = logEntry;
+
     onEditIssuance({
-      ...logEntry,
+      ...baseIssuance,
       issuedTo: fullName,
       date,
     });

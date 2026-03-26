@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,12 +29,13 @@ const calculateGrandTotal = (invoice: Invoice): number => {
 };
 
 const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
+    return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 }
 
 
 export const getInvoiceColumns = (
-  onDelete: (invoiceId: string) => void
+  onDelete: (invoiceId: string) => void,
+  onMarkAsPaid: (invoice: Invoice) => void
 ): ColumnDef<InvoiceWithClientName>[] => [
   {
     accessorKey: "id",
@@ -81,7 +82,9 @@ export const getInvoiceColumns = (
         <Badge
           className={cn(
             "capitalize",
-            status === 'paid' ? 'bg-success/20 text-green-700 border-success/30' : 'bg-destructive/10 text-destructive border-destructive/20'
+            status === 'paid' ? 'bg-success/20 text-green-700 border-success/30' : 
+            status === 'partially paid' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+            'bg-destructive/10 text-destructive border-destructive/20'
           )}
           variant="outline"
         >
@@ -114,6 +117,14 @@ export const getInvoiceColumns = (
                 <Edit className="mr-2 h-4 w-4" /> Edit Invoice
               </Link>
             </DropdownMenuItem>
+            {invoice.status === 'outstanding' && (
+              <DropdownMenuItem 
+                onClick={() => onMarkAsPaid(invoice)}
+                className="flex items-center cursor-pointer text-primary focus:text-primary focus:bg-primary/10"
+              >
+                <CreditCard className="mr-2 h-4 w-4" /> Record Payment
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onDelete(invoice.id)}

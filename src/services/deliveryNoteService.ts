@@ -14,7 +14,7 @@ export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
 export const createDeliveryNoteFromOrder = async (
   order: Order, 
   details: { vehicleRegNo?: string; deliveredBy: string; location: string }
-): Promise<DeliveryNote | null> => {
+): Promise<DeliveryNote[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated.");
@@ -22,32 +22,33 @@ export const createDeliveryNoteFromOrder = async (
       throw new Error("Order details are incomplete.");
     }
 
-    // Fetch the latest delivery note ID to manually increment it
-    const { data: latestNote, error: latestNoteError } = await supabase
+    // Fetch recent delivery note IDs to securely calculate the next increment regardless of string padding
+    const { data: recentNotes, error: recentNotesError } = await supabase
       .from('delivery_notes')
       .select('id')
-      .order('id', { ascending: false })
-      .limit(1)
-      .single();
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    if (latestNoteError && latestNoteError.code !== 'PGRST116') { // PGRST116 means no rows found, which is fine
-        throw new Error(`Could not fetch latest delivery note ID: ${latestNoteError.message}`);
+    if (recentNotesError) {
+        throw new Error(`Could not fetch recent delivery note IDs: ${recentNotesError.message}`);
     }
 
     let nextIdNumber = 8892; // Default starting number if no notes exist
-    if (latestNote) {
-        const currentIdNumber = parseInt(latestNote.id, 10);
-        if (!isNaN(currentIdNumber)) {
-            nextIdNumber = currentIdNumber + 1;
+    if (recentNotes && recentNotes.length > 0) {
+        const idNumbers = recentNotes
+            .map(n => parseInt(n.id, 10))
+            .filter(n => !isNaN(n));
+            
+        if (idNumbers.length > 0) {
+            nextIdNumber = Math.max(...idNumbers) + 1;
         }
     }
     
-    const deliveryNoteId = String(nextIdNumber).padStart(6, '0');
-    
+    // Fetch recipes for mapping names
     const recipeIds = order.clientEvents.flatMap(event => event.recipes?.map(r => r.recipeId) || []);
     const uniqueRecipeIds = [...new Set(recipeIds)];
     
-    let recipes = [];
+    let recipes: any[] = [];
     if(uniqueRecipeIds.length > 0) {
       const { data: recipeData, error: recipesError } = await supabase
         .from('recipes')
@@ -55,13 +56,13 @@ export const createDeliveryNoteFromOrder = async (
         .in('recipeNumber', uniqueRecipeIds);
 
       if (recipesError) throw new Error(`Failed to fetch recipes: ${recipesError.message}`);
-      recipes = recipeData;
+      recipes = recipeData || [];
     }
-    const recipeMap = new Map(recipes.map(r => [r.recipeNumber, r.recipeName]));
+    const recipeMap = new Map(recipes.map((r: any) => [r.recipeNumber, r.recipeName]));
 
-    const firstEvent = order.clientEvents[0];
-    const clientId = firstEvent.client_id || firstEvent.clientId;
-    if (!clientId) throw new Error("Client ID is missing from this order event.");
+    const firstEvent = order.clientEvents?.[0] || {};
+    const clientId = order.clientId || firstEvent.clientId;
+    if (!clientId) throw new Error("Client ID is missing from this order.");
 
     const { data: client, error: clientError } = await supabase
       .from('clients')
@@ -71,36 +72,45 @@ export const createDeliveryNoteFromOrder = async (
 
     if (clientError) throw new Error(`Failed to fetch client details: ${clientError.message}`);
 
-    const deliveryItems = order.clientEvents.flatMap(event => 
-        (event.recipes || []).map(recipe => ({
+    const savedNotes: DeliveryNote[] = [];
+
+    for (let i = 0; i < order.clientEvents.length; i++) {
+        const event = order.clientEvents[i];
+        if (!event) continue;
+
+        const deliveryNoteId = String(nextIdNumber).padStart(6, '0');
+        nextIdNumber++;
+
+        const deliveryItems = (event.recipes || []).map(recipe => ({
             qty: event.numberOfPeople,
             itemCode: recipe.recipeId,
             description: recipeMap.get(recipe.recipeId) || 'Unknown Recipe',
-        }))
-    );
-    
-    const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
-      id: deliveryNoteId,
-      order_id: order.id,
-      client_id: clientId,
-      client_name: client?.companyName || 'N/A',
-      delivery_date: new Date().toISOString(),
-      delivery_location: details.location,
-      vehicle_reg_no: details.vehicleRegNo,
-      delivered_by: details.deliveredBy,
-      user_id: user.id,
-      items: deliveryItems,
-    };
+        }));
+        
+        const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
+            id: deliveryNoteId,
+            order_id: order.id,
+            client_id: clientId,
+            client_name: client?.companyName || 'N/A',
+            delivery_date: event.date ? new Date(event.date).toISOString() : new Date().toISOString(),
+            delivery_location: details.location,
+            vehicle_reg_no: details.vehicleRegNo,
+            delivered_by: details.deliveredBy,
+            user_id: user.id,
+            items: deliveryItems,
+        };
 
-    const { data: savedNote, error: insertError } = await supabase
-      .from('delivery_notes')
-      .insert(newDeliveryNote)
-      .select()
-      .single();
+        const { data: savedNote, error: insertError } = await supabase
+            .from('delivery_notes')
+            .insert(newDeliveryNote)
+            .select()
+            .single();
 
-    if (insertError) throw new Error(`Failed to save delivery note: ${insertError.message}`);
+        if (insertError) throw new Error(`Failed to save delivery note for an event: ${insertError.message}`);
+        savedNotes.push(savedNote as DeliveryNote);
+    }
 
-    return savedNote as DeliveryNote;
+    return savedNotes;
 
   } catch (err: any) {
     console.error('Error creating delivery note:', err);

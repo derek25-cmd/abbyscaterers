@@ -148,27 +148,32 @@ export default function StockLogsPage() {
     
     if(!product) {
         toast({ variant: 'destructive', title: "Product not found" });
-        return;
+        throw new Error("Product not found");
     }
 
-    const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
-    await addStockLog(logData);
+    try {
+        const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
+        await addStockLog(logData);
 
-    const updatedProduct = { ...product };
-    if(movement.type === 'Stock In') {
-        updatedProduct.quantity += movement.quantity;
-    } else {
-        if(product.quantity < movement.quantity) {
-            toast({ variant: 'destructive', title: "Not enough stock to log out" });
-            return;
+        const updatedProduct = { ...product };
+        if(movement.type === 'Stock In') {
+            updatedProduct.quantity += movement.quantity;
+        } else {
+            if(product.quantity < movement.quantity) {
+                toast({ variant: 'destructive', title: "Not enough stock to log out" });
+                throw new Error("Not enough stock");
+            }
+            updatedProduct.quantity -= movement.quantity;
         }
-        updatedProduct.quantity -= movement.quantity;
+        
+        await updateProductInStore(product.id, { 
+            quantity: updatedProduct.quantity,
+            unitPrice: movement.actual_unit_price,
+        });
+    } catch (error: any) {
+        console.error("Movement logging failed", error);
+        throw new Error("Failed to register stock log. Please check your connection.");
     }
-    
-    await updateProductInStore(product.id, { 
-        quantity: updatedProduct.quantity,
-        unitPrice: movement.actual_unit_price,
-    });
   };
 
   const handleEditLog = async (updatedLog: any) => {
@@ -270,14 +275,15 @@ export default function StockLogsPage() {
     const newDate = format(newTransferDate, 'yyyy-MM-dd');
     
     try {
-        const updatePromises = selectedRows.map(row => 
-            updateStockLogInStore(row.original.id, { date: newDate })
-        );
-        await Promise.all(updatePromises);
+        let successCount = 0;
+        for (const row of selectedRows) {
+            await updateStockLogInStore(row.original.id, { date: newDate });
+            successCount++;
+        }
         
         toast({
             title: "Transfer Successful",
-            description: `${selectedRows.length} log(s) have been moved to ${format(newTransferDate, 'PPP')}.`,
+            description: `${successCount} log(s) have been moved to ${format(newTransferDate, 'PPP')}.`,
         });
 
         table.resetRowSelection();
@@ -313,16 +319,18 @@ export default function StockLogsPage() {
     setIsPasting(true);
     const newDateStr = format(pasteDate, 'yyyy-MM-dd');
     try {
+      let successCount = 0;
       for (const logToCopy of copiedLogs) {
         const { id, createdAt, updatedAt, ...logData } = logToCopy;
         await addStockLog({
           ...logData,
           date: newDateStr,
         });
+        successCount++;
       }
       toast({
         title: "Paste Successful",
-        description: `${copiedLogs.length} log(s) have been pasted to ${format(pasteDate, 'PPP')}.`
+        description: `${successCount} log(s) have been pasted to ${format(pasteDate, 'PPP')}.`
       });
       setCopiedLogs(null);
       table.resetRowSelection();
