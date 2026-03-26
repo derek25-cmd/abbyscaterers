@@ -709,10 +709,11 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsBundleDialogOpen(false)}>Cancel</Button>
-              <Button onClick={generatePDFBundle}>Generate Bundle</Button>
-            </DialogFooter>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsBundleDialogOpen(false)}>Cancel</Button>
+            <Button onClick={generatePDFBundle}>Generate Bundle</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

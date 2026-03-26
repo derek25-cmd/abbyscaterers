@@ -69,6 +69,10 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
+    "@types/aws-lambda": "^8.10.161",
+    "@types/bunyan": "^1.8.11",
+    "@types/caseless": "^0.12.5",
+    "@types/connect": "^3.4.38",
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^18",
