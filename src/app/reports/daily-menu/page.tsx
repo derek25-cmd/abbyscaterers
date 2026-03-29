@@ -35,8 +35,7 @@ type EventMenu = {
 
 const MEAL_SECTIONS = {
   BREAKFAST: { start: 1, end: 12, title: 'Breakfast' },
-  LUNCH: { start: 13, end: 28, title: 'Lunch/Dinner' },
-  TEA: { start: 29, end: 31, title: 'Evening Tea' },
+  LUNCH: { start: 13, end: 31, title: 'Lunch' },
 };
 
 export default function DailyMenuPlannerPage() {
@@ -80,7 +79,18 @@ export default function DailyMenuPlannerPage() {
     todaysOrders.forEach(order => {
       order.clientEvents.forEach((event, eventIndex) => {
         if (event.date?.startsWith(dateStr)) {
-          // Apply region filter if not "All"
+          // Filter for ONLY Breakfast and Lunch (No Brunch, Dinner, Tea, or Cocktail)
+          const orderMealType = event.mealType?.toLowerCase() || '';
+          const isSpecial = orderMealType.includes('brunch') || 
+                           orderMealType.includes('dinner') || 
+                           orderMealType.includes('tea') || 
+                           orderMealType.includes('cocktail');
+          
+          const isMain = orderMealType.includes('breakfast') || orderMealType.includes('lunch');
+          
+          if (isSpecial || !isMain) return;
+
+          // Apply region filter
           if (regionFilter !== "All" && event.region !== regionFilter) return;
 
           const region = (event.region || "Dar es Salaam") as Region;
@@ -91,8 +101,7 @@ export default function DailyMenuPlannerPage() {
           const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
 
           menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
-          menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch/Dinner', mealType: 'header' };
-          menu[MEAL_SECTIONS.TEA.start - 1] = { content: 'Evening Tea', mealType: 'header' };
+          menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch', mealType: 'header' };
 
           if (savedMenu) {
             savedMenu.recipes.forEach(r => {
@@ -117,11 +126,13 @@ export default function DailyMenuPlannerPage() {
           if (!savedMenu) {
             const recipesToUse = event.recipes?.map(r => r.recipeId) || [];
 
-            const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch/Dinner' | 'Evening Tea') => {
+            const getRecipesForMealType = (mealType: 'Breakfast' | 'Lunch') => {
               return recipesToUse
                 .map(recipeId => {
                   const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
-                  return recipe && recipe.recipeType === mealType ? recipe.recipeName : null;
+                  const isMatch = (mealType === 'Breakfast' && recipe?.recipeType === 'Breakfast') ||
+                                 (mealType === 'Lunch' && recipe?.recipeType === 'Lunch');
+                  return isMatch ? recipe?.recipeName : null;
                 })
                 .filter((name): name is string => name !== null);
             };
@@ -138,16 +149,11 @@ export default function DailyMenuPlannerPage() {
               })
             }
 
-            const orderMealType = event.mealType?.toLowerCase() || '';
-
-            if (orderMealType.includes('breakfast') || orderMealType.includes('brunch')) {
+            if (orderMealType.includes('breakfast')) {
               addRecipesToMenu('BREAKFAST', getRecipesForMealType('Breakfast'));
             }
-            if (orderMealType.includes('lunch') || orderMealType.includes('dinner')) {
-              addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch/Dinner'));
-            }
-            if (orderMealType.includes('evening tea')) {
-              addRecipesToMenu('TEA', getRecipesForMealType('Evening Tea'));
+            if (orderMealType.includes('lunch')) {
+              addRecipesToMenu('LUNCH', getRecipesForMealType('Lunch'));
             }
           }
 
@@ -259,8 +265,7 @@ export default function DailyMenuPlannerPage() {
             const rowIndex = data.row.index;
             if (
               rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
-              rowIndex + 1 === MEAL_SECTIONS.LUNCH.start ||
-              rowIndex + 1 === MEAL_SECTIONS.TEA.start
+              rowIndex + 1 === MEAL_SECTIONS.LUNCH.start
             ) {
               data.cell.styles.fontStyle = 'bold';
               data.cell.styles.fillColor = [254, 249, 195];
@@ -308,16 +313,12 @@ export default function DailyMenuPlannerPage() {
         }
 
         const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
-        const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row < MEAL_SECTIONS.TEA.start;
-        const isTeaSection = row >= MEAL_SECTIONS.TEA.start;
+        const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start;
 
-        if (isBreakfastSection && (targetMealType.includes('breakfast') || targetMealType.includes('brunch'))) {
+        if (isBreakfastSection && targetMealType.includes('breakfast')) {
           return { ...copiedCell };
         }
-        if (isLunchSection && (targetMealType.includes('lunch') || targetMealType.includes('dinner'))) {
-          return { ...copiedCell };
-        }
-        if (isTeaSection && targetMealType.includes('tea')) {
+        if (isLunchSection && targetMealType.includes('lunch')) {
           return { ...copiedCell };
         }
         return cell;
@@ -392,6 +393,14 @@ export default function DailyMenuPlannerPage() {
             >
               <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
               Sync
+            </Button>
+
+            <Button asChild variant="ghost" size="sm" className="h-9 relative">
+              <Link href="/reports/special-menu">
+                <Utensils className="mr-2 h-4 w-4 text-amber-500" />
+                Special Menus
+                <Badge className="absolute -top-2 -right-2 px-1 py-0 h-4 min-w-4 text-[10px] bg-amber-500">New</Badge>
+              </Link>
             </Button>
 
             <Button onClick={handlePdfExport} variant="outline" size="sm" className="h-9" disabled={isExporting || isLoading || menuData.length === 0}>
@@ -484,8 +493,7 @@ export default function DailyMenuPlannerPage() {
                   {Array.from({ length: 32 }).map((_, rowIndex) => {
                     const isHeaderRow = (
                       rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
-                      rowIndex + 1 === MEAL_SECTIONS.LUNCH.start ||
-                      rowIndex + 1 === MEAL_SECTIONS.TEA.start
+                      rowIndex + 1 === MEAL_SECTIONS.LUNCH.start
                     );
 
                     return (
@@ -495,13 +503,11 @@ export default function DailyMenuPlannerPage() {
                           const row = rowIndex + 1;
 
                           const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
-                          const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start && row < MEAL_SECTIONS.TEA.start;
-                          const isTeaSection = row >= MEAL_SECTIONS.TEA.start;
+                          const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start;
 
                           const isDisabled = !isHeaderRow && (
-                            (isBreakfastSection && !mealType.includes('breakfast') && !mealType.includes('brunch')) ||
-                            (isLunchSection && !mealType.includes('lunch') && !mealType.includes('dinner')) ||
-                            (isTeaSection && !mealType.includes('tea'))
+                            (isBreakfastSection && !mealType.includes('breakfast')) ||
+                            (isLunchSection && !mealType.includes('lunch'))
                           );
 
                           return (

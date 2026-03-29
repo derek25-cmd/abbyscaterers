@@ -89,7 +89,7 @@ export interface RecipeIngredientItem {
   unit: UnitOfMeasure;
 }
 
-export const RECIPE_TYPES = ["Breakfast", "Lunch/Dinner", "Evening Tea"] as const;
+export const RECIPE_TYPES = ["Breakfast", "Lunch", "Dinner", "Brunch", "Evening Tea", "Cocktail"] as const;
 export type RecipeType = (typeof RECIPE_TYPES)[number];
 
 export interface Recipe {

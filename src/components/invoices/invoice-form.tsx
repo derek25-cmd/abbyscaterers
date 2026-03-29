@@ -350,83 +350,30 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
         try {
+            // 1. First, ensure all draft orders are persisted to the database
+            // This will replace DRAFT-ORD- IDs with real ORD-XXXXX IDs in the form state
+            await persistDraftOrders();
+            
+            // 2. Get the fresh values from the form (now containing real Order IDs)
+            const freshData = form.getValues();
+            
             let result;
             if (isEditMode && invoiceId) {
-                result = await updateInvoice(invoiceId, data);
+                result = await updateInvoice(invoiceId, freshData);
             } else {
-                result = await addInvoice(data);
+                result = await addInvoice(freshData);
             }
 
             if (result) {
-                // Determine which items are "New Orders" that need persistence
-                const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
-                
-                // Group by temporary Order ID
-                const orderGroups = new Map<string, typeof newOrderItems>();
-                newOrderItems.forEach(item => {
-                    const group = orderGroups.get(item.orderId!) || [];
-                    group.push(item);
-                    orderGroups.set(item.orderId!, group);
-                });
-
-                // Persist new orders
-                let currentItems = [...form.getValues('items')];
-                for (const [tempId, groupItems] of orderGroups.entries()) {
-                    const validItems = groupItems.filter(i => i.date);
-                    if (validItems.length === 0) continue;
-
-                    const eventDates = validItems.map(i => new Date(i.date!));
-                    const startDate = format(new Date(Math.min(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
-                    const endDate = format(new Date(Math.max(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
-
-                    const firstItem = validItems[0];
-                    const orderPayload = {
-                        name: `Order for ${data.clientId} - ${firstItem.particularDescription}`,
-                        clientId: data.clientId!,
-                        startDate: startDate,
-                        endDate: endDate,
-                        description: `Manually defined via Invoice ${result.id}`,
-                        proformaId: data.proformaId, 
-                        clientEvents: validItems.map(gi => ({
-                            id: gi.id, 
-                            mealType: gi.mealType,
-                            eventType: gi.eventType,
-                            numberOfPeople: gi.pax,
-                            unitPrice: gi.unitPrice,
-                            total: gi.total,
-                            date: gi.date,
-                            vatType: gi.vatType,
-                            clientId: data.clientId!,
-                            particularDescription: gi.particularDescription,
-                            particularType: gi.particularType,
-                            recipes: []
-                        }))
-                    };
-
-                    const newOrder = await addOrder(orderPayload as any);
-                    if (newOrder) {
-                        currentItems = currentItems.map(ci => {
-                            if (ci.orderId === tempId) {
-                                const matchingEvent = newOrder.clientEvents?.find(e => 
-                                    e.particularDescription === ci.particularDescription && e.date === ci.date
-                                );
-                                return { ...ci, orderId: newOrder.id, id: matchingEvent?.id || ci.id };
-                            }
-                            return ci;
-                        });
-                    }
-                }
-                form.setValue('items', currentItems);
-
-                // Link orders to the document (via proformaId as requested)
-                const uniqueOrderIds = Array.from(new Set(
-                    data.items
+                // 3. Link existing or newly created orders to this invoice/proforma chain
+                const linkedOrderIds = Array.from(new Set(
+                    freshData.items
                         .map(i => i.orderId)
                         .filter(id => id && id.startsWith('ORD-'))
                 )) as string[];
 
-                for (const oid of uniqueOrderIds) {
-                    await updateOrder(oid, { proformaId: data.proformaId || '' } as any);
+                for (const oid of linkedOrderIds) {
+                    await updateOrder(oid, { proformaId: freshData.proformaId || '' } as any);
                 }
 
                 toast({ title: 'Success', description: `Invoice ${isEditMode ? 'updated' : 'created'} successfully and source orders processed.` });
@@ -490,9 +437,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                         id: gi.id, 
                         mealType: gi.mealType,
                         eventType: gi.eventType,
-                        numberOfPeople: gi.pax,
-                        unitPrice: gi.unitPrice,
-                        total: gi.total,
+                        numberOfPeople: Number(gi.pax) || 0,
+                        unitPrice: Number(gi.unitPrice) || 0,
+                        total: (Number(gi.pax) || 0) * (Number(gi.unitPrice) || 0),
                         date: gi.date,
                         vatType: gi.vatType,
                         clientId: data.clientId!,
