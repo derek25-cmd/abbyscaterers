@@ -81,3 +81,16 @@ export const bulkUpsertDailyMenus = async (menus: Omit<DailyMenu, 'id' | 'create
         return false;
     }
 };
+
+export const getMenusByOrderId = async (orderId: string): Promise<DailyMenu[]> => {
+    const { data, error } = await supabase
+        .from('daily_menus')
+        .select('*')
+        .eq('order_id', orderId);
+
+    if (error) {
+        console.error('Error fetching menus by order ID:', error);
+        return [];
+    }
+    return data as DailyMenu[];
+};
