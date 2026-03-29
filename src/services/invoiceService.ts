@@ -22,37 +22,47 @@ export const getInvoiceById = async (id: string): Promise<Invoice | null> => {
 }
 
 export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Invoice | null> => {
-    const now = new Date().toISOString();
-    const newInvoiceData = { ...invoiceData, createdAt: now, updatedAt: now };
+    try {
+        const now = new Date().toISOString();
+        const newInvoiceData = { ...invoiceData, createdAt: now, updatedAt: now };
 
-    const { data, error } = await supabase.from('invoices').insert([newInvoiceData]).select().single();
-    if (error) {
-        console.error('Error adding invoice:', error);
+        const { data, error } = await supabase.from('invoices').insert([newInvoiceData]).select().single();
+        if (error) {
+            console.error('Error adding invoice:', JSON.stringify(error, null, 2));
+            return null;
+        }
+        
+        // Mark proforma as invoiced
+        if (invoiceData.proformaId) {
+            const { error: proformaError } = await supabase
+                .from('proforma_invoices')
+                .update({ isInvoiced: true })
+                .eq('id', invoiceData.proformaId);
+            if(proformaError){
+                console.error("Error marking proforma as invoiced:", JSON.stringify(proformaError, null, 2));
+            }
+        }
+
+        return data as Invoice;
+    } catch (err) {
+        console.error('Unexpected error adding invoice:', err);
         return null;
     }
-    
-    // Mark proforma as invoiced
-    if (invoiceData.proformaId) {
-        const { error: proformaError } = await supabase
-            .from('proforma_invoices')
-            .update({ isInvoiced: true })
-            .eq('id', invoiceData.proformaId);
-        if(proformaError){
-            console.error("Error marking proforma as invoiced:", proformaError);
-        }
-    }
-
-    return data as Invoice;
 };
 
 export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFormData>): Promise<Invoice | null> => {
-    const { id: invoiceId, ...updatePayload } = updates;
-    const { data, error } = await supabase.from('invoices').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
-    if (error) {
-        console.error('Error updating invoice:', error);
+    try {
+        const { id: invoiceId, ...updatePayload } = updates;
+        const { data, error } = await supabase.from('invoices').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
+        if (error) {
+            console.error('Error updating invoice:', JSON.stringify(error, null, 2));
+            return null;
+        }
+        return data as Invoice;
+    } catch (err) {
+        console.error('Unexpected error updating invoice:', err);
         return null;
     }
-    return data as Invoice;
 };
 
 export const deleteInvoice = async (id: string): Promise<boolean> => {

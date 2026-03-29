@@ -1,5 +1,6 @@
 
 import { z } from "zod";
+import { format } from "date-fns";
 import { RECIPE_TYPES, REGIONS } from "@/types";
 
 const isValidDate = (dateString?: string) => {
@@ -139,6 +140,7 @@ export const ClientEventRecipeSchema = z.object({
 });
 
 export const ClientEventSchema = z.object({
+  id: z.string().optional(),
   date: z.string().optional(),
   numberOfPeople: z.number().min(0, "Number of people cannot be negative.").optional(),
   mealType: z.string().optional(),
@@ -171,6 +173,7 @@ export type OrderFormData = z.infer<typeof OrderSchema>;
 // Shared Invoice Item Schema
 export const InvoiceItemSchema = z.object({
   id: z.string(),
+  orderId: z.string().optional(),
   eventType: z.string(),
   customEventType: z.string().optional(),
   mealType: z.string(),
@@ -190,18 +193,19 @@ export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
  */
 export const baseInvoiceSchema = z.object({
     id: z.string().optional(),
-    invoiceDate: z.string().refine((d) => isValidDate(d), "A valid date is required"),
+    invoiceDate: z.string().optional().or(z.literal('')),
     clientId: z.string().nullable().optional(),
+    booking_id: z.string().nullable().optional(),
     receiverName: z.string().optional(),
     receiverPosition: z.string().optional(),
     lpoNumber: z.string().optional(),
     location: z.string().optional(),
     region: z.enum(REGIONS).optional(),
-    numberOfDays: z.number().min(1),
-    multiplyByDays: z.boolean(),
-    serviceCharge: z.number().min(0),
-    transportCosts: z.number().min(0),
-    vatType: z.enum(['inclusive', 'exclusive']),
+    numberOfDays: z.number().min(0).optional().default(1),
+    multiplyByDays: z.boolean().default(false),
+    serviceCharge: z.number().min(0).default(0),
+    transportCosts: z.number().min(0).default(0),
+    vatType: z.enum(['inclusive', 'exclusive']).default('inclusive'),
     selectedEventType: z.string().optional(),
     customEventType: z.string().optional(),
     startDate: z.string().optional(),
@@ -215,26 +219,35 @@ export const baseInvoiceSchema = z.object({
 export const ProformaInvoiceSchema = baseInvoiceSchema.extend({
     startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
     endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
-}).refine(data => {
-    const start = new Date(data.startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(data.endDate);
-    end.setHours(23, 59, 59, 999);
+}).superRefine((data, ctx) => {
+    const start = data.startDate ? new Date(data.startDate) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    
+    const end = data.endDate ? new Date(data.endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
 
-    if (start > end) return false;
-
-    for (const item of data.items) {
-        if (item.date && isValidDate(item.date)) {
-            const itemDate = new Date(item.date);
-             if (itemDate < start || itemDate > end) {
-                return false;
-            }
-        }
+    if (start && end && start > end) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "End date cannot be before start date",
+            path: ["endDate"],
+        });
     }
-    return true;
-}, {
-    message: "End date cannot be before start date, and all item dates must be within the start and end date range.",
-    path: ["endDate"], 
+
+    if (start && end) {
+        data.items.forEach((item, index) => {
+            if (item.date && isValidDate(item.date)) {
+                const itemDate = new Date(item.date);
+                if (itemDate < start || itemDate > end) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: `Item #${index + 1} date must be within range ${format(start, 'dd/MM/yyyy')} - ${format(end, 'dd/MM/yyyy')}`,
+                        path: ["items", index, "date"],
+                    });
+                }
+            }
+        });
+    }
 });
 
 export type ProformaInvoiceFormData = z.infer<typeof ProformaInvoiceSchema>;
@@ -249,6 +262,37 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     signedAtLocation: z.string().optional(),
     appendProformaId: z.boolean().optional(),
     amountPaid: z.number().optional().default(0),
+    startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
+    endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
+}).superRefine((data, ctx) => {
+    const start = data.startDate ? new Date(data.startDate) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    
+    const end = data.endDate ? new Date(data.endDate) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
+    if (start && end && start > end) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "End date cannot be before start date",
+            path: ["endDate"],
+        });
+    }
+
+    if (start && end) {
+        data.items.forEach((item, index) => {
+            if (item.date && isValidDate(item.date)) {
+                const itemDate = new Date(item.date);
+                if (itemDate < start || itemDate > end) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: `Item #${index + 1} date must be within range ${format(start, 'dd/MM/yyyy')} - ${format(end, 'dd/MM/yyyy')}`,
+                        path: ["items", index, "date"],
+                    });
+                }
+            }
+        });
+    }
 });
 
 
@@ -263,6 +307,7 @@ export const BookingSchema = z.object({
   start_date: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
   end_date: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
   status: z.enum(['active', 'closed', 'pending']),
+  proforma_invoice_id: z.string().nullable().optional(),
 }).refine(data => new Date(data.start_date) <= new Date(data.end_date), {
   message: "End date cannot be before start date",
   path: ["end_date"],

@@ -35,7 +35,7 @@ export function useProformaInvoiceStorage() {
     return newItem;
   }, [refreshProformaInvoices]);
 
-  const updateProformaInvoice = useCallback(async (originalId: string, updates: ProformaInvoiceFormData) => {
+  const updateProformaInvoice = useCallback(async (originalId: string, updates: Partial<ProformaInvoiceFormData>) => {
     const success = await updateInStorage(originalId, updates);
     if (success) {
       refreshProformaInvoices();

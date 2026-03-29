@@ -29,7 +29,7 @@ export function BookingDetailsPageComponent() {
   const router = useRouter();
   const { toast } = useToast();
   const { getBookingById, updateBooking, isLoading: bookingsLoading } = useBookingStorage();
-  const { orders, getOrdersByBookingId, addOrder, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, getOrdersByBookingId, addOrder, updateOrder, bulkAddOrders, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { proformaInvoices, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
 
@@ -59,7 +59,7 @@ export function BookingDetailsPageComponent() {
   const handleAddDailyOrder = async (orderData: Partial<OrderFormData>) => {
     if (!bookingId) return;
     try {
-        const newOrder = await addOrder(orderData);
+        const newOrder = await addOrder(orderData as OrderFormData);
         if (newOrder) {
           toast({ title: "Success", description: "Daily order has been recorded."});
           setIsAddOrderOpen(false);
@@ -83,28 +83,26 @@ export function BookingDetailsPageComponent() {
     setIsBulkAddOpen(false);
 
     try {
-        for (const [index, date] of bulkData.dates.entries()) {
-            setBulkCreationProgress({ current: index + 1, total: bulkData.dates.length });
-            
-            const orderData: Partial<OrderFormData> = {
-                booking_id: bookingId,
-                clientEvents: [{
-                    clientId: booking.client_id,
-                    date: format(date, 'yyyy-MM-dd'),
-                    mealType: bulkData.mealType,
-                    numberOfPeople: bulkData.pax,
-                    unitPrice: bulkData.unitPrice,
-                    total: bulkData.pax * bulkData.unitPrice,
-                    vatType: bulkData.vatType,
-                    recipes: [] // Recipes can be added later by editing the order
-                }]
-            };
-            await addOrder(orderData);
-        }
-        toast({ title: "Success", description: `${bulkData.dates.length} daily orders have been created.`});
+        const ordersToCreate: Partial<OrderFormData>[] = bulkData.dates.map((date) => ({
+            booking_id: bookingId,
+            clientEvents: [{
+                clientId: booking.client_id,
+                date: format(date, 'yyyy-MM-dd'),
+                mealType: bulkData.mealType,
+                numberOfPeople: bulkData.pax,
+                unitPrice: bulkData.unitPrice,
+                total: bulkData.pax * bulkData.unitPrice,
+                vatType: bulkData.vatType,
+                recipes: []
+            }]
+        }));
 
-        if (booking?.proforma_invoice_id) {
-            await updateProformaWithLatestOrders();
+        const results = await bulkAddOrders(ordersToCreate);
+        if (results && results.length > 0) {
+            toast({ title: "Success", description: `${results.length} daily orders have been created.`});
+            if (booking?.proforma_invoice_id) {
+                await updateProformaWithLatestOrders();
+            }
         }
     } catch(error) {
         console.error(error);
@@ -123,7 +121,8 @@ export function BookingDetailsPageComponent() {
     const allBookingOrders = getOrdersByBookingId(booking.id);
 
     const updatedItems = allBookingOrders.flatMap(order => (order.clientEvents || []).map(event => ({
-        id: order.id,
+        id: event.id, // Use Event ID instead of Order ID
+        orderId: order.id, // Store parent Order ID for linking
         particularType: 'meal' as const,
         eventType: '',
         mealType: event.mealType,
@@ -177,7 +176,8 @@ export function BookingDetailsPageComponent() {
     if (!booking || !client) return;
 
     const invoiceItems = bookingOrders.flatMap(order => order.clientEvents.map(event => ({
-        id: order.id,
+        id: event.id, // Use Event ID instead of Order ID
+        orderId: order.id, // Store parent Order ID for linking
         particularType: 'meal' as const,
         eventType: '',
         mealType: event.mealType,
@@ -189,9 +189,19 @@ export function BookingDetailsPageComponent() {
         particularDescription: `${event.mealType} on ${format(parseISO(event.date), 'PPP')}`
     })));
 
+    const { 
+        invoiceDate, 
+        serviceCharge, 
+        transportCosts, 
+        vatType, 
+        id: piId, 
+        serviceDesc: pServiceDesc, 
+        ...otherDetails 
+    } = proformaDetails;
+
     const newProformaData: ProformaInvoiceFormData = {
-        ...proformaDetails,
-        id: proformaDetails.id!,
+        ...otherDetails,
+        id: piId!,
         clientId: booking.client_id,
         booking_id: booking.id,
         items: invoiceItems,
@@ -202,14 +212,26 @@ export function BookingDetailsPageComponent() {
         selectedEventType: 'Catering services',
         customEventType: '',
         serviceFields: {},
-        serviceDesc: proformaDetails.serviceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
+        invoiceDate: invoiceDate || new Date().toISOString(),
+        serviceCharge: serviceCharge || 0,
+        transportCosts: transportCosts || 0,
+        vatType: vatType || 'inclusive',
+        serviceDesc: pServiceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
     };
     
     try {
         const newProforma = await addProformaInvoice(newProformaData);
         if (newProforma) {
              await updateBooking(booking.id, { proforma_invoice_id: newProforma.id });
-             toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created.` });
+             
+             // Link all orders to the new proforma
+             const orderIds = bookingOrders.map(o => o.id);
+             const uniqueOrderIds = Array.from(new Set(orderIds));
+                 for (const oid of uniqueOrderIds) {
+                    await updateOrder(oid, { proformaId: newProforma.id } as any);
+                }
+
+             toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created and linked to ${orderIds.length} orders.` });
              router.push(`/proforma-invoices/${newProforma.id}`);
         } else {
             throw new Error("Failed to save proforma invoice to storage.");

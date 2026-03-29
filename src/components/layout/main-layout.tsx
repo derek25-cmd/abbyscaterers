@@ -28,7 +28,9 @@ import {
     CalendarClock,
     Utensils,
     ListPlus,
-    Banknote
+    Banknote,
+    ArrowLeft,
+    RefreshCw
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -204,6 +206,7 @@ function NavItem({ item, currentPathname }: { item: {href?: string, label: strin
 
 function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { open } = useSidebar();
 
   if (pathname === '/login') {
@@ -248,6 +251,13 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
               <div className="h-full px-4 sm:px-6 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <SidebarTrigger />
+                  <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+                  <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-9 px-2 font-bold text-muted-foreground hover:text-primary transition-colors hidden sm:flex">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> BACK
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => window.location.reload()} className="h-9 px-2 font-bold text-muted-foreground hover:text-primary transition-colors hidden sm:flex">
+                    <RefreshCw className="mr-2 h-4 w-4" /> REFRESH
+                  </Button>
                 </div>
                 
                 <div className="flex items-center gap-2">

@@ -52,6 +52,7 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
               <TableHead>Order ID</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Particulars</TableHead>
+              <TableHead>Linked Doc</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead><span className="sr-only">Actions</span></TableHead>
             </TableRow>
@@ -67,6 +68,15 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
                 <TableCell className="font-mono">{order.id}</TableCell>
                 <TableCell>{eventDate && isValid(parseISO(eventDate)) ? format(parseISO(eventDate), 'PPP') : <Badge variant="secondary">N/A (Bulk)</Badge>}</TableCell>
                 <TableCell className="font-medium">{particular}</TableCell>
+                <TableCell>
+                    {order.proformaId ? (
+                        <Badge variant="outline" className="font-mono bg-primary/5 text-primary border-primary/20">
+                            {order.proformaId}
+                        </Badge>
+                    ) : (
+                        <span className="text-muted-foreground text-[10px] italic">Not Linked</span>
+                    )}
+                 </TableCell>
                 <TableCell className="text-right font-semibold">{formatCurrency(getOrderTotal(order))}</TableCell>
                 <TableCell className="text-right">
                     <DropdownMenu>
@@ -94,13 +104,13 @@ export function DailyOrdersTable({ data, onDeleteOrder }: DailyOrdersTableProps)
               </TableRow>
             )}) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">No daily orders recorded yet.</TableCell>
+                <TableCell colSpan={6} className="h-24 text-center">No daily orders recorded yet.</TableCell>
               </TableRow>
             )}
           </TableBody>
           <TableFooter>
             <TableRow>
-                <TableCell colSpan={3} className="text-right font-bold text-lg">Grand Total</TableCell>
+                <TableCell colSpan={4} className="text-right font-bold text-lg">Grand Total</TableCell>
                 <TableCell className="text-right font-bold text-lg">{formatCurrency(grandTotal)}</TableCell>
                 <TableCell></TableCell>
             </TableRow>

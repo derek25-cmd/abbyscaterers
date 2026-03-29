@@ -8,6 +8,7 @@ import {
   getOrders as getAllFromStorage,
   getOrderById as getByIdFromStorage,
   addOrder as addToStorage,
+  bulkAddOrders as bulkAddToStorage,
   updateOrder as updateInStorage,
   deleteOrder as deleteFromStorage 
 } from '@/services/orderService';
@@ -52,6 +53,14 @@ export function useOrderStorage() {
     return success;
   }, [refreshOrders]);
   
+  const bulkAddOrders = useCallback(async (ordersData: Partial<OrderFormData>[]) => {
+    const newOrders = await bulkAddToStorage(ordersData);
+    if (newOrders.length > 0) {
+      refreshOrders();
+    }
+    return newOrders;
+  }, [refreshOrders]);
+  
   const getOrderById = useCallback((id: string) => {
     return orders.find(o => o.id === id);
   }, [orders]);
@@ -79,6 +88,7 @@ export function useOrderStorage() {
     addOrder, 
     updateOrder, 
     deleteOrder, 
+    bulkAddOrders,
     getOrderById,
     getOrdersByBookingId,
     refreshOrders,

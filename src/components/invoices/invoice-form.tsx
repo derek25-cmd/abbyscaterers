@@ -1,7 +1,7 @@
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil, AlertCircle, ArrowRight, ArrowLeft, Utensils, RefreshCw, Download } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -22,11 +22,11 @@ import { useInvoiceStorage } from '@/hooks/use-invoice-storage';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { useBookingStorage } from '@/hooks/use-booking-storage';
 import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
-import { Textarea } from '../ui/textarea';
-import { Checkbox } from '../ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { REGIONS, type Order } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/hr/ui/alert";
@@ -82,12 +82,15 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     const isEditMode = !!invoiceId;
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [currentStep, setCurrentStep] = useState(1);
     const [openAccordionItems, setOpenAccordionItems] = useState<string[]>(['item-0']);
 
     // Suggestion state
     const [matchingOrders, setMatchingOrders] = useState<Order[]>([]);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [selectedOrderIdsForImport, setSelectedOrderIdsForImport] = useState<string[]>([]);
+    const [isServiceDescModified, setIsServiceDescModified] = useState(false);
+    const [isPersistingDrafts, setIsPersistingDrafts] = useState(false);
 
     const form = useForm<FinalInvoiceFormData>({
         resolver: zodResolver(FinalInvoiceSchema),
@@ -113,30 +116,31 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             endDate: format(new Date(), 'yyyy-MM-dd'),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' }],
+            items: [{ id: `EVT-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' }],
             signedAtDate: format(new Date(), 'yyyy-MM-dd'),
             signedAtLocation: 'Dar es Salaam',
             appendProformaId: true,
             paymentDate: null,
         }
     });
-    
+
     const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "items" });
     
     const watchedFormValues = form.watch();
     const selectedClientId = form.watch('clientId');
-    const selectedClient = selectedClientId ? getClientDetails(selectedClientId) : undefined;
+    const selectedClient = useMemo(() => selectedClientId ? getClientDetails(selectedClientId) : null, [selectedClientId, getClientDetails]);
     const invoiceStatus = form.watch('status');
 
     // Check for matching orders
     useEffect(() => {
-        if (!selectedClientId || !watchedFormValues.startDate || !watchedFormValues.endDate || isEditMode || !!proformaId) {
+        const start = watchedFormValues.startDate;
+        const end = watchedFormValues.endDate;
+
+        if (!selectedClientId || !start || !end || isEditMode || !!proformaId) {
             setMatchingOrders([]);
             return;
         }
 
-        const start = watchedFormValues.startDate;
-        const end = watchedFormValues.endDate;
         const currentItemIds = new Set(watchedFormValues.items.map(item => item.id));
 
         const matches = orders.filter(order => {
@@ -147,7 +151,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                (order.endDate && order.endDate >= start && order.endDate <= end);
             if (!inDateRange) return false;
 
-            // Don't suggest if already present in the form's items list
+            // EXCLUDE orders already linked to a proforma
+            if (order.proformaId) return false;
+
             if (currentItemIds.has(order.id)) return false;
 
             return true;
@@ -158,17 +164,24 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     const handleImportSelected = (orderList: Order[]) => {
         const currentItems = form.getValues('items');
-        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1 && currentItems[0].id.includes('ORD-');
+        const isFirstItemEmpty = currentItems.length === 1 && !currentItems[0].unitPrice && currentItems[0].pax === 1 && currentItems[0].id.includes('EVT-');
 
         if (isFirstItemEmpty) {
             remove(0);
         }
 
+        const { startDate, endDate } = watchedFormValues;
+        if (!startDate || !endDate) {
+            toast({ variant: "destructive", title: "Missing Dates", description: "Start and end dates must be selected before importing orders." });
+            return;
+        }
+
         orderList.forEach(order => {
             order.clientEvents.forEach(event => {
-                if (event.date && event.date >= watchedFormValues.startDate && event.date <= watchedFormValues.endDate) {
+                if (event.date && event.date >= startDate && event.date <= endDate) {
                     append({
-                        id: order.id,
+                        id: event.id,
+                        orderId: order.id,
                         particularType: 'event',
                         eventType: 'Catering services',
                         mealType: event.mealType || '',
@@ -194,62 +207,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         }
     }, [invoiceStatus, form]);
 
-    const handleSaveAndCreateOrder = async (itemIndex: number) => {
-        const itemData = form.getValues(`items.${itemIndex}`);
-        const client_id = form.getValues('clientId');
-        const proformaId = form.getValues('proformaId');
-
-        if (!client_id) {
-            toast({ variant: "destructive", title: "Client Not Selected", description: "Please select a client before creating or updating an order." });
-            return;
-        }
-
-        try {
-            const isExistingOrder = orders.some(o => o.id === itemData.id);
-            
-            const recalculatedTotal = (itemData.pax || 0) * (itemData.unitPrice || 0);
-
-            const orderPayload = {
-                id: itemData.id,
-                name: `Order for ${itemData.eventType} on ${itemData.date ? format(parseISO(itemData.date), 'PPP') : 'a future date'}`,
-                description: `Order related to invoice ${watchedFormValues.id}`,
-                proformaId: proformaId || "",
-                clientId: client_id,
-                startDate: itemData.date || watchedFormValues.startDate,
-                endDate: itemData.date || watchedFormValues.endDate,
-                clientEvents: [{
-                    date: itemData.date || format(new Date(), 'yyyy-MM-dd'),
-                    numberOfPeople: itemData.pax,
-                    mealType: itemData.mealType,
-                    unitPrice: itemData.unitPrice,
-                    total: recalculatedTotal,
-                    vatType: itemData.vatType,
-                    recipes: getOrderById(itemData.id)?.clientEvents?.[0]?.recipes || [],
-                }],
-            };
-
-            if (isExistingOrder) {
-                const updatedOrder = await updateOrder(itemData.id!, orderPayload as any);
-                if (updatedOrder) {
-                    toast({ title: "Order Updated", description: `Order ${itemData.id} has been successfully updated.` });
-                }
-            } else {
-                const newOrder = await addOrder(orderPayload as any);
-                if (newOrder) {
-                    update(itemIndex, { ...itemData, id: newOrder.id, total: recalculatedTotal });
-                    toast({ title: "Order Created", description: `Order ${newOrder.id} has been saved.` });
-                }
-            }
-            setOpenAccordionItems(prev => prev.filter(p => p !== `item-${itemIndex}`));
-        } catch (error) {
-            console.error("Failed to create/update order:", error);
-            let message = "An error occurred while saving the order.";
-            if (error instanceof Error) message = error.message;
-            toast({ variant: "destructive", title: "Failed to Save Order", description: message });
-        }
-    };
-
-     const buildServiceDesc = React.useCallback(() => {
+    const buildServiceDesc = React.useCallback(() => {
         const { serviceFields, items, numberOfDays, startDate, endDate, location, selectedEventType, customEventType } = form.getValues();
         let desc = 'Provision of';
         if (serviceFields.eventType && (selectedEventType || customEventType)) {
@@ -266,9 +224,10 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     }, [form]);
     
     useEffect(() => {
-        form.setValue("serviceDesc", buildServiceDesc());
-    }, [watchedFormValues.serviceFields, watchedFormValues.items, watchedFormValues.numberOfDays, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.location, watchedFormValues.selectedEventType, watchedFormValues.customEventType, buildServiceDesc, form]);
-
+        if (!isServiceDescModified) {
+            form.setValue("serviceDesc", buildServiceDesc());
+        }
+    }, [watchedFormValues.serviceFields, watchedFormValues.items, watchedFormValues.numberOfDays, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.location, watchedFormValues.selectedEventType, watchedFormValues.customEventType, buildServiceDesc, form, isServiceDescModified]);
 
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
@@ -289,9 +248,9 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     
                     if (fieldName === 'particularType' || fieldName === 'eventType' || fieldName === 'mealType' || fieldName === 'date') {
                         if (item.particularType === 'event') {
-                            form.setValue(`items.${index}.particularDescription`, `${item.eventType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
+                            form.setValue(`items.${index}.particularDescription`, `${item.eventType || 'Event'} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
                         } else if (item.particularType === 'meal') {
-                            form.setValue(`items.${index}.particularDescription`, `${item.mealType} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
+                            form.setValue(`items.${index}.particularDescription`, `${item.mealType || 'Meal'} on ${item.date ? format(parseISO(item.date), 'PPP') : ''}`)
                         }
                     }
                 }
@@ -325,6 +284,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     invoiceDate: format(new Date(), 'yyyy-MM-dd'),
                     items: proforma.items.map(pi => ({
                         id: pi.id,
+                        orderId: pi.orderId,
                         particularType: pi.particularType,
                         eventType: pi.eventType,
                         customEventType: pi.customEventType,
@@ -361,7 +321,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                     endDate: booking.end_date,
                     serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
                     items: bookingOrders.flatMap(order => order.clientEvents.map(event => ({
-                        id: order.id,
+                        id: event.id,
+                        orderId: order.id,
                         particularType: 'meal' as const,
                         eventType: '',
                         mealType: event.mealType,
@@ -384,7 +345,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             form.reset(dataToLoad);
         }
 
-    }, [isEditMode, invoiceId, proformaId, bookingId, clientId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form, toast]);
+    }, [isEditMode, invoiceId, proformaId, bookingId, clientId, getInvoiceById, getProformaById, getBookingById, getOrdersByBookingId, form]);
 
     async function onSubmit(data: FinalInvoiceFormData) {
         setIsSubmitting(true);
@@ -397,20 +358,64 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
             }
 
             if (result) {
-                // Link orders to the parent proforma or record invoice involvement
-                // The proformaId is usually enough to trace everything
-                const uniqueOrderIds = Array.from(new Set(data.items.map(i => i.id).filter(id => id && id.startsWith('ORD-'))));
+                // Determine which items are "New Orders" that need persistence
+                const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
+                
+                // Group by temporary Order ID
+                const orderGroups = new Map<string, typeof newOrderItems>();
+                newOrderItems.forEach(item => {
+                    const group = orderGroups.get(item.orderId!) || [];
+                    group.push(item);
+                    orderGroups.set(item.orderId!, group);
+                });
+
+                // Persist new orders with ORD-XXXXX and EVT-XXXXX
+                for (const [tempId, groupItems] of orderGroups.entries()) {
+                    const validItems = groupItems.filter(i => i.date);
+                    if (validItems.length === 0) continue;
+
+                    const eventDates = validItems.map(i => new Date(i.date!));
+                    const startDate = format(new Date(Math.min(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
+                    const endDate = format(new Date(Math.max(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
+
+                    const firstItem = validItems[0];
+                    const orderPayload = {
+                        name: `Order for ${data.clientId} - ${firstItem.particularDescription}`,
+                        clientId: data.clientId!,
+                        startDate: startDate,
+                        endDate: endDate,
+                        description: `Manually defined via Invoice ${result.id}`,
+                        proformaId: data.proformaId, // Link to existing proforma if any
+                        clientEvents: validItems.map(gi => ({
+                            id: gi.id, 
+                            mealType: gi.mealType,
+                            eventType: gi.eventType,
+                            numberOfPeople: gi.pax,
+                            unitPrice: gi.unitPrice,
+                            total: gi.total,
+                            date: gi.date,
+                            vatType: gi.vatType,
+                            clientId: data.clientId!,
+                            particularDescription: gi.particularDescription,
+                            particularType: gi.particularType
+                        }))
+                    };
+
+                    await addOrder(orderPayload as any);
+                }
+            // Link orders to the document (via proformaId as requested)
+                const uniqueOrderIds = Array.from(new Set(
+                    data.items
+                        .map(i => i.orderId)
+                        .filter(id => id && id.startsWith('ORD-'))
+                )) as string[];
+
                 for (const oid of uniqueOrderIds) {
-                    // If there's a proformaId, ensure it's set on the order
-                    if (data.proformaId) {
-                        await updateOrder(oid, { proformaId: data.proformaId });
-                    }
+                    await updateOrder(oid, { proformaId: data.proformaId || '' } as any);
                 }
 
-                toast({ title: 'Success', description: `Invoice ${isEditMode ? 'updated' : 'created'} successfully.` });
+                toast({ title: 'Success', description: `Invoice ${isEditMode ? 'updated' : 'created'} successfully and source orders processed.` });
                 router.push(`/invoices/${result.id}`);
-            } else {
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to save invoice.' });
             }
         } catch (error) {
             console.error("Failed to save invoice", error);
@@ -418,6 +423,112 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         } finally {
             setIsSubmitting(false);
         }
+    }
+
+    const persistDraftOrders = async () => {
+        const data = form.getValues();
+        const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
+        
+        if (newOrderItems.length === 0) {
+            toast({ title: 'No Drafts', description: 'All orders are already saved.' });
+            return;
+        }
+
+        setIsPersistingDrafts(true);
+        try {
+            const docId = invoiceId || data.id || `TEMP-DOC-${Date.now()}`;
+            
+            const orderGroups = new Map<string, typeof newOrderItems>();
+            newOrderItems.forEach(item => {
+                const group = orderGroups.get(item.orderId!) || [];
+                group.push(item);
+                orderGroups.set(item.orderId!, group);
+            });
+
+            for (const [tempOrderId, groupItems] of orderGroups.entries()) {
+                const validItems = groupItems.filter(i => i.date);
+                if (validItems.length === 0) continue;
+
+                const eventDates = validItems.map(i => new Date(i.date!));
+                const startDate = format(new Date(Math.min(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
+                const endDate = format(new Date(Math.max(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
+
+                const firstItem = validItems[0];
+                const orderPayload = {
+                    name: `Order for ${data.clientId} - ${firstItem.particularDescription}`,
+                    clientId: data.clientId!,
+                    startDate,
+                    endDate,
+                    description: `Manually defined via Invoice Wizard.`,
+                    proformaId: data.proformaId || null, 
+                    clientEvents: validItems.map(gi => ({
+                        id: gi.id, 
+                        mealType: gi.mealType,
+                        eventType: gi.eventType,
+                        numberOfPeople: gi.pax,
+                        unitPrice: gi.unitPrice,
+                        total: gi.total,
+                        date: gi.date,
+                        vatType: gi.vatType,
+                        clientId: data.clientId!,
+                        particularDescription: gi.particularDescription,
+                        particularType: gi.particularType
+                    }))
+                };
+
+                const newOrder = await addOrder(orderPayload as any);
+                if (newOrder) {
+                    const currentItems = form.getValues('items');
+                    const updatedItems = currentItems.map(ci => {
+                        if (ci.orderId === tempOrderId) {
+                            const matchingEvent = newOrder.clientEvents?.find(e => 
+                                e.particularDescription === ci.particularDescription && 
+                                e.date === ci.date
+                            );
+                            return {
+                                ...ci,
+                                orderId: newOrder.id,
+                                id: matchingEvent?.id || ci.id
+                            };
+                        }
+                        return ci;
+                    });
+                    form.setValue('items', updatedItems);
+                }
+            }
+
+            toast({ title: 'Save Successful', description: 'Draft orders have been persisted to the system.' });
+        } catch (error) {
+            console.error("Error persisting drafts", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to persist draft orders.' });
+        } finally {
+            setIsPersistingDrafts(false);
+        }
+    }
+
+    function onInvalid(errors: any) {
+        console.error("Form invalid", errors);
+        const errorMessages = Object.entries(errors)
+            .map(([key, error]: [string, any]) => {
+                if (key === 'items' && Array.isArray(error)) {
+                    return "At least one item is required with a valid price and pax.";
+                }
+                return error?.message || `${key} is invalid`;
+            })
+            .filter(Boolean);
+
+        toast({
+            variant: 'destructive',
+            title: `Submission Failed`,
+            description: (
+                <div className="mt-2 text-xs space-y-1">
+                    <p className="font-bold underline mb-2">Please correct the following:</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                        {errorMessages.map((msg, i) => <li key={i}>{msg}</li>)}
+                    </ul>
+                </div>
+            )
+        });
     }
 
     const calculateSubtotal = () => form.getValues('items').reduce((sum, item) => sum + (item.total || 0), 0);
@@ -428,612 +539,524 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     };
     const calculateGrandTotal = () => calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0) + calculateVAT();
 
+    const steps = [
+        { id: 1, title: 'Identity', desc: 'Recipient & ID', icon: User },
+        { id: 2, title: 'Services', desc: 'Line Items', icon: Utensils },
+        { id: 3, title: 'Financials', desc: 'Charges & Fee', icon: Settings2 },
+        { id: 4, title: 'Review', desc: 'Final Check', icon: FileText },
+    ];
+
+    const stepFields = [
+        ['clientId', 'status', 'startDate', 'endDate'],
+        ['items'],
+        ['vatType'],
+    ];
+
+    const nextStep = async () => {
+        const fields = stepFields[currentStep - 1] as any;
+        const isValid = await form.trigger(fields);
+        if (isValid) {
+            setCurrentStep(prev => Math.min(prev + 1, 4));
+        } else {
+            toast({ variant: 'destructive', title: 'Validation Error', description: 'Please correct mandatory fields.' });
+        }
+    };
+
+    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
     return (
-        <Card className="max-w-5xl mx-auto">
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className="text-3xl font-bold text-primary">{isEditMode ? "Edit Invoice" : "Create New Invoice"}</CardTitle>
-                        <CardDescription>{proformaId ? `Creating invoice from Proforma #${proformaId}` : "Fill in the details for the final invoice."}</CardDescription>
-                    </div>
-                    {selectedClient && (
-                         <div className="text-right p-2 rounded-md bg-muted/50 border">
-                            <p className="text-sm text-muted-foreground">Client</p>
-                            <p className="text-lg font-bold text-primary flex items-center gap-2"><Building className="h-5 w-5" />{selectedClient.companyName}</p>
-                        </div>
-                    )}
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
-                        <AccordionItem value="item-1">
-                            <AccordionTrigger className="text-lg font-semibold"><Info className="mr-2 h-5 w-5 text-primary" />Invoice Details</AccordionTrigger>
-                            <AccordionContent className="pt-4 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="id"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Invoice Number</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} placeholder="e.g., INV-2024-001" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="invoiceDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Invoice Date</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
-                                                </Popover>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="status"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Status</FormLabel>
-                                                <FormControl>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="outstanding">Outstanding</SelectItem>
-                                                            <SelectItem value="paid">Paid</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    {invoiceStatus === 'paid' && (
-                                         <FormField
-                                            control={form.control}
-                                            name="paymentDate"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Payment Date</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
-                                                    </Popover>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    )}
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                        
-                        <AccordionItem value="item-2">
-                            <AccordionTrigger className="text-lg font-semibold"><User className="mr-2 h-5 w-5 text-primary" />Client Information</AccordionTrigger>
-                            <AccordionContent className="pt-4 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="clientId"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Select Client</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")} disabled={clientsLoading || !!clientId}>
-                                                                {clientsLoading ? "Loading..." : field.value ? clients.find(c => c.id === field.value)?.companyName : "Select client"}
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                        <Command>
-                                                            <CommandInput placeholder="Search client..." />
-                                                            <CommandList><CommandEmpty>No client found.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {clients.map((c) => (
-                                                                    <CommandItem key={c.id} value={c.companyName} onSelect={() => { field.onChange(c.id)}}>
-                                                                        <Check className={cn("mr-2 h-4 w-4", c.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                                        {c.companyName}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                            </CommandList>
-                                                        </Command>
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="lpoNumber"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>LPO Number</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} placeholder="Enter LPO number" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="receiverName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Receiver Name</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} placeholder="Enter receiver name" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="receiverPosition"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Receiver Position</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} placeholder="Enter receiver position" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                        
-                        <AccordionItem value="item-3">
-                            <AccordionTrigger className="text-lg font-semibold"><Settings2 className="mr-2 h-5 w-5 text-primary" />Service Customization</AccordionTrigger>
-                            <AccordionContent className="pt-4 space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="startDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Start Date</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
-                                                </Popover>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="endDate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>End Date</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
-                                                </Popover>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="numberOfDays"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Number of Days</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" min="1" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 1)} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                     <FormField
-                                        control={form.control}
-                                        name="location"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Location</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} placeholder="Enter event location" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                     <FormField
-                                        control={form.control}
-                                        name="region"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Region</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select a region" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {REGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="mt-4 space-y-2">
-                                    <Label>Event Type for Service Description</Label>
-                                    <FormField
-                                        control={form.control}
-                                        name="selectedEventType"
-                                        render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>{eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                        )}
-                                    />
-                                    {form.watch("selectedEventType") === 'Custom' && (
-                                        <FormField
-                                            control={form.control}
-                                            name="customEventType"
-                                            render={({ field }) => (
-                                                <Input {...field} placeholder="Custom Event Type" className="mt-2" />
-                                            )}
-                                        />
-                                    )}
+        <div className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div className="lg:col-span-3 space-y-8">
+                    {/* Progress Header */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    {steps.map((step) => {
+                        const Icon = step.icon;
+                        const isActive = currentStep === step.id;
+                        const isCompleted = currentStep > step.id;
 
-                                    <Label className="mt-4 block">Customize Service Description Fields</Label>
-                                    <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2">
-                                    {serviceFieldsList.map(field => (
-                                        <div key={field.key} className="flex items-center space-x-2">
-                                            <FormField
-                                                control={form.control}
-                                                name={`serviceFields.${field.key}`}
-                                                render={({ field: checkboxField }) => (
-                                                    <Checkbox
-                                                        checked={checkboxField.value}
-                                                        onCheckedChange={checkboxField.onChange}
-                                                        id={`service-field-${field.key}`}
-                                                    />
-                                                )}
-                                            />
-                                        <Label htmlFor={`service-field-${field.key}`}>{field.label}</Label>
-                                        </div>
-                                    ))}
+                        return (
+                            <div 
+                                key={step.id} 
+                                className={cn(
+                                    "relative p-4 rounded-2xl border transition-all duration-300 overflow-hidden",
+                                    isActive ? "bg-primary border-primary shadow-lg shadow-primary/20" : 
+                                    isCompleted ? "bg-primary/5 border-primary/20" : "bg-card border-border"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "h-10 w-10 rounded-xl flex items-center justify-center transition-colors",
+                                        isActive ? "bg-white/20 text-white" : 
+                                        isCompleted ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                                    )}>
+                                        {isCompleted ? <CheckCircle className="h-6 w-6" /> : <Icon className="h-6 w-6" />}
                                     </div>
-                                    <Label className="mt-4 block">Service Description</Label>
-                                    <FormField
-                                        control={form.control}
-                                        name="serviceDesc"
-                                        render={({ field }) => (
-                                            <Textarea {...field} rows={3} />
-                                        )}
-                                    />
-                                    {proformaId && (
-                                        <FormField
-                                            control={form.control}
-                                            name="appendProformaId"
-                                            render={({ field }) => (
-                                                <div className="flex items-center space-x-2 pt-2">
-                                                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                    <FormLabel>Append "as per Pro-Forma Invoice No. {proformaId}"</FormLabel>
-                                                </div>
-                                            )}
-                                        />
-                                    )}
+                                    <div className="hidden md:block">
+                                        <p className={cn("text-[10px] uppercase font-black tracking-widest", isActive ? "text-white/60" : "text-muted-foreground")}>Step 0{step.id}</p>
+                                        <p className={cn("font-bold text-sm", isActive ? "text-white" : "text-foreground")}>{step.title}</p>
+                                    </div>
                                 </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                        </Accordion>
-                        
-                        {/* Matching Orders Alert */}
-                        {matchingOrders.length > 0 && !proformaId && (
-                            <Alert className="bg-primary/5 border-primary/20">
-                                <AlertCircle className="h-4 w-4 text-primary" />
-                                <AlertTitle>Orders Found</AlertTitle>
-                                <AlertDescription className="flex items-center justify-between">
-                                    <span>We found {matchingOrders.length} additional orders for this client in the selected date range.</span>
-                                    <div className="flex gap-2">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => handleImportSelected(matchingOrders)}>Import All</Button>
-                                        <Button type="button" variant="secondary" size="sm" onClick={() => {
-                                            setSelectedOrderIdsForImport(matchingOrders.map(o => o.id));
-                                            setIsImportDialogOpen(true);
-                                        }}>Review & Select</Button>
-                                    </div>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-
-                        <Card className="p-4 border-primary/20">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-primary flex items-center"><FileText className="mr-2 h-5 w-5"/>Invoice Items</h3>
-                                <Button type="button" onClick={() => { 
-                                    const newIndex = fields.length;
-                                    append({ id: `ORD-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' });
-                                    setOpenAccordionItems([`item-${newIndex}`]);
-                                }} size="sm">
-                                    <Plus className="w-4 h-4 mr-2" /> Add Item
-                                </Button>
+                                {isActive && (
+                                    <motion.div layoutId="activeStep" className="absolute bottom-0 left-0 h-1 bg-white/40" initial={{ width: 0 }} animate={{ width: '100%' }} />
+                                )}
                             </div>
-                            <Accordion type="multiple" value={openAccordionItems} onValueChange={setOpenAccordionItems} className="w-full space-y-2">
-                                {fields.map((item, index) => {
-                                    const orderId = form.getValues(`items.${index}.id`);
-                                    const isSaved = orderId ? orders.some(o => o.id === orderId) : false;
-                                    return (
-                                    <AccordionItem key={item.id} value={`item-${index}`} className="border-b-0 rounded-md bg-card/60">
-                                        <AccordionTrigger className="p-2 hover:no-underline rounded-md data-[state=open]:bg-primary/10">
-                                            <div className="flex items-center gap-2 text-left">
-                                                {isSaved && <CheckCircle className="h-5 w-5 text-green-500 shrink-0"/>}
-                                                <div className="flex flex-col">
-                                                    <span className="font-semibold">Order Item #{index + 1}</span>
-                                                    <span className="text-xs text-muted-foreground font-mono">{form.watch(`items.${index}.particularDescription`)}</span>
+                        );
+                    })}
+                </div>
+
+                <Card className="shadow-2xl border-none overflow-hidden bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="border-b bg-muted/20 pb-8">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+                                    <FileText className="h-7 w-7" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-2xl font-black tracking-tight uppercase">
+                                        {isEditMode ? "Modify Entry" : "Creation Wizard"}
+                                    </CardTitle>
+                                    <CardDescription>{steps[currentStep-1].desc}</CardDescription>
+                                </div>
+                            </div>
+                            <Badge variant="outline" className="h-8 px-3 font-bold bg-background/50 border-primary/20 text-primary uppercase tracking-widest">
+                                Working Draft
+                            </Badge>
+                        </div>
+                    </CardHeader>
+                    
+                    <CardContent className="pt-8 min-h-[500px]">
+                        <Form {...form}>
+                            <form className="space-y-8">
+                                <AnimatePresence mode="wait">
+                                    {currentStep === 1 && (
+                                        <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                                            <div className="space-y-6">
+                                                <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2"><User className="h-5 w-5 text-primary" /> Recipient</h3>
+                                                <FormField control={form.control} name="clientId" render={({ field }) => (
+                                                    <FormItem><FormLabel className="font-semibold text-primary">BILLED TO (CLIENT)</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                                                            <FormControl><SelectTrigger className="h-12 text-lg font-bold border-2 focus:ring-primary"><SelectValue placeholder="Select client" /></SelectTrigger></FormControl>
+                                                            <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}</SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+
+                                            <div className="space-y-6">
+                                                <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2"><CalendarIcon className="h-5 w-5 text-primary" /> Service Period</h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name="startDate" render={({ field }) => (
+                                                        <FormItem className="flex flex-col"><FormLabel className="font-semibold">START DATE</FormLabel>
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <FormControl><Button variant={"outline"} className={cn("h-11 border-2 w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                        {field.value ? format(parseISO(field.value), "dd/MM/yyyy") : <span>Pick a date</span>}
+                                                                    </Button></FormControl>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-auto p-0" align="start">
+                                                                    <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} initialFocus />
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="endDate" render={({ field }) => (
+                                                        <FormItem className="flex flex-col"><FormLabel className="font-semibold">END DATE</FormLabel>
+                                                            <Popover>
+                                                                <PopoverTrigger asChild>
+                                                                    <FormControl><Button variant={"outline"} className={cn("h-11 border-2 w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                        {field.value ? format(parseISO(field.value), "dd/MM/yyyy") : <span>Pick a date</span>}
+                                                                    </Button></FormControl>
+                                                                </PopoverTrigger>
+                                                                <PopoverContent className="w-auto p-0" align="start">
+                                                                    <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} disabled={(date) => !!form.getValues('startDate') && date < parseISO(form.getValues('startDate'))} initialFocus />
+                                                                </PopoverContent>
+                                                            </Popover>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
                                                 </div>
                                             </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-2 space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                                <FormField control={form.control} name={`items.${index}.id`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Order ID</FormLabel><FormControl><Input {...field} readOnly /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Event Type</FormLabel>
-                                                        <FormControl>
+
+                                            <div className="space-y-6">
+                                                <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2"><Info className="h-5 w-5 text-primary" /> Registry Info</h3>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <FormField control={form.control} name="id" render={({ field }) => (
+                                                        <FormItem><FormLabel className="font-semibold text-muted-foreground uppercase text-[10px] tracking-widest">Invoice No.</FormLabel><FormControl><Input {...field} className="h-11 bg-muted/30 border-dashed" /></FormControl><FormMessage /></FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="status" render={({ field }) => (
+                                                        <FormItem><FormLabel className="font-semibold text-muted-foreground uppercase text-[10px] tracking-widest">Status</FormLabel>
                                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                                <SelectContent>{eventTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Meal Type</FormLabel>
-                                                        <FormControl>
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                                                <SelectContent>{mealTypes.map(t=><SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                                            </Select>
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Event Date</FormLabel>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <FormControl>
-                                                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                                        {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                                    </Button>
-                                                                </FormControl>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
-                                                        </Popover>
-                                                    </FormItem>
-                                                )} />
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                                <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
-                                                    <FormItem><FormLabel>No. of People</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseInt(e.target.value) || 0)} /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Unit Price</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)} /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.total`} render={({ field }) => (
-                                                    <FormItem><FormLabel>Total</FormLabel><FormControl><Input type="number" {...field} readOnly /></FormControl></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.vatType`} render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>VAT</FormLabel>
-                                                        <FormControl>
-                                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                                <FormControl><SelectTrigger className="h-11 bg-muted/30 border-dashed"><SelectValue /></SelectTrigger></FormControl>
                                                                 <SelectContent>
-                                                                    <SelectItem value="inclusive">Inclusive</SelectItem>
-                                                                    <SelectItem value="exclusive">Exclusive</SelectItem>
+                                                                    <SelectItem value="outstanding">Outstanding</SelectItem>
+                                                                    <SelectItem value="paid">Paid</SelectItem>
+                                                                    <SelectItem value="partially paid">Partially Paid</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
-                                                        </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                </div>
+                                                <FormField control={form.control} name="invoiceDate" render={({ field }) => (
+                                                    <FormItem className="flex flex-col"><FormLabel className="font-semibold text-muted-foreground uppercase text-[10px] tracking-widest">Date issued</FormLabel>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <FormControl><Button variant={"outline"} className={cn("h-11 bg-muted/30 border-dashed w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                    {field.value ? format(parseISO(field.value), "dd/MM/yyyy") : <span>Pick a date</span>}
+                                                                </Button></FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0" align="start">
+                                                                <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} initialFocus />
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )} />
                                             </div>
-                                            <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Particulars Display</FormLabel>
-                                                    <FormControl>
-                                                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4 pt-2">
-                                                            <div className="flex items-center space-x-2">
-                                                                <RadioGroupItem value="event" id={`event-${index}`} />
-                                                                <Label htmlFor={`event-${index}`}>Event Type</Label>
-                                                            </div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <RadioGroupItem value="meal" id={`meal-${index}`} />
-                                                                <Label htmlFor={`meal-${index}`}>Meal Type</Label>
-                                                            </div>
-                                                        </RadioGroup>
-                                                    </FormControl>
-                                                </FormItem>
-                                            )} />
-                                            <div className="flex justify-between items-center pt-2 border-t">
-                                                <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} disabled={fields.length === 1}><Trash2 className="h-4 w-4 mr-2" />Remove</Button>
-                                                <Button type="button" variant="outline" size="sm" onClick={() => handleSaveAndCreateOrder(index)}><Save className="h-4 w-4 mr-2" />{isSaved ? 'Update Order' : 'Save as Order'}</Button>
+                                        </motion.div>
+                                    )}
+
+                                     {currentStep === 2 && (
+                                        <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+                                            <div className="flex justify-between items-center bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                                <h3 className="text-lg font-bold flex items-center gap-2 text-primary"><Utensils className="h-5 w-5" /> Line Items</h3>
+                                                <div className="flex items-center gap-2">
+                                                    <Button type="button" variant="outline" size="sm" onClick={persistDraftOrders} disabled={isPersistingDrafts || !form.watch('items').some(i => i.orderId?.startsWith('DRAFT-'))} className="bg-background">
+                                                        {isPersistingDrafts ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                                                        Save Draft Orders
+                                                    </Button>
+                                                    <Button type="button" size="sm" onClick={() => append({ 
+                                                        id: `DRAFT-EVT-${Date.now()}`, 
+                                                        orderId: `DRAFT-ORD-${Date.now()}`, 
+                                                        particularType: 'event', 
+                                                        eventType: eventTypes[0], 
+                                                        mealType: mealTypes[0], 
+                                                        pax: 1, 
+                                                        unitPrice: 0, 
+                                                        total: 0, 
+                                                        date: format(new Date(), 'yyyy-MM-dd'), 
+                                                        vatType: 'inclusive' 
+                                                    })}>
+                                                        <Plus className="w-4 h-4 mr-1" /> Add Row
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                    );
-                                })}
-                            </Accordion>
-                        </Card>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <FormField control={form.control} name="serviceCharge" render={({ field }) => (
-                                <FormItem><FormLabel>Service Charge (TSHS)</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>
-                            )}/>
-                            <FormField control={form.control} name="transportCosts" render={({ field }) => (
-                                <FormItem><FormLabel>Transport Costs (TSHS)</FormLabel><FormControl><Input type="number" {...field} onChange={e=>field.onChange(parseFloat(e.target.value) || 0)}/></FormControl></FormItem>
-                            )}/>
-                            <FormField control={form.control} name="vatType" render={({ field }) => (
-                                <FormItem><FormLabel>VAT Type (Overall)</FormLabel>
-                                    <FormControl>
-                                        <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger>
-                                        <SelectContent><SelectItem value="inclusive">Inclusive</SelectItem><SelectItem value="exclusive">Exclusive (+18%)</SelectItem></SelectContent>
-                                        </Select>
-                                    </FormControl>
-                                </FormItem>
-                            )}/>
-                        </div>
-                        <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
-                            <div className="flex items-center space-x-2 pt-2">
-                                <FormControl>
-                                    <Checkbox id="multiply-days" checked={field.value} onCheckedChange={field.onChange} />
-                                </FormControl>
-                                <Label htmlFor="multiply-days">Multiply item totals by number of days</Label>
-                            </div>
-                        )}/>
+                                            <div className="rounded-xl border overflow-hidden">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-muted/50 border-b">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left w-[120px]">Category</th>
+                                                            <th className="px-4 py-3 text-left w-[150px]">Type</th>
+                                                            <th className="px-4 py-3 text-left w-[140px]">Date</th>
+                                                            <th className="px-4 py-3 text-left">Final Particulars</th>
+                                                            <th className="px-4 py-3 text-right w-[80px]">Qty</th>
+                                                            <th className="px-4 py-3 text-right w-[100px]">Rate</th>
+                                                            <th className="px-4 py-3 text-right w-[110px]">Total</th>
+                                                            <th className="px-4 py-3 text-center w-20">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y">
+                                                         {fields.map((item, index) => {
+                                                            const itemType = form.watch(`items.${index}.particularType`);
+                                                            
+                                                            return (
+                                                                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                                                                    <td className="px-4 py-3">
+                                                                        <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                                    <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger></FormControl>
+                                                                                    <SelectContent>
+                                                                                        <SelectItem value="event">Event</SelectItem>
+                                                                                        <SelectItem value="meal">Meal</SelectItem>
+                                                                                        <SelectItem value="custom">Custom</SelectItem>
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        {itemType === 'event' && (
+                                                                            <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
+                                                                                <FormItem>
+                                                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                                                        <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger></FormControl>
+                                                                                        <SelectContent>
+                                                                                            {eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                                                                        </SelectContent>
+                                                                                    </Select>
+                                                                                </FormItem>
+                                                                            )} />
+                                                                        )}
+                                                                        {itemType === 'meal' && (
+                                                                            <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
+                                                                                <FormItem>
+                                                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                                                        <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger></FormControl>
+                                                                                        <SelectContent>
+                                                                                            {mealTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                                                                        </SelectContent>
+                                                                                    </Select>
+                                                                                </FormItem>
+                                                                            )} />
+                                                                        )}
+                                                                        {itemType === 'custom' && (
+                                                                            <div className="text-[10px] text-muted-foreground italic font-semibold uppercase">Custom Entry</div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
+                                                                            <FormItem className="flex flex-col">
+                                                                                <Popover>
+                                                                                    <PopoverTrigger asChild>
+                                                                                        <FormControl><Button variant={"outline"} className={cn("h-9 border w-full justify-start text-left font-normal text-xs px-2", !field.value && "text-muted-foreground")}>
+                                                                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "dd/MM/yyyy") : <span>DD/MM/YYYY</span>}
+                                                                                        </Button></FormControl>
+                                                                                    </PopoverTrigger>
+                                                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                                                        <Calendar 
+                                                                                            mode="single" 
+                                                                                            selected={field.value ? parseISO(field.value) : undefined} 
+                                                                                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} 
+                                                                                            disabled={(date) => {
+                                                                                                const s = form.getValues('startDate');
+                                                                                                const e = form.getValues('endDate');
+                                                                                                if (!s || !e) return false;
+                                                                                                return date < parseISO(s) || date > parseISO(e);
+                                                                                            }}
+                                                                                            initialFocus 
+                                                                                        />
+                                                                                    </PopoverContent>
+                                                                                </Popover>
+                                                                            </FormItem>
+                                                                        )} />
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => <FormItem><FormControl><Input {...field} className="h-9" /></FormControl><FormMessage /></FormItem>} />
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => <FormItem><FormControl><Input type="number" {...field} className="h-9 text-right" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>} />
+                                                                    </td>
+                                                                    <td className="px-4 py-3">
+                                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => <FormItem><FormControl><Input type="number" {...field} className="h-9 text-right" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>} />
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right font-bold">
+                                                                        {form.watch(`items.${index}.total`).toLocaleString()}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        {item.orderId?.startsWith('ORD-') ? (
+                                                                             <div className="flex flex-col items-center gap-1">
+                                                                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[9px] font-bold">SAVED</Badge>
+                                                                                <span className="text-[8px] text-muted-foreground font-mono">{item.orderId}</span>
+                                                                             </div>
+                                                                        ) : (
+                                                                            <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive transition-colors">
+                                                                                <Trash2 className="w-4 h-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </motion.div>
+                                    )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField control={form.control} name="signedAtLocation" render={({ field }) => (
-                                <FormItem><FormLabel>Signed At Location</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                            )}/>
-                            <FormField control={form.control} name="signedAtDate" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Signed At Date</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(d) => field.onChange(d ? format(d, 'yyyy-MM-dd') : '')} /></PopoverContent>
-                                    </Popover>
-                                </FormItem>
-                            )}/>
-                        </div>
+                                    {currentStep === 3 && (
+                                        <motion.div key="step3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                                <FormField control={form.control} name="serviceCharge" render={({ field }) => (
+                                                    <FormItem><FormLabel className="font-semibold">Service Charge</FormLabel><FormControl><Input type="number" {...field} className="h-11" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="transportCosts" render={({ field }) => (
+                                                    <FormItem><FormLabel className="font-semibold">Transport Costs</FormLabel><FormControl><Input type="number" {...field} className="h-11" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="vatType" render={({ field }) => (
+                                                    <FormItem><FormLabel className="font-semibold">VAT Type</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value="inclusive">Inclusive</SelectItem>
+                                                                <SelectItem value="exclusive">Exclusive (18%)</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
 
-                        <div className="mt-6 p-4 bg-secondary/20 rounded-lg">
-                            <h3 className="text-lg font-semibold mb-2">Summary</h3>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            
-                                <div className="flex justify-between">
-                                <span className="text-muted-foreground">Items Subtotal:</span>
-                                <span className="font-medium">{calculateSubtotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                                {form.getValues('multiplyByDays') && (
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total for {form.getValues('numberOfDays')} Day(s):</span>
-                                    <span className="font-medium">{calculateTotalDays().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                                )}
-                                <div className="flex justify-between col-start-1">
-                                <span className="text-muted-foreground">Service Charge:</span>
-                                <span className="font-medium">{form.getValues('serviceCharge').toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Transport Costs:</span>
-                                    <span className="font-medium">{form.getValues('transportCosts').toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                                <div className="flex justify-between font-semibold border-t pt-2 mt-2 col-span-2">
-                                <span>Total Before VAT:</span>
-                                <span>{(calculateTotalDays() + form.getValues('serviceCharge') + form.getValues('transportCosts')).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                                <div className="flex justify-between col-span-2">
-                                <span className="text-muted-foreground">VAT ({form.getValues('vatType') === 'exclusive' ? '18%' : 'Inclusive'}):</span>
-                                <span className="font-medium">{calculateVAT().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-lg border-t-2 pt-2 mt-2 col-span-2">
-                                <span className="text-primary">Grand Total:</span>
-                                <span className="text-accent">{calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} TSHS</span>
-                                </div>
-                            
-                            </div>
-                        </div>
+                                             <div className="space-y-4 pt-4 border-t">
+                                                 <FormField control={form.control} name="serviceDesc" render={({ field }) => (
+                                                     <FormItem>
+                                                         <div className="flex justify-between items-center mb-2">
+                                                            <FormLabel className="font-bold flex items-center gap-2 text-primary"><Settings2 className="h-4 w-4" /> Service Description (Editable)</FormLabel>
+                                                            <Button type="button" variant="ghost" size="sm" className="h-7 text-[10px] font-black italic" onClick={() => { setIsServiceDescModified(false); form.setValue("serviceDesc", buildServiceDesc()); }}>
+                                                                <RefreshCw className="h-3 w-3 mr-1" /> RESET TO DEFAULT
+                                                            </Button>
+                                                         </div>
+                                                         <FormControl>
+                                                             <Textarea 
+                                                                {...field} 
+                                                                className="min-h-[120px] font-medium text-sm border-2 focus:ring-primary leading-relaxed bg-primary/5" 
+                                                                onChange={e => { field.onChange(e); setIsServiceDescModified(true); }}
+                                                             />
+                                                         </FormControl>
+                                                         <FormMessage />
+                                                     </FormItem>
+                                                 )} />
+                                             </div>
+                                        </motion.div>
+                                    )}
 
-                        <div className="flex justify-end gap-4 pt-4 border-t">
-                            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                            <Button type="submit" size="lg" disabled={isSubmitting}>
-                                {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
-                                {isEditMode ? 'Update Invoice' : 'Save and View Invoice'}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
+                                    {currentStep === 4 && (
+                                        <motion.div key="step4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 text-center py-10">
+                                            <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+                                                <CheckCircle className="h-12 w-12" />
+                                            </div>
+                                            <h2 className="text-2xl font-black italic">READY FOR FINALIZATION</h2>
+                                            <p className="text-muted-foreground max-w-sm mx-auto">Please review the financial totals in the sidebar before committing this record to the ledger.</p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
-            {/* Import Dialog */}
-            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Import Orders</DialogTitle>
-                        <DialogDescription>Select which orders you want to include in this invoice.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        {matchingOrders.map(order => (
-                            <div key={order.id} className="flex items-center space-x-3 p-3 border rounded-md hover:bg-muted/50 cursor-pointer" onClick={() => {
-                                setSelectedOrderIdsForImport(prev => 
-                                    prev.includes(order.id) ? prev.filter(id => id !== order.id) : [...prev, order.id]
-                                );
-                            }}>
-                                <Checkbox checked={selectedOrderIdsForImport.includes(order.id)} onCheckedChange={() => {}} />
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-medium">{order.name}</p>
-                                        <Badge variant="outline" className="text-[10px]">{order.id}</Badge>
+                                <div className="flex justify-between items-center pt-8 border-t">
+                                    <Button type="button" variant="outline" size="lg" onClick={prevStep} disabled={currentStep === 1} className="h-12 px-8 font-bold">
+                                        <ArrowLeft className="mr-2 h-4 w-4" /> REVERT
+                                    </Button>
+                                    {currentStep < 4 ? (
+                                        <Button type="button" size="lg" onClick={nextStep} className="h-12 px-10 font-black italic bg-primary hover:bg-primary/90">
+                                            PROCEED <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                        </Button>
+                                    ) : (
+                                        <Button type="button" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit, onInvalid)} className="h-12 px-14 font-black italic bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/40">
+                                            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> ARCHIVING...</> : <><CheckCircle className="mr-2 h-4 w-4" /> FINALIZE DOCUMENT</>}
+                                        </Button>
+                                    )}
+                                </div>
+                            </form>
+                        </Form>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Sidebar Summary */}
+            <div className="w-full lg:w-[400px] flex flex-col gap-6">
+                <Card className="sticky top-8 shadow-2xl border-none overflow-hidden bg-background border-t-4 border-primary">
+                    <div className="bg-primary px-6 py-6 text-primary-foreground relative overflow-hidden">
+                        <FileText className="absolute top-0 right-0 h-24 w-24 opacity-10 rotate-12" />
+                        <h3 className="font-black uppercase tracking-widest text-lg italic">Financial Summary</h3>
+                        <p className="text-primary-foreground/60 text-xs font-bold mt-1 uppercase">Live Receipt View</p>
+                    </div>
+                    <CardContent className="p-8 space-y-8">
+                        <div className="space-y-6">
+                            {selectedClient ? (
+                                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+                                    <Label className="text-[10px] uppercase font-black text-primary tracking-widest">Billed To</Label>
+                                    <p className="font-black text-lg truncate flex items-center gap-2 mt-1"><Building className="h-4 w-4" /> {selectedClient.companyName}</p>
+                                </div>
+                            ) : (
+                                <div className="p-4 rounded-xl border-2 border-dashed flex flex-col items-center gap-2 text-center bg-muted/20">
+                                    <AlertCircle className="h-5 w-5 text-muted-foreground opacity-50" />
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground italic">Pending client selection</p>
+                                </div>
+                            )}
+
+                            <div className="space-y-4 pt-4">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-muted-foreground uppercase">Subtotal</span>
+                                    <span className="font-extrabold">{calculateSubtotal().toLocaleString()} TZS</span>
+                                </div>
+                                {watchedFormValues.multiplyByDays && (
+                                    <div className="flex justify-between items-center text-xs p-2 rounded bg-primary/5 text-primary italic font-bold">
+                                        <span>Multi-Day ({watchedFormValues.numberOfDays}d)</span>
+                                        <span>× {watchedFormValues.numberOfDays}</span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">{order.clientEvents.length} event(s) found</p>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-muted-foreground uppercase">Svc/Transp</span>
+                                    <span className="font-extrabold">{((watchedFormValues.serviceCharge || 0) + (watchedFormValues.transportCosts || 0)).toLocaleString()} TZS</span>
+                                </div>
+                                <div className="flex justify-between items-center text-amber-600 font-bold">
+                                    <span className="text-xs uppercase">VAT ({watchedFormValues.vatType})</span>
+                                    <span>{calculateVAT().toLocaleString()} TZS</span>
+                                </div>
+                            </div>
+
+                            <div className="pt-8 border-t-2 border-dashed relative">
+                                <div className="absolute -left-10 -top-[1.5px] h-3 w-3 rounded-full bg-muted/20" />
+                                <div className="absolute -right-10 -top-[1.5px] h-3 w-3 rounded-full bg-muted/20" />
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Grand Payable</span>
+                                        <p className="text-xs text-muted-foreground italic">Inclusive of all duties</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-3xl font-black text-primary tracking-tighter">{calculateGrandTotal().toLocaleString()}</span>
+                                        <span className="text-[10px] font-bold ml-1 text-primary">TZS</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex flex-col gap-2">
+                                <Button variant="outline" className="w-full border-dashed border-2 font-black italic h-11" onClick={() => form.reset()}><RefreshCw className="h-4 w-4 mr-2 opacity-50" /> RESET DRAFT</Button>
+                                {matchingOrders.length > 0 && (
+                                    <Button variant="secondary" className="w-full font-black italic h-11 bg-primary/10 text-primary hover:bg-primary/20" onClick={() => setIsImportDialogOpen(true)}><Download className="h-4 w-4 mr-2" /> IMPORT ORDERS</Button>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+            </div>
+
+            {/* Sync Hub Modal */}
+            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogContent className="max-w-xl p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
+                    <div className="bg-primary px-8 py-8 text-primary-foreground relative">
+                        <Settings2 className="absolute -bottom-4 -right-4 h-32 w-32 opacity-10" />
+                        <DialogTitle className="text-2xl font-black italic tracking-tight">ORDER SYNC HUB</DialogTitle>
+                        <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-xs mt-1">Select orders to aggregate</DialogDescription>
+                    </div>
+                    <div className="p-8 space-y-4 max-h-[400px] overflow-y-auto">
+                        {matchingOrders.map(order => (
+                            <div 
+                                key={order.id} 
+                                className={cn(
+                                    "p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between",
+                                    selectedOrderIdsForImport.includes(order.id) ? "bg-primary border-primary text-primary-foreground" : "hover:bg-muted/50 border-transparent"
+                                )}
+                                onClick={() => setSelectedOrderIdsForImport(prev => prev.includes(order.id) ? prev.filter(id => id !== order.id) : [...prev, order.id])}
+                            >
+                                <div>
+                                    <p className="font-black text-lg">{order.name}</p>
+                                    <p className={cn("text-xs font-bold opacity-60", selectedOrderIdsForImport.includes(order.id) ? "text-white" : "text-muted-foreground")}>{order.id} • {order.startDate}</p>
+                                </div>
+                                <div className={cn("h-6 w-6 rounded-full border-2 flex items-center justify-center", selectedOrderIdsForImport.includes(order.id) ? "bg-white text-primary" : "border-muted-foreground/30")}>
+                                    {selectedOrderIdsForImport.includes(order.id) && <Check className="h-4 w-4" />}
                                 </div>
                             </div>
                         ))}
                     </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
-                        <Button onClick={() => handleImportSelected(matchingOrders.filter(o => selectedOrderIdsForImport.includes(o.id)))}>Import Selected</Button>
+                    <DialogFooter className="p-8 bg-muted/20 border-t flex items-center justify-between">
+                        <DialogClose asChild><Button variant="ghost" className="font-bold">CANCEL</Button></DialogClose>
+                        <Button 
+                            className="bg-primary hover:bg-primary/90 font-black italic px-8" 
+                            disabled={selectedOrderIdsForImport.length === 0}
+                            onClick={() => handleImportSelected(matchingOrders.filter(o => selectedOrderIdsForImport.includes(o.id)))}
+                        >
+                            SYNC {selectedOrderIdsForImport.length} ORDERS
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </div>
     );
 }

@@ -16,26 +16,66 @@ export const getMenusByDate = async (date: string): Promise<DailyMenu[]> => {
 };
 
 export const upsertDailyMenu = async (menuData: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>): Promise<DailyMenu | null> => {
-    const { order_id, menu_date, recipes, region } = menuData;
-    
-    const { data, error } = await supabase
-        .from('daily_menus')
-        .upsert(
-            { 
-                order_id, 
-                menu_date, 
-                recipes, 
-                region, 
-                updated_at: new Date().toISOString() 
-            },
-            { onConflict: 'order_id, menu_date, region' }
-        )
-        .select()
-        .single();
-    
-    if (error) {
-        console.error('Error upserting daily menu:', error);
+    try {
+        const { event_id, menu_date, recipes, region } = menuData;
+        
+        const { data, error } = await supabase
+            .from('daily_menus')
+            .upsert(
+                { 
+                    event_id, 
+                    menu_date, 
+                    recipes, 
+                    region, 
+                    updated_at: new Date().toISOString() 
+                },
+                { onConflict: 'event_id, menu_date' }
+            )
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('Error upserting daily menu:', JSON.stringify(error, null, 2));
+            return null;
+        }
+        return data as DailyMenu;
+    } catch (err) {
+        console.error('Unexpected error upserting daily menu:', err);
         return null;
     }
-    return data as DailyMenu;
 }
+
+export const bulkUpsertDailyMenus = async (menus: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>[]): Promise<boolean> => {
+    if (menus.length === 0) return true;
+
+    try {
+        const uniqueMenus = new Map();
+        const now = new Date().toISOString();
+
+        menus.forEach(m => {
+            const key = `${m.event_id}-${m.menu_date}`;
+            uniqueMenus.set(key, {
+                event_id: m.event_id,
+                menu_date: m.menu_date,
+                recipes: m.recipes,
+                region: m.region,
+                updated_at: now
+            });
+        });
+
+        const payload = Array.from(uniqueMenus.values());
+
+        const { error } = await supabase
+            .from('daily_menus')
+            .upsert(payload, { onConflict: 'event_id, menu_date' });
+
+        if (error) {
+            console.error('Error bulk upserting daily menus:', JSON.stringify(error, null, 2));
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Unexpected error bulk upserting daily menus:', err);
+        return false;
+    }
+};

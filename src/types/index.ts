@@ -115,6 +115,7 @@ export const MEAL_TYPES = [
 export type MealType = string;
 
 export interface ClientEvent {
+  id: string; // Unique Event ID (EVT-XXXXX)
   clientId?: string; // Populated from parent order when flattening events
   date: string; // ISO date string
   numberOfPeople: number;
@@ -145,7 +146,8 @@ export interface Order {
 
 // Shared Invoice Item Type
 export interface InvoiceItem {
-  id: string;
+  id: string; // Event ID (EVT-XXXXX)
+  orderId?: string; // Parent Order ID (ORD-XXXXX) for linking
   eventType: string;
   customEventType?: string;
   mealType: string;
@@ -417,7 +419,7 @@ export interface StockLog {
 
 export interface DailyMenu {
     id: number;
-    order_id: string;
+    event_id: string; // References ClientEvent.id
     menu_date: string; // YYYY-MM-DD
     recipes: { rowIndex: number; recipeId?: string; name: string }[];
     created_at: string;

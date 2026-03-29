@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Order, Client } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
 
 type OrderWithClientName = Order & { customerName: string };
 
@@ -25,17 +26,17 @@ export const getOrderColumns = (
     {
       accessorKey: "id",
       header: "Order ID",
-      cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
+      cell: ({ row }: { row: any }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
     },
     {
       accessorKey: "customerName",
       header: "Customer Name",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: any }) => {
         const order = row.original;
         const client = getClientById(order.clientId);
         return (
-          <div className="font-medium text-primary">
-            {client ? client.companyName : "N/A"}
+          <div className="font-semibold text-primary">
+            {client ? client.companyName : <span className="text-muted-foreground italic text-[10px]">No Client</span>}
           </div>
         );
       },
@@ -43,10 +44,10 @@ export const getOrderColumns = (
     {
       accessorKey: "startDate",
       header: "Period",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: any }) => {
           const start = row.original.startDate;
           const end = row.original.endDate;
-          if(!start || !end) return 'N/A';
+          if(!start || !end) return <span className="text-muted-foreground italic text-[10px]">N/A</span>;
           try {
             return (
                 <div className="text-xs">
@@ -61,14 +62,20 @@ export const getOrderColumns = (
     {
       accessorKey: "proformaId",
       header: "Proforma",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: any }) => {
         const proformaId = row.getValue("proformaId") as string;
-        return <div className="font-mono text-xs text-muted-foreground">{proformaId || 'N/A'}</div>;
+        return proformaId ? (
+            <Badge variant="outline" className="font-mono bg-primary/5 text-primary border-primary/20 text-[10px]">
+                {proformaId}
+            </Badge>
+        ) : (
+            <span className="text-muted-foreground text-[10px] italic">Not Linked</span>
+        );
       },
     },
     {
       id: "actions",
-      cell: ({ row }) => {
+      cell: ({ row }: { row: any }) => {
         const order = row.original;
         return (
           <DropdownMenu>
