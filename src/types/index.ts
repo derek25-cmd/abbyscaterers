@@ -419,6 +419,7 @@ export interface StockLog {
 
 export interface DailyMenu {
     id: number;
+    order_id: string; // References Order.id
     event_id: string; // References ClientEvent.id
     menu_date: string; // YYYY-MM-DD
     recipes: { rowIndex: number; recipeId?: string; name: string }[];

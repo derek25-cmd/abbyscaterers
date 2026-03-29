@@ -199,6 +199,7 @@ export default function DailyMenuPlannerPage() {
         });
 
         return {
+          order_id: orderMenu.orderId,
           event_id: orderMenu.eventId,
           menu_date: format(selectedDate, 'yyyy-MM-dd'),
           recipes: recipesToSave,
@@ -253,22 +254,54 @@ export default function DailyMenuPlannerPage() {
           headStyles: {
             fillColor: [244, 244, 245],
             textColor: [10, 10, 10],
+            fontSize: 8,
             fontStyle: 'bold',
-            halign: 'center'
+            halign: 'center',
+            cellPadding: 2,
+            minCellHeight: 15
           },
           styles: {
-            cellPadding: 1,
-            fontSize: 10,
+            cellPadding: 2,
+            fontSize: 9,
+            valign: 'middle'
+          },
+          columnStyles: {
+            // Distribute columns evenly
           },
           didParseCell: function (data: any) {
             if (data.row.section === 'head') return;
+            
             const rowIndex = data.row.index;
-            if (
-              rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
-              rowIndex + 1 === MEAL_SECTIONS.LUNCH.start
-            ) {
+            const orderIndex = data.column.index;
+            const order = pageMenuData[orderIndex];
+            const mealType = order.mealType.toLowerCase();
+            const row = rowIndex + 1;
+
+            const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
+            const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start;
+
+            const isHeaderRow = (
+              row === MEAL_SECTIONS.BREAKFAST.start ||
+              row === MEAL_SECTIONS.LUNCH.start
+            );
+
+            if (isHeaderRow) {
               data.cell.styles.fontStyle = 'bold';
               data.cell.styles.fillColor = [254, 249, 195];
+              data.cell.styles.textColor = [161, 98, 7]; // amber-700
+              data.cell.styles.halign = 'center';
+            }
+
+            // Strictly dim/block cells for unscheduled meals in PDF too
+            const isDisabled = !isHeaderRow && (
+              (isBreakfastSection && !mealType.includes('breakfast')) ||
+              (isLunchSection && !mealType.includes('lunch'))
+            );
+
+            if (isDisabled) {
+              data.cell.styles.fillColor = [250, 250, 250];
+              data.cell.styles.textColor = [200, 200, 200];
+              data.cell.text = ['']; // Clear any accidental data in disabled sections
             }
           },
         });

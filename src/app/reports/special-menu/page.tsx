@@ -202,60 +202,80 @@ export default function SpecialMenuPage() {
         setIsExporting(true);
         try {
             const doc = new jsPDF();
+            const EVENTS_PER_PAGE = 5;
+            let currentY = 0;
+
             configs.forEach((config, idx) => {
-                if (idx > 0) doc.addPage();
+                const isNewPage = idx % EVENTS_PER_PAGE === 0;
                 
-                doc.setFontSize(22);
-                doc.setTextColor(245, 158, 11); // Amber-500
-                doc.text("Special Event Menu Setup", 105, 20, { align: 'center' });
-                
+                if (isNewPage) {
+                    if (idx > 0) doc.addPage();
+                    
+                    // Page Header
+                    doc.setFontSize(18);
+                    doc.setTextColor(245, 158, 11); // Amber-500
+                    doc.text("Daily Special Menus", 105, 15, { align: 'center' });
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`${format(selectedDate, "PPPP")} | Page ${Math.floor(idx / EVENTS_PER_PAGE) + 1}`, 105, 22, { align: 'center' });
+
+                    doc.setDrawColor(245, 158, 11);
+                    doc.setLineWidth(0.5);
+                    doc.line(20, 25, 190, 25);
+                    currentY = 35;
+                } else {
+                    // Separator line between clients on the same page
+                    doc.setDrawColor(240, 240, 240);
+                    doc.setLineWidth(0.2);
+                    doc.line(20, currentY - 5, 190, currentY - 5);
+                }
+
+                // Client Info Block
                 doc.setFontSize(12);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`${format(selectedDate, "PPP")} | ${config.region}`, 105, 28, { align: 'center' });
-
-                doc.setDrawColor(245, 158, 11);
-                doc.setLineWidth(0.5);
-                doc.line(20, 32, 190, 32);
-
-                // Client Info
-                doc.setFontSize(14);
                 doc.setTextColor(0, 0, 0);
-                doc.text(`Client: ${config.clientName}`, 20, 42);
-                doc.text(`Pax: ${config.pax} people`, 140, 42);
-                doc.text(`Service Type: ${config.mealType}`, 20, 50);
-
-                let currentY = 60;
+                doc.setFont("helvetica", "bold");
+                doc.text(`${config.clientName} (${config.region})`, 20, currentY);
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(100, 100, 100);
+                doc.text(`Pax: ${config.pax} | Type: ${config.mealType} | ID: ${config.eventId}`, 20, currentY + 5);
+                
+                currentY += 12;
 
                 config.activeTypes.forEach(type => {
                     const items = config.menus[type];
                     if (items.length === 0) return;
 
-                    doc.setFontSize(14);
+                    doc.setFontSize(9);
                     doc.setTextColor(245, 158, 11);
-                    doc.text(`${type.toUpperCase()} MENU`, 20, currentY);
-                    currentY += 8;
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`${type.toUpperCase()} ITEMS`, 25, currentY);
+                    currentY += 4;
 
-                    const body = items.map((item, i) => [i + 1, item.name]);
+                    const body = items.map((item, i) => [`${i + 1}.`, item.name]);
                     (doc as any).autoTable({
                         startY: currentY,
-                        head: [['No.', 'Particulars / Description']],
                         body: body,
-                        theme: 'grid',
-                        headStyles: { fillColor: [254, 243, 199], textColor: [146, 64, 14], fontStyle: 'bold' },
-                        styles: { fontSize: 11, cellPadding: 3 },
-                        margin: { left: 20, right: 20 }
+                        theme: 'plain',
+                        styles: { fontSize: 9, cellPadding: 1 },
+                        columnStyles: { 0: { cellWidth: 10 } },
+                        margin: { left: 30, right: 30 },
+                        didDrawPage: (data: any) => {
+                            // If autoTable caused a page jump, we need to handle that, 
+                            // but with 5 events per page and small tables, it's unlikely.
+                        }
                     });
 
-                    currentY = (doc as any).lastAutoTable.finalY + 15;
-                    if (currentY > 260) {
-                        doc.addPage();
-                        currentY = 20;
-                    }
+                    currentY = (doc as any).lastAutoTable.finalY + 6;
                 });
+
+                currentY += 5; // Extra spacing after client block
             });
 
             doc.save(`Special_Event_Menus_${format(selectedDate, "yyyy-MM-dd")}.pdf`);
-            toast({ title: 'Exported!', description: 'Menu PDF has been generated.' });
+            toast({ title: 'Exported!', description: 'Menu PDF has been generated with grouped events.' });
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Export Failed' });

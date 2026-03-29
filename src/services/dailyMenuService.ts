@@ -17,12 +17,13 @@ export const getMenusByDate = async (date: string): Promise<DailyMenu[]> => {
 
 export const upsertDailyMenu = async (menuData: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>): Promise<DailyMenu | null> => {
     try {
-        const { event_id, menu_date, recipes, region } = menuData;
+        const { order_id, event_id, menu_date, recipes, region } = menuData;
         
         const { data, error } = await supabase
             .from('daily_menus')
             .upsert(
                 { 
+                    order_id,
                     event_id, 
                     menu_date, 
                     recipes, 
@@ -55,6 +56,7 @@ export const bulkUpsertDailyMenus = async (menus: Omit<DailyMenu, 'id' | 'create
         menus.forEach(m => {
             const key = `${m.event_id}-${m.menu_date}`;
             uniqueMenus.set(key, {
+                order_id: m.order_id,
                 event_id: m.event_id,
                 menu_date: m.menu_date,
                 recipes: m.recipes,
