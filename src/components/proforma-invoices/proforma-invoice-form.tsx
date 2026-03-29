@@ -252,7 +252,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         if (isEditMode && invoiceId) {
             const found = getProformaById(invoiceId);
             if (found) {
-                // Map the ProformaInvoice to the ProformaInvoiceFormData structure
                 const dataToLoad: ProformaInvoiceFormData = {
                     id: found.id,
                     invoiceDate: found.invoiceDate,
@@ -307,7 +306,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
             if (result) {
                 // Determine which items are "New Orders" that need persistence
-                const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('TEMP-ORD-'));
+                const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
                 
                 // Group by temporary Order ID
                 const orderGroups = new Map<string, typeof newOrderItems>();
@@ -319,11 +318,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
                 // Persist new orders with ORD-XXXXX and EVT-XXXXX
                 for (const [tempId, groupItems] of orderGroups.entries()) {
-                    // Filter out any items with missing dates as a safety measure
                     const validItems = groupItems.filter(i => i.date);
                     if (validItems.length === 0) continue;
 
-                    // Compute overall Start/End dates for the order based on its events
                     const eventDates = validItems.map(i => new Date(i.date!));
                     const startDate = format(new Date(Math.min(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
                     const endDate = format(new Date(Math.max(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
@@ -337,7 +334,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         description: `Manually defined via Proforma ${result.id}`,
                         proformaId: result.id,
                         clientEvents: validItems.map(gi => ({
-                            // We pass the temp ID but the service will assign the real EVT-XXXXX if it starts with DRAFT-
                             id: gi.id, 
                             mealType: gi.mealType,
                             eventType: gi.eventType,
@@ -352,7 +348,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         }))
                     };
 
-                    // addOrder will generate ORD-XXXXX and EVT-XXXXX automatically
                     await addOrder(orderPayload as any);
                 }
 
