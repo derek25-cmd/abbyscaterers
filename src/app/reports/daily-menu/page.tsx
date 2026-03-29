@@ -34,8 +34,8 @@ type EventMenu = {
 };
 
 const MEAL_SECTIONS = {
-  BREAKFAST: { start: 1, end: 12, title: 'Breakfast' },
-  LUNCH: { start: 13, end: 31, title: 'Lunch' },
+  BREAKFAST: { start: 1, end: 11, title: 'Breakfast' }, // 1 Header + 10 Rows = 11
+  LUNCH: { start: 12, end: 27, title: 'Lunch' },      // 1 Header + 15 Rows = 16 (Total 27)
 };
 
 export default function DailyMenuPlannerPage() {
@@ -98,7 +98,7 @@ export default function DailyMenuPlannerPage() {
           const client = getClientById(order.clientId);
           const savedMenu = savedMenus.find(m => m.event_id === eventId);
 
-          const menu: MenuCell[] = Array(32).fill(null).map(() => ({ content: '', mealType: '' }));
+          const menu: MenuCell[] = Array(27).fill(null).map(() => ({ content: '', mealType: '' }));
 
           menu[MEAL_SECTIONS.BREAKFAST.start - 1] = { content: 'Breakfast', mealType: 'header' };
           menu[MEAL_SECTIONS.LUNCH.start - 1] = { content: 'Lunch', mealType: 'header' };
@@ -227,85 +227,85 @@ export default function DailyMenuPlannerPage() {
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
       const COLUMNS_PER_PAGE = 5;
-      const totalColumns = menuData.length;
-      let startColumn = 0;
+      const breakfastEvents = menuData.filter(e => e.mealType.toLowerCase().includes('breakfast'));
+      const lunchEvents = menuData.filter(e => e.mealType.toLowerCase().includes('lunch'));
 
-      while (startColumn < totalColumns) {
-        if (startColumn > 0) {
-          doc.addPage();
-        }
+      let isFirstPage = true;
 
-        doc.text(`Daily Menu Report (${regionFilter}) - ${selectedDate ? format(selectedDate, "PPP") : 'N/A'}`, 14, 15);
-
-        const endColumn = Math.min(startColumn + COLUMNS_PER_PAGE, totalColumns);
-        const pageMenuData = menuData.slice(startColumn, endColumn);
-
-        const head = [pageMenuData.map(order => `${order.clientName} (${order.region})\n#${order.pax} pax | ${order.orderId}`)];
-
-        const body = Array.from({ length: 32 }).map((_, rowIndex) =>
+      // --- GENERATE BREAKFAST PAGES ---
+      for (let i = 0; i < breakfastEvents.length; i += COLUMNS_PER_PAGE) {
+        if (!isFirstPage) doc.addPage();
+        isFirstPage = false;
+        
+        const pageMenuData = breakfastEvents.slice(i, i + COLUMNS_PER_PAGE);
+        const head = [pageMenuData.map(order => `${order.clientName.toUpperCase()}\n# ${order.pax} PAX`)];
+        const breakfastBody = Array.from({ length: 11 }).map((_, rowIndex) =>
           pageMenuData.map(order => order.menu[rowIndex]?.content || '')
         );
 
         (doc as any).autoTable({
           head: head,
-          body: body,
-          startY: 25,
+          body: breakfastBody,
+          startY: 10,
           theme: 'grid',
-          headStyles: {
-            fillColor: [244, 244, 245],
-            textColor: [10, 10, 10],
-            fontSize: 8,
-            fontStyle: 'bold',
-            halign: 'center',
-            cellPadding: 2,
-            minCellHeight: 15
-          },
-          styles: {
-            cellPadding: 2,
-            fontSize: 9,
-            valign: 'middle'
-          },
-          columnStyles: {
-            // Distribute columns evenly
+          headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 11, fontStyle: 'bold', halign: 'center', minCellHeight: 15 },
+          styles: { 
+            cellPadding: 4, 
+            fontSize: 16, 
+            fontStyle: 'bold', 
+            halign: 'center', 
+            valign: 'middle', 
+            textColor: [0, 0, 0], 
+            lineWidth: 0.2,
+            minCellHeight: 16 // Ensures all rows stay on one page
           },
           didParseCell: function (data: any) {
             if (data.row.section === 'head') return;
-            
-            const rowIndex = data.row.index;
-            const orderIndex = data.column.index;
-            const order = pageMenuData[orderIndex];
-            const mealType = order.mealType.toLowerCase();
-            const row = rowIndex + 1;
-
-            const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
-            const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start;
-
-            const isHeaderRow = (
-              row === MEAL_SECTIONS.BREAKFAST.start ||
-              row === MEAL_SECTIONS.LUNCH.start
-            );
-
-            if (isHeaderRow) {
-              data.cell.styles.fontStyle = 'bold';
-              data.cell.styles.fillColor = [254, 249, 195];
-              data.cell.styles.textColor = [161, 98, 7]; // amber-700
-              data.cell.styles.halign = 'center';
+            if (data.row.index === 0) { // Header row "Breakfast"
+               data.cell.styles.fillColor = [254, 249, 195];
+               data.cell.styles.textColor = [161, 98, 7];
+               data.cell.styles.fontSize = 12;
             }
-
-            // Strictly dim/block cells for unscheduled meals in PDF too
-            const isDisabled = !isHeaderRow && (
-              (isBreakfastSection && !mealType.includes('breakfast')) ||
-              (isLunchSection && !mealType.includes('lunch'))
-            );
-
-            if (isDisabled) {
-              data.cell.styles.fillColor = [250, 250, 250];
-              data.cell.styles.textColor = [200, 200, 200];
-              data.cell.text = ['']; // Clear any accidental data in disabled sections
-            }
-          },
+          }
         });
-        startColumn = endColumn;
+      }
+
+      // --- GENERATE LUNCH PAGES ---
+      for (let i = 0; i < lunchEvents.length; i += COLUMNS_PER_PAGE) {
+        if (!isFirstPage) doc.addPage();
+        isFirstPage = false;
+
+        const pageMenuData = lunchEvents.slice(i, i + COLUMNS_PER_PAGE);
+        const head = [pageMenuData.map(order => `${order.clientName.toUpperCase()}\n# ${order.pax} PAX`)];
+        const lunchBody = Array.from({ length: 16 }).map((_, rowIndex) =>
+          pageMenuData.map(order => order.menu[rowIndex + 11]?.content || '')
+        );
+
+        (doc as any).autoTable({
+          head: head,
+          body: lunchBody,
+          startY: 10,
+          theme: 'grid',
+          headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 11, fontStyle: 'bold', halign: 'center', minCellHeight: 15 },
+          styles: { 
+            cellPadding: 4, 
+            fontSize: 16, 
+            fontStyle: 'bold', 
+            halign: 'center', 
+            valign: 'middle', 
+            textColor: [0, 0, 0], 
+            lineWidth: 0.2,
+            minCellHeight: 12 // Adjusted for 16 rows to fit A4
+          },
+          didParseCell: function (data: any) {
+            if (data.row.section === 'head') return;
+            if (data.row.index === 0) { // Header row "Lunch"
+               data.cell.styles.fillColor = [254, 249, 195];
+               data.cell.styles.textColor = [161, 98, 7];
+               data.cell.styles.fontSize = 12;
+            }
+          }
+        });
       }
 
       doc.save(`Daily_Menu_Report_${regionFilter}_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
@@ -523,14 +523,14 @@ export default function DailyMenuPlannerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 32 }).map((_, rowIndex) => {
+                  {Array.from({ length: 27 }).map((_, rowIndex) => {
                     const isHeaderRow = (
                       rowIndex + 1 === MEAL_SECTIONS.BREAKFAST.start ||
                       rowIndex + 1 === MEAL_SECTIONS.LUNCH.start
                     );
 
                     return (
-                      <tr key={rowIndex} className={cn(isHeaderRow ? "bg-muted/30 h-10" : "h-12 hover:bg-muted/10 transition-colors")}>
+                      <tr key={rowIndex} className={cn(isHeaderRow ? "bg-muted/30 h-10" : "h-14 hover:bg-muted/10 transition-colors")}>
                         {menuData.map((order, orderIndex) => {
                           const mealType = order.mealType.toLowerCase();
                           const row = rowIndex + 1;
@@ -551,14 +551,14 @@ export default function DailyMenuPlannerPage() {
                             )}>
                               <Popover>
                                 <PopoverTrigger asChild disabled={isDisabled}>
-                                  <div className="w-full h-full min-h-[48px] flex flex-col group relative">
+                                  <div className="w-full h-full min-h-[56px] flex flex-col group relative">
                                     <input
                                       type="text"
                                       value={order.menu[rowIndex]?.content || ''}
                                       onChange={(e) => handleMenuChange(orderIndex, rowIndex, e.target.value)}
                                       className={cn(
-                                        "w-full h-full p-2.5 bg-transparent border-none focus:ring-1 focus:ring-primary/40 outline-none transition-all",
-                                        isHeaderRow ? 'text-center font-black text-xs uppercase tracking-widest text-primary/70' : 'text-sm font-medium',
+                                        "w-full h-full p-2.5 bg-transparent border-none focus:ring-1 focus:ring-primary/40 outline-none transition-all text-center",
+                                        isHeaderRow ? 'font-black text-xs uppercase tracking-widest text-primary/70' : 'text-sm font-bold',
                                         isDisabled && 'cursor-not-allowed pointer-events-none'
                                       )}
                                       placeholder={isHeaderRow ? '' : isDisabled ? '' : '...'}

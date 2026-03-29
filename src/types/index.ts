@@ -262,6 +262,9 @@ export interface DeliveryNote {
   vehicle_reg_no?: string;
   delivered_by: string;
   items: DeliveryNoteItem[];
+  event_id?: string;
+  is_narration?: boolean;
+  narration_text?: string;
   created_at: string;
   updated_at: string;
   user_id: string;

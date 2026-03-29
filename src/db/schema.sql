@@ -226,6 +226,9 @@ CREATE TABLE IF NOT EXISTS delivery_notes (
     vehicle_reg_no TEXT,
     delivered_by TEXT NOT NULL,
     items JSONB,
+    event_id TEXT,
+    is_narration BOOLEAN DEFAULT FALSE,
+    narration_text TEXT,
     user_id UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()

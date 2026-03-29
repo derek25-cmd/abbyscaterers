@@ -189,30 +189,34 @@ export function DeliveryNoteTemplate({
     </tr>
   </thead>
   <tbody>
-    {displayItems.map((item, index) => (
-      <tr
-        key={index}
-        style={{
-          height: '24px', // ✅ ensures every row (empty or filled) has equal height
-        }}
-      >
-        <td
-          className="border border-gray-800 p-[0.25rem] text-center align-middle"
-          style={{ verticalAlign: 'middle' }}
+    {displayItems.map((item, index) => {
+      const isNarrationRow = deliveryNote.is_narration && index === 0;
+      return (
+        <tr
+          key={index}
+          style={{
+            height: '24px',
+            backgroundColor: isNarrationRow ? '#f9fafb' : 'transparent',
+          }}
         >
-          {item.qty ? item.s_n : ''} {/* ✅ number only for filled rows */}
-        </td>
-        <td className="border border-gray-800 p-[0.25rem] text-center align-middle">
-          {item.qty}
-        </td>
-        <td className="border border-gray-800 p-[0.25rem] text-center align-middle">
-          {item.itemCode}
-        </td>
-        <td className="border border-gray-800 p-[0.25rem] align-middle">
-          {item.description}
-        </td>
-      </tr>
-    ))}
+          <td
+            className="border border-gray-800 p-[0.25rem] text-center align-middle"
+            style={{ verticalAlign: 'middle' }}
+          >
+            {item.qty || isNarrationRow ? item.s_n : ''}
+          </td>
+          <td className="border border-gray-800 p-[0.25rem] text-center align-middle">
+            {isNarrationRow ? '1' : item.qty}
+          </td>
+          <td className="border border-gray-800 p-[0.25rem] text-center align-middle font-bold">
+            {item.itemCode}
+          </td>
+          <td className={`border border-gray-800 p-[0.25rem] align-middle ${isNarrationRow ? 'font-bold italic' : ''}`}>
+            {item.description}
+          </td>
+        </tr>
+      );
+    })}
   </tbody>
 </table>
 
