@@ -54,10 +54,10 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                     <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-2"><UtensilsCrossed className="h-3.5 w-3.5 text-primary"/>Included Recipes</h4>
                     {recipesLoading ? <Skeleton className="h-20 w-full" /> : (
                         <ul className="space-y-1.5 list-disc list-inside text-sm text-foreground">
-                            {event.recipes.length > 0 ? event.recipes.map((r, index) => {
-                                const recipe = getRecipeById(r.recipeId);
-                                return <li key={index} className="pl-1">{recipe?.recipeName || "Unknown Recipe"}</li>
-                            }) : <li className="text-muted-foreground italic list-none">No recipes assigned.</li>}
+                            {(event.recipes || []).length > 0 ? (event.recipes || []).map((r, index) => {
+                                 const recipe = getRecipeById(r.recipeId);
+                                 return <li key={index} className="pl-1">{recipe?.recipeName || "Unknown Recipe"}</li>
+                             }) : <li className="text-muted-foreground italic list-none">No recipes assigned.</li>}
                         </ul>
                     )}
                  </div>
