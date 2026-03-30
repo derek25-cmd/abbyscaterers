@@ -246,25 +246,27 @@ export default function DailyMenuPlannerPage() {
         (doc as any).autoTable({
           head: head,
           body: breakfastBody,
-          startY: 10,
+          startY: 5,
           theme: 'grid',
-          headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 11, fontStyle: 'bold', halign: 'center', minCellHeight: 15 },
+          margin: { top: 5, bottom: 5, left: 5, right: 5 },
+          pageBreak: 'avoid',
+          headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 12, fontStyle: 'bold', halign: 'center', minCellHeight: 12 },
           styles: { 
-            cellPadding: 4, 
-            fontSize: 16, 
+            cellPadding: 2, 
+            fontSize: 20, // High visibility font size
             fontStyle: 'bold', 
             halign: 'center', 
             valign: 'middle', 
             textColor: [0, 0, 0], 
             lineWidth: 0.2,
-            minCellHeight: 16 // Ensures all rows stay on one page
+            minCellHeight: 17 // Precision height for 11 rows to fit A4 Landscape
           },
           didParseCell: function (data: any) {
             if (data.row.section === 'head') return;
             if (data.row.index === 0) { // Header row "Breakfast"
                data.cell.styles.fillColor = [254, 249, 195];
                data.cell.styles.textColor = [161, 98, 7];
-               data.cell.styles.fontSize = 12;
+               data.cell.styles.fontSize = 14;
             }
           }
         });
@@ -284,25 +286,27 @@ export default function DailyMenuPlannerPage() {
         (doc as any).autoTable({
           head: head,
           body: lunchBody,
-          startY: 10,
+          startY: 5,
           theme: 'grid',
-          headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 11, fontStyle: 'bold', halign: 'center', minCellHeight: 15 },
+          margin: { top: 5, bottom: 5, left: 5, right: 5 },
+          pageBreak: 'avoid',
+          headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 12, fontStyle: 'bold', halign: 'center', minCellHeight: 12 },
           styles: { 
-            cellPadding: 4, 
-            fontSize: 16, 
+            cellPadding: 2, 
+            fontSize: 20, // High visibility font size
             fontStyle: 'bold', 
             halign: 'center', 
             valign: 'middle', 
             textColor: [0, 0, 0], 
             lineWidth: 0.2,
-            minCellHeight: 12 // Adjusted for 16 rows to fit A4
+            minCellHeight: 11.5 // Precision height for 16 rows to fit A4 Landscape
           },
           didParseCell: function (data: any) {
             if (data.row.section === 'head') return;
             if (data.row.index === 0) { // Header row "Lunch"
                data.cell.styles.fillColor = [254, 249, 195];
                data.cell.styles.textColor = [161, 98, 7];
-               data.cell.styles.fontSize = 12;
+               data.cell.styles.fontSize = 14;
             }
           }
         });
