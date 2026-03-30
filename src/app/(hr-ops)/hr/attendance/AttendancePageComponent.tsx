@@ -332,17 +332,15 @@ export function AttendancePageComponent() {
                                             
                                             return (
                                                 <td key={day.toString()} className={cn(isWknd && "attendance-weekend")}>
-                                                    {!isWknd && (
-                                                        <div 
-                                                            className={cn(
-                                                                "attendance-cell",
-                                                                status?.toLowerCase().replace(' ', '')
-                                                            )}
-                                                            onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), status)}
-                                                        >
-                                                            {status ? status.charAt(0) : ''}
-                                                        </div>
-                                                    )}
+                                                    <div 
+                                                        className={cn(
+                                                            "attendance-cell",
+                                                            status?.toLowerCase().replace(' ', '')
+                                                        )}
+                                                        onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), status)}
+                                                    >
+                                                        {status ? status.charAt(0) : ''}
+                                                    </div>
                                                 </td>
                                             );
                                         })}

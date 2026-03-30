@@ -246,9 +246,8 @@
 }
 
 .attendance-weekend {
-    background: hsl(var(--muted)/0.3) !important;
+    background: hsl(var(--muted)/0.15) !important;
     color: hsl(var(--muted-foreground));
-    pointer-events: none;
 }
 
 .attendance-summary-section {
