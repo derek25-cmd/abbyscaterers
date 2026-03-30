@@ -104,6 +104,28 @@
     padding: 30px;
 }
 
+.btn-report {
+    background: hsl(var(--accent) / 0.15);
+    color: hsl(var(--accent-foreground));
+    border: 1px solid hsl(var(--accent) / 0.3);
+}
+
+.btn-report:hover {
+    background: hsl(var(--accent) / 0.25);
+}
+
+.btn-save {
+    background: hsl(var(--primary));
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 10px 15px -3px rgba(var(--primary), 0.3);
+}
+
+.btn-save:hover {
+    background: hsl(var(--primary) / 0.9);
+    transform: translateY(-1px);
+}
+
 .attendance-table-container {
     overflow-x: auto;
     border-radius: 12px;
@@ -209,6 +231,18 @@
     transform: scale(1.1);
     background: hsl(var(--secondary));
     z-index: 50;
+}
+
+.attendance-cell.unsaved::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    background-color: hsl(var(--destructive));
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(var(--destructive), 0.5);
 }
 
 .attendance-cell.p {

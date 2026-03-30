@@ -16,7 +16,9 @@ import {
     Calendar as CalendarIcon,
     AlertCircle,
     Clock,
-    Filter
+    Filter,
+    Loader2,
+    FileText
 } from "lucide-react";
 import { 
     format, 
@@ -29,8 +31,8 @@ import {
     isSameDay
 } from "date-fns";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams } from 'next/navigation';
-import { getAttendanceRecords, upsertAttendanceRecord, upsertAttendanceRecords } from "@/services/attendanceService";
+import { useSearchParams, useRouter } from 'next/navigation';
+import { getAttendanceRecords, upsertAttendanceRecords } from "@/services/attendanceService";
 import { getEmployees } from "@/services/employeeService";
 import { Attendance, AttendanceStatus, Employee } from "@/types";
 import "./AttendanceRedesign.css";
@@ -39,12 +41,17 @@ const STATUS_ORDER: (AttendanceStatus | null)[] = ['Present', 'Absent', 'Leave',
 
 export function AttendancePageComponent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const employeeIdFilter = searchParams.get('employeeId');
 
     const [records, setRecords] = useState<Attendance[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    
+    // Track unsaved changes: key is "employeeId:date", value is status
+    const [pendingChanges, setPendingChanges] = useState<Record<string, AttendanceStatus | null>>({});
     
     // Date states
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -91,72 +98,32 @@ export function AttendancePageComponent() {
         return result;
     }, [employees, searchQuery, employeeIdFilter]);
 
-    const handleToggleStatus = async (employeeId: string, date: string, currentStatus?: AttendanceStatus) => {
+    const handleToggleStatus = (employeeId: string, date: string, currentStatus?: AttendanceStatus) => {
         const currentIndex = currentStatus ? STATUS_ORDER.indexOf(currentStatus) : 5;
         const nextStatus = STATUS_ORDER[(currentIndex + 1) % STATUS_ORDER.length];
         
-        const emp = employees.find(e => e.id === employeeId);
-        if (!emp) return;
-
-        const employeeName = `${emp.firstName} ${emp.lastName}`;
-
-        if (nextStatus === null) {
-            // In a real app we might delete, but here we just leave as empty/null logic if desired
-            // For now, let's just cycle back to Present or keep it null.
-            // If they want to "clear", we'd need a delete service.
-            // Let's just cycle through: P -> A -> L -> H -> T -> (Empty then P again)
-        }
-
-        const numericStatus = nextStatus as AttendanceStatus;
-
-        // Optimistic update
-        const tempId = Math.random().toString();
-        const newRecord: Attendance = {
-            id: records.find(r => r.employee_id === employeeId && r.date === date)?.id || tempId,
-            employee_id: employeeId,
-            employee: employeeName,
-            date: date,
-            status: numericStatus,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        if (!numericStatus) {
-            // If it's null, we just remove it locally for now (assuming cycling to empty)
-            setRecords(prev => prev.filter(r => !(r.employee_id === employeeId && r.date === date)));
-            // In a real app, call deleteAttendanceRecord
-            return;
-        }
-
-        setRecords(prev => {
-            const index = prev.findIndex(r => r.employee_id === employeeId && r.date === date);
-            if (index > -1) {
-                const newArr = [...prev];
-                newArr[index] = newRecord;
-                return newArr;
-            }
-            return [...prev, newRecord];
-        });
-
-        await upsertAttendanceRecord(newRecord);
+        const key = `${employeeId}:${date}`;
+        setPendingChanges(prev => ({
+            ...prev,
+            [key]: nextStatus as AttendanceStatus
+        }));
     };
 
-    const handleMarkAllPresent = async () => {
-        const today = format(new Date(), "yyyy-MM-dd");
-        const updates: any[] = filteredEmployees.map(emp => {
-            const existing = records.find(r => r.employee_id === emp.id && r.date === today);
-            if (existing && existing.status === 'Present') return null;
-            
-            return {
-                id: existing?.id, // Supabase needs the ID for proper upsert if it exists
-                employee_id: emp.id,
-                employee: `${emp.firstName} ${emp.lastName}`,
-                date: today,
-                status: 'Present' as AttendanceStatus
-            };
-        }).filter((u) => u !== null);
+    const handleSave = async () => {
+        if (Object.keys(pendingChanges).length === 0) return;
+        setSaving(true);
 
-        if (updates.length === 0) return;
+        const updates: Partial<Attendance>[] = Object.entries(pendingChanges).map(([key, status]) => {
+            const [employeeId, date] = key.split(':');
+            const emp = employees.find(e => e.id === employeeId);
+            // Omit 'id' to let DB handle defaults for new records and avoid null constraint errors in bulk upserts
+            return {
+                employee_id: employeeId,
+                employee: emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown',
+                date: date,
+                status: status as AttendanceStatus
+            };
+        });
 
         const result = await upsertAttendanceRecords(updates);
         if (result) {
@@ -169,40 +136,83 @@ export function AttendancePageComponent() {
                 });
                 return newRecords;
             });
+            setPendingChanges({}); // Clear pending changes
+        }
+        setSaving(false);
+    };
+
+    const handleMarkAllPresent = () => {
+        const today = format(new Date(), "yyyy-MM-dd");
+        const newPending = { ...pendingChanges };
+        let hasChanges = false;
+
+        filteredEmployees.forEach(emp => {
+            const existing = records.find(r => r.employee_id === emp.id && r.date === today);
+            const pending = pendingChanges[`${emp.id}:${today}`];
+            const currentStatus = pending !== undefined ? pending : existing?.status;
+
+            if (currentStatus !== 'Present') {
+                newPending[`${emp.id}:${today}`] = 'Present' as AttendanceStatus;
+                hasChanges = true;
+            }
+        });
+
+        if (hasChanges) {
+            setPendingChanges(newPending);
         }
     };
 
     const getStatusInfo = (employeeId: string, date: Date) => {
         const dateStr = format(date, "yyyy-MM-dd");
+        const key = `${employeeId}:${dateStr}`;
+        
+        // Priority: Pending Changes > Existing Records
+        const pendingStatus = pendingChanges[key];
         const record = records.find(r => r.employee_id === employeeId && r.date === dateStr);
-        return record;
+        
+        return {
+            status: pendingStatus !== undefined ? pendingStatus : record?.status,
+            isUnsaved: pendingStatus !== undefined && pendingStatus !== record?.status
+        };
     };
 
     const summary = useMemo(() => {
         const currentMonthStr = format(new Date(currentYear, currentMonth, 1), "yyyy-MM");
-        
-        // Only count records that belong to the current visible month AND one of our active employees
         const visibleEmployeesIds = new Set(filteredEmployees.map(e => e.id));
-        const monthRecords = records.filter(r => 
-            r.date.startsWith(currentMonthStr) && visibleEmployeesIds.has(r.employee_id)
-        );
 
-        const present = monthRecords.filter(r => r.status === 'Present').length;
-        const absent = monthRecords.filter(r => r.status === 'Absent').length;
-        const halfDay = monthRecords.filter(r => r.status === 'Half Day').length;
-        const late = monthRecords.filter(r => r.status === 'Late').length;
+        // Create a combined set of status info for the visible month
+        let totalPresentUnits = 0;
+        let present = 0;
+        let absent = 0;
+        let halfDay = 0;
+        let late = 0;
+        let totalMarked = 0;
 
-        // Total "Present-like" units (treating Half Day as 0.5 can be done here if desired)
-        const totalPresentUnits = present + late + (halfDay * 0.5);
+        filteredEmployees.forEach(emp => {
+            daysInMonth.forEach(day => {
+                if (isWeekend(day)) return;
+                const dateStr = format(day, "yyyy-MM-dd");
+                const info = getStatusInfo(emp.id, day);
+                const status = info.status;
+
+                if (status) {
+                    totalMarked++;
+                    if (status === 'Present') { present++; totalPresentUnits += 1; }
+                    else if (status === 'Late') { late++; totalPresentUnits += 1; }
+                    else if (status === 'Half Day') { halfDay++; totalPresentUnits += 0.5; }
+                    else if (status === 'Absent') { absent++; }
+                }
+            });
+        });
 
         return {
             totalEmployees: filteredEmployees.length,
-            present: present + late, // Combined for simplicity in summary card
+            present: present + late,
             absent,
             late,
-            rate: monthRecords.length > 0 ? (totalPresentUnits / monthRecords.length) * 100 : 0
+            rate: totalMarked > 0 ? (totalPresentUnits / totalMarked) * 100 : 0
         };
-    }, [records, currentMonth, currentYear, filteredEmployees]);
+    }, [records, currentMonth, currentYear, filteredEmployees, pendingChanges, daysInMonth]);
 
     if (loading) {
         return (
@@ -240,6 +250,21 @@ export function AttendancePageComponent() {
                         </div>
                         <Button variant="outline" onClick={handleMarkAllPresent} className="hidden md:flex">
                             <Check className="mr-2 h-4 w-4" /> Mark All Present Today
+                        </Button>
+                        
+                        {Object.keys(pendingChanges).length > 0 && (
+                            <Button className="btn-save" onClick={handleSave} disabled={saving}>
+                                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                Save Changes ({Object.keys(pendingChanges).length})
+                            </Button>
+                        )}
+                        
+                        <Button 
+                            variant="outline" 
+                            className="btn-report ml-2" 
+                            onClick={() => router.push(`/reports/monthly-attendance?month=${currentMonth}&year=${currentYear}`)}
+                        >
+                            <FileText className="mr-2 h-4 w-4" /> View Full Report
                         </Button>
                     </div>
 
@@ -297,7 +322,7 @@ export function AttendancePageComponent() {
                         <div className="legend-item"><div className="legend-box attendance-cell h">H</div> <span>Half Day</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell t">T</div> <span>Late</span></div>
                         <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            💡 Click cells to cycle status
+                            💡 Click cells to cycle status • <span className="text-destructive">●</span> Unsaved
                         </div>
                     </div>
 
@@ -327,17 +352,19 @@ export function AttendancePageComponent() {
                                         </td>
                                         {daysInMonth.map(day => {
                                             const isWknd = isWeekend(day);
-                                            const record = getStatusInfo(emp.id, day);
-                                            const status = record?.status;
+                                            const info = getStatusInfo(emp.id, day);
+                                            const status = info.status;
+                                            const isUnsaved = info.isUnsaved;
                                             
                                             return (
                                                 <td key={day.toString()} className={cn(isWknd && "attendance-weekend")}>
                                                     <div 
                                                         className={cn(
                                                             "attendance-cell",
-                                                            status?.toLowerCase().replace(' ', '')
+                                                            status?.toLowerCase().replace(' ', ''),
+                                                            isUnsaved && "unsaved"
                                                         )}
-                                                        onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), status)}
+                                                        onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), (status || undefined) as AttendanceStatus | undefined)}
                                                     >
                                                         {status ? status.charAt(0) : ''}
                                                     </div>
