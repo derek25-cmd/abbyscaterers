@@ -38,17 +38,27 @@ export function ViewAttendanceDialog({ isOpen, setIsOpen, record }) {
               <span className="col-span-2">{record.date}</span>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
+              <Label className="text-right font-semibold">Status</Label>
+              <span className="col-span-2">{record.status || 'Present'}</span>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right font-semibold">Clock In</Label>
-              <span className="col-span-2">{record.clockIn}</span>
+              <span className="col-span-2">{record.clock_in_time || record.clockIn || '—'}</span>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right font-semibold">Clock Out</Label>
-              <span className="col-span-2">{record.clockOut}</span>
+              <span className="col-span-2">{record.clock_out_time || record.clockOut || '—'}</span>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right font-semibold">Total Hours</Label>
-              <span className="col-span-2">{record.totalHours}</span>
+              <span className="col-span-2">{record.totalHours || '—'}</span>
             </div>
+            {record.notes && (
+              <div className="grid grid-cols-3 items-center gap-4">
+                <Label className="text-right font-semibold">Notes</Label>
+                <span className="col-span-2 text-sm italic">{record.notes}</span>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild>

@@ -794,7 +794,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                                         size="sm" 
                                                                                         onClick={async () => {
                                                                                             if (confirm('Unlink this order from this proforma?')) {
-                                                                                                await updateOrder(orderId, { proformaId: '' } as any);
+                                                                                                await updateOrder(orderId!, { proformaId: '' } as any);
                                                                                                 remove(index);
                                                                                             }
                                                                                         }} 

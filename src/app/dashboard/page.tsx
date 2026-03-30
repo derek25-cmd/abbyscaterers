@@ -104,7 +104,7 @@ export default function DashboardPage() {
         .reduce((sum, inv) => sum + calculateInvoiceTotal(inv), 0);
 
     const todayStr = format(now, 'yyyy-MM-dd');
-    const presentTodayCount = attendance.filter(a => a.date === todayStr && a.clockIn !== '—').length;
+    const presentTodayCount = attendance.filter(a => a.date === todayStr && (a.status === 'Present' || a.status === 'Late')).length;
     const activeEmps = employees.filter(e => e.status === 'Active').length;
     const attendanceRate = activeEmps > 0 ? Math.round((presentTodayCount / activeEmps) * 100) : 0;
 

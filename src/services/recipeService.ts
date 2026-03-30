@@ -30,8 +30,8 @@ export const getLatestRecipeNumber = async (): Promise<number> => {
         .order('recipeNumber', { ascending: false })
         .limit(1)
         .maybeSingle(); // maybeSingle returns null instead of a 406 error if no rows found
-    
-    if(error) {
+
+    if (error) {
         console.error("Error fetching latest recipe number", error);
         return 320; // Default starting point for RN-XXXXX on error
     }
@@ -47,6 +47,7 @@ export const getLatestRecipeNumber = async (): Promise<number> => {
     }
 
     return 320; // Default fallback to 320
+    // Create Add Recipe Function
 }
 
 export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>): Promise<Recipe | null> => {
@@ -58,22 +59,22 @@ export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>
 
     const now = new Date().toISOString();
     const { recipeName, recipeType, ingredients } = recipeData;
-    
+
     const nextNumber = await getLatestRecipeNumber();
     const newRecipeNumber = `RN-${String(nextNumber).padStart(5, '0')}`;
 
-    const newRecipeData = { 
+    const newRecipeData = {
         recipeNumber: newRecipeNumber,
         recipeName,
         recipeType,
         ingredients: ingredients || [],
         user_id: user.id,
-        createdAt: now, 
-        updatedAt: now 
+        createdAt: now,
+        updatedAt: now
     };
 
     const { data, error } = await supabase.from('recipes').insert([newRecipeData]).select().single();
-    
+
     if (error) {
         console.error('Error adding recipe:', error);
         return null;
@@ -86,7 +87,7 @@ export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>
 export const updateRecipe = async (recipeNumber: string, updates: Partial<RecipeFormData>): Promise<boolean> => {
     // Exclude recipeNumber from the update payload as it should not be changed.
     const { recipeNumber: _, ...updatePayload } = updates;
-    
+
     const { error } = await supabase.from('recipes').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('recipeNumber', recipeNumber);
     if (error) {
         console.error('Error updating recipe:', error);

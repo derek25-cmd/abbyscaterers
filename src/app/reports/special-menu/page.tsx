@@ -177,6 +177,7 @@ export default function SpecialMenuPage() {
 
                 return {
                     event_id: config.eventId,
+                    order_id: config.orderId,
                     menu_date: format(selectedDate, 'yyyy-MM-dd'),
                     recipes,
                     region: config.region

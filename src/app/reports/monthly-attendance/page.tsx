@@ -43,24 +43,37 @@ export default function MonthlyAttendanceReportPage() {
     const daysInMonth = getDaysInMonth(selectedMonth);
     
     let filteredData = activeEmployees.map(emp => {
-      const empName = [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(' ');
-      const empRecords = records.filter(r => r.employee === empName && r.date.startsWith(monthStr));
+      // Find records for this employee in this month
+      const empRecords = records.filter(r => r.employee_id === emp.id && r.date.startsWith(monthStr));
       
-      const attendance = Array(daysInMonth).fill('A'); // A for Absent
+      // Default to '-' (Not Marked) or 'A' (Absent)
+      const attendance = Array(daysInMonth).fill('-'); 
+      
       empRecords.forEach(rec => {
-        const dayOfMonth = parseISO(rec.date).getDate() -1;
-        if(rec.clockIn !== '—') attendance[dayOfMonth] = 'P'; // P for Present
+        const dayOfMonth = new Date(rec.date).getDate() - 1;
+        if (dayOfMonth >= 0 && dayOfMonth < daysInMonth) {
+            // Status mapping for report
+            if (rec.status === 'Present' || rec.status === 'Late') attendance[dayOfMonth] = 'P';
+            else if (rec.status === 'Half Day') attendance[dayOfMonth] = 'H';
+            else if (rec.status === 'Absent') attendance[dayOfMonth] = 'A';
+            else if (rec.status === 'Leave') attendance[dayOfMonth] = 'L';
+        }
       });
       
       const presentDays = attendance.filter(a => a === 'P').length;
-      const absentDays = daysInMonth - presentDays;
+      const halfDays = attendance.filter(a => a === 'H').length;
+      const leaveDays = attendance.filter(a => a === 'L').length;
+      const absentDays = attendance.filter(a => a === 'A').length;
+
+      // Professional tally: (P + L + H*0.5)
+      const totalTally = presentDays + leaveDays + (halfDays * 0.5);
 
       return {
         id: emp.id,
-        name: empName,
+        name: `${emp.firstName} ${emp.lastName}`,
         attendance,
-        presentDays,
-        absentDays
+        presentDays: totalTally,
+        absentDays: absentDays
       };
     });
     

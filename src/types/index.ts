@@ -348,13 +348,15 @@ export interface Employee {
   updatedAt: string;
 }
 
+export type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day' | 'Late';
+
 export interface Attendance {
     id: string;
-    employee: string;
+    employee_id: string;
+    employee: string; // Maintain for backwards compatibility with legacy UI
     date: string;
-    clockIn: string;
-    clockOut: string;
-    totalHours: string;
+    status: AttendanceStatus;
+    notes?: string;
     createdAt: string;
     updatedAt: string;
 }
