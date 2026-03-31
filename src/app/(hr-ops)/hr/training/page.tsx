@@ -80,120 +80,128 @@ export default function TrainingPage() {
   };
 
   return (
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 animate-fade-in relative">
-        <div className="flex items-center">
-          <h1 className="font-headline text-3xl font-black tracking-tight">Staff Training Module</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" className="h-10 gap-1 bg-primary px-4 shadow-md" onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="h-4 w-4" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap font-bold">
-                New Training Session
-              </span>
-            </Button>
-          </div>
+    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 animate-fade-in relative">
+      <div className="flex items-center">
+        <h1 className="font-headline text-3xl font-black tracking-tight">Staff Training Module</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" className="h-10 gap-1 bg-primary px-4 shadow-md" onClick={() => setIsAddDialogOpen(true)}>
+            <PlusCircle className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap font-bold">
+              New Training Session
+            </span>
+          </Button>
         </div>
+      </div>
 
-        {loading ? (
-             <div className="flex justify-center items-center h-64 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2 font-medium">Loading training modules...</span>
-             </div>
-        ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {sessions.map((session) => (
-            <Card key={session.id} className="hover:shadow-2xl transition-all duration-500 border-primary/10 overflow-hidden group">
-              <CardHeader className="grid grid-cols-[1fr_auto] items-start gap-4 space-y-0 bg-muted/20 pb-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="bg-background text-[10px] font-black uppercase tracking-widest border-primary/20">{session.type}</Badge>
-                     {session.training_date && (
-                        <span className="text-[10px] font-black text-primary uppercase tracking-tight italic opacity-80">
-                            {format(parseISO(session.training_date), 'MMM d, yyyy')}
-                        </span>
-                     )}
-                  </div>
-                  <CardTitle className="font-headline text-xl font-bold leading-tight group-hover:text-primary transition-colors">{session.title}</CardTitle>
-                  <CardDescription className="text-xs font-medium text-muted-foreground">
-                    {session.department} • {session.location}
-                  </CardDescription>
-                </div>
-                <div className="flex items-center rounded-md text-secondary-foreground">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost" className="hover:bg-primary/10 hover:text-primary">
-                            <MoreHorizontal className="h-5 w-5" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[160px]">
-                          <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground opacity-50">Operations</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => openViewDialog(session)} className="cursor-pointer font-semibold">View Details</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(session)} className="cursor-pointer font-semibold">Edit Session</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openManageParticipants(session)} className="cursor-pointer font-bold text-primary">Manage Attendees</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6 pb-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                            <Users className="h-5 w-5" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-2xl font-black tracking-tighter leading-none">{session.applicants}</span>
-                            <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Enrolled Staff</span>
-                        </div>
-                    </div>
-                </div>
-              </CardContent>
-              <CardFooter className="bg-muted/10 border-t pt-4">
-                <Button 
-                    className="w-full font-bold shadow-md bg-primary hover:bg-primary/90" 
-                    onClick={() => openManageParticipants(session)}
-                >
-                    Manage Attendees
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-          {sessions.length === 0 && (
-             <div className="col-span-full flex flex-col items-center justify-center py-20 bg-muted/10 rounded-xl border-2 border-dashed border-muted-foreground/20">
-                <Users className="h-12 w-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-bold">No Training Sessions</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-xs mt-1">Start by creating your first skill training or staff orientation module.</p>
-             </div>
-          )}
+      {loading ? (
+        <div className="flex justify-center items-center h-64 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 font-medium">Loading training modules...</span>
         </div>
-        )}
-      
+      ) : (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {sessions.map((session) => (
+              <Card key={session.id} className="hover:shadow-2xl transition-all duration-500 border-primary/10 overflow-hidden group">
+                <CardHeader className="grid grid-cols-[1fr_auto] items-start gap-4 space-y-0 bg-muted/20 pb-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-background text-[10px] font-black uppercase tracking-widest border-primary/20">{session.type}</Badge>
+                      {session.training_date && (
+                        <span className="text-[10px] font-black text-primary uppercase tracking-tight italic opacity-80">
+                          {format(parseISO(session.training_date), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                    </div>
+                    <CardTitle className="font-headline text-xl font-bold leading-tight group-hover:text-primary transition-colors">{session.title}</CardTitle>
+                    <CardDescription className="text-xs font-medium text-muted-foreground">
+                      {session.department} • {session.location}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center rounded-md text-secondary-foreground">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost" className="hover:bg-primary/10 hover:text-primary">
+                          <MoreHorizontal className="h-5 w-5" />
+                          <span className="sr-only">Toggle menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[160px]">
+                        <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground opacity-50">Operations</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openViewDialog(session)} className="cursor-pointer font-semibold">View Details</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(session)} className="cursor-pointer font-semibold">Edit Session</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openManageParticipants(session)} className="cursor-pointer font-bold text-primary">Manage Attendees</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 pb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-2xl font-black tracking-tighter leading-none">{session.applicants}</span>
+                        <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Enrolled Staff</span>
+                      </div>
+                    </div>
+                    {session.trainer_name && (
+                      <div className="flex flex-col items-end text-right">
+                        <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest mb-1">Trainer</span>
+                        <span className="text-xs font-bold text-primary">{session.trainer_name}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-muted/10 border-t pt-4">
+                  <Button
+                    className="w-full font-bold shadow-md bg-primary hover:bg-primary/90"
+                    onClick={() => openManageParticipants(session)}
+                  >
+                    Manage Attendees
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          {sessions.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 bg-muted/10 rounded-xl border-2 border-dashed border-muted-foreground/20">
+              <Users className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-bold">No Training Sessions</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-xs mt-1">Start by creating your first skill training or staff orientation module.</p>
+            </div>
+          )}
+        </>
+      )}
+
       <AddTrainingDialog
         isOpen={isAddDialogOpen}
         setIsOpen={setIsAddDialogOpen}
         onAddTraining={handleAddTraining}
       />
+      
       {selectedSession && (
-        <EditTrainingDialog
-          isOpen={isEditDialogOpen}
-          setIsOpen={setIsEditDialogOpen}
-          session={selectedSession}
-          onEditTraining={handleEditTraining}
-        />
-      )}
-      {selectedSession && (
-        <ViewTrainingDialog
-          isOpen={isViewDialogOpen}
-          setIsOpen={setIsViewDialogOpen}
-          session={selectedSession}
-        />
-      )}
-      {selectedSession && (
+        <>
+          <EditTrainingDialog
+            isOpen={isEditDialogOpen}
+            setIsOpen={setIsEditDialogOpen}
+            session={selectedSession}
+            onEditTraining={handleEditTraining}
+          />
+          <ViewTrainingDialog
+            isOpen={isViewDialogOpen}
+            setIsOpen={setIsViewDialogOpen}
+            session={selectedSession}
+          />
           <ManageParticipantsDialog
             isOpen={isManageParticipantsOpen}
             setIsOpen={setIsManageParticipantsOpen}
             session={selectedSession}
             onUpdate={handleRefreshSessions}
           />
+        </>
       )}
     </main>
   );

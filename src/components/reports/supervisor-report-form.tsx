@@ -20,6 +20,8 @@ import { getIssuances } from "@/services/issuanceService";
 import { getMenusByDate } from "@/services/dailyMenuService";
 import { getDeliveryNotes } from "@/services/deliveryNoteService";
 import { getAttendanceByDate } from "@/services/attendanceService";
+import { getTrainingSessions } from "@/services/trainingService";
+import { getClients } from "@/services/clientService";
 import { supabase } from "@/lib/supabase-client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -143,7 +145,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     const dateDeliveryNotes = allDeliveryNotes.filter(d => d.delivery_date?.startsWith(date));
     const dateCosting = (allCosting || []).filter(c => c.report_date === date || c.created_at?.startsWith(date));
 
-    const { data: trainingsData } = await supabase.from('positions').select('*');
+    const trainingsData = await getTrainingSessions();
     const dateTrainings = (trainingsData || []).filter(t => t.training_date === date || t.createdAt?.startsWith(date));
 
     setAvailability({
@@ -223,6 +225,15 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const calculateTotal = (data: any) => {
+    const items = data.items || [];
+    const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
+    const totalForDays = data.multiplyByDays ? subtotal * (Number(data.numberOfDays) || 1) : subtotal;
+    const totalBeforeVat = totalForDays + (Number(data.serviceCharge) || 0) + (Number(data.transportCosts) || 0);
+    const vat = data.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
+    return totalBeforeVat + vat;
   };
 
   const generatePDFBundle = async () => {
@@ -379,18 +390,25 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       // --- SECTION: PROFORMA INVOICES ---
       if (selectedAttachments.proformas && availability.proformas) {
         const { data: allProformas } = await supabase.from('proforma_invoices').select('*');
+        const allClients = await getClients();
         const dailyProformas = (allProformas || []).filter(p => p.invoiceDate === reportDate || p.createdAt?.startsWith(reportDate));
+        
         if (dailyProformas.length > 0) {
           addSectionTitle("4. Proforma Invoices Issued", [0, 102, 204]);
           (doc as any).autoTable({
             head: [['Proforma ID', 'Client Name', 'Date', 'Amount', 'Status']],
-            body: dailyProformas.map(p => [
-                p.id, 
-                p.receiverName || p.clientId || 'Unknown Client', 
-                p.invoiceDate || p.createdAt?.split('T')[0], 
-                `${(Number(p.serviceCharge) || 0).toLocaleString()} TZS`, 
-                p.isInvoiced ? 'Finalized' : 'Pending'
-            ]),
+            body: dailyProformas.map(p => {
+                const client = allClients.find(c => c.id === p.clientId);
+                const clientName = p.receiverName || client?.companyName || client?.name || p.clientId || 'Unknown Client';
+                const grandTotal = calculateTotal(p);
+                return [
+                  p.id, 
+                  clientName, 
+                  p.invoiceDate || p.createdAt?.split('T')[0], 
+                  `${grandTotal.toLocaleString()} TZS`, 
+                  p.isInvoiced ? 'Finalized' : 'Pending'
+                ];
+            }),
             startY: currentY,
             headStyles: { fillColor: [0, 102, 204] },
             styles: { fontSize: 8 }
@@ -402,18 +420,25 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       // --- SECTION: FINAL INVOICES ---
       if (selectedAttachments.invoices && availability.invoices) {
         const { data: allInvoices } = await supabase.from('invoices').select('*');
+        const allClients = await getClients();
         const dailyInvoices = (allInvoices || []).filter(i => i.invoiceDate === reportDate || i.createdAt?.startsWith(reportDate));
+        
         if (dailyInvoices.length > 0) {
           addSectionTitle("5. Final Invoices Issued", [0, 153, 76]);
           (doc as any).autoTable({
             head: [['Invoice ID', 'Client Name', 'Date', 'Amount', 'Status']],
-            body: dailyInvoices.map(i => [
-                i.id, 
-                i.receiverName || i.clientId || 'Unknown Client', 
-                i.invoiceDate || i.createdAt?.split('T')[0], 
-                `${(Number(i.serviceCharge) || 0).toLocaleString()} TZS`, 
-                i.status
-            ]),
+            body: dailyInvoices.map(i => {
+                const client = allClients.find(c => c.id === i.clientId);
+                const clientName = i.receiverName || client?.companyName || client?.name || i.clientId || 'Unknown Client';
+                const grandTotal = calculateTotal(i);
+                return [
+                  i.id, 
+                  clientName, 
+                  i.invoiceDate || i.createdAt?.split('T')[0], 
+                  `${grandTotal.toLocaleString()} TZS`, 
+                  i.status
+                ];
+            }),
             startY: currentY,
             headStyles: { fillColor: [0, 153, 76] },
             styles: { fontSize: 8 }

@@ -245,6 +245,19 @@ export interface Booking {
   updated_at: string;
 }
 
+// --- CUSTOMER FEEDBACK ---
+export interface ServiceFeedback {
+  id: string; // UUID
+  report_date: string; // DATE
+  order_id?: string | null; // TEXT (ORD-XXXXX)
+  overall_summary: string;
+  positive_feedback: string;
+  complaints: string;
+  waiter_challenges: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // --- DELIVERY NOTE ---
 export interface DeliveryNoteItem {
   qty: number;
@@ -369,6 +382,8 @@ export interface TrainingSession {
     type: string;
     applicants: number;
     training_date?: string;
+    description?: string;
+    trainer_name?: string;
     createdAt: string;
     updatedAt: string;
 }

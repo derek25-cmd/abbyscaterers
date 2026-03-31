@@ -50,9 +50,13 @@ export function ViewTrainingDialog({ isOpen, setIsOpen, session }) {
               <Label className="text-right font-semibold">Type</Label>
                <Badge variant="outline" className="col-span-2">{session.type}</Badge>
             </div>
-             <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Participants</Label>
-              <span className="col-span-2">{session.applicants}</span>
+             <div className="grid grid-cols-3 items-center gap-4 border-t pt-2 mt-2">
+              <Label className="text-right font-semibold">Trainer</Label>
+              <span className="col-span-2 font-bold text-primary">{session.trainer_name || 'N/A'}</span>
+            </div>
+            <div className="grid grid-cols-3 items-start gap-4 border-t pt-2">
+              <Label className="text-right font-semibold mt-1">Description</Label>
+              <span className="col-span-2 text-sm italic text-muted-foreground">{session.description || 'No description provided.'}</span>
             </div>
           </div>
           <DialogFooter>

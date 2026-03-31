@@ -22,6 +22,8 @@ export function EditTrainingDialog({ isOpen, setIsOpen, session, onEditTraining 
   const [type, setType] = useState('');
   const [applicants, setApplicants] = useState(0);
   const [trainingDate, setTrainingDate] = useState('');
+  const [trainer_name, setTrainerName] = useState('');
+  const [description, setDescription] = useState('');
 
   useEffect(() => {
     if (session) {
@@ -31,6 +33,8 @@ export function EditTrainingDialog({ isOpen, setIsOpen, session, onEditTraining 
       setType(session.type);
       setApplicants(session.applicants);
       setTrainingDate(session.training_date || new Date(session.createdAt).toISOString().split('T')[0]);
+      setTrainerName(session.trainer_name || '');
+      setDescription(session.description || '');
     }
   }, [session]);
 
@@ -48,7 +52,9 @@ export function EditTrainingDialog({ isOpen, setIsOpen, session, onEditTraining 
       location,
       type,
       applicants: Number(applicants),
-      training_date: trainingDate
+      training_date: trainingDate,
+      trainer_name,
+      description
     });
 
     setIsOpen(false);
@@ -109,6 +115,14 @@ export function EditTrainingDialog({ isOpen, setIsOpen, session, onEditTraining 
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="applicants" className="text-right">Participants</Label>
               <Input id="applicants" type="number" value={applicants} onChange={(e) => setApplicants(e.target.value)} className="col-span-3" min="0" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="trainer" className="text-right">Trainer</Label>
+              <Input id="trainer" value={trainer_name} onChange={(e) => setTrainerName(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">Description</Label>
+              <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>

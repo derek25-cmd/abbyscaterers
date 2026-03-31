@@ -25,6 +25,8 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
   const [location, setLocation] = useState('');
   const [type, setType] = useState('Skill Training');
   const [trainingDate, setTrainingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [trainer_name, setTrainerName] = useState('');
+  const [description, setDescription] = useState('');
   
   const [employees, setEmployees] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,6 +51,8 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
     setLocation('');
     setType('Skill Training');
     setTrainingDate(new Date().toISOString().split('T')[0]);
+    setTrainerName('');
+    setDescription('');
     setSelectedEmployees([]);
     setSearchQuery('');
   }
@@ -77,6 +81,8 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
       location,
       type,
       training_date: trainingDate,
+      trainer_name,
+      description,
       employeeIds: selectedEmployees
     });
 
@@ -138,6 +144,14 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
                       <SelectItem value="Refresher">Refresher</SelectItem>
                     </SelectContent>
                   </Select>
+               </div>
+               <div>
+                  <Label htmlFor="trainer">Trainer Name</Label>
+                  <Input id="trainer" value={trainer_name} onChange={(e) => setTrainerName(e.target.value)} placeholder="Full Name" />
+               </div>
+               <div className="md:col-span-2">
+                  <Label htmlFor="description">Training Description</Label>
+                  <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief overview of the module" />
                </div>
             </div>
 

@@ -12,7 +12,11 @@ export const getTrainingSessions = async (): Promise<TrainingSession[]> => {
 };
 
 export const addTrainingSession = async (session: Omit<TrainingSession, 'id' | 'createdAt' | 'updatedAt'>): Promise<TrainingSession | null> => {
-    const { data, error } = await supabase.from('positions').insert([session]).select();
+    const newSession = {
+        ...session,
+        id: `TRN-${Date.now().toString().slice(-6)}`
+    };
+    const { data, error } = await supabase.from('positions').insert([newSession]).select();
     if (error) {
         console.error('Error adding training session:', error);
         return null;
