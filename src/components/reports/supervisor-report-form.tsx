@@ -89,7 +89,6 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     orders: false,
     stock: false,
     issuance: false,
-    menu: false,
     proformas: false,
     invoices: false,
     deliveryNotes: false,
@@ -101,7 +100,6 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     orders: true,
     stock: true,
     issuance: true,
-    menu: true,
     proformas: true,
     invoices: true,
     deliveryNotes: true,
@@ -152,7 +150,6 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       orders: ordersData.some(o => o.startDate <= date && o.endDate >= date),
       stock: stockData.some(l => l.date === date),
       issuance: issuanceData.some(i => i.date === date),
-      menu: menusData.length > 0,
       proformas: dateProformas.length > 0,
       invoices: dateInvoices.length > 0,
       deliveryNotes: dateDeliveryNotes.length > 0,
@@ -379,32 +376,21 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         }
       }
 
-      // --- SECTION: DAILY MENU ---
-      if (selectedAttachments.menu && availability.menu) {
-        const menus = await getMenusByDate(reportDate);
-
-        if (menus.length > 0) {
-          addSectionTitle("4. Daily Menu Planner", [102, 51, 153]);
-          (doc as any).autoTable({
-            head: [['Region', 'Order ID', 'Recipes']],
-            body: menus.map(m => [m.region, m.order_id, m.recipes.map(r => r.name).join(', ')]),
-            startY: currentY,
-            headStyles: { fillColor: [102, 51, 153] },
-            styles: { fontSize: 8 }
-          });
-          currentY = (doc as any).lastAutoTable.finalY + 10;
-        }
-      }
-
       // --- SECTION: PROFORMA INVOICES ---
       if (selectedAttachments.proformas && availability.proformas) {
         const { data: allProformas } = await supabase.from('proforma_invoices').select('*');
         const dailyProformas = (allProformas || []).filter(p => p.invoiceDate === reportDate || p.createdAt?.startsWith(reportDate));
         if (dailyProformas.length > 0) {
-          addSectionTitle("5. Proforma Invoices Issued", [0, 102, 204]);
+          addSectionTitle("4. Proforma Invoices Issued", [0, 102, 204]);
           (doc as any).autoTable({
-            head: [['ID', 'Client', 'Date', 'Amount', 'Status']],
-            body: dailyProformas.map(p => [p.id, p.receiverName || p.clientId, p.invoiceDate || p.createdAt?.split('T')[0], `${(Number(p.serviceCharge) || 0).toLocaleString()} TZS`, p.isInvoiced ? 'Invoiced' : 'Pending']),
+            head: [['Proforma ID', 'Client Name', 'Date', 'Amount', 'Status']],
+            body: dailyProformas.map(p => [
+                p.id, 
+                p.receiverName || p.clientId || 'Unknown Client', 
+                p.invoiceDate || p.createdAt?.split('T')[0], 
+                `${(Number(p.serviceCharge) || 0).toLocaleString()} TZS`, 
+                p.isInvoiced ? 'Finalized' : 'Pending'
+            ]),
             startY: currentY,
             headStyles: { fillColor: [0, 102, 204] },
             styles: { fontSize: 8 }
@@ -418,10 +404,16 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         const { data: allInvoices } = await supabase.from('invoices').select('*');
         const dailyInvoices = (allInvoices || []).filter(i => i.invoiceDate === reportDate || i.createdAt?.startsWith(reportDate));
         if (dailyInvoices.length > 0) {
-          addSectionTitle("6. Final Invoices Issued", [0, 153, 76]);
+          addSectionTitle("5. Final Invoices Issued", [0, 153, 76]);
           (doc as any).autoTable({
-            head: [['ID', 'Client', 'Date', 'Amount', 'Status']],
-            body: dailyInvoices.map(i => [i.id, i.receiverName || i.clientId, i.invoiceDate || i.createdAt?.split('T')[0], `${(Number(i.serviceCharge) || 0).toLocaleString()} TZS`, i.status]),
+            head: [['Invoice ID', 'Client Name', 'Date', 'Amount', 'Status']],
+            body: dailyInvoices.map(i => [
+                i.id, 
+                i.receiverName || i.clientId || 'Unknown Client', 
+                i.invoiceDate || i.createdAt?.split('T')[0], 
+                `${(Number(i.serviceCharge) || 0).toLocaleString()} TZS`, 
+                i.status
+            ]),
             startY: currentY,
             headStyles: { fillColor: [0, 153, 76] },
             styles: { fontSize: 8 }
@@ -436,7 +428,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         const dailyTrainings = (trainingsData || []).filter(t => t.training_date === reportDate || t.createdAt?.startsWith(reportDate));
         
         if (dailyTrainings.length > 0) {
-          addSectionTitle("7. Staff Training Sessions", [128, 0, 128]);
+          addSectionTitle("6. Staff Training Sessions", [128, 0, 128]);
           (doc as any).autoTable({
             head: [['Topic', 'Module', 'Dept', 'Participants', 'Location']],
             body: dailyTrainings.map(t => [t.title, t.type, t.department, t.applicants, t.location]),
@@ -453,7 +445,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         const attendanceData = await getAttendanceByDate(reportDate);
         
         if (attendanceData.length > 0) {
-          addSectionTitle("8. Daily Attendance Report", [0, 128, 0]);
+          addSectionTitle("7. Daily Attendance Report", [0, 128, 0]);
           (doc as any).autoTable({
             head: [['Employee Name', 'Status', 'Notes']],
             body: attendanceData.map(a => [a.employee, a.status, a.notes || '-']),
@@ -692,21 +684,6 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
                   checked={selectedAttachments.issuance}
                   onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, issuance: !!val }))}
                   disabled={!availability.issuance}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <div className="flex items-center gap-2">
-                  {availability.menu ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
-                  <div className="flex flex-col">
-                    <Label className="font-semibold">Daily Menu Planner</Label>
-                    <span className="text-xs text-muted-foreground">{availability.menu ? 'Available' : 'No records found'}</span>
-                  </div>
-                </div>
-                <Checkbox
-                  checked={selectedAttachments.menu}
-                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, menu: !!val }))}
-                  disabled={!availability.menu}
                 />
               </div>
 

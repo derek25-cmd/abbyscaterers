@@ -82,7 +82,7 @@ export function DeliveryNoteTemplate({
       {/* DELIVERY NOTE HEADING */}
       <div
         className="text-right relative z-10"
-        style={{ transform: "translateY(-20px)" }}
+        style={{ transform: "translateY(-50px)" }}
       >
         <h2 className="font-bold text-2xl text-primary mb-1">
           DELIVERY NOTE No. {id}
@@ -129,7 +129,7 @@ export function DeliveryNoteTemplate({
 
         <div
           className="text-right w-1/2"
-          style={{ transform: "translateY(-24px)" }}
+          style={{ transform: "translateY(-54px)" }}
         >
           <p>
             <strong>Date:</strong> {formatDate(delivery_date)}
@@ -240,20 +240,20 @@ export function DeliveryNoteTemplate({
       </div>
 
       {/* SIGNATURE SECTION */}
-      <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
+      <div className="mt-2 grid grid-cols-2 gap-8 text-sm">
         <div>
           <p>
             Delivered By:{" "}
             <strong>{delivered_by || "_________________________"}</strong>
           </p>
-          <p className="mt-4" style={{ transform : 'translateY(15px)'}}>Signature: _________________________</p>
-          <p className="mt-4" style={{ transform : 'translateY(15px)'}}>Date: {formatDate(delivery_date)}</p>
+          <p className="mt-4">Signature: _________________________</p>
+          <p className="mt-4">Date: {formatDate(delivery_date)}</p>
         </div>
 
         <div className="text-left">
           <p>Received By: _________________________</p>
-          <p className="mt-4" style={{ transform : 'translateY(15px)'}}>Signature: _________________________</p>
-          <p className="mt-4" style={{ transform : 'translateY(15px)'}}>Designation: _________________________</p>
+          <p className="mt-4">Signature: _________________________</p>
+          <p className="mt-4">Designation: _________________________</p>
         </div>
       </div>
       {/* FOOTER */}

@@ -230,20 +230,33 @@ export default function CostingTrackerReport() {
       if (aiAnalysis) {
         addSectionTitle("4. AI Strategic Analysis", [142, 68, 173]);
         
-        checkPageSpace(20);
+        checkPageSpace(25);
         doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
         doc.text("Costing Efficiency Rating:", 14, currentY);
+        
         const rating = aiAnalysis.efficiencyRating.toUpperCase();
         let ratingColor = [0, 0, 0];
-        if (rating === 'EXCELLENT') ratingColor = [39, 174, 96];
-        if (rating === 'GOOD') ratingColor = [41, 128, 185];
-        if (rating === 'FAIR') ratingColor = [243, 156, 18];
-        if (rating === 'POOR') ratingColor = [192, 57, 43];
+        if (rating === 'EXCELLENT') ratingColor = [39, 174, 96]; // Emerald Green
+        if (rating === 'GOOD') ratingColor = [41, 128, 185];    // Belize Hole Blue
+        if (rating === 'FAIR') ratingColor = [243, 156, 18];    // Orange
+        if (rating === 'POOR') ratingColor = [192, 57, 43];    // Alizarin Red
         
-        doc.setTextColor(ratingColor[0], ratingColor[1], ratingColor[2]);
-        doc.text(rating, 65, currentY);
+        // Draw Rating Badge
+        const badgeWidth = 40;
+        const badgeHeight = 8;
+        const badgeX = 65;
+        const badgeY = currentY - 5;
+        
+        doc.setFillColor(ratingColor[0], ratingColor[1], ratingColor[2]);
+        doc.rect(badgeX, badgeY, badgeWidth, badgeHeight, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(9);
+        doc.text(rating, badgeX + (badgeWidth / 2), badgeY + 5.5, { align: "center" });
+        
         doc.setTextColor(0, 0, 0);
-        currentY += 8;
+        currentY += 12;
 
         // Premium Summary Block
         const summaryLines = doc.splitTextToSize(aiAnalysis.summary, pageWidth - 36);
