@@ -142,63 +142,162 @@ export default function CostingTrackerReport() {
       const imgData = canvas.toDataURL("image/png");
       const doc = new jsPDF("p", "mm", "a4");
       const pageWidth = doc.internal.pageSize.getWidth();
+      let currentY = 10;
 
+      const checkPageSpace = (height: number) => {
+        if (currentY + height > 280) {
+          doc.addPage();
+          currentY = 15;
+          return true;
+        }
+        return false;
+      };
+
+      const addSectionTitle = (title: string, color = [41, 128, 185]) => {
+        checkPageSpace(15);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(color[0], color[1], color[2]);
+        doc.text(title, 14, currentY + 10);
+        doc.line(14, currentY + 12, 196, currentY + 12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        currentY += 15;
+      };
+
+      // Header
+      doc.setFontSize(10);
+      doc.text("Abby's Legendary Caterers Limited", 105, currentY, { align: "center" });
+      currentY += 5;
+      doc.setFontSize(8);
+      doc.text("Form Code: ALC-FIN-TRK-01", 105, currentY, { align: "center" });
+      currentY += 10;
       doc.setFontSize(20);
-      doc.text("Costing Tracker Report", 14, 20);
-      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Costing Tracker Report", 105, currentY, { align: "center" });
+      currentY += 10;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
       const fromStr = dateRange?.from ? format(dateRange.from, 'PPP') : 'N/A';
       const toStr = dateRange?.to ? format(dateRange.to, 'PPP') : 'N/A';
-      doc.text(`Period: ${fromStr} - ${toStr}`, 14, 30);
+      doc.text(`Period: ${fromStr} - ${toStr}`, 14, currentY);
+      doc.text(`Export Date: ${format(new Date(), 'PPP')}`, 150, currentY);
+      currentY += 10;
 
       // Add Chart
+      addSectionTitle("1. Costing Performance Chart");
       const chartWidth = pageWidth - 28;
       const chartHeight = (canvas.height * chartWidth) / canvas.width;
-      doc.addImage(imgData, "PNG", 14, 40, chartWidth, chartHeight);
-
-      let lastY = 40 + chartHeight + 10;
+      
+      checkPageSpace(chartHeight + 5);
+      doc.addImage(imgData, "PNG", 14, currentY, chartWidth, chartHeight);
+      currentY += chartHeight + 15;
 
       // Add Top Ingredients Table
-      doc.setFontSize(16);
-      doc.text("Top Ingredients by Usage", 14, lastY);
+      addSectionTitle("2. Top Ingredients by Usage");
       (doc as any).autoTable({
-        startY: lastY + 5,
+        startY: currentY,
         head: [['Ingredient', 'Quantity', 'Unit']],
         body: topIngredients.map(i => [i.name, i.quantity.toFixed(2), i.unit]),
         theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185] }
+        headStyles: { fillColor: [41, 128, 185] },
+        styles: { fontSize: 8 }
       });
+      currentY = (doc as any).lastAutoTable.finalY + 15;
 
-      lastY = (doc as any).autoTable.previous.finalY + 15;
+      // Add Daily Operations Summary
+      if (trendData.length > 0) {
+        addSectionTitle("3. Daily Operations Summary");
+        (doc as any).autoTable({
+            startY: currentY,
+            head: [['Date', 'Total Income', 'Total Cost', 'Actual %', 'Forecast %']],
+            body: trendData.map(d => [
+                d.date,
+                `${d.income.toLocaleString()} TZS`,
+                `${d.cost.toLocaleString()} TZS`,
+                `${d.actual}%`,
+                `${d.forecast}%`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [52, 73, 94] },
+            styles: { fontSize: 8 }
+        });
+        currentY = (doc as any).lastAutoTable.finalY + 15;
+      }
 
-      // Add AI Analysis if available
+      // AI Analysis
       if (aiAnalysis) {
-        if (lastY > 240) {
-          doc.addPage();
-          lastY = 20;
-        }
-        doc.setFontSize(16);
-        doc.text("AI Analysis", 14, lastY);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text("Summary:", 14, lastY + 10);
-        doc.setFont("helvetica", "normal");
-        const summaryLines = doc.splitTextToSize(aiAnalysis.summary, pageWidth - 28);
-        doc.text(summaryLines, 14, lastY + 16);
+        addSectionTitle("4. AI Strategic Analysis", [142, 68, 173]);
         
-        lastY += 21 + (summaryLines.length * 5);
-
+        checkPageSpace(20);
         doc.setFont("helvetica", "bold");
-        doc.text("Advice:", 14, lastY);
+        doc.text("Costing Efficiency Rating:", 14, currentY);
+        const rating = aiAnalysis.efficiencyRating.toUpperCase();
+        let ratingColor = [0, 0, 0];
+        if (rating === 'EXCELLENT') ratingColor = [39, 174, 96];
+        if (rating === 'GOOD') ratingColor = [41, 128, 185];
+        if (rating === 'FAIR') ratingColor = [243, 156, 18];
+        if (rating === 'POOR') ratingColor = [192, 57, 43];
+        
+        doc.setTextColor(ratingColor[0], ratingColor[1], ratingColor[2]);
+        doc.text(rating, 65, currentY);
+        doc.setTextColor(0, 0, 0);
+        currentY += 8;
+
+        // Premium Summary Block
+        const summaryLines = doc.splitTextToSize(aiAnalysis.summary, pageWidth - 36);
+        const summaryHeight = (summaryLines.length * 6) + 12;
+        checkPageSpace(summaryHeight);
+        
+        // Background for Summary
+        doc.setFillColor(245, 245, 250);
+        doc.rect(14, currentY, pageWidth - 28, summaryHeight, 'F');
+        // Left Border Accent
+        doc.setFillColor(142, 68, 173);
+        doc.rect(14, currentY, 2, summaryHeight, 'F');
+        
+        doc.setFont("helvetica", "bold");
+        doc.text("Strategic Summary:", 18, currentY + 7);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.text(summaryLines, 18, currentY + 13);
+        currentY += summaryHeight + 12;
+
+        if (aiAnalysis.anomalies.length > 0) {
+            checkPageSpace(20);
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text("Identified Anomalies & Variances", 14, currentY);
+            
+            (doc as any).autoTable({
+                startY: currentY + 4,
+                head: [['#', 'Anomaly Details']],
+                body: aiAnalysis.anomalies.map((anom, i) => [i + 1, anom]),
+                theme: 'grid',
+                headStyles: { fillColor: [192, 57, 43] }, // Red for anomalies
+                styles: { fontSize: 8, cellPadding: 3 },
+                columnStyles: { 0: { cellWidth: 10, halign: 'center' } }
+            });
+            currentY = (doc as any).lastAutoTable.finalY + 12;
+        }
+
+        checkPageSpace(20);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text("Optimization Advice & Next Steps", 14, currentY);
         doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
         aiAnalysis.advice.forEach((adv, idx) => {
-          const advLines = doc.splitTextToSize(`• ${adv}`, pageWidth - 28);
-          doc.text(advLines, 14, lastY + 6 + (idx * 6));
-          lastY += (advLines.length * 5);
+          const advLines = doc.splitTextToSize(`• ${adv}`, pageWidth - 32);
+          checkPageSpace(advLines.length * 6);
+          doc.text(advLines, 18, currentY + 8);
+          currentY += (advLines.length * 5) + 3;
         });
       }
 
-      doc.save(`Costing_Tracker_${format(new Date(), 'yyyyMMdd')}.pdf`);
-      toast({ title: "Export Successful", description: "Report exported to PDF." });
+      doc.save(`Costing_Tracker_Report_${format(new Date(), 'yyyyMMdd')}.pdf`);
+      toast({ title: "Export Successful", description: "The full Costing Tracker Report has been exported to PDF." });
     } catch (error) {
       console.error("PDF Export failed:", error);
       toast({ variant: "destructive", title: "Export Failed", description: "An error occurred during PDF export." });

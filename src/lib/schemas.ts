@@ -219,6 +219,7 @@ export const baseInvoiceSchema = z.object({
 export const ProformaInvoiceSchema = baseInvoiceSchema.extend({
     startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
     endDate: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
+    isInvoiced: z.boolean().optional(),
 }).superRefine((data, ctx) => {
     const start = data.startDate ? new Date(data.startDate) : null;
     if (start) start.setHours(0, 0, 0, 0);

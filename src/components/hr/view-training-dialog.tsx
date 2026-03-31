@@ -13,42 +13,46 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "./ui/badge";
 
-export function ViewJobDialog({ isOpen, setIsOpen, position }) {
-  if (!position) return null;
+export function ViewTrainingDialog({ isOpen, setIsOpen, session }) {
+  if (!session) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Job Posting Details</DialogTitle>
+            <DialogTitle>Training Session Details</DialogTitle>
             <DialogDescription>
-              Viewing details for the {position.title} position.
+              Viewing details for the {session.title} session.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
              <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Job ID</Label>
-              <span className="col-span-2">{position.id}</span>
+              <Label className="text-right font-semibold">Session ID</Label>
+              <span className="col-span-2 text-xs font-mono">{session.id}</span>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Title</Label>
-              <span className="col-span-2">{position.title}</span>
+              <Label className="text-right font-semibold">Topic</Label>
+              <span className="col-span-2">{session.title}</span>
+            </div>
+            <div className="grid grid-cols-3 items-center gap-4">
+              <Label className="text-right font-semibold">Date</Label>
+              <span className="col-span-2 font-bold">{session.training_date ? format(parseISO(session.training_date), 'PPP') : 'Not Set'}</span>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right font-semibold">Department</Label>
-              <span className="col-span-2">{position.department}</span>
+              <span className="col-span-2">{session.department}</span>
             </div>
              <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right font-semibold">Location</Label>
-              <span className="col-span-2">{position.location}</span>
+              <span className="col-span-2">{session.location}</span>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
               <Label className="text-right font-semibold">Type</Label>
-               <Badge variant="outline" className="col-span-2">{position.type}</Badge>
+               <Badge variant="outline" className="col-span-2">{session.type}</Badge>
             </div>
              <div className="grid grid-cols-3 items-center gap-4">
-              <Label className="text-right font-semibold">Applicants</Label>
-              <span className="col-span-2">{position.applicants}</span>
+              <Label className="text-right font-semibold">Participants</Label>
+              <span className="col-span-2">{session.applicants}</span>
             </div>
           </div>
           <DialogFooter>

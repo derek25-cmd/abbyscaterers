@@ -133,7 +133,8 @@ export default function AttendanceReportPage() {
         department: emp.department,
         stats,
         // For daily view convenience
-        statusToday: empRecords.find(r => r.date === format(reportDate, "yyyy-MM-dd"))?.status
+        statusToday: empRecords.find(r => r.date === format(reportDate, "yyyy-MM-dd"))?.status,
+        notesToday: empRecords.find(r => r.date === format(reportDate, "yyyy-MM-dd"))?.notes
       };
     });
     
@@ -167,11 +168,11 @@ export default function AttendanceReportPage() {
     doc.text(`Period: ${rangeStr}`, 14, 22);
 
     const head = interval === 'day' 
-        ? [['Employee', 'Role', 'Department', 'Status']]
+        ? [['Employee', 'Role', 'Department', 'Status', 'Notes']]
         : [['Employee', 'Role', 'Present/Late', 'Absent', 'Leave', 'Half Day', 'Total Points']];
 
     const body = reportData.map(d => interval === 'day' 
-        ? [d.name, d.role, d.department, d.statusToday || 'Not Marked']
+        ? [d.name, d.role, d.department, d.statusToday || 'Not Marked', d.notesToday || '-']
         : [d.name, d.role, d.stats.present + d.stats.late, d.stats.absent, d.stats.leave, d.stats.halfDay, d.stats.totalUnits]
     );
 
@@ -307,7 +308,10 @@ export default function AttendanceReportPage() {
                         <TableHead className="font-bold">Employee</TableHead>
                         <TableHead className="font-bold">Department & Role</TableHead>
                         {interval === 'day' ? (
-                            <TableHead className="text-center font-bold">Status</TableHead>
+                            <>
+                                <TableHead className="text-center font-bold">Status</TableHead>
+                                <TableHead className="text-left font-bold w-[250px]">Notes / Remarks</TableHead>
+                            </>
                         ) : (
                             <>
                                 <TableHead className="text-center font-bold">P / L</TableHead>
@@ -332,6 +336,7 @@ export default function AttendanceReportPage() {
                             </div>
                         </TableCell>
                         {interval === 'day' ? (
+                            <>
                             <TableCell className="text-center">
                                 {d.statusToday ? (
                                     <Badge className={cn(
@@ -348,6 +353,10 @@ export default function AttendanceReportPage() {
                                     <span className="text-muted-foreground text-xs italic">Not Marked</span>
                                 )}
                             </TableCell>
+                            <TableCell className="text-left text-xs text-muted-foreground max-w-[250px] truncate" title={d.notesToday}>
+                                {d.notesToday || <span className="italic opacity-50">No remarks</span>}
+                            </TableCell>
+                            </>
                         ) : (
                             <>
                                 <TableCell className="text-center font-bold text-green-600">{d.stats.present + d.stats.late}</TableCell>

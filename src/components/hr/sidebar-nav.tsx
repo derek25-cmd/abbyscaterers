@@ -13,6 +13,7 @@ import {
   Package,
   History,
   CreditCard,
+  GraduationCap
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -65,9 +66,9 @@ const hrNav = [
     icon: CalendarCheck,
   },
   {
-    href: "/hr/recruitment",
-    label: "Recruitment",
-    icon: Briefcase,
+    href: "/hr/training",
+    label: "Staff Training",
+    icon: GraduationCap,
   },
   {
     href: "/hr/payroll",

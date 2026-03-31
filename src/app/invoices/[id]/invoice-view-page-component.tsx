@@ -15,12 +15,15 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { PaymentStatusDialog, PaymentStatusFormData } from "@/components/invoices/payment-status-dialog";
+import { CheckCircle2 } from "lucide-react";
 
 export function InvoiceViewPageComponent() {
   const params = useParams();
   const router = useRouter();
   const { getInvoiceById, deleteInvoice, isLoading: invoicesLoading } = useInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { updateInvoice } = useInvoiceStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
   const printRef = useRef<HTMLDivElement>(null);
@@ -31,6 +34,17 @@ export function InvoiceViewPageComponent() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+
+  const calculateTotal = () => {
+      if (!invoice) return 0;
+      const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
+      const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
+      const totalBeforeVAT = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
+      const vat = invoice.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
+      return totalBeforeVAT + vat;
+  };
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -163,6 +177,29 @@ export function InvoiceViewPageComponent() {
     setExporting(false);
   };
 
+  const handleUpdatePaymentStatus = async (data: PaymentStatusFormData) => {
+      if (!invoice) return;
+      setIsUpdatingPayment(true);
+      try {
+          const success = await updateInvoice(invoice.id, {
+              status: data.status,
+              amountPaid: data.amountPaid,
+              paymentDate: data.paymentDate
+          });
+          if (success) {
+              toast({ title: "Status Updated", description: "Invoice payment status has been updated." });
+              setIsPaymentDialogOpen(false);
+              setInvoice({ ...invoice, ...data });
+          } else {
+              toast({ variant: "destructive", title: "Update Failed", description: "Could not update payment status." });
+          }
+      } catch(e) {
+          toast({ variant: "destructive", title: "Error", description: "An error occurred." });
+      } finally {
+          setIsUpdatingPayment(false);
+      }
+  };
+
   const handleDelete = () => {
     if(invoiceId) {
         deleteInvoice(invoiceId);
@@ -218,6 +255,10 @@ export function InvoiceViewPageComponent() {
             </div>
           </div>
           <div className="space-x-2 flex flex-wrap">
+            <Button variant="secondary" onClick={() => setIsPaymentDialogOpen(true)}>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Update Status
+            </Button>
             <Button variant="outline" onClick={() => router.push(`/invoices/${invoiceId}/edit`)}>
               <Edit className="w-4 h-4 mr-2" /> Edit
             </Button>
@@ -230,6 +271,19 @@ export function InvoiceViewPageComponent() {
             </Button>
           </div>
         </div>
+        
+        {invoice && (
+            <PaymentStatusDialog
+                 isOpen={isPaymentDialogOpen}
+                 setIsOpen={setIsPaymentDialogOpen}
+                 onSubmit={handleUpdatePaymentStatus}
+                 isUpdating={isUpdatingPayment}
+                 currentStatus={invoice.status}
+                 currentAmountPaid={invoice.amountPaid || 0}
+                 totalAmount={calculateTotal()}
+            />
+        )}
+        
         <div ref={printRef}>
             <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} />
         </div>

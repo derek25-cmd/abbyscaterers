@@ -15,22 +15,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 
-export function EditJobDialog({ isOpen, setIsOpen, position, onEditJob }) {
+export function EditTrainingDialog({ isOpen, setIsOpen, session, onEditTraining }) {
   const [title, setTitle] = useState('');
   const [department, setDepartment] = useState('');
   const [location, setLocation] = useState('');
   const [type, setType] = useState('');
   const [applicants, setApplicants] = useState(0);
+  const [trainingDate, setTrainingDate] = useState('');
 
   useEffect(() => {
-    if (position) {
-      setTitle(position.title);
-      setDepartment(position.department);
-      setLocation(position.location);
-      setType(position.type);
-      setApplicants(position.applicants);
+    if (session) {
+      setTitle(session.title);
+      setDepartment(session.department);
+      setLocation(session.location);
+      setType(session.type);
+      setApplicants(session.applicants);
+      setTrainingDate(session.training_date || new Date(session.createdAt).toISOString().split('T')[0]);
     }
-  }, [position]);
+  }, [session]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,13 +41,14 @@ export function EditJobDialog({ isOpen, setIsOpen, position, onEditJob }) {
         return;
     }
 
-    onEditJob({
-      ...position,
+    onEditTraining({
+      ...session,
       title,
       department,
       location,
       type,
-      applicants: Number(applicants)
+      applicants: Number(applicants),
+      training_date: trainingDate
     });
 
     setIsOpen(false);
@@ -56,15 +59,19 @@ export function EditJobDialog({ isOpen, setIsOpen, position, onEditJob }) {
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit Job Posting</DialogTitle>
+            <DialogTitle>Edit Training Session</DialogTitle>
             <DialogDescription>
-              Update the details for the job posting.
+              Update the details for the training session.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">Title</Label>
+              <Label htmlFor="title" className="text-right">Topic</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="trainingDate" className="text-right">Date</Label>
+              <Input id="trainingDate" type="date" value={trainingDate} onChange={(e) => setTrainingDate(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="department" className="text-right">Department</Label>
@@ -89,18 +96,18 @@ export function EditJobDialog({ isOpen, setIsOpen, position, onEditJob }) {
               <Label htmlFor="type" className="text-right">Type</Label>
                <Select onValueChange={setType} value={type}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a job type" />
+                  <SelectValue placeholder="Select a training type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Full-time">Full-time</SelectItem>
-                  <SelectItem value="Part-time">Part-time</SelectItem>
-                  <SelectItem value="Contract">Contract</SelectItem>
-                  <SelectItem value="Internship">Internship</SelectItem>
+                  <SelectItem value="Skill Training">Skill Training</SelectItem>
+                  <SelectItem value="Orientation">Orientation</SelectItem>
+                  <SelectItem value="Compliance">Compliance</SelectItem>
+                  <SelectItem value="Refresher">Refresher</SelectItem>
                 </SelectContent>
               </Select>
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="applicants" className="text-right">Applicants</Label>
+              <Label htmlFor="applicants" className="text-right">Participants</Label>
               <Input id="applicants" type="number" value={applicants} onChange={(e) => setApplicants(e.target.value)} className="col-span-3" min="0" />
             </div>
           </div>

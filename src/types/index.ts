@@ -361,15 +361,28 @@ export interface Attendance {
     updatedAt: string;
 }
 
-export interface Position {
+export interface TrainingSession {
     id: string;
     title: string;
     department: string;
     location: string;
     type: string;
     applicants: number;
+    training_date?: string;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface TrainingParticipant {
+    id: string;
+    training_id: string;
+    employee_id: string;
+    status: 'Enrolled' | 'Completed' | 'Failed';
+    grade?: string;
+    notes?: string;
+    employee_name?: string; // Virtual property for UI
+    created_at: string;
+    updated_at: string;
 }
 
 export interface Payroll {

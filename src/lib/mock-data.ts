@@ -244,7 +244,7 @@ export const attendanceRecords = [
   { id: "ATT005", employee: "Sarah Green", date: today, clockIn: "08:55 AM", clockOut: "05:30 PM", totalHours: "8h 35m" },
 ];
 
-// HR: Recruitment / Job Board
+// HR: Staff Training Sessions
 export const openPositions = [
   {
     id: "JOB001",

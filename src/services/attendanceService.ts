@@ -11,6 +11,15 @@ export const getAttendanceRecords = async (): Promise<Attendance[]> => {
     return data as Attendance[];
 };
 
+export const getAttendanceByDate = async (date: string): Promise<Attendance[]> => {
+    const { data, error } = await supabase.from('attendance').select('*').eq('date', date);
+    if (error) {
+        console.error('Error fetching attendance by date:', error);
+        return [];
+    }
+    return data as Attendance[];
+};
+
 export const findAttendanceRecord = async (employeeId: string, date: string): Promise<Attendance | null> => {
     const { data, error } = await supabase
         .from('attendance')

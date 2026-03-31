@@ -17,6 +17,7 @@ import { Badge } from "../ui/badge";
 import { CreateDeliveryNoteDialog } from "./create-delivery-note-dialog";
 import { getMenusByOrderId } from "@/services/dailyMenuService";
 import { DailyMenu } from "@/types";
+import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
 
 
 interface OrderDetailsViewProps {
@@ -228,6 +229,8 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
         setIsOpen={setIsDeliveryNoteDialogOpen}
         order={order}
       />
+      
+      <OrderIssuanceSection targetOrders={[order]} />
     </div>
   );
 }

@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { BulkOrderLoading } from "@/components/bookings/bulk-order-loading";
+import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
 
 
 export function BookingDetailsPageComponent() {
@@ -337,6 +338,8 @@ export function BookingDetailsPageComponent() {
             data={bookingOrders} 
             onDeleteOrder={handleDeleteDailyOrder}
         />
+        
+        {bookingOrders.length > 0 && <OrderIssuanceSection targetOrders={bookingOrders} />}
         
         <AddDailyOrderDialog
             isOpen={isAddOrderOpen}

@@ -26,7 +26,8 @@ export function UpcomingEvents() {
             order.clientEvents.map(event => ({
                 ...event,
                 orderId: order.id,
-                orderName: order.name
+                orderName: order.name,
+                clientId: order.clientId
             }))
         )
         .filter(event => isFuture(parseISO(event.date)))
@@ -58,7 +59,7 @@ export function UpcomingEvents() {
                 ) : (
                     <div className="space-y-4">
                         {upcomingEvents.map((event, index) => {
-                            const client = getClientById(event.clientId);
+                            const client = event.clientId ? getClientById(event.clientId) : undefined;
                             return (
                                 <Link href={`/orders/${event.orderId}`} key={`${event.orderId}-${index}`} className="block p-4 rounded-lg bg-background/50 hover:bg-accent/50 transition-colors border">
                                     <div className="flex justify-between items-start mb-2">
