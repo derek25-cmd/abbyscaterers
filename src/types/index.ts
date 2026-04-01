@@ -384,6 +384,10 @@ export interface TrainingSession {
     training_date?: string;
     description?: string;
     trainer_name?: string;
+    duration_days?: number;
+    expected_outcomes?: string;
+    custom_skills?: string[];
+    session_status?: 'Upcoming' | 'In Progress' | 'Completed';
     createdAt: string;
     updatedAt: string;
 }
@@ -392,12 +396,33 @@ export interface TrainingParticipant {
     id: string;
     training_id: string;
     employee_id: string;
-    status: 'Enrolled' | 'Completed' | 'Failed';
+    status: 'Enrolled' | 'In Progress' | 'Completed' | 'Failed';
     grade?: string;
     notes?: string;
     employee_name?: string; // Virtual property for UI
     created_at: string;
     updated_at: string;
+}
+
+export const DEFAULT_TRAINING_SKILLS = [
+    'Punctuality',
+    'Attentiveness',
+    'Practical Skills',
+    'Theory Knowledge',
+    'Teamwork'
+] as const;
+
+export interface TrainingEvaluation {
+    id: string;
+    participant_id: string;
+    training_id: string;
+    evaluation_date: string;
+    score: number; // 1-5
+    skills_demonstrated: string[];
+    notes: string;
+    evaluator_name: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 export interface Payroll {

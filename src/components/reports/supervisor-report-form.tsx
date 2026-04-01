@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock, FileCheck, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock, FileCheck, CheckCircle2, XCircle, MessageSquareText } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
@@ -399,7 +400,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
             head: [['Proforma ID', 'Client Name', 'Date', 'Amount', 'Status']],
             body: dailyProformas.map(p => {
                 const client = allClients.find(c => c.id === p.clientId);
-                const clientName = p.receiverName || client?.companyName || client?.name || p.clientId || 'Unknown Client';
+                const clientName = p.receiverName || client?.companyName || p.clientId || 'Unknown Client';
                 const grandTotal = calculateTotal(p);
                 return [
                   p.id, 
@@ -429,7 +430,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
             head: [['Invoice ID', 'Client Name', 'Date', 'Amount', 'Status']],
             body: dailyInvoices.map(i => {
                 const client = allClients.find(c => c.id === i.clientId);
-                const clientName = i.receiverName || client?.companyName || client?.name || i.clientId || 'Unknown Client';
+                const clientName = i.receiverName || client?.companyName || i.clientId || 'Unknown Client';
                 const grandTotal = calculateTotal(i);
                 return [
                   i.id, 
@@ -616,15 +617,66 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
             </Table>
           </div>
 
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold">General Comments</Label>
-            <Textarea
-              placeholder="Any additional observations or feedback for the day..."
-              rows={4}
-              value={reportData.general_comments}
-              onChange={(e) => setReportData(prev => ({ ...prev, general_comments: e.target.value }))}
-              disabled={isLocked}
-            />
+          {/* ── GENERAL COMMENTS & DAY OVERVIEW ── */}
+          <div className="relative my-2">
+            {/* Gradient accent border */}
+            <div className="absolute -inset-px rounded-xl bg-gradient-to-br from-primary/30 via-primary/10 to-amber-500/20 pointer-events-none" />
+            <div className="relative rounded-xl bg-amber-50/40 dark:bg-amber-950/10 border border-primary/10 p-6 space-y-4">
+              {/* Header Row */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10 text-primary">
+                    <MessageSquareText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold tracking-tight">General Comments & Day Overview</h3>
+                    <p className="text-[11px] text-muted-foreground font-medium">Summarize the day\u2019s highlights, issues, and notes for management</p>
+                  </div>
+                </div>
+                {!isLocked && reportData.general_comments && (
+                  <Badge variant="outline" className="bg-background text-[10px] font-black tabular-nums border-primary/20">
+                    {reportData.general_comments.trim().split(/\s+/).filter(Boolean).length} words
+                  </Badge>
+                )}
+              </div>
+
+              {/* Body */}
+              {isLocked ? (
+                /* ── READ-ONLY: Styled blockquote view ── */
+                <div className="relative pl-5 py-4 border-l-4 border-primary/30 bg-background/60 rounded-r-lg">
+                  <span className="absolute -top-2 left-2 text-4xl text-primary/15 font-serif leading-none select-none">\u201C</span>
+                  <p className="text-sm leading-relaxed text-foreground/80 italic whitespace-pre-wrap">
+                    {reportData.general_comments || 'No comments were provided for this report.'}
+                  </p>
+                  <span className="absolute -bottom-4 right-4 text-4xl text-primary/15 font-serif leading-none select-none">\u201D</span>
+                </div>
+              ) : (
+                /* ── EDITABLE: Textarea + metrics ── */
+                <div className="space-y-3">
+                  <Textarea
+                    placeholder="Summarize the day\u2019s operations \u2014 key wins, challenges, staffing notes, and anything management should be aware of..."
+                    rows={5}
+                    maxLength={1000}
+                    className="bg-background/80 border-primary/15 focus-visible:ring-primary/30 text-sm leading-relaxed resize-none"
+                    value={reportData.general_comments}
+                    onChange={(e) => setReportData(prev => ({ ...prev, general_comments: e.target.value }))}
+                  />
+                  {/* Character + word metrics bar */}
+                  <div className="flex items-center gap-4">
+                    <Progress
+                      value={((reportData.general_comments?.length || 0) / 1000) * 100}
+                      className="flex-1 h-1.5 bg-primary/5"
+                    />
+                    <span className={cn(
+                      "text-[10px] font-black tabular-nums whitespace-nowrap",
+                      (reportData.general_comments?.length || 0) > 900 ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                      {reportData.general_comments?.length || 0} / 1,000
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
