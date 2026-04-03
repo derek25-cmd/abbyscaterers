@@ -69,7 +69,7 @@ const navItems = [
   { href: "/bookings", label: "Bookings", icon: CalendarClock },
   { href: "/delivery-notes", label: "Delivery Notes", icon: Truck },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
-  { href: "/ingredients", label: "Ingredients", icon: ClipboardList },
+  { href: "/menu-costing", label: "Menu Costing", icon: Calculator },
   { href: "/equipment", label: "Inventory", icon: ChefHat },
   { 
     label: "Invoicing", 

@@ -4,15 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { 
-    Search, 
-    ChevronLeft, 
-    ChevronRight, 
-    MoreHorizontal, 
-    Check, 
-    UserCheck, 
-    UserX, 
-    Users, 
+import {
+    Search,
+    ChevronLeft,
+    ChevronRight,
+    MoreHorizontal,
+    Check,
+    UserCheck,
+    UserX,
+    Users,
     Calendar as CalendarIcon,
     AlertCircle,
     Clock,
@@ -20,14 +20,14 @@ import {
     Loader2,
     FileText
 } from "lucide-react";
-import { 
-    format, 
-    startOfMonth, 
-    endOfMonth, 
-    eachDayOfInterval, 
-    isWeekend, 
-    startOfYear, 
-    addMonths, 
+import {
+    format,
+    startOfMonth,
+    endOfMonth,
+    eachDayOfInterval,
+    isWeekend,
+    startOfYear,
+    addMonths,
     isSameDay
 } from "date-fns";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -49,10 +49,10 @@ export function AttendancePageComponent() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    
+
     // Track unsaved changes: key is "employeeId:date", value is status
     const [pendingChanges, setPendingChanges] = useState<Record<string, AttendanceStatus | null>>({});
-    
+
     // Date states
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -91,7 +91,7 @@ export function AttendancePageComponent() {
         }
         if (searchQuery) {
             const lowerQuery = searchQuery.toLowerCase();
-            result = result.filter(e => 
+            result = result.filter(e =>
                 `${e.firstName} ${e.lastName}`.toLowerCase().includes(lowerQuery)
             );
         }
@@ -101,7 +101,7 @@ export function AttendancePageComponent() {
     const handleToggleStatus = (employeeId: string, date: string, currentStatus?: AttendanceStatus) => {
         const currentIndex = currentStatus ? STATUS_ORDER.indexOf(currentStatus) : 5;
         const nextStatus = STATUS_ORDER[(currentIndex + 1) % STATUS_ORDER.length];
-        
+
         const key = `${employeeId}:${date}`;
         setPendingChanges(prev => ({
             ...prev,
@@ -165,11 +165,11 @@ export function AttendancePageComponent() {
     const getStatusInfo = (employeeId: string, date: Date) => {
         const dateStr = format(date, "yyyy-MM-dd");
         const key = `${employeeId}:${dateStr}`;
-        
+
         // Priority: Pending Changes > Existing Records
         const pendingStatus = pendingChanges[key];
         const record = records.find(r => r.employee_id === employeeId && r.date === dateStr);
-        
+
         return {
             status: pendingStatus !== undefined ? pendingStatus : record?.status,
             isUnsaved: pendingStatus !== undefined && pendingStatus !== record?.status
@@ -251,17 +251,17 @@ export function AttendancePageComponent() {
                         <Button variant="outline" onClick={handleMarkAllPresent} className="hidden md:flex">
                             <Check className="mr-2 h-4 w-4" /> Mark All Present Today
                         </Button>
-                        
+
                         {Object.keys(pendingChanges).length > 0 && (
                             <Button className="btn-save" onClick={handleSave} disabled={saving}>
                                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                                 Save Changes ({Object.keys(pendingChanges).length})
                             </Button>
                         )}
-                        
-                        <Button 
-                            variant="outline" 
-                            className="btn-report ml-2" 
+
+                        <Button
+                            variant="outline"
+                            className="btn-report ml-2"
                             onClick={() => router.push(`/reports/monthly-attendance?month=${currentMonth}&year=${currentYear}`)}
                         >
                             <FileText className="mr-2 h-4 w-4" /> View Full Report
@@ -270,9 +270,9 @@ export function AttendancePageComponent() {
 
                     <div className="flex items-center gap-3">
                         <div className="flex items-center rounded-lg border bg-background p-1">
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={() => {
                                     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
@@ -284,9 +284,9 @@ export function AttendancePageComponent() {
                             <span className="px-4 text-sm font-bold">
                                 {format(new Date(currentYear, currentMonth, 1), "MMM yyyy")}
                             </span>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8"
                                 onClick={() => {
                                     if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
@@ -355,10 +355,10 @@ export function AttendancePageComponent() {
                                             const info = getStatusInfo(emp.id, day);
                                             const status = info.status;
                                             const isUnsaved = info.isUnsaved;
-                                            
+
                                             return (
                                                 <td key={day.toString()} className={cn(isWknd && "attendance-weekend")}>
-                                                    <div 
+                                                    <div
                                                         className={cn(
                                                             "attendance-cell",
                                                             status?.toLowerCase().replace(' ', ''),

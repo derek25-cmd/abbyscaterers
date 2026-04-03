@@ -364,3 +364,20 @@ export const EmployeeSchema = z.object({
   address: z.string().optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
+
+
+// --- MENU COSTING ---
+export const CateringMenuSchema = z.object({
+    name: z.string().min(1, "Menu name is required"),
+    menu_type_id: z.string().min(1, "Menu type is required"),
+    base_people: z.number().int().min(1, "Base people must be at least 1"),
+    price_per_person: z.number().min(0, "Price per person cannot be negative"),
+    notes: z.string().optional(),
+});
+export type CateringMenuFormData = z.infer<typeof CateringMenuSchema>;
+
+export const MenuCalculateInputSchema = z.object({
+    people: z.number().int().min(1, "Number of people must be at least 1"),
+    useWastage: z.boolean().default(false),
+});
+export type MenuCalculateInput = z.infer<typeof MenuCalculateInputSchema>;

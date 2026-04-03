@@ -535,6 +535,76 @@ export interface CostingReportItem {
     created_at: string;
 }
 
+// --- MENU COSTING ---
+export interface MenuType {
+    id: string;
+    name: string;
+}
+
+export const MENU_TYPE_NAMES = ['breakfast', 'brunch', 'lunch', 'dinner'] as const;
+export type MenuTypeName = (typeof MENU_TYPE_NAMES)[number];
+
+export interface CateringMenu {
+    id: string;
+    name: string;
+    menu_type_id: string;
+    menu_type_name?: string;
+    base_people: number;
+    price_per_person: number;
+    notes?: string;
+    created_at: string;
+    updated_at: string;
+    user_id?: string;
+}
+
+export interface CateringMenuRecipe {
+    id: string;
+    menu_id: string;
+    recipe_number: string;
+    recipe_name?: string;
+    recipe_type?: string;
+    created_at: string;
+}
+
+export interface IngredientSummaryItem {
+    ingredient: string;
+    totalQuantity: number;
+    unit: string;
+    unitCost: number;
+    totalCost: number;
+}
+
+export interface PlannedIngredient {
+    id: string;
+    menu_id: string;
+    ingredient_name: string;
+    planned_quantity: number;
+    unit: string;
+    unit_cost: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface MenuCalculationResult {
+    ingredientsSummary: IngredientSummaryItem[];
+    totalCost: number;
+    revenue: number;
+    profit: number;
+    margin: number;
+    plannedComparison?: PlannedVsCalculated[];
+}
+
+export interface PlannedVsCalculated {
+    ingredient: string;
+    unit: string;
+    plannedQty: number;
+    calculatedQty: number;
+    difference: number;       // calculated - planned (positive = need more, negative = excess)
+    plannedCost: number;
+    calculatedCost: number;
+    costDifference: number;
+}
+
 // --- SUPERVISOR REPORT ---
 export type ReportRating = 'Poor' | 'Fair' | 'Good' | 'Very Good' | 'Excellent';
 
