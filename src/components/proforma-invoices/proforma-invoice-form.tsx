@@ -312,60 +312,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             }
 
             if (result) {
-
-                // Determine which items are "New Orders" that need persistence
-                const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
-                
-                // Group by temporary Order ID
-                const orderGroups = new Map<string, typeof newOrderItems>();
-                newOrderItems.forEach(item => {
-                    const group = orderGroups.get(item.orderId!) || [];
-                    group.push(item);
-                    orderGroups.set(item.orderId!, group);
-                });
-
-                // Persist new orders with ORD-XXXXX and EVT-XXXXX
-                for (const [tempId, groupItems] of orderGroups.entries()) {
-                    const validItems = groupItems.filter(i => i.date);
-                    if (validItems.length === 0) continue;
-
-                    const eventDates = validItems.map(i => new Date(i.date!));
-                    const startDate = format(new Date(Math.min(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
-                    const endDate = format(new Date(Math.max(...eventDates.map(d => d.getTime()))), 'yyyy-MM-dd');
-
-                    const firstItem = validItems[0];
-                    const orderPayload = {
-                        name: `Order for ${data.clientId} - ${firstItem.particularDescription}`,
-                        clientId: data.clientId!,
-                        startDate: startDate,
-                        endDate: endDate,
-                        description: `Manually defined via Proforma ${result.id}`,
-                        proformaId: result.id,
-                        clientEvents: validItems.map(gi => ({
-                            id: gi.id, 
-                            mealType: gi.mealType,
-                            eventType: gi.eventType,
-                            numberOfPeople: gi.pax,
-                            unitPrice: gi.unitPrice,
-                            total: gi.total,
-                            date: gi.date,
-                            vatType: gi.vatType,
-                            clientId: data.clientId!,
-                            particularDescription: gi.particularDescription,
-                            particularType: gi.particularType
-                        }))
-                    };
-
-                    await addOrder(orderPayload as any);
-                }
-
-                // Link existing orders to the document
-                const existingOrderIds = Array.from(new Set(
-                    data.items
                 // 3. Link existing or newly created orders to this proforma document
                 const linkedOrderIds = Array.from(new Set(
                     freshData.items
-
                         .map(i => i.orderId)
                         .filter(id => id && id.startsWith('ORD-'))
                 )) as string[];
@@ -722,7 +671,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                           {fields.map((item, index) => {
                                                              const itemType = form.watch(`items.${index}.particularType`);
                                                              const orderId = form.watch(`items.${index}.orderId`);
-                                                             const isFirstInOrder = index === 0 || form.watch(`items.${index - 1}.orderId`) !== orderId;
                                                              const isSaved = orderId?.startsWith('ORD-');
                                                              
                                                             return (

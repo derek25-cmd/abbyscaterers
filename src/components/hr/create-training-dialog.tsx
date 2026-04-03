@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { TrainingSessionSchema, type TrainingSessionFormData } from "@/lib/schemas";
 import { getEmployees } from "@/services/employeeService";
 import type { Employee } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface CreateTrainingDialogProps {
   isOpen: boolean;
@@ -60,11 +61,12 @@ export function CreateTrainingDialog({ isOpen, onOpenChange, onSubmit }: CreateT
   }, [isOpen]);
 
   const filteredEmployees = employees.filter(e => 
-    `${e.firstName} ${e.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+    `${e.firstName} ${e.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const toggleParticipant = (employee: Employee) => {
-    const current = form.getValues('participants');
+    const current = form.getValues('participants') || [];
     const exists = current.find(p => p.employeeId === employee.id);
     
     if (exists) {
@@ -84,8 +86,8 @@ export function CreateTrainingDialog({ isOpen, onOpenChange, onSubmit }: CreateT
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0">
-        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="flex flex-col h-full">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="flex flex-col h-full overflow-hidden">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
                 <GraduationCap className="h-6 w-6 text-primary" />
@@ -128,7 +130,11 @@ export function CreateTrainingDialog({ isOpen, onOpenChange, onSubmit }: CreateT
                   control={form.control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
                       <SelectContent>
                         <SelectItem value="Scheduled">Scheduled</SelectItem>
                         <SelectItem value="Completed">Completed</SelectItem>
@@ -144,69 +150,79 @@ export function CreateTrainingDialog({ isOpen, onOpenChange, onSubmit }: CreateT
               <div className="flex justify-between items-center border-b pb-2">
                 <Label className="text-lg font-bold flex items-center gap-2">
                     <Users className="h-5 w-5 text-primary" />
-                    Select Participants
+                    Enrolled Staff
                 </Label>
-                <span className="text-xs font-bold text-muted-foreground uppercase">
-                    {form.watch('participants').length} selected
+                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded">
+                    {form.watch('participants')?.length || 0} SELECTED
                 </span>
               </div>
               
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
-                    placeholder="Filter employees..." 
-                    className="pl-8" 
+                    placeholder="Search by name or department..." 
+                    className="pl-8 h-10" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
-              <ScrollArea className="h-48 border rounded-md p-2 bg-muted/5">
+              <ScrollArea className="h-48 border-2 rounded-xl p-2 bg-muted/5">
                 {loadingEmployees ? (
-                    <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <span className="text-xs font-bold text-muted-foreground italic">Syncing records...</span>
+                    </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {filteredEmployees.map((emp) => {
-                            const isSelected = !!form.watch('participants').find(p => p.employeeId === emp.id);
+                            const isSelected = !!form.watch('participants')?.find(p => p.employeeId === emp.id);
                             return (
                                 <div 
                                     key={emp.id} 
                                     className={cn(
-                                        "flex items-center space-x-3 p-2 rounded-md transition-colors cursor-pointer border",
-                                        isSelected ? "bg-primary/10 border-primary/20" : "hover:bg-muted"
+                                        "flex items-center space-x-3 p-3 rounded-lg transition-all cursor-pointer border-2",
+                                        isSelected ? "bg-primary/5 border-primary/20 shadow-sm" : "hover:bg-muted border-transparent"
                                     )}
                                     onClick={() => toggleParticipant(emp)}
                                 >
                                     <Checkbox 
                                         checked={isSelected} 
                                         onCheckedChange={() => toggleParticipant(emp)}
+                                        className="h-5 w-5"
                                     />
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-semibold">{emp.firstName} {emp.lastName}</span>
-                                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight">{emp.role}</span>
+                                    <div className="flex flex-col flex-1 truncate">
+                                        <span className="text-sm font-bold tracking-tight">{emp.firstName} {emp.lastName}</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{emp.department} • {emp.role}</span>
                                     </div>
                                 </div>
                             );
                         })}
+                        {filteredEmployees.length === 0 && (
+                            <div className="col-span-2 text-center py-10 text-muted-foreground font-medium italic">No employees found matching your search.</div>
+                        )}
                     </div>
                 )}
               </ScrollArea>
-              {form.formState.errors.participants && <p className="text-xs text-destructive">{form.formState.errors.participants.message}</p>}
+              {form.formState.errors.participants && <p className="text-xs text-destructive font-bold">{form.formState.errors.participants.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Lead Trainer Notes (Optional)</Label>
-              <Textarea id="notes" {...form.register("notes")} placeholder="Special requirements or instructions..." />
+              <Label htmlFor="notes">Logistics & Strategy Notes (Optional)</Label>
+              <Textarea id="notes" {...form.register("notes")} placeholder="Specify any specific instructions, required materials, or catering needs for the session..." className="min-h-[100px] border-2" />
             </div>
           </div>
 
           <DialogFooter className="p-6 bg-muted/20 border-t">
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={form.formState.isSubmitting}>Cancel</Button>
+              <Button type="button" variant="ghost" disabled={form.formState.isSubmitting} className="font-bold">Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Session
+            <Button type="submit" disabled={form.formState.isSubmitting} className="font-bold px-8 shadow-lg shadow-primary/20">
+              {form.formState.isSubmitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizing...</>
+              ) : (
+                <>Schedule Module</>
+              )}
             </Button>
           </DialogFooter>
         </form>
