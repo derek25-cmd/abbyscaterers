@@ -578,6 +578,7 @@ export interface PlannedIngredient {
     id: string;
     menu_id: string;
     ingredient_name: string;
+    category: 'ingredient' | 'miscellaneous';
     planned_quantity: number;
     unit: string;
     unit_cost: number;
@@ -587,15 +588,21 @@ export interface PlannedIngredient {
 
 export interface MenuCalculationResult {
     ingredientsSummary: IngredientSummaryItem[];
-    totalCost: number;
-    revenue: number;
-    profit: number;
-    margin: number;
+    totalCost: number; // Estimate Cost (Recipes)
+    plannedTotalCost: number; // Planned Cost (User Input)
+    revenue: number;   // Set Price
+    profit: number;    // Revenue - Estimate Cost
+    plannedProfit: number; // Revenue - Planned Cost
+    margin: number;    // Margin based on Estimate Cost
+    plannedMargin: number; // Margin based on Planned Cost
+    efficiencyFactor: number; // Dynamic scaling multiplier (1.0 = neutral)
+    efficiencyStatus: string; // e.g., "Bulk Efficiency" or "Small Group Inefficiency"
     plannedComparison?: PlannedVsCalculated[];
 }
 
 export interface PlannedVsCalculated {
     ingredient: string;
+    category: 'ingredient' | 'miscellaneous';
     unit: string;
     plannedQty: number;
     calculatedQty: number;

@@ -96,6 +96,7 @@ export default function MenuCostingDashboard() {
     // Planned Ingredient Form State
     const [addingPlanned, setAddingPlanned] = useState(false);
     const [newIngName, setNewIngName] = useState("");
+    const [newIngCategory, setNewIngCategory] = useState<'ingredient' | 'miscellaneous'>('ingredient');
     const [newIngQty, setNewIngQty] = useState(0);
     const [newIngUnit, setNewIngUnit] = useState("kg");
     const [newIngCost, setNewIngCost] = useState(0);
@@ -143,6 +144,7 @@ export default function MenuCostingDashboard() {
         try {
             await addPlannedIngredientToMenu({
                 ingredient_name: newIngName,
+                category: newIngCategory,
                 planned_quantity: newIngQty,
                 unit: newIngUnit,
                 unit_cost: newIngCost
@@ -505,48 +507,93 @@ export default function MenuCostingDashboard() {
                                                     {/* Add Row - Exceptional Form UI */}
                                                     <div className="p-5 rounded-[2rem] bg-muted/30 border border-muted ring-1 ring-white/50 shadow-sm relative z-20">
                                                         <div className="grid grid-cols-12 gap-4 items-end">
+                                                            {/* CATEGORY SELECTOR */}
+                                                            <div className="col-span-12 md:col-span-2 space-y-1.5">
+                                                                <label className="text-[10px] uppercase font-black text-muted-foreground ml-1">Type</label>
+                                                                <Tabs 
+                                                                    value={newIngCategory} 
+                                                                    onValueChange={(v) => setNewIngCategory(v as any)}
+                                                                    className="w-full"
+                                                                >
+                                                                    <TabsList className="grid grid-cols-2 h-11 bg-white border border-muted rounded-xl p-1 shrink-0 overflow-hidden">
+                                                                        <TabsTrigger value="ingredient" className="rounded-lg text-[9px] font-black uppercase data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                                                                            <ChefHat className="h-3 w-3 mr-1" /> Food
+                                                                        </TabsTrigger>
+                                                                        <TabsTrigger value="miscellaneous" className="rounded-lg text-[9px] font-black uppercase data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+                                                                            <Package className="h-3 w-3 mr-1" /> Misc
+                                                                        </TabsTrigger>
+                                                                    </TabsList>
+                                                                </Tabs>
+                                                            </div>
+
                                                             {/* WIDENED INGREDIENT FIELD */}
-                                                            <div className="col-span-12 md:col-span-6 space-y-1.5">
-                                                                <label className="text-[10px] uppercase font-black text-muted-foreground ml-1">Ingredient</label>
-                                                                <Popover open={ingredientComboOpen} onOpenChange={setIngredientComboOpen}>
-                                                                    <PopoverTrigger asChild>
-                                                                        <Button
-                                                                            variant="outline"
-                                                                            role="combobox"
-                                                                            className={cn("w-full justify-between text-sm h-11 rounded-xl bg-white border-muted shadow-sm", !newIngName && "text-muted-foreground")}
-                                                                            disabled={productsLoading}
-                                                                        >
-                                                                            <span className="truncate">{newIngName || "Search catalog..."}</span>
-                                                                            <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
-                                                                        </Button>
-                                                                    </PopoverTrigger>
-                                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none" align="start">
-                                                                        <Command>
-                                                                            <CommandInput placeholder="Search products..." className="h-11" />
-                                                                            <CommandList className="max-h-60">
-                                                                                <CommandEmpty>No products found.</CommandEmpty>
-                                                                                <CommandGroup>
-                                                                                    {products.map(p => (
-                                                                                        <CommandItem
-                                                                                            key={p.id}
-                                                                                            value={p.name}
-                                                                                            onSelect={() => handleSelectProductForPlanned(p.name)}
-                                                                                            className="py-3 px-4"
-                                                                                        >
-                                                                                            <Check className={cn("mr-2 h-4 w-4", newIngName.toLowerCase() === p.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                                                                            <div className="flex-1">
-                                                                                                <span className="text-sm font-bold">{p.name}</span>
-                                                                                                <span className="text-[10px] text-muted-foreground ml-2 opacity-60">
-                                                                                                    TZS {Number(p.unitPrice).toLocaleString()}/{p.unit}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        </CommandItem>
-                                                                                    ))}
-                                                                                </CommandGroup>
-                                                                            </CommandList>
-                                                                        </Command>
-                                                                    </PopoverContent>
-                                                                </Popover>
+                                                            <div className="col-span-12 md:col-span-4 space-y-1.5">
+                                                                <label className="text-[10px] uppercase font-black text-muted-foreground ml-1">
+                                                                    {newIngCategory === 'ingredient' ? "Ingredient" : "Cost Item Name"}
+                                                                </label>
+                                                                {newIngCategory === 'ingredient' ? (
+                                                                    <Popover open={ingredientComboOpen} onOpenChange={setIngredientComboOpen}>
+                                                                        <PopoverTrigger asChild>
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                role="combobox"
+                                                                                className={cn("w-full justify-between text-sm h-11 rounded-xl bg-white border-muted shadow-sm", !newIngName && "text-muted-foreground")}
+                                                                                disabled={productsLoading}
+                                                                            >
+                                                                                <span className="truncate">{newIngName || "Search catalog..."}</span>
+                                                                                <ChevronsUpDown className="ml-1 h-4 w-4 shrink-0 opacity-50" />
+                                                                            </Button>
+                                                                        </PopoverTrigger>
+                                                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 rounded-2xl overflow-hidden shadow-2xl border-none" align="start">
+                                                                            <Command>
+                                                                                <CommandInput placeholder="Search products..." className="h-11" />
+                                                                                <CommandList className="max-h-60">
+                                                                                    <CommandEmpty>
+                                                                                        <div className="p-4 text-center">
+                                                                                            <p className="text-xs font-bold text-muted-foreground">Not found in catalog?</p>
+                                                                                            <Button 
+                                                                                                variant="link" size="sm" 
+                                                                                                className="text-[10px] font-black uppercase h-auto p-0"
+                                                                                                onClick={() => {
+                                                                                                    const query = (document.querySelector('[cmdk-input]') as HTMLInputElement)?.value;
+                                                                                                    if (query) setNewIngName(query);
+                                                                                                    setIngredientComboOpen(false);
+                                                                                                }}
+                                                                                            >
+                                                                                                Use custom name
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    </CommandEmpty>
+                                                                                    <CommandGroup>
+                                                                                        {products.map(p => (
+                                                                                            <CommandItem
+                                                                                                key={p.id}
+                                                                                                value={p.name}
+                                                                                                onSelect={() => handleSelectProductForPlanned(p.name)}
+                                                                                                className="py-3 px-4"
+                                                                                            >
+                                                                                                <Check className={cn("mr-2 h-4 w-4", newIngName.toLowerCase() === p.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                                                                <div className="flex-1">
+                                                                                                    <span className="text-sm font-bold">{p.name}</span>
+                                                                                                    <span className="text-[10px] text-muted-foreground ml-2 opacity-60">
+                                                                                                        TZS {Number(p.unitPrice).toLocaleString()}/{p.unit}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            </CommandItem>
+                                                                                        ))}
+                                                                                    </CommandGroup>
+                                                                                </CommandList>
+                                                                            </Command>
+                                                                        </PopoverContent>
+                                                                    </Popover>
+                                                                ) : (
+                                                                    <Input 
+                                                                        placeholder="e.g. Transport or Charcoal"
+                                                                        value={newIngName}
+                                                                        onChange={e => setNewIngName(e.target.value)}
+                                                                        className="h-11 rounded-xl bg-white border-muted shadow-sm"
+                                                                    />
+                                                                )}
                                                             </div>
                                                             <div className="col-span-4 md:col-span-1 space-y-1.5">
                                                                 <label className="text-[10px] uppercase font-black text-muted-foreground ml-1">Qty</label>
@@ -571,7 +618,7 @@ export default function MenuCostingDashboard() {
                                                                 </Select>
                                                             </div>
                                                             <div className="col-span-4 md:col-span-2 space-y-1.5">
-                                                                <label className="text-[10px] uppercase font-black text-muted-foreground ml-1">Cost</label>
+                                                                <label className="text-[10px] uppercase font-black text-muted-foreground ml-1">Unit Cost</label>
                                                                 <Input
                                                                     type="number" step="0.01" min={0}
                                                                     value={newIngCost || ''}
@@ -593,48 +640,74 @@ export default function MenuCostingDashboard() {
 
                                                     {/* Budget List */}
                                                     {plannedIngredients.length > 0 ? (
-                                                        <div className="rounded-[2rem] border border-muted bg-white shadow-sm overflow-hidden relative z-10">
-                                                            <div className="grid grid-cols-12 gap-2 px-8 py-3 bg-muted/30 text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 border-b border-muted">
-                                                                <div className="col-span-5">Ingredient</div>
-                                                                <div className="col-span-2 text-right">Budget Qty</div>
-                                                                <div className="col-span-2 text-right">Unit Cost</div>
-                                                                <div className="col-span-3 text-right">Total Budget</div>
-                                                            </div>
-                                                            <div className="divide-y divide-muted/50 max-h-[400px] overflow-y-auto custom-scrollbar">
-                                                                <AnimatePresence mode="popLayout">
-                                                                    {plannedIngredients.map(ing => (
-                                                                        <motion.div 
-                                                                            key={ing.id} 
-                                                                            layout
-                                                                            initial={{ opacity: 0 }}
-                                                                            animate={{ opacity: 1 }}
-                                                                            className="grid grid-cols-12 gap-2 px-8 py-5 items-center hover:bg-muted/10 transition-colors group"
-                                                                        >
-                                                                            <div className="col-span-5 font-bold text-sm truncate">{ing.ingredient_name}</div>
-                                                                            <div className="col-span-2 text-sm text-right font-mono">
-                                                                                <span className="font-bold">{Number(ing.planned_quantity).toLocaleString()}</span>
-                                                                                <span className="text-[10px] text-muted-foreground ml-1.5">{ing.unit}</span>
+                                                        <div className="space-y-8">
+                                                            {['ingredient', 'miscellaneous'].map(cat => {
+                                                                const items = plannedIngredients.filter(i => (i.category || 'ingredient') === cat);
+                                                                if (items.length === 0) return null;
+
+                                                                return (
+                                                                    <div key={cat} className="space-y-4">
+                                                                        <div className="flex items-center gap-3 px-4">
+                                                                            <div className="flex-1 h-px bg-muted" />
+                                                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 shrink-0">
+                                                                                {cat === 'ingredient' ? "Food Ingredients" : "Miscellaneous Costs"}
+                                                                            </span>
+                                                                            <div className="flex-1 h-px bg-muted" />
+                                                                        </div>
+                                                                        
+                                                                        <div className="rounded-[2rem] border border-muted bg-white shadow-sm overflow-hidden relative z-10">
+                                                                            <div className="grid grid-cols-12 gap-2 px-8 py-3 bg-muted/30 text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 border-b border-muted">
+                                                                                <div className="col-span-5">Item</div>
+                                                                                <div className="col-span-2 text-right">Base Qty</div>
+                                                                                <div className="col-span-2 text-right">Unit Cost</div>
+                                                                                <div className="col-span-3 text-right">Total Budget</div>
                                                                             </div>
-                                                                            <div className="col-span-2 text-sm text-right font-mono text-muted-foreground">
-                                                                                {Number(ing.unit_cost).toLocaleString()}
+                                                                            <div className="divide-y divide-muted/50 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                                                                <AnimatePresence mode="popLayout">
+                                                                                    {items.map(ing => (
+                                                                                        <motion.div 
+                                                                                            key={ing.id} 
+                                                                                            layout
+                                                                                            initial={{ opacity: 0 }}
+                                                                                            animate={{ opacity: 1 }}
+                                                                                            exit={{ opacity: 0 }}
+                                                                                            className="grid grid-cols-12 gap-2 px-8 py-4 items-center hover:bg-muted/10 transition-colors group"
+                                                                                        >
+                                                                                            <div className="col-span-5">
+                                                                                                <p className="text-sm font-bold tracking-tight">{ing.ingredient_name}</p>
+                                                                                            </div>
+                                                                                            <div className="col-span-2 text-right">
+                                                                                                <span className="font-mono text-xs uppercase tracking-tighter opacity-60">
+                                                                                                    {ing.planned_quantity.toLocaleString()} {ing.unit}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div className="col-span-2 text-right">
+                                                                                                <span className="font-mono text-xs opacity-60">
+                                                                                                    {Number(ing.unit_cost).toLocaleString()}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div className="col-span-3 flex items-center justify-end gap-3">
+                                                                                                <span className="font-black text-sm tracking-tight text-primary">
+                                                                                                    {(ing.planned_quantity * ing.unit_cost).toLocaleString()}
+                                                                                                </span>
+                                                                                                <Button 
+                                                                                                    variant="ghost" size="icon" 
+                                                                                                    onClick={() => handleRemovePlannedIngredient(ing)}
+                                                                                                    className="h-8 w-8 rounded-full text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                                                                                                >
+                                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        </motion.div>
+                                                                                    ))}
+                                                                                </AnimatePresence>
                                                                             </div>
-                                                                            <div className="col-span-3 flex items-center justify-end gap-4">
-                                                                                <span className="text-sm font-black font-mono">
-                                                                                    {(Number(ing.planned_quantity) * Number(ing.unit_cost)).toLocaleString()}
-                                                                                </span>
-                                                                                <Button
-                                                                                    variant="ghost" size="icon"
-                                                                                    className="h-9 w-9 rounded-full text-destructive opacity-0 group-hover:opacity-100 hover:bg-red-50 flex-shrink-0"
-                                                                                    onClick={() => handleRemovePlannedIngredient(ing)}
-                                                                                >
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </Button>
-                                                                            </div>
-                                                                        </motion.div>
-                                                                    ))}
-                                                                </AnimatePresence>
-                                                            </div>
-                                                            <div className="grid grid-cols-12 gap-2 px-8 py-6 bg-primary/[0.03] border-t border-primary/10 font-bold">
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+
+                                                            <div className="grid grid-cols-12 gap-2 px-8 py-6 bg-primary/[0.03] rounded-[2rem] border border-primary/10 font-bold">
                                                                 <div className="col-span-9 text-right text-muted-foreground uppercase text-[10px] tracking-widest mt-1.5">Total Planned Budget:</div>
                                                                 <div className="col-span-3 text-right text-xl font-black text-primary font-mono">
                                                                     TZS {plannedIngredients.reduce((sum, i) => sum + Number(i.planned_quantity) * Number(i.unit_cost), 0).toLocaleString()}

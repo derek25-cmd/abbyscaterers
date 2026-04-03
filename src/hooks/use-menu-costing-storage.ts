@@ -136,7 +136,7 @@ export function useMenuCostingStorage() {
 
     // ─── CRUD: Planned Ingredients ───────────────────────────
     const addPlannedIngredientToMenu = useCallback(async (
-        data: { ingredient_name: string; planned_quantity: number; unit: string; unit_cost: number }
+        data: { ingredient_name: string; category: 'ingredient' | 'miscellaneous'; planned_quantity: number; unit: string; unit_cost: number }
     ) => {
         if (!selectedMenu) return null;
         const result = await addPlanned(selectedMenu.id, data);
@@ -148,7 +148,7 @@ export function useMenuCostingStorage() {
 
     const updatePlannedIngredientInMenu = useCallback(async (
         id: string,
-        updates: Partial<{ ingredient_name: string; planned_quantity: number; unit: string; unit_cost: number }>
+        updates: Partial<{ ingredient_name: string; category: 'ingredient' | 'miscellaneous'; planned_quantity: number; unit: string; unit_cost: number }>
     ) => {
         const success = await updatePlanned(id, updates);
         if (success && selectedMenu) {

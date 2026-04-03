@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS public.menu_planned_ingredients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     menu_id UUID NOT NULL REFERENCES public.catering_menus(id) ON DELETE CASCADE,
     ingredient_name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'ingredient' CHECK (category IN ('ingredient', 'miscellaneous')),
     planned_quantity NUMERIC(12, 4) NOT NULL DEFAULT 0 CHECK (planned_quantity >= 0),
     unit TEXT NOT NULL DEFAULT 'kg',
     unit_cost NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (unit_cost >= 0),

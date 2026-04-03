@@ -46,6 +46,7 @@ export function exportMenuCostingPdf(
         ['Price Per Person (TZS)', Number(menu.price_per_person).toLocaleString()],
         ['Calculated For', `${people} people`],
         ['Scaling Factor', `${(people / menu.base_people).toFixed(2)}×`],
+        ['Efficiency Mode', `${result.efficiencyStatus} (${Math.round(result.efficiencyFactor * 100)}%)`],
         ['Wastage Buffer', useWastage ? 'Yes (+10%)' : 'No'],
     ];
 
@@ -74,10 +75,13 @@ export function exportMenuCostingPdf(
     y += 6;
 
     const financialData = [
-        ['Total Ingredient Cost (TZS)', result.totalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })],
-        ['Revenue (TZS)', result.revenue.toLocaleString(undefined, { maximumFractionDigits: 2 })],
-        ['Profit (TZS)', result.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })],
-        ['Margin', `${result.margin}%`],
+        ['Planned Ingredient Cost (TZS)', result.plannedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+        ['Estimated Ingredient Cost (TZS)', result.totalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+        ['Revenue (Set Price) (TZS)', result.revenue.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+        ['Planned Profit (TZS)', result.plannedProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+        ['Estimated Profit (TZS)', result.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+        ['Planned Margin', `${result.plannedMargin}%`],
+        ['Estimated Margin', `${result.margin}%`],
     ];
 
     autoTable(doc, {

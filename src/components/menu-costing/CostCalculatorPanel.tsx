@@ -135,6 +135,17 @@ export function CostCalculatorPanel({
                                 className="flex-1"
                             />
                         </div>
+                        {scalingFactor !== 1 && (
+                            <div className="flex justify-end pr-4">
+                                <div className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ring-1",
+                                    scalingFactor > 1 ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-amber-50 text-amber-700 ring-amber-200"
+                                )}>
+                                    {scalingFactor > 1 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                    {scalingFactor > 1 ? "Bulk Scale Active" : "Small Batch Scaling"}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Options Grid */}
@@ -176,6 +187,7 @@ export function CostCalculatorPanel({
                     {!calculationResult ? (
                         !isCalculating && (
                             <motion.div 
+                                key="empty"
                                 initial={{ opacity: 0 }} 
                                 animate={{ opacity: 1 }}
                                 className="py-20 text-center space-y-4"
@@ -189,177 +201,224 @@ export function CostCalculatorPanel({
                                 </div>
                             </motion.div>
                         )
-                    ) : (
-                        <motion.div
-                            initial={{ opacity: 0, y: 40 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="space-y-6"
-                        >
-                            {/* Sticky Summary Strip */}
-                            <div className="sticky top-4 z-50 px-2 pointer-events-none">
-                                <motion.div 
-                                    initial={{ y: -100 }}
-                                    animate={{ y: 0 }}
-                                    className="bg-white/80 backdrop-blur-xl border border-muted shadow-2xl rounded-2xl p-2 flex items-center justify-between gap-4 pointer-events-auto"
-                                >
-                                    <div className="flex items-center gap-6 px-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Profit</span>
-                                            <span className={cn("text-lg font-black font-mono", calculationResult.profit >= 0 ? "text-emerald-600" : "text-red-600")}>
-                                                TZS {calculationResult.profit.toLocaleString()}
-                                            </span>
-                                        </div>
-                                        <div className="h-8 w-px bg-muted" />
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Margin</span>
-                                            <span className={cn("text-lg font-black font-mono", getMarginStyle(calculationResult.margin).text)}>
-                                                {calculationResult.margin}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => resultRef.current?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl h-10 px-4 font-bold text-xs uppercase tracking-widest text-primary">
-                                            View Details
-                                        </Button>
-                                        <Button size="sm" onClick={handleExportPdf} className="rounded-xl h-10 px-4 font-bold text-xs uppercase tracking-widest gap-2">
-                                            <FileText className="h-4 w-4" />
-                                            Export
-                                        </Button>
-                                    </div>
-                                </motion.div>
-                            </div>
-
-                            {/* Summary Cards Grid */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <MetricCard 
-                                    label="Gross Cost" 
-                                    value={calculationResult.totalCost} 
-                                    icon={ShoppingBasket} 
-                                    suffix="TZS"
-                                />
-                                <MetricCard 
-                                    label="Projected Revenue" 
-                                    value={calculationResult.revenue} 
-                                    icon={TrendingUp} 
-                                    suffix="TZS"
-                                    theme="blue"
-                                />
-                                <MetricCard 
-                                    label="Net Profit" 
-                                    value={calculationResult.profit} 
-                                    icon={calculationResult.profit >= 0 ? DollarSign : TrendingDown} 
-                                    suffix="TZS"
-                                    theme={calculationResult.profit >= 0 ? "emerald" : "red"}
-                                />
-                                <MetricCard 
-                                    label="Profit Margin" 
-                                    value={calculationResult.margin} 
-                                    icon={Percent} 
-                                    suffix="%"
-                                    theme={getMarginStyle(calculationResult.margin).theme as any}
-                                    subtext={getMarginStyle(calculationResult.margin).label}
-                                />
-                            </div>
-
-                            {/* Unpriced Warning */}
-                            {calculationResult.ingredientsSummary.some(i => i.unitCost === 0) && (
-                                <motion.div 
-                                    layout
-                                    className="flex items-start gap-4 p-5 rounded-3xl border-2 border-amber-200 bg-amber-50/50 backdrop-blur-sm"
-                                >
-                                    <div className="p-2 bg-amber-200 rounded-xl">
-                                        <AlertTriangle className="h-5 w-5 text-amber-700" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Incomplete Data Detected</p>
-                                        <p className="text-xs text-amber-800 font-medium mt-1 leading-relaxed">
-                                            The following items lack pricing in your Product Catalog. Calculation assumes 0 cost for them:
-                                            <br />
-                                            <span className="font-black">{calculationResult.ingredientsSummary.filter(i => i.unitCost === 0).map(i => i.ingredient).join(", ")}</span>
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* Detailed Analysis Tables */}
-                            <Card className="border-none shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-muted">
-                                <CardHeader className="flex flex-row items-center justify-between px-8 py-8 border-b border-muted">
-                                    <div className="space-y-1">
-                                        <CardTitle className="text-xl">Ingredient Analysis</CardTitle>
-                                        <CardDescription>Deep dive into quantities and cost variances.</CardDescription>
-                                    </div>
-                                    <Button variant="outline" size="sm" onClick={onClearResults} className="rounded-xl h-9 px-4 font-bold text-[10px] uppercase tracking-widest border-muted hover:bg-muted font-mono">
-                                        Reset View
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    {hasComparison ? (
-                                        <Tabs defaultValue="comparison" className="w-full">
-                                            <div className="px-8 pt-6 pb-2">
-                                                <TabsList className="bg-muted p-1 rounded-xl h-11 w-full md:w-fit gap-1">
-                                                    <TabsTrigger value="comparison" className="rounded-lg h-9 px-4 font-bold data-[state=active]:bg-white">
-                                                        Comparison View
-                                                    </TabsTrigger>
-                                                    <TabsTrigger value="calculated" className="rounded-lg h-9 px-4 font-bold data-[state=active]:bg-white">
-                                                        Detailed Estimate
-                                                    </TabsTrigger>
-                                                </TabsList>
+                    ) : (() => {
+                        const res = calculationResult; // Narrowed reference
+                        return (
+                            <motion.div
+                                key="results"
+                                initial={{ opacity: 0, y: 40 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="space-y-6"
+                            >
+                                {/* Sticky Summary Strip */}
+                                <div className="sticky top-4 z-50 px-2 pointer-events-none">
+                                    <motion.div 
+                                        initial={{ y: -100 }}
+                                        animate={{ y: 0 }}
+                                        className="bg-white/80 backdrop-blur-xl border border-muted shadow-2xl rounded-2xl p-2 flex items-center justify-between gap-4 pointer-events-auto"
+                                    >
+                                        <div className="flex items-center gap-6 px-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Planned Profit</span>
+                                                <span className={cn("text-lg font-black font-mono", res.plannedProfit >= 0 ? "text-emerald-600" : "text-red-600")}>
+                                                    TZS {res.plannedProfit.toLocaleString()}
+                                                </span>
                                             </div>
-
-                                            <TabsContent value="comparison" className="m-0 border-none">
-                                                <div className="overflow-x-auto">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow className="border-none hover:bg-transparent bg-muted/30">
-                                                                <TableHead className="px-8 h-12 uppercase text-[9px] font-black tracking-widest text-muted-foreground">Ingredient</TableHead>
-                                                                <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Planned Qty</TableHead>
-                                                                <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Estimate Qty</TableHead>
-                                                                <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Planned Cost</TableHead>
-                                                                <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Estimate Cost</TableHead>
-                                                                <TableHead className="px-8 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Variance</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {calculationResult.plannedComparison!.map((row, idx) => (
-                                                                <TableRow key={idx} className="hover:bg-muted/10 border-muted/50">
-                                                                    <TableCell className="px-8 py-4">
-                                                                        <div>
-                                                                            <p className="font-bold text-sm tracking-tight">{row.ingredient}</p>
-                                                                            <Badge variant="outline" className="h-4 px-1 text-[8px] uppercase tracking-tighter opacity-60 rounded-[4px]">{row.unit}</Badge>
-                                                                        </div>
-                                                                    </TableCell>
-                                                                    <TableCell className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">{row.plannedQty.toLocaleString()}</TableCell>
-                                                                    <TableCell className="px-4 py-4 text-right font-mono text-sm font-bold">{row.calculatedQty.toLocaleString()}</TableCell>
-                                                                    <TableCell className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">{row.plannedCost.toLocaleString()}</TableCell>
-                                                                    <TableCell className="px-4 py-4 text-right font-mono text-sm font-bold uppercase">{row.calculatedCost.toLocaleString()}</TableCell>
-                                                                    <TableCell className="px-8 py-4 text-right">
-                                                                        <DiffIndicator value={row.costDifference} isCost />
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
+                                            <div className="h-8 w-px bg-muted" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Estimate Profit</span>
+                                                <span className={cn("text-sm font-bold font-mono text-muted-foreground")}>
+                                                    TZS {res.profit.toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="h-8 w-px bg-muted" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Margin</span>
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className={cn("text-lg font-black font-mono", getMarginStyle(res.plannedMargin).text)}>
+                                                        {res.plannedMargin}%
+                                                    </span>
+                                                    <span className="text-[10px] font-bold text-muted-foreground/60">{res.margin}% EST</span>
                                                 </div>
-                                            </TabsContent>
+                                            </div>
+                                            {res.efficiencyFactor !== 1 && (
+                                                <>
+                                                    <div className="h-8 w-px bg-muted" />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Efficiency</span>
+                                                        <Badge variant="outline" className={cn(
+                                                            "h-5 border-none px-0 text-[10px] font-black",
+                                                            res.efficiencyFactor < 1 ? "text-emerald-600" : "text-amber-600"
+                                                        )}>
+                                                            {res.efficiencyFactor < 1 ? "+" : "-"}{Math.abs(Math.round((1 - res.efficiencyFactor) * 100))}%
+                                                        </Badge>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button variant="ghost" size="sm" onClick={() => resultRef.current?.scrollIntoView({ behavior: 'smooth' })} className="rounded-xl h-10 px-4 font-bold text-xs uppercase tracking-widest text-primary">
+                                                View Details
+                                            </Button>
+                                            <Button size="sm" onClick={handleExportPdf} className="rounded-xl h-10 px-4 font-bold text-xs uppercase tracking-widest gap-2">
+                                                <FileText className="h-4 w-4" />
+                                                Export
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                </div>
 
-                                            <TabsContent value="calculated" className="m-0 border-none">
-                                                <CalculatedIngredientsTable
-                                                    ingredients={calculationResult.ingredientsSummary}
-                                                    totalCost={calculationResult.totalCost}
-                                                />
-                                            </TabsContent>
-                                        </Tabs>
-                                    ) : (
-                                        <CalculatedIngredientsTable
-                                            ingredients={calculationResult.ingredientsSummary}
-                                            totalCost={calculationResult.totalCost}
-                                        />
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    )}
+                                {/* Summary Cards Grid */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <MetricCard 
+                                        label="Gross Cost" 
+                                        value={res.plannedTotalCost} 
+                                        icon={ShoppingBasket} 
+                                        suffix="TZS"
+                                        subtext={`EST: TZS ${res.totalCost.toLocaleString()}`}
+                                    />
+                                    <MetricCard 
+                                        label="Set Price (Revenue)" 
+                                        value={res.revenue} 
+                                        icon={TrendingUp} 
+                                        suffix="TZS"
+                                        theme="blue"
+                                        subtext={`${menu.price_per_person} / PAX`}
+                                    />
+                                    <MetricCard 
+                                        label="Planned Profit" 
+                                        value={res.plannedProfit} 
+                                        icon={res.plannedProfit >= 0 ? DollarSign : TrendingDown} 
+                                        suffix="TZS"
+                                        theme={res.plannedProfit >= 0 ? "emerald" : "red"}
+                                        subtext={`EST: TZS ${res.profit.toLocaleString()}`}
+                                    />
+                                    <MetricCard 
+                                        label="Planned Margin" 
+                                        value={res.plannedMargin} 
+                                        icon={Percent} 
+                                        suffix="%"
+                                        theme={getMarginStyle(res.plannedMargin).theme as any}
+                                        subtext={`EST: ${res.margin}%`}
+                                    />
+                                </div>
+
+                                {/* Unpriced Warning */}
+                                {res.ingredientsSummary.some(i => i.unitCost === 0) && (
+                                    <motion.div 
+                                        layout
+                                        className="flex items-start gap-4 p-5 rounded-3xl border-2 border-amber-200 bg-amber-50/50 backdrop-blur-sm"
+                                    >
+                                        <div className="p-2 bg-amber-200 rounded-xl">
+                                            <AlertTriangle className="h-5 w-5 text-amber-700" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Incomplete Data Detected</p>
+                                            <p className="text-xs text-amber-800 font-medium mt-1 leading-relaxed">
+                                                The following items lack pricing in your Product Catalog. Calculation assumes 0 cost for them:
+                                                <br />
+                                                <span className="font-black">{res.ingredientsSummary.filter(i => i.unitCost === 0).map(i => i.ingredient).join(", ")}</span>
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* Detailed Analysis Tables */}
+                                <Card className="border-none shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-muted">
+                                    <CardHeader className="flex flex-row items-center justify-between px-8 py-8 border-b border-muted">
+                                        <div className="space-y-1">
+                                            <CardTitle className="text-xl">Ingredient Analysis</CardTitle>
+                                            <CardDescription>Deep dive into quantities and cost variances.</CardDescription>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={onClearResults} className="rounded-xl h-9 px-4 font-bold text-[10px] uppercase tracking-widest border-muted hover:bg-muted font-mono">
+                                            Reset View
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        {hasComparison ? (
+                                            <Tabs defaultValue="comparison" className="w-full">
+                                                <div className="px-8 pt-6 pb-2">
+                                                    <TabsList className="bg-muted p-1 rounded-xl h-11 w-full md:w-fit gap-1">
+                                                        <TabsTrigger value="comparison" className="rounded-lg h-9 px-4 font-bold data-[state=active]:bg-white">
+                                                            Comparison View
+                                                        </TabsTrigger>
+                                                        <TabsTrigger value="calculated" className="rounded-lg h-9 px-4 font-bold data-[state=active]:bg-white">
+                                                            Detailed Estimate
+                                                        </TabsTrigger>
+                                                    </TabsList>
+                                                </div>
+
+                                                <TabsContent value="comparison" className="m-0 border-none">
+                                                    <div className="overflow-x-auto">
+                                                        <Table>
+                                                            <TableHeader>
+                                                                <TableRow className="border-none hover:bg-transparent bg-muted/30">
+                                                                    <TableHead className="px-8 h-12 uppercase text-[9px] font-black tracking-widest text-muted-foreground">Item</TableHead>
+                                                                    <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Planned Qty (Scaled)</TableHead>
+                                                                    <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Estimate Qty</TableHead>
+                                                                    <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Planned Cost</TableHead>
+                                                                    <TableHead className="px-4 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Estimate Cost</TableHead>
+                                                                    <TableHead className="px-8 h-12 text-right uppercase text-[9px] font-black tracking-widest text-muted-foreground">Variance</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {['ingredient', 'miscellaneous'].map(cat => {
+                                                                    const items = res.plannedComparison!.filter(i => i.category === cat);
+                                                                    if (items.length === 0) return null;
+
+                                                                    return (
+                                                                        <React.Fragment key={cat}>
+                                                                            <TableRow className="bg-muted/10 border-none hover:bg-muted/10">
+                                                                                <TableCell colSpan={6} className="px-8 py-2">
+                                                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+                                                                                        {cat === 'ingredient' ? "🍳 Food Ingredients" : "📦 Miscellaneous Costs"}
+                                                                                    </span>
+                                                                                </TableCell>
+                                                                            </TableRow>
+                                                                            {items.map((row, idx) => (
+                                                                                <TableRow key={`${cat}-${idx}`} className="hover:bg-muted/10 border-muted/50">
+                                                                                    <TableCell className="px-8 py-4">
+                                                                                        <div>
+                                                                                            <p className="font-bold text-sm tracking-tight">{row.ingredient}</p>
+                                                                                            <Badge variant="outline" className="h-4 px-1 text-[8px] uppercase tracking-tighter opacity-60 rounded-[4px]">{row.unit}</Badge>
+                                                                                        </div>
+                                                                                    </TableCell>
+                                                                                    <TableCell className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">{row.plannedQty.toLocaleString()}</TableCell>
+                                                                                    <TableCell className="px-4 py-4 text-right font-mono text-sm font-bold">{row.calculatedQty.toLocaleString()}</TableCell>
+                                                                                    <TableCell className="px-4 py-4 text-right font-mono text-xs text-muted-foreground">{row.plannedCost.toLocaleString()}</TableCell>
+                                                                                    <TableCell className="px-4 py-4 text-right font-mono text-sm font-bold uppercase">{row.calculatedCost.toLocaleString()}</TableCell>
+                                                                                    <TableCell className="px-8 py-4 text-right">
+                                                                                        <DiffIndicator value={row.costDifference} isCost />
+                                                                                    </TableCell>
+                                                                                </TableRow>
+                                                                            ))}
+                                                                        </React.Fragment>
+                                                                    );
+                                                                })}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
+                                                </TabsContent>
+
+                                                <TabsContent value="calculated" className="m-0 border-none">
+                                                    <CalculatedIngredientsTable
+                                                        ingredients={res.ingredientsSummary}
+                                                        totalCost={res.totalCost}
+                                                    />
+                                                </TabsContent>
+                                            </Tabs>
+                                        ) : (
+                                            <CalculatedIngredientsTable
+                                                ingredients={res.ingredientsSummary}
+                                                totalCost={res.totalCost}
+                                            />
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        );
+                    })()}
                 </AnimatePresence>
             </div>
         </div>

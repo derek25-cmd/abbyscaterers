@@ -188,7 +188,7 @@ export const getPlannedIngredients = async (menuId: string): Promise<PlannedIngr
 
 export const addPlannedIngredient = async (
     menuId: string,
-    data: { ingredient_name: string; planned_quantity: number; unit: string; unit_cost: number }
+    data: { ingredient_name: string; category: 'ingredient' | 'miscellaneous'; planned_quantity: number; unit: string; unit_cost: number }
 ): Promise<PlannedIngredient | null> => {
     const { data: result, error } = await supabase
         .from('menu_planned_ingredients')
@@ -205,7 +205,7 @@ export const addPlannedIngredient = async (
 
 export const updatePlannedIngredient = async (
     id: string,
-    updates: Partial<{ ingredient_name: string; planned_quantity: number; unit: string; unit_cost: number }>
+    updates: Partial<{ ingredient_name: string; category: 'ingredient' | 'miscellaneous'; planned_quantity: number; unit: string; unit_cost: number }>
 ): Promise<boolean> => {
     const { error } = await supabase
         .from('menu_planned_ingredients')
@@ -357,6 +357,33 @@ function normalizeUnit(quantity: number, unit: string): { quantity: number; unit
 
 // ─── Calculation Engine ──────────────────────────────────────
 
+/**
+ * Calculates a dynamic efficiency factor based on group size.
+ * Rule: "Food is always profitable with large numbers of people".
+ * Meaning: Unit cost decreases for larger groups and increases for smaller ones.
+ */
+const getEfficiencyInfo = (currentPax: number, basePax: number) => {
+    if (basePax <= 0) return { factor: 1.0, status: "Neutral" };
+    const ratio = currentPax / basePax;
+    
+    let factor = 1.0;
+    let status = "Standard Group Size";
+
+    if (ratio < 1) {
+        // Smaller than benchmark: Inefficiency penalty (max 20% at 0 pax)
+        factor = 1.0 + (1 - ratio) * 0.2;
+        status = "Small Group Inefficiency";
+    } else if (ratio > 1) {
+        // Larger than benchmark: Bulk savings (max 10%)
+        const savingsRatio = Math.min(ratio - 1, 4); // Cap savings at 5x group size
+        factor = 1.0 - (savingsRatio * 0.02); // 2.0% saving per multiple of group size
+        factor = Math.max(factor, 0.90); // Cap at 10% total savings
+        status = "Bulk Scale Efficiency";
+    }
+
+    return { factor, status };
+};
+
 export const calculateMenuCost = async (
     menuId: string,
     selectedPeople: number,
@@ -382,9 +409,14 @@ export const calculateMenuCost = async (
         return {
             ingredientsSummary: [],
             totalCost: 0,
+            plannedTotalCost: 0,
             revenue: selectedPeople * Number(menu.price_per_person),
             profit: selectedPeople * Number(menu.price_per_person),
+            plannedProfit: selectedPeople * Number(menu.price_per_person),
             margin: 100,
+            plannedMargin: 100,
+            efficiencyFactor: 1.0,
+            efficiencyStatus: "No Recipes Added",
         };
     }
 
@@ -423,9 +455,13 @@ export const calculateMenuCost = async (
         });
     });
 
-    // 6. Compute scaling factor
+    // 6. Compute scaling factor and efficiency
+    const { factor: efficiencyFactor, status: efficiencyStatus } = getEfficiencyInfo(selectedPeople, menu.base_people);
     const scalingFactor = selectedPeople / menu.base_people;
     const wastageFactor = useWastage ? 1.1 : 1.0;
+    
+    // Total combined scaling per item
+    const totalItemScaling = scalingFactor * wastageFactor * efficiencyFactor;
 
     // 7. Aggregate ingredients across all recipes
     const aggregated = new Map<string, IngredientSummaryItem>();
@@ -436,8 +472,8 @@ export const calculateMenuCost = async (
             // Resolve ingredient name
             const ingredientName = ingredientLookup.get(ing.ingredientId) || ing.ingredientId;
 
-            // Scale quantity
-            const scaledQty = ing.quantity * scalingFactor * wastageFactor;
+            // Scale quantity with efficiency factor
+            const scaledQty = ing.quantity * totalItemScaling;
 
             // Normalize units
             const normalized = normalizeUnit(scaledQty, ing.unit);
@@ -481,11 +517,23 @@ export const calculateMenuCost = async (
     const profit = revenue - totalCost;
     const margin = revenue > 0 ? Math.round(((profit / revenue) * 100) * 100) / 100 : 0;
 
-    // 9. Build planned vs calculated comparison
     const plannedIngredients = await getPlannedIngredients(menuId);
     let plannedComparison: PlannedVsCalculated[] | undefined;
+    
+    // Sum of planned costs (manually listed by user)
+    // IMPORTANT: Applying the same dynamic efficiency/scaling to the user's manual list
+    // so it reflects the headcount reality.
+    const plannedTotalCost = plannedIngredients.reduce((sum, pi) => {
+        const cost = Number(pi.planned_quantity) * Number(pi.unit_cost) * totalItemScaling;
+        return sum + cost;
+    }, 0);
+
+    const plannedProfit = revenue - plannedTotalCost;
+    const plannedMargin = revenue > 0 ? Math.round(((plannedProfit / revenue) * 100) * 100) / 100 : 0;
 
     if (plannedIngredients.length > 0) {
+        // ... (rest of the comparison logic)
+        // Adjust plannedComparison loops to use scaled cost
         // Build a combined set of all ingredient names
         const allNames = new Set<string>();
         plannedIngredients.forEach(pi => allNames.add(pi.ingredient_name.toLowerCase().trim()));
@@ -503,19 +551,21 @@ export const calculateMenuCost = async (
             const calculated = calculatedMap.get(name);
 
             const plannedQty = planned ? Number(planned.planned_quantity) : 0;
+            const scaledPlannedQty = plannedQty * totalItemScaling;
             const calculatedQty = calculated ? calculated.totalQuantity : 0;
             const plannedUnitCost = planned ? Number(planned.unit_cost) : 0;
             const calculatedUnitCost = calculated ? calculated.unitCost : 0;
 
-            const plannedCost = Math.round(plannedQty * plannedUnitCost * 100) / 100;
+            const plannedCost = Math.round(plannedQty * plannedUnitCost * totalItemScaling * 100) / 100;
             const calculatedCost = calculated ? calculated.totalCost : 0;
 
             return {
                 ingredient: planned?.ingredient_name || calculated?.ingredient || name,
+                category: planned?.category || 'ingredient',
                 unit: planned?.unit || calculated?.unit || 'kg',
-                plannedQty: Math.round(plannedQty * 100) / 100,
+                plannedQty: Math.round(scaledPlannedQty * 100) / 100,
                 calculatedQty: Math.round(calculatedQty * 100) / 100,
-                difference: Math.round((calculatedQty - plannedQty) * 100) / 100,
+                difference: Math.round((calculatedQty - scaledPlannedQty) * 100) / 100,
                 plannedCost,
                 calculatedCost: Math.round(calculatedCost * 100) / 100,
                 costDifference: Math.round((calculatedCost - plannedCost) * 100) / 100,
@@ -526,9 +576,14 @@ export const calculateMenuCost = async (
     return {
         ingredientsSummary,
         totalCost: Math.round(totalCost * 100) / 100,
+        plannedTotalCost: Math.round(plannedTotalCost * 100) / 100,
         revenue: Math.round(revenue * 100) / 100,
         profit: Math.round(profit * 100) / 100,
+        plannedProfit: Math.round(plannedProfit * 100) / 100,
         margin,
+        plannedMargin,
+        efficiencyFactor,
+        efficiencyStatus,
         plannedComparison,
     };
 };
