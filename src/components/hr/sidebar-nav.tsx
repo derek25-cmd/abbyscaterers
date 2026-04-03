@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -13,6 +12,7 @@ import {
   Package,
   History,
   CreditCard,
+  GraduationCap
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -63,6 +63,11 @@ const hrNav = [
     href: "/hr/attendance",
     label: "Attendance",
     icon: CalendarCheck,
+  },
+  {
+    href: "/hr/training",
+    label: "Training",
+    icon: GraduationCap,
   },
   {
     href: "/hr/recruitment",

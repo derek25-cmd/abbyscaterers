@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 import { format } from "date-fns";
 import { RECIPE_TYPES, REGIONS } from "@/types";
@@ -363,3 +362,21 @@ export const EmployeeSchema = z.object({
   address: z.string().optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
+
+// Training Schema
+export const TrainingSessionSchema = z.object({
+    id: z.string().optional(),
+    title: z.string().min(1, "Title is required"),
+    topic: z.string().min(1, "Topic is required"),
+    trainer: z.string().min(1, "Trainer name is required"),
+    date: z.string().refine((d) => isValidDate(d), "A valid date is required"),
+    duration: z.string().min(1, "Duration is required"),
+    status: z.enum(['Scheduled', 'Completed', 'Cancelled']),
+    participants: z.array(z.object({
+        employeeId: z.string(),
+        name: z.string(),
+        attended: z.boolean().default(false)
+    })).min(1, "At least one participant is required"),
+    notes: z.string().optional(),
+});
+export type TrainingSessionFormData = z.infer<typeof TrainingSessionSchema>;
