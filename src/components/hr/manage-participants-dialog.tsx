@@ -22,18 +22,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Loader2, UserMinus, CheckCircle, XCircle, Clock, ClipboardCheck,
-  TrendingUp, Save, Star, ChevronDown, ChevronUp, Users, Sparkles, MapPin, Target
+  Loader2, UserMinus, CheckCircle, Clock, Save, Star, ChevronDown, ChevronUp, Users, MapPin, Target
 } from "lucide-react";
 import {
-  getTrainingParticipants, updateParticipantStatus, deleteParticipant,
-  getEvaluationsBySession, addBulkEvaluations
+  getTrainingParticipants, getEvaluationsBySession, addBulkEvaluations, deleteParticipant
 } from "@/services/trainingService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
 import { DEFAULT_TRAINING_SKILLS } from "@/types";
 
 export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate }: any) {
@@ -111,7 +108,7 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
       await fetchData();
       setPendingEvaluations({});
       setExpandedRows(new Set());
-      toast({ title: "Metrics Synchronized", description: "All participant evaluations have been saved to the database." });
+      toast({ title: "Metrics Synchronized", description: "All participant evaluations have been saved." });
       if (onUpdate) onUpdate();
     } finally {
       setIsSaving(false);
@@ -204,7 +201,7 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
               ) : (
                   <div className="p-20 text-center space-y-3">
                       <Users className="h-12 w-12 mx-auto text-muted-foreground opacity-10" />
-                      <p className="text-sm font-bold text-muted-foreground italic">No participants enrolled in this session.</p>
+                      <p className="text-sm font-bold text-muted-foreground italic">No participants enrolled.</p>
                   </div>
               )}
             </ScrollArea>
@@ -290,10 +287,6 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
                                         onChange={e => updatePending(p.id, 'score', parseInt(e.target.value))}
                                     />
                                 </div>
-                                <div className="flex justify-between px-1 text-[8px] font-black text-muted-foreground/40 uppercase tracking-widest">
-                                    <span>Novice</span>
-                                    <span>Expert</span>
-                                </div>
                             </div>
 
                             <div className="space-y-4">
@@ -321,7 +314,7 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Session Feedback & Notes</Label>
                             <Textarea 
-                                placeholder="Record specific performance highlights or areas requiring additional remedial attention..." 
+                                placeholder="Record specific performance highlights..." 
                                 rows={3} 
                                 value={pending.notes} 
                                 onChange={e => updatePending(p.id, 'notes', e.target.value)} 
@@ -335,7 +328,7 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
                 }) : (
                     <div className="p-20 text-center space-y-3">
                         <Star className="h-12 w-12 mx-auto text-muted-foreground opacity-10" />
-                        <p className="text-sm font-bold text-muted-foreground italic">No participants found to evaluate.</p>
+                        <p className="text-sm font-bold text-muted-foreground italic">No participants to evaluate.</p>
                     </div>
                 )}
               </div>
@@ -347,7 +340,7 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
           <p className="text-[10px] font-bold text-muted-foreground italic max-w-xs leading-tight">
             * All expanded rows will have their evaluations saved when you click SYNC.
           </p>
-          <DialogClose asChild><Button variant="outline" className="font-black text-xs uppercase tracking-widest h-12 px-10 rounded-xl">Dismiss Control Center</Button></DialogClose>
+          <DialogClose asChild><Button variant="outline" className="font-black text-xs uppercase tracking-widest h-12 px-10 rounded-xl">Dismiss</Button></DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

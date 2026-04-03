@@ -114,20 +114,20 @@ export function EditProductDialog({ isOpen, setIsOpen, product, onEditProduct })
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="unitPrice" className="text-right">Unit Price (TZS)</Label>
-              <Input id="unitPrice" type="number" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} className="col-span-3" min="0" />
+              <Input id="unitPrice" type="number" step="any" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} className="col-span-3" min="0" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="quantity" className="text-right">Quantity</Label>
-              <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="col-span-3" min="0" />
+              <Input id="quantity" type="number" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="col-span-3" min="0" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="minStock" className="text-right">Min. Stock</Label>
-              <Input id="minStock" type="number" value={minStock} onChange={(e) => setMinStock(e.target.value)} className="col-span-3" min="0" />
+              <Input id="minStock" type="number" step="any" value={minStock} onChange={(e) => setMinStock(e.target.value)} className="col-span-3" min="0" />
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             </DialogClose>
             <Button type="submit">Save Changes</Button>
           </DialogFooter>

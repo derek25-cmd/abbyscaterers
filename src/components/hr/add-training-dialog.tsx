@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Search, Loader2, X, Plus, ChevronRight, ChevronLeft, 
-  GraduationCap, Users, BookOpen, Zap, Sparkles, MapPin, ShieldCheck
+  GraduationCap, Users, BookOpen, Zap, Sparkles, ShieldCheck
 } from "lucide-react";
 import { getEmployees } from "@/services/employeeService";
 import { DEFAULT_TRAINING_SKILLS } from "@/types";
