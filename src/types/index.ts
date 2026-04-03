@@ -559,18 +559,3 @@ export interface SupervisorReport {
     created_at: string;
     updated_at: string;
 }
-
-// --- TRAINING ---
-export interface TrainingSession {
-    id: string;
-    title: string;
-    topic: string;
-    trainer: string;
-    date: string; // ISO
-    duration: string; // e.g. "2 hours"
-    status: 'Scheduled' | 'Completed' | 'Cancelled';
-    participants: { employeeId: string; name: string; attended: boolean }[];
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
-}

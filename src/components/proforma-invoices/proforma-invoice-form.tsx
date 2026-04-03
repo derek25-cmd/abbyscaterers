@@ -27,7 +27,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { REGIONS, type Order } from '@/types';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/hr/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 
@@ -252,6 +252,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         if (isEditMode && invoiceId) {
             const found = getProformaById(invoiceId);
             if (found) {
+                // Map the ProformaInvoice to the ProformaInvoiceFormData structure
                 const dataToLoad: ProformaInvoiceFormData = {
                     id: found.id,
                     invoiceDate: found.invoiceDate,
@@ -671,6 +672,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                           {fields.map((item, index) => {
                                                              const itemType = form.watch(`items.${index}.particularType`);
                                                              const orderId = form.watch(`items.${index}.orderId`);
+                                                             const isFirstInOrder = index === 0 || form.watch(`items.${index - 1}.orderId`) !== orderId;
                                                              const isSaved = orderId?.startsWith('ORD-');
                                                              
                                                             return (

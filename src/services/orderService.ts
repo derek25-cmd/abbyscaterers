@@ -47,7 +47,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
 
         let orderId = orderData.id;
-        if (!orderId || orderId.startsWith('DRAFT-ORD-')) { 
+        if (!orderId || orderId.startsWith('ORD-17')) { // Ensure timestamp-based IDs are replaced
             let nextNum = await getLatestOrderNumber();
             orderId = `ORD-${String(nextNum).padStart(5, '0')}`;
         }
@@ -55,7 +55,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
         // Ensure every client event has a unique ID (EVT-XXXXX)
         let nextEvtNum = await getLatestEventNumber();
         const processedEvents = (orderData.clientEvents || []).map(event => {
-            if (event.id && event.id.startsWith('EVT-') && !event.id.startsWith('DRAFT-EVT-')) {
+            if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
                 return event;
             }
             return {
@@ -109,7 +109,7 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
         if (updates.clientEvents !== undefined) {
              let nextEvtNum = await getLatestEventNumber();
              payload.clientEvents = (updates.clientEvents || []).map(event => {
-                 if (event.id && event.id.startsWith('EVT-') && !event.id.startsWith('DRAFT-EVT-')) {
+                 if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
                     return event;
                 }
                 return {
@@ -151,22 +151,20 @@ export const getLatestOrderNumber = async (): Promise<number> => {
             .from('orders')
             .select('id')
             .order('createdAt', { ascending: false })
-            .limit(10); 
+            .limit(10); // Fetch more to be sure we find a numeric one
         
         if (error || !data || data.length === 0) {
             return 589;
         }
         
-        let maxNum = 589;
         for (const row of data) {
             const match = row.id.match(/ORD-(\d{5})$/);
             if (match && match[1]) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) maxNum = num;
+                return parseInt(match[1], 10) + 1;
             }
         }
 
-        return maxNum + 1;
+        return 1;
     } catch (err) {
         console.error('Error in getLatestOrderNumber:', err);
         return 589;
@@ -175,6 +173,7 @@ export const getLatestOrderNumber = async (): Promise<number> => {
 
 export const getLatestEventNumber = async (): Promise<number> => {
     try {
+        // Fetch recent orders to find the latest EVT-ID
         const { data, error } = await supabase
             .from('orders')
             .select('clientEvents')
@@ -215,7 +214,7 @@ export const bulkAddOrders = async (ordersData: Partial<OrderFormData>[]): Promi
             const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
 
             const processedEvents = (orderData.clientEvents || []).map(event => {
-                 if (event.id && event.id.startsWith('EVT-') && !event.id.startsWith('DRAFT-EVT-')) {
+                 if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
                     return event;
                 }
                 return {

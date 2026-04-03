@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -63,11 +64,6 @@ const hrNav = [
     href: "/hr/attendance",
     label: "Attendance",
     icon: CalendarCheck,
-  },
-  {
-    href: "/hr/training",
-    label: "Training",
-    icon: GraduationCap,
   },
   {
     href: "/hr/training",
