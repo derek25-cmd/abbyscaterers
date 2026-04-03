@@ -15,6 +15,12 @@ const reportCategories = [
         href: "/reports/supervisor-daily",
         icon: ClipboardCheck,
       },
+      {
+        title: "Customer Feedback Report",
+        description: "Analyze service performance, customer reviews, and on-site staff challenges.",
+        href: "/reports/customer-feedback",
+        icon: FileText,
+      },
     ],
   },
   {

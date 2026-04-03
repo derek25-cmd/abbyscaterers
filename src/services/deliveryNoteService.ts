@@ -13,7 +13,15 @@ export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
 
 export const createDeliveryNoteFromOrder = async (
   order: Order, 
-  details: { vehicleRegNo?: string; deliveredBy: string; location: string }
+  details: { 
+    vehicleRegNo?: string; 
+    deliveredBy: string; 
+    location: string;
+    eventIndex: number;
+    items: { qty: number; itemCode: string; description: string; }[];
+    is_narration?: boolean;
+    narration_text?: string;
+  }
 ): Promise<DeliveryNote[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -36,8 +44,8 @@ export const createDeliveryNoteFromOrder = async (
     let nextIdNumber = 8892; // Default starting number if no notes exist
     if (recentNotes && recentNotes.length > 0) {
         const idNumbers = recentNotes
-            .map(n => parseInt(n.id, 10))
-            .filter(n => !isNaN(n));
+            .map((n: { id: string }) => parseInt(n.id, 10))
+            .filter((n: number) => !isNaN(n));
             
         if (idNumbers.length > 0) {
             nextIdNumber = Math.max(...idNumbers) + 1;
@@ -72,45 +80,36 @@ export const createDeliveryNoteFromOrder = async (
 
     if (clientError) throw new Error(`Failed to fetch client details: ${clientError.message}`);
 
-    const savedNotes: DeliveryNote[] = [];
+    const event = order.clientEvents[details.eventIndex];
+    if (!event) throw new Error("Selected event not found.");
 
-    for (let i = 0; i < order.clientEvents.length; i++) {
-        const event = order.clientEvents[i];
-        if (!event) continue;
+    const deliveryNoteId = String(nextIdNumber).padStart(6, '0');
 
-        const deliveryNoteId = String(nextIdNumber).padStart(6, '0');
-        nextIdNumber++;
+    const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
+        id: deliveryNoteId,
+        order_id: order.id,
+        client_id: clientId,
+        client_name: client?.companyName || 'N/A',
+        delivery_date: event.date ? new Date(event.date).toISOString() : new Date().toISOString(),
+        delivery_location: details.location,
+        vehicle_reg_no: details.vehicleRegNo,
+        delivered_by: details.deliveredBy,
+        user_id: user.id,
+        items: details.items,
+        event_id: event.id,
+        is_narration: details.is_narration,
+        narration_text: details.narration_text
+    };
 
-        const deliveryItems = (event.recipes || []).map(recipe => ({
-            qty: event.numberOfPeople,
-            itemCode: recipe.recipeId,
-            description: recipeMap.get(recipe.recipeId) || 'Unknown Recipe',
-        }));
-        
-        const newDeliveryNote: Omit<DeliveryNote, 'created_at' | 'updated_at'> = {
-            id: deliveryNoteId,
-            order_id: order.id,
-            client_id: clientId,
-            client_name: client?.companyName || 'N/A',
-            delivery_date: event.date ? new Date(event.date).toISOString() : new Date().toISOString(),
-            delivery_location: details.location,
-            vehicle_reg_no: details.vehicleRegNo,
-            delivered_by: details.deliveredBy,
-            user_id: user.id,
-            items: deliveryItems,
-        };
+    const { data: savedNote, error: insertError } = await supabase
+        .from('delivery_notes')
+        .insert(newDeliveryNote)
+        .select()
+        .single();
 
-        const { data: savedNote, error: insertError } = await supabase
-            .from('delivery_notes')
-            .insert(newDeliveryNote)
-            .select()
-            .single();
-
-        if (insertError) throw new Error(`Failed to save delivery note for an event: ${insertError.message}`);
-        savedNotes.push(savedNote as DeliveryNote);
-    }
-
-    return savedNotes;
+    if (insertError) throw new Error(`Failed to save delivery note: ${insertError.message}`);
+    
+    return [savedNote as DeliveryNote];
 
   } catch (err: any) {
     console.error('Error creating delivery note:', err);
@@ -135,3 +134,19 @@ export const getDeliveryNoteById = async (id: string): Promise<DeliveryNote | nu
     }
     return data as DeliveryNote;
 }
+
+export const getDeliveryNotesByDate = async (date: string): Promise<DeliveryNote[]> => {
+    // We assume delivery_date is stored as ISO string, so we filter by prefix or start/end
+    const { data, error } = await supabase
+        .from('delivery_notes')
+        .select('*')
+        .gte('delivery_date', `${date}T00:00:00`)
+        .lte('delivery_date', `${date}T23:59:59`)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching delivery notes by date:', error);
+        return [];
+    }
+    return data as DeliveryNote[];
+};

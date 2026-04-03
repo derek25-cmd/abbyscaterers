@@ -22,26 +22,32 @@ export const getRecipeById = async (recipeNumber: string): Promise<Recipe | null
 }
 
 export const getLatestRecipeNumber = async (): Promise<number> => {
+    // Specifically search for the HIGHEST RN- formatted recipe number
     const { data, error } = await supabase
         .from('recipes')
         .select('recipeNumber')
-        .order('createdAt', { ascending: false })
+        .ilike('recipeNumber', 'RN-%')
+        .order('recipeNumber', { ascending: false })
         .limit(1)
-        .single();
-    
-    if(error || !data) {
-        if(error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-             console.error("Error fetching latest recipe number", error);
-        }
-        return 1;
+        .maybeSingle(); // maybeSingle returns null instead of a 406 error if no rows found
+
+    if (error) {
+        console.error("Error fetching latest recipe number", error);
+        return 320; // Default starting point for RN-XXXXX on error
     }
 
-    const match = data.recipeNumber.match(/ARN(\d+)/);
-    if (match) {
-        return parseInt(match[1], 10) + 1;
+    if (!data) {
+        // No recipes with RN- format yet. Check for old format or just start at 320.
+        return 320;
     }
 
-    return 1; // Default if no matching format is found
+    const rnMatch = data.recipeNumber.match(/RN-(\d+)/);
+    if (rnMatch) {
+        return parseInt(rnMatch[1], 10) + 1;
+    }
+
+    return 320; // Default fallback to 320
+    // Create Add Recipe Function
 }
 
 export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>): Promise<Recipe | null> => {
@@ -53,22 +59,22 @@ export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>
 
     const now = new Date().toISOString();
     const { recipeName, recipeType, ingredients } = recipeData;
-    
-    const nextNumber = await getLatestRecipeNumber();
-    const newRecipeNumber = `ARN${String(nextNumber).padStart(3, '0')}`;
 
-    const newRecipeData = { 
+    const nextNumber = await getLatestRecipeNumber();
+    const newRecipeNumber = `RN-${String(nextNumber).padStart(5, '0')}`;
+
+    const newRecipeData = {
         recipeNumber: newRecipeNumber,
         recipeName,
         recipeType,
         ingredients: ingredients || [],
         user_id: user.id,
-        createdAt: now, 
-        updatedAt: now 
+        createdAt: now,
+        updatedAt: now
     };
 
     const { data, error } = await supabase.from('recipes').insert([newRecipeData]).select().single();
-    
+
     if (error) {
         console.error('Error adding recipe:', error);
         return null;
@@ -81,7 +87,7 @@ export const addRecipe = async (recipeData: Omit<RecipeFormData, 'recipeNumber'>
 export const updateRecipe = async (recipeNumber: string, updates: Partial<RecipeFormData>): Promise<boolean> => {
     // Exclude recipeNumber from the update payload as it should not be changed.
     const { recipeNumber: _, ...updatePayload } = updates;
-    
+
     const { error } = await supabase.from('recipes').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('recipeNumber', recipeNumber);
     if (error) {
         console.error('Error updating recipe:', error);

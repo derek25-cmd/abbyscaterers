@@ -61,7 +61,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         }
       : {
           recipeName: "",
-          recipeType: "Lunch/Dinner",
+          recipeType: "Lunch",
           ingredients: [],
         },
   });

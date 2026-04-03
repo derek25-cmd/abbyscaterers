@@ -74,6 +74,26 @@ export const getOrderColumns = (
       },
     },
     {
+      id: "totalAmount",
+      header: () => <div className="text-right">Total Amount</div>,
+      cell: ({ row }: { row: any }) => {
+        const order = row.original;
+        const total = (order.clientEvents || []).reduce((sum: number, evt: any) => {
+            const price = Number(evt.unitPrice) || 0;
+            const pax = Number(evt.numberOfPeople) || 0;
+            return sum + (price * pax);
+        }, 0);
+
+        const formatted = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'TZS',
+            currencyDisplay: 'code'
+        }).format(total);
+
+        return <div className="text-right font-bold text-accent">{formatted}</div>;
+      },
+    },
+    {
       id: "actions",
       cell: ({ row }: { row: any }) => {
         const order = row.original;

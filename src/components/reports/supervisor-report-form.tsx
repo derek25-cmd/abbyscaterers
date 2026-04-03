@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock, FileCheck, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock, FileCheck, CheckCircle2, XCircle, MessageSquareText, Sparkles } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
@@ -18,7 +19,11 @@ import { getOrders } from "@/services/orderService";
 import { getStockLogs } from "@/services/stockLogService";
 import { getIssuances } from "@/services/issuanceService";
 import { getMenusByDate } from "@/services/dailyMenuService";
-import { getDeliveryNotes } from "@/services/deliveryNoteService";
+import { getDeliveryNotes, getDeliveryNotesByDate } from "@/services/deliveryNoteService";
+import { getAttendanceByDate } from "@/services/attendanceService";
+import { getTrainingSessions, getEvaluationsByDate } from "@/services/trainingService";
+import { getFeedbackByDate } from "@/services/feedbackService";
+import { getClients } from "@/services/clientService";
 import { supabase } from "@/lib/supabase-client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +73,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isBundleDialogOpen, setIsBundleDialogOpen] = useState(false);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
 
   const [reportData, setReportData] = useState<Partial<SupervisorReport>>({
     report_date: format(new Date(), 'yyyy-MM-dd'),
@@ -88,21 +94,27 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     orders: false,
     stock: false,
     issuance: false,
-    menu: false,
     proformas: false,
     invoices: false,
     deliveryNotes: false,
-    costing: false
+    costing: false,
+    trainings: false,
+    attendance: false,
+    evaluations: false,
+    feedback: false
   });
   const [selectedAttachments, setSelectedAttachments] = useState({
     orders: true,
     stock: true,
     issuance: true,
-    menu: true,
     proformas: true,
     invoices: true,
     deliveryNotes: true,
-    costing: true
+    costing: true,
+    trainings: true,
+    attendance: true,
+    evaluations: true,
+    feedback: true
   });
 
   useEffect(() => {
@@ -123,31 +135,51 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
   }, [reportId, toast, router]);
 
   const checkOtherReportsAvailability = async (date: string) => {
-    const [ordersData, stockData, issuanceData, menusData, allDeliveryNotes, { data: allProformas }, { data: allInvoices }, { data: allCosting }] = await Promise.all([
+    const [
+      ordersData, 
+      stockData, 
+      issuanceData, 
+      menusData, 
+      deliveryNotesData, 
+      { data: allProformas }, 
+      { data: allInvoices }, 
+      { data: allCosting }, 
+      attendanceData,
+      evaluationsData,
+      feedbackData
+    ] = await Promise.all([
       getOrders(),
       getStockLogs(),
       getIssuances(),
       getMenusByDate(date),
-      getDeliveryNotes(),
+      getDeliveryNotesByDate(date),
       supabase.from('proforma_invoices').select('*'),
       supabase.from('invoices').select('*'),
-      supabase.from('costing_reports').select('*')
+      supabase.from('costing_reports').select('*'),
+      getAttendanceByDate(date),
+      getEvaluationsByDate(date),
+      getFeedbackByDate(date)
     ]);
 
     const dateProformas = (allProformas || []).filter(p => p.invoiceDate === date || p.createdAt?.startsWith(date));
     const dateInvoices = (allInvoices || []).filter(i => i.invoiceDate === date || i.createdAt?.startsWith(date));
-    const dateDeliveryNotes = allDeliveryNotes.filter(d => d.delivery_date?.startsWith(date));
     const dateCosting = (allCosting || []).filter(c => c.report_date === date || c.created_at?.startsWith(date));
+
+    const trainingsData = await getTrainingSessions();
+    const dateTrainings = (trainingsData || []).filter(t => t.training_date === date || t.createdAt?.startsWith(date));
 
     setAvailability({
       orders: ordersData.some(o => o.startDate <= date && o.endDate >= date),
       stock: stockData.some(l => l.date === date),
       issuance: issuanceData.some(i => i.date === date),
-      menu: menusData.length > 0,
       proformas: dateProformas.length > 0,
       invoices: dateInvoices.length > 0,
-      deliveryNotes: dateDeliveryNotes.length > 0,
-      costing: dateCosting.length > 0
+      deliveryNotes: deliveryNotesData.length > 0,
+      costing: dateCosting.length > 0,
+      trainings: dateTrainings.length > 0,
+      attendance: attendanceData.length > 0,
+      evaluations: evaluationsData.length > 0,
+      feedback: feedbackData.length > 0
     });
   };
 
@@ -217,6 +249,15 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     }
   };
 
+  const calculateTotal = (data: any) => {
+    const items = data.items || [];
+    const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
+    const totalForDays = data.multiplyByDays ? subtotal * (Number(data.numberOfDays) || 1) : subtotal;
+    const totalBeforeVat = totalForDays + (Number(data.serviceCharge) || 0) + (Number(data.transportCosts) || 0);
+    const vat = data.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
+    return totalBeforeVat + vat;
+  };
+
   const generatePDFBundle = async () => {
     setIsExporting(true);
     setIsBundleDialogOpen(false);
@@ -224,19 +265,47 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     try {
       const doc = new jsPDF();
       const reportDate = reportData.report_date!;
+      let currentY = 10;
 
-      // PAGE 1: SUPERVISOR REPORT
+      const checkPageSpace = (height: number) => {
+        if (currentY + height > 280) {
+          doc.addPage();
+          currentY = 15;
+          return true;
+        }
+        return false;
+      };
+
+      const addSectionTitle = (title: string, color = [0, 0, 0]) => {
+        checkPageSpace(15);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(color[0], color[1], color[2]);
+        doc.text(title, 14, currentY + 10);
+        doc.line(14, currentY + 12, 196, currentY + 12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+        currentY += 15;
+      };
+
+      // --- SECTION 1: SUPERVISOR REPORT ---
       doc.setFontSize(10);
-      doc.text("Abby's Legendary Caterers Limited", 105, 10, { align: "center" });
+      doc.text("Abby's Legendary Caterers Limited", 105, currentY, { align: "center" });
+      currentY += 5;
       doc.setFontSize(8);
-      doc.text("Form Code: ALC-KIT-FRM-01", 105, 15, { align: "center" });
-      doc.setFontSize(14);
-      doc.text("Supervisor Daily Report", 105, 25, { align: "center" });
+      doc.text("Form Code: ALC-KIT-FRM-01", 105, currentY, { align: "center" });
+      currentY += 10;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Supervisor Daily Report", 105, currentY, { align: "center" });
+      currentY += 10;
 
       doc.setFontSize(10);
-      doc.text(`Date: ${format(parseISO(reportDate), 'PPP')}`, 14, 35);
-      doc.text(`Supervisor: ${reportData.supervisor_name || user?.user_metadata?.name || 'N/A'}`, 14, 40);
-      doc.text(`Status: ${reportData.status}`, 150, 35);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Date: ${format(parseISO(reportDate), 'PPP')}`, 14, currentY);
+      doc.text(`Supervisor: ${reportData.supervisor_name || user?.user_metadata?.name || 'N/A'}`, 14, currentY + 5);
+      doc.text(`Status: ${reportData.status}`, 150, currentY);
+      currentY += 12;
 
       const tableColumn = ["S/N", "Operational Criterion", "Rating / Issue", "Reason/Explanation"];
       const tableRows = (reportData.criteria || []).map((c, i) => [
@@ -249,7 +318,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       (doc as any).autoTable({
         head: [tableColumn],
         body: tableRows,
-        startY: 45,
+        startY: currentY,
         theme: 'grid',
         headStyles: { fillColor: [128, 0, 32] },
         styles: { fontSize: 8 },
@@ -262,13 +331,43 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         }
       });
 
-      let finalY = (doc as any).lastAutoTable.finalY;
-      doc.text("General Comments:", 14, finalY + 10);
-      doc.text(reportData.general_comments || "None", 14, finalY + 15, { maxWidth: 180 });
-      doc.text(`Prepared By: ${reportData.prepared_by}`, 14, finalY + 30);
-      doc.text(`Checked By: ${reportData.checked_by || '___________________'}`, 120, finalY + 30);
+      currentY = (doc as any).lastAutoTable.finalY + 10;
+      
+      // --- SECTION: GENERAL COMMENTS (Multi-page support) ---
+      checkPageSpace(20);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("General Comments / Day Overview:", 14, currentY);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      
+      const comments = reportData.general_comments || "No general comments provided for this session.";
+      const splitComments = doc.splitTextToSize(comments, 180);
+      const lineHeight = 5;
+      const commentHeight = splitComments.length * lineHeight;
+      
+      // If the entire comment block doesn't fit, we use autoTable for automatic page breaking
+      (doc as any).autoTable({
+        startY: currentY + 4,
+        body: [[comments]],
+        theme: 'plain',
+        styles: { 
+          fontSize: 9, 
+          fontStyle: 'italic', 
+          cellPadding: 0,
+          overflow: 'linebreak'
+        },
+        columnStyles: { 0: { cellWidth: 182 } }
+      });
+      
+      currentY = (doc as any).lastAutoTable.finalY + 15;
 
-      // ATTACHMENTS
+      checkPageSpace(15);
+      doc.text(`Prepared By: ${reportData.prepared_by}`, 14, currentY);
+      doc.text(`Checked By: ${reportData.checked_by || '___________________'}`, 120, currentY);
+      currentY += 15;
+
+      // --- SECTION: DAILY ORDERS ---
       if (selectedAttachments.orders && availability.orders) {
         const orders = await getOrders();
         const dailyEvents = orders.flatMap(order =>
@@ -278,134 +377,223 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         );
 
         if (dailyEvents.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Order Report", 105, 15, { align: "center" });
+          addSectionTitle("1. Daily Order Report", [0, 71, 171]);
           (doc as any).autoTable({
             head: [['Order ID', 'Customer', 'Meal Type', 'Pax', 'Total']],
             body: dailyEvents.map(e => [e.orderId, e.customer, e.mealType, e.numberOfPeople, `${(e.unitPrice * e.numberOfPeople).toLocaleString()} TZS`]),
-            startY: 25,
-            headStyles: { fillColor: [0, 71, 171] }
+            startY: currentY,
+            headStyles: { fillColor: [0, 71, 171] },
+            styles: { fontSize: 8 }
           });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
         }
       }
 
-      if (selectedAttachments.stock && availability.stock) {
-        const stockLogs = await getStockLogs();
-        const dailyLogs = stockLogs.filter(l => l.date === reportDate);
-
-        if (dailyLogs.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Stock Log", 105, 15, { align: "center" });
-          (doc as any).autoTable({
-            head: [['Product', 'Type', 'Qty', 'Value', 'Reason']],
-            body: dailyLogs.map(l => [l.productName, l.type, l.quantity, `${l.price.toLocaleString()} TZS`, l.reason]),
-            startY: 25,
-            headStyles: { fillColor: [0, 128, 128] }
-          });
-        }
-      }
-
+      // --- SECTION: DAILY ISSUANCE ---
       if (selectedAttachments.issuance && availability.issuance) {
         const issuances = await getIssuances();
         const dailyIssuances = issuances.filter(i => i.date === reportDate);
 
         if (dailyIssuances.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Issuance Report", 105, 15, { align: "center" });
+          addSectionTitle("2. Daily Issuance Report", [255, 140, 0]);
           (doc as any).autoTable({
             head: [['ID', 'Issued To', 'Order', 'Status', 'Value']],
             body: dailyIssuances.map(i => [i.id, i.issuedTo, i.orderId, i.status, `${i.totalValue.toLocaleString()} TZS`]),
-            startY: 25,
-            headStyles: { fillColor: [255, 140, 0] }
+            startY: currentY,
+            headStyles: { fillColor: [255, 140, 0] },
+            styles: { fontSize: 8 }
           });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
         }
       }
 
-      if (selectedAttachments.menu && availability.menu) {
-        const menus = await getMenusByDate(reportDate);
+      // --- SECTION: DAILY STOCK MOVEMENT (LEDGER) ---
+      if (selectedAttachments.stock && availability.stock) {
+        const stockLogs = await getStockLogs();
+        const dailyLogs = stockLogs.filter(l => l.date === reportDate);
 
-        if (menus.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Menu Planner", 105, 15, { align: "center" });
+        if (dailyLogs.length > 0) {
+          addSectionTitle("3. Daily Stock Movement", [0, 128, 128]);
           (doc as any).autoTable({
-            head: [['Region', 'Order ID', 'Recipes']],
-            body: menus.map(m => [m.region, m.order_id, m.recipes.map(r => r.name).join(', ')]),
-            startY: 25,
-            headStyles: { fillColor: [102, 51, 153] }
+            head: [['Time', 'Product', 'Type', 'Qty', 'Balance', 'Reason']],
+            body: dailyLogs.map(l => [
+                l.createdAt ? format(parseISO(l.createdAt), 'HH:mm') : '-',
+                l.productName, 
+                l.type, 
+                l.quantity, 
+                `${l.price.toLocaleString()} TZS`, 
+                l.reason
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [0, 128, 128] },
+            styles: { fontSize: 8 }
           });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
         }
       }
 
+      // --- SECTION: PROFORMA INVOICES ---
       if (selectedAttachments.proformas && availability.proformas) {
         const { data: allProformas } = await supabase.from('proforma_invoices').select('*');
+        const allClients = await getClients();
         const dailyProformas = (allProformas || []).filter(p => p.invoiceDate === reportDate || p.createdAt?.startsWith(reportDate));
+        
         if (dailyProformas.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Proforma Invoices", 105, 15, { align: "center" });
+          addSectionTitle("4. Proforma Invoices Issued", [0, 102, 204]);
           (doc as any).autoTable({
-            head: [['ID', 'Client / Receiver', 'Date', 'Amount', 'Status']],
-            body: dailyProformas.map(p => [p.id, p.receiverName || p.clientId, p.invoiceDate || p.createdAt?.split('T')[0], `${(Number(p.serviceCharge) || 0) + (Number(p.transportCosts) || 0)} TZS`, p.isInvoiced ? 'Invoiced' : 'Pending']),
-            startY: 25,
-            headStyles: { fillColor: [0, 102, 204] }
+            head: [['Proforma ID', 'Client Name', 'Date', 'Amount', 'Status']],
+            body: dailyProformas.map(p => {
+                const client = allClients.find(c => c.id === p.clientId);
+                const clientName = p.receiverName || client?.companyName || p.clientId || 'Unknown Client';
+                const grandTotal = calculateTotal(p);
+                return [
+                  p.id, 
+                  clientName, 
+                  p.invoiceDate || p.createdAt?.split('T')[0], 
+                  `${grandTotal.toLocaleString()} TZS`, 
+                  p.isInvoiced ? 'Finalized' : 'Pending'
+                ];
+            }),
+            startY: currentY,
+            headStyles: { fillColor: [0, 102, 204] },
+            styles: { fontSize: 8 }
           });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
         }
       }
 
+      // --- SECTION: FINAL INVOICES ---
       if (selectedAttachments.invoices && availability.invoices) {
         const { data: allInvoices } = await supabase.from('invoices').select('*');
+        const allClients = await getClients();
         const dailyInvoices = (allInvoices || []).filter(i => i.invoiceDate === reportDate || i.createdAt?.startsWith(reportDate));
+        
         if (dailyInvoices.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Final Invoices", 105, 15, { align: "center" });
+          addSectionTitle("5. Final Invoices Issued", [0, 153, 76]);
           (doc as any).autoTable({
-            head: [['ID', 'Client / Receiver', 'Date', 'Amount', 'Status']],
-            body: dailyInvoices.map(i => [i.id, i.receiverName || i.clientId, i.invoiceDate || i.createdAt?.split('T')[0], `${(Number(i.serviceCharge) || 0) + (Number(i.transportCosts) || 0)} TZS`, i.status]),
-            startY: 25,
-            headStyles: { fillColor: [0, 153, 76] }
+            head: [['Invoice ID', 'Client Name', 'Date', 'Amount', 'Status']],
+            body: dailyInvoices.map(i => {
+                const client = allClients.find(c => c.id === i.clientId);
+                const clientName = i.receiverName || client?.companyName || i.clientId || 'Unknown Client';
+                const grandTotal = calculateTotal(i);
+                return [
+                  i.id, 
+                  clientName, 
+                  i.invoiceDate || i.createdAt?.split('T')[0], 
+                  `${grandTotal.toLocaleString()} TZS`, 
+                  i.status
+                ];
+            }),
+            startY: currentY,
+            headStyles: { fillColor: [0, 153, 76] },
+            styles: { fontSize: 8 }
           });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
         }
       }
 
+       // --- SECTION: TRAININGS ---
+       if (selectedAttachments.trainings && availability.trainings) {
+        const { data: trainingsData } = await supabase.from('positions').select('*');
+        const dailyTrainings = (trainingsData || []).filter(t => t.training_date === reportDate || t.createdAt?.startsWith(reportDate));
+        
+        if (dailyTrainings.length > 0) {
+          addSectionTitle("6. Staff Training Sessions", [128, 0, 128]);
+          (doc as any).autoTable({
+            head: [['Topic', 'Module', 'Dept', 'Participants', 'Location']],
+            body: dailyTrainings.map(t => [t.title, t.type, t.department, t.applicants, t.location]),
+            startY: currentY,
+            headStyles: { fillColor: [128, 0, 128] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
+      // --- SECTION: ATTENDANCE ---
+      if (selectedAttachments.attendance && availability.attendance) {
+        const attendanceData = await getAttendanceByDate(reportDate);
+        
+        if (attendanceData.length > 0) {
+          addSectionTitle("7. Daily Attendance Report", [0, 128, 0]);
+          (doc as any).autoTable({
+            head: [['Employee Name', 'Status', 'Notes']],
+            body: attendanceData.map(a => [a.employee, a.status, a.notes || '-']),
+            startY: currentY,
+            headStyles: { fillColor: [0, 128, 0] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
+      // --- SECTION: DAILY TRAINING EVALUATIONS ---
+      if (selectedAttachments.evaluations && availability.evaluations) {
+        const evaluations = await getEvaluationsByDate(reportDate);
+        if (evaluations.length > 0) {
+          addSectionTitle("8. Training Evaluation Progress", [234, 88, 12]);
+          (doc as any).autoTable({
+            head: [['Trainee', 'Training Module', 'Score', 'Key Skills Observed', 'Trainer']],
+            body: evaluations.map(e => [
+                e.trainee_name, 
+                e.training_title, 
+                `${e.total_score}%`, 
+                (e.skills_demonstrated || []).join(', '),
+                e.evaluator_name || 'Supervisor'
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [234, 88, 12] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
+      // --- SECTION: CUSTOMER FEEDBACK ---
+      if (selectedAttachments.feedback && availability.feedback) {
+        const feedback = await getFeedbackByDate(reportDate);
+        if (feedback.length > 0) {
+          addSectionTitle("9. Customer Feedback Summary", [190, 24, 93]);
+          (doc as any).autoTable({
+            head: [['Order', 'Overall Summary', 'Positive Feedback', 'Complaints']],
+            body: feedback.map(f => [
+                f.order_id || 'General', 
+                f.overall_summary || '-', 
+                f.positive_feedback || '-', 
+                f.complaints || '-'
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [190, 24, 93] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
+      // --- SECTION: DELIVERY NOTES ISSUED ---
       if (selectedAttachments.deliveryNotes && availability.deliveryNotes) {
-        const allDeliveryNotes = await getDeliveryNotes();
-        const dailyDeliveryNotes = allDeliveryNotes.filter(d => d.delivery_date?.startsWith(reportDate));
-        if (dailyDeliveryNotes.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Delivery Notes", 105, 15, { align: "center" });
+        const notes = await getDeliveryNotesByDate(reportDate);
+        if (notes.length > 0) {
+          addSectionTitle("10. Delivery Notes Issued Today", [71, 85, 105]);
           (doc as any).autoTable({
-            head: [['ID', 'Order ID', 'Client', 'Delivered By', 'Location']],
-            body: dailyDeliveryNotes.map(d => [d.id, d.order_id, d.client_name, d.delivered_by, d.delivery_location]),
-            startY: 25,
-            headStyles: { fillColor: [204, 102, 0] }
+            head: [['Note ID', 'Client', 'Destination', 'Vehicle', 'Delivered By']],
+            body: notes.map(n => [
+                n.id, 
+                n.client_name, 
+                n.delivery_location, 
+                n.vehicle_reg_no || '-', 
+                n.delivered_by
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [71, 85, 105] },
+            styles: { fontSize: 8 }
           });
-        }
-      }
-
-      if (selectedAttachments.costing && availability.costing) {
-        const { data: allCosting } = await supabase.from('costing_reports').select('*');
-        const dailyCosting = (allCosting || []).filter(c => c.report_date === reportDate || c.created_at?.startsWith(reportDate));
-        if (dailyCosting.length > 0) {
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text("Attachment: Daily Costing Reports", 105, 15, { align: "center" });
-          (doc as any).autoTable({
-            head: [['Type', 'Description', 'Amount']],
-            body: dailyCosting.map(c => [c.type.toUpperCase(), c.description, `${Number(c.amount).toLocaleString()} TZS`]),
-            startY: 25,
-            headStyles: { fillColor: [153, 0, 76] }
-          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
         }
       }
 
       doc.save(`Supervisor_Daily_Report_Package_${reportDate}.pdf`);
-      toast({ title: 'Export Successful', description: 'All selected reports have been bundled into the PDF.' });
+      toast({ title: 'Export Successful', description: 'All selected reports have been bundled into a continuous PDF.' });
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Export Failed', description: 'Failed to generate bundle PDF.' });
@@ -538,15 +726,92 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
             </Table>
           </div>
 
-          <div className="space-y-4">
-            <Label className="text-lg font-semibold">General Comments</Label>
-            <Textarea
-              placeholder="Any additional observations or feedback for the day..."
-              rows={4}
-              value={reportData.general_comments}
-              onChange={(e) => setReportData(prev => ({ ...prev, general_comments: e.target.value }))}
-              disabled={isLocked}
-            />
+          {/* ── GENERAL COMMENTS & DAY OVERVIEW ── */}
+          <div className="relative my-2 group">
+            {/* Gradient accent border */}
+            <div className="absolute -inset-px rounded-xl bg-gradient-to-br from-primary/30 via-primary/10 to-amber-500/20 pointer-events-none transition-all group-hover:from-primary/50 group-hover:to-amber-500/40" />
+            <div className="relative rounded-xl bg-amber-50/40 dark:bg-amber-950/10 border border-primary/10 p-6 space-y-4 shadow-inner">
+              {/* Header Row */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary shadow-lg text-primary-foreground">
+                    <MessageSquareText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black tracking-tight">General Comments & Day Overview</h3>
+                    <p className="text-[11px] text-muted-foreground font-semibold">Operational highlights, logistical hurdles, and staffing metrics</p>
+                  </div>
+                </div>
+                {!isLocked && (
+                  <div className="flex items-center gap-2">
+                    {reportData.general_comments && (
+                      <Badge variant="outline" className="bg-background text-[10px] font-black tabular-nums border-primary/20 h-6">
+                        {reportData.general_comments.trim().split(/\s+/).filter(Boolean).length} words
+                      </Badge>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setIsWorkspaceOpen(true)}
+                      className="h-7 text-[10px] font-black uppercase tracking-widest gap-1.5 border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm"
+                    >
+                      <Sparkles className="h-3 w-3" /> Expand Workspace
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Body */}
+              {isLocked ? (
+                /* ── READ-ONLY: Styled blockquote view ── */
+                <div className="relative pl-6 py-6 border-l-4 border-primary bg-background/80 rounded-r-xl shadow-sm overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <MessageSquareText className="h-24 w-24" />
+                  </div>
+                  <span className="absolute -top-1 left-3 text-6xl text-primary/10 font-serif leading-none select-none">“</span>
+                  <p className="text-sm leading-relaxed text-foreground/90 italic font-medium whitespace-pre-wrap relative z-10">
+                    {reportData.general_comments || 'No operational overview was provided for this report period.'}
+                  </p>
+                  <span className="absolute -bottom-6 right-6 text-6xl text-primary/10 font-serif leading-none select-none">”</span>
+                </div>
+              ) : (
+                /* ── EDITABLE: Summary view with action ── */
+                <div className="space-y-4">
+                  <div 
+                    className="group/text cursor-pointer relative"
+                    onClick={() => setIsWorkspaceOpen(true)}
+                  >
+                    <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-amber-50/80 dark:from-amber-950/40 to-transparent pointer-events-none z-10" />
+                    <Textarea
+                      placeholder="Summarize the day’s operations — key wins, challenges, staffing notes, and anything management should be aware of..."
+                      rows={4}
+                      readOnly
+                      className="bg-background/60 border-primary/10 text-sm leading-relaxed cursor-pointer group-hover/text:border-primary/30 transition-all border-dashed"
+                      value={reportData.general_comments}
+                    />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover/text:opacity-100 transition-all z-20">
+                      <Button variant="secondary" className="font-black text-xs h-8 shadow-xl border border-primary/20">
+                        OPEN ANALYTICAL WORKSPACE
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Metrics status bar */}
+                  <div className="flex items-center gap-4 px-1">
+                    <Progress
+                      value={((reportData.general_comments?.length || 0) / 1000) * 100}
+                      className="flex-1 h-2 bg-primary/5 shadow-inner"
+                    />
+                    <span className={cn(
+                      "text-[10px] font-black tabular-nums tracking-widest",
+                      (reportData.general_comments?.length || 0) > 900 ? "text-destructive" : "text-primary/60"
+                    )}>
+                      {reportData.general_comments?.length || 0} / 1,000 CHARS
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
@@ -636,21 +901,6 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
 
               <div className="flex items-center justify-between p-3 border rounded-md">
                 <div className="flex items-center gap-2">
-                  {availability.menu ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
-                  <div className="flex flex-col">
-                    <Label className="font-semibold">Daily Menu Planner</Label>
-                    <span className="text-xs text-muted-foreground">{availability.menu ? 'Available' : 'No records found'}</span>
-                  </div>
-                </div>
-                <Checkbox
-                  checked={selectedAttachments.menu}
-                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, menu: !!val }))}
-                  disabled={!availability.menu}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-md">
-                <div className="flex items-center gap-2">
                   {availability.proformas ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
                   <div className="flex flex-col">
                     <Label className="font-semibold">Daily Proforma Invoices</Label>
@@ -708,11 +958,131 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
                   disabled={!availability.costing}
                 />
               </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  {availability.trainings ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
+                  <div className="flex flex-col">
+                    <Label className="font-semibold">Daily Training Sessions</Label>
+                    <span className="text-xs text-muted-foreground">{availability.trainings ? 'Available' : 'No records found'}</span>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={selectedAttachments.trainings}
+                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, trainings: !!val }))}
+                  disabled={!availability.trainings}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  {availability.attendance ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
+                  <div className="flex flex-col">
+                    <Label className="font-semibold">Daily Attendance Report</Label>
+                    <span className="text-xs text-muted-foreground">{availability.attendance ? 'Available' : 'No records found'}</span>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={selectedAttachments.attendance}
+                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, attendance: !!val }))}
+                  disabled={!availability.attendance}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  {availability.evaluations ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
+                  <div className="flex flex-col">
+                    <Label className="font-semibold">Daily Training Evaluations</Label>
+                    <span className="text-xs text-muted-foreground">{availability.evaluations ? 'Available' : 'No records found'}</span>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={selectedAttachments.evaluations}
+                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, evaluations: !!val }))}
+                  disabled={!availability.evaluations}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  {availability.feedback ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
+                  <div className="flex flex-col">
+                    <Label className="font-semibold">Daily Customer Feedback</Label>
+                    <span className="text-xs text-muted-foreground">{availability.feedback ? 'Available' : 'No records found'}</span>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={selectedAttachments.feedback}
+                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, feedback: !!val }))}
+                  disabled={!availability.feedback}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsBundleDialogOpen(false)}>Cancel</Button>
             <Button onClick={generatePDFBundle}>Generate Bundle</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isWorkspaceOpen} onOpenChange={setIsWorkspaceOpen}>
+        <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+          <div className="bg-primary p-8 text-white">
+            <DialogHeader>
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <MessageSquareText className="h-6 w-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black tracking-tight">Expanded Analytical Workspace</DialogTitle>
+                  <DialogDescription className="text-white/60 font-bold uppercase tracking-widest text-xs">
+                    Drafting elite operational overviews
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+          
+          <div className="flex-1 p-8 flex flex-col space-y-6 bg-background relative overflow-hidden">
+             {/* Decorative watermark */}
+             <div className="absolute bottom-4 right-4 opacity-[0.03] select-none pointer-events-none">
+                <FileText className="h-64 w-64 rotate-12" />
+             </div>
+
+             <div className="flex-1 space-y-4 relative z-10">
+                <div className="flex items-center justify-between px-1">
+                   <Label className="text-xs font-black uppercase tracking-widest text-primary/60">Professional Observations & Commentary</Label>
+                   <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="h-6 font-black text-[10px] border-primary/20 px-3">
+                        {reportData.general_comments?.trim().split(/\s+/).filter(Boolean).length || 0} WORDS
+                      </Badge>
+                      <Badge className={cn(
+                        "h-6 font-black text-[10px] px-3",
+                        (reportData.general_comments?.length || 0) > 900 ? "bg-destructive shadow-lg shadow-destructive/20" : "bg-primary"
+                      )}>
+                        {reportData.general_comments?.length || 0} / 1,000 CHARS
+                      </Badge>
+                   </div>
+                </div>
+                <Textarea
+                  placeholder="Record precise operational data, staffing performance, client feedback, and strategic notes for this session..."
+                  className="flex-1 min-h-[350px] text-lg font-medium leading-relaxed resize-none border-primary/10 focus-visible:ring-primary/20 bg-muted/5 p-6 rounded-2xl shadow-inner scrollbar-thin"
+                  value={reportData.general_comments}
+                  maxLength={1000}
+                  onChange={(e) => setReportData(prev => ({ ...prev, general_comments: e.target.value }))}
+                />
+             </div>
+          </div>
+
+          <DialogFooter className="p-6 bg-muted/20 border-t flex items-center justify-between">
+            <p className="text-[10px] font-bold text-muted-foreground italic max-w-xs leading-tight">
+              NOTE: This commentary is exported directly into the daily report package and is visible to management auditing.
+            </p>
+            <Button onClick={() => setIsWorkspaceOpen(false)} className="bg-primary font-black px-10 shadow-xl shadow-primary/20">
+              SAVE & SYNC WORKSPACE
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

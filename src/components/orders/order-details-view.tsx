@@ -15,16 +15,19 @@ import html2canvas from "html2canvas";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "../ui/badge";
 import { CreateDeliveryNoteDialog } from "./create-delivery-note-dialog";
+import { getMenusByOrderId } from "@/services/dailyMenuService";
+import { DailyMenu } from "@/types";
+import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
 
 
 interface OrderDetailsViewProps {
   order: Order;
 }
 
-function ClientEventCard({ event }: { event: ClientEvent }) {
+function ClientEventCard({ event, dailyMenu }: { event: ClientEvent, dailyMenu?: DailyMenu }) {
     const { getRecipeById, isLoading: recipesLoading } = useRecipeStorage();
 
-    const totalPrice = event.unitPrice * event.numberOfPeople;
+    const totalPrice = (Number(event.unitPrice) || 0) * (Number(event.numberOfPeople) || 0);
 
     const formatDateSafe = (dateString?: string, formatString: string = "MMMM d, yyyy") => {
         if (!dateString) return "N/A";
@@ -54,10 +57,28 @@ function ClientEventCard({ event }: { event: ClientEvent }) {
                     <h4 className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-2"><UtensilsCrossed className="h-3.5 w-3.5 text-primary"/>Included Recipes</h4>
                     {recipesLoading ? <Skeleton className="h-20 w-full" /> : (
                         <ul className="space-y-1.5 list-disc list-inside text-sm text-foreground">
-                            {event.recipes.length > 0 ? event.recipes.map((r, index) => {
-                                const recipe = getRecipeById(r.recipeId);
-                                return <li key={index} className="pl-1">{recipe?.recipeName || "Unknown Recipe"}</li>
-                            }) : <li className="text-muted-foreground italic list-none">No recipes assigned.</li>}
+                            {(() => {
+                                // Merge base recipes from order and planner recipes
+                                const baseRecipes = event?.recipes || [];
+                                const plannerRecipes = dailyMenu?.recipes?.map(r => ({ recipeId: r.recipeId })) || [];
+                                
+                                // Deduplicate by recipeId
+                                const combined = [...baseRecipes];
+                                plannerRecipes.forEach(pr => {
+                                    if (pr.recipeId && !combined.some(br => br.recipeId === pr.recipeId)) {
+                                        combined.push(pr as any);
+                                    }
+                                });
+
+                                if (combined.length === 0) {
+                                    return <li className="text-muted-foreground italic list-none">No recipes assigned.</li>;
+                                }
+
+                                return combined.map((r, index) => {
+                                    const recipe = getRecipeById(r.recipeId);
+                                    return <li key={index} className="pl-1">{recipe?.recipeName || "Unknown Recipe"}</li>;
+                                });
+                            })()}
                         </ul>
                     )}
                  </div>
@@ -92,8 +113,24 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
   const [isDeliveryNoteDialogOpen, setIsDeliveryNoteDialogOpen] = useState(false);
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
-
   const client = getClientById(order.clientId);
+  const [dailyMenus, setDailyMenus] = useState<DailyMenu[]>([]);
+  const [isMenusLoading, setIsMenusLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchMenus = async () => {
+      setIsMenusLoading(true);
+      try {
+        const menus = await getMenusByOrderId(order.id);
+        setDailyMenus(menus);
+      } catch (err) {
+        console.error("Error fetching daily menus for order:", err);
+      } finally {
+        setIsMenusLoading(false);
+      }
+    };
+    if (order.id) fetchMenus();
+  }, [order.id]);
 
   const handlePdfExport = async () => {
     if (!printRef.current) return;
@@ -171,9 +208,11 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
 
           <div ref={printRef} className="md:col-span-2 space-y-4">
             {order.clientEvents && order.clientEvents.length > 0 ? (
-                order.clientEvents.map((event, index) => (
-                    <ClientEventCard key={index} event={event} />
-                ))
+                order.clientEvents.map((event, index) => {
+                    const eventId = event.id || `EVT-${order.id}-${index}`;
+                    const dailyMenu = dailyMenus.find(m => m.event_id === eventId);
+                    return <ClientEventCard key={index} event={event} dailyMenu={dailyMenu} />;
+                })
             ) : (
                 <Card>
                     <CardContent className="py-10 text-center text-muted-foreground">
@@ -190,6 +229,8 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
         setIsOpen={setIsDeliveryNoteDialogOpen}
         order={order}
       />
+      
+      <OrderIssuanceSection targetOrders={[order]} />
     </div>
   );
 }

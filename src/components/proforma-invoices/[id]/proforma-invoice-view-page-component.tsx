@@ -29,6 +29,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { CreateInvoiceDialog } from "@/components/proforma-invoices/create-invoice-dialog";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -48,6 +49,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [passcode, setPasscode] = useState("");
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
@@ -172,20 +174,21 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async () => {
+  const handleCreateFinalInvoice = async (data: { invoiceId: string, invoiceDate: string, region: any }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
         const newInvoiceData = {
-            id: `INV-${Date.now()}`,
+            id: data.invoiceId,
             proformaId: invoice.id,
             status: 'outstanding' as const,
-            invoiceDate: new Date().toISOString(),
+            invoiceDate: data.invoiceDate,
             clientId: invoice.clientId,
             receiverName: invoice.receiverName,
             receiverPosition: invoice.receiverPosition,
             lpoNumber: invoice.lpoNumber,
             location: invoice.location,
+            region: data.region,
             numberOfDays: invoice.numberOfDays,
             multiplyByDays: invoice.multiplyByDays,
             serviceCharge: invoice.serviceCharge,
@@ -199,10 +202,12 @@ export function ProformaInvoiceViewPageComponent() {
             serviceDesc: invoice.serviceDesc,
             items: invoice.items.map(item => ({ ...item })),
             signedAtDate: new Date().toISOString(),
-            signedAtLocation: 'Dar es Salaam'
+            signedAtLocation: 'Dar es Salaam',
+            amountPaid: 0
         };
         const newInvoice = await addInvoice(newInvoiceData);
         
+        // @ts-ignore - isInvoiced may not be in the form schema but is in the DB model
         await updateProformaInvoice(invoice.id, { isInvoiced: true });
 
         if (newInvoice) {
@@ -317,12 +322,23 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={handleCreateFinalInvoice} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+             <Button onClick={() => setIsCreateDialogOpen(true)} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
                 {isCreatingInvoice ? "Creating..." : invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
           </div>
         </div>
+        
+        {invoice && (
+            <CreateInvoiceDialog
+                isOpen={isCreateDialogOpen}
+                setIsOpen={setIsCreateDialogOpen}
+                proformaId={invoice.id}
+                isCreating={isCreatingInvoice}
+                onSubmit={handleCreateFinalInvoice}
+            />
+        )}
+
         <div ref={printRef}>
           <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders}/>
         </div>

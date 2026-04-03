@@ -70,9 +70,9 @@ const hrNav = [
     icon: GraduationCap,
   },
   {
-    href: "/hr/recruitment",
-    label: "Recruitment",
-    icon: Briefcase,
+    href: "/hr/training",
+    label: "Staff Training",
+    icon: GraduationCap,
   },
   {
     href: "/hr/payroll",

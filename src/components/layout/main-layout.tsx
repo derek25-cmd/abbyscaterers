@@ -30,7 +30,8 @@ import {
     ListPlus,
     Banknote,
     ArrowLeft,
-    RefreshCw
+    RefreshCw,
+    GraduationCap
 } from "lucide-react"; 
 import {
   SidebarProvider,
@@ -88,7 +89,7 @@ const navItems = [
         { href: "/hr/employees", label: "Employees", icon: Users },
         { href: "/hr/attendance", label: "Attendance", icon: CalendarCheck },
         { href: "/hr/payroll", label: "Payroll", icon: CreditCard },
-        { href: "/hr/recruitment", label: "Recruitment", icon: Briefcase },
+        { href: "/hr/training", label: "Staff Training", icon: GraduationCap },
         { href: "/operations/inventory", label: "Product Catalog", icon: Package },
         { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
         { href: "/operations/assets", label: "Asset Management", icon: Truck },

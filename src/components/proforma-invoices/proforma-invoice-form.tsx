@@ -107,7 +107,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             endDate: format(new Date(), 'yyyy-MM-dd'),
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
-            items: [{ id: `EVT-${Date.now()}`, particularType: 'event', eventType: eventTypes[0], mealType: mealTypes[0], pax: 1, unitPrice: 0, total: 0, date: format(new Date(), 'yyyy-MM-dd'), vatType: 'inclusive' }],
+            items: [],
         }
     });
 
@@ -297,14 +297,22 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const onSubmit: SubmitHandler<ProformaInvoiceFormData> = async (data) => {
         setIsSubmitting(true);
         try {
+            // 1. First, ensure all draft orders are persisted to the database
+            // This will replace DRAFT-ORD- IDs with real ORD-XXXXX IDs in the form state
+            await persistDraftOrders();
+            
+            // 2. Get the fresh values from the form (now containing real Order IDs)
+            const freshData = form.getValues();
+            
             let result;
             if (isEditMode && invoiceId) {
-                result = await updateProformaInvoice(invoiceId, data);
+                result = await updateProformaInvoice(invoiceId, freshData);
             } else {
-                result = await addProformaInvoice(data);
+                result = await addProformaInvoice(freshData);
             }
 
             if (result) {
+
                 // Determine which items are "New Orders" that need persistence
                 const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
                 
@@ -354,11 +362,15 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 // Link existing orders to the document
                 const existingOrderIds = Array.from(new Set(
                     data.items
+                // 3. Link existing or newly created orders to this proforma document
+                const linkedOrderIds = Array.from(new Set(
+                    freshData.items
+
                         .map(i => i.orderId)
                         .filter(id => id && id.startsWith('ORD-'))
                 )) as string[];
 
-                for (const oid of existingOrderIds) {
+                for (const oid of linkedOrderIds) {
                     await updateOrder(oid, { proformaId: result.id } as any);
                 }
 
@@ -373,12 +385,21 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     }
 
-    const persistDraftOrders = async () => {
+    const persistDraftOrders = async (targetOrderId?: string) => {
         const data = form.getValues();
-        const newOrderItems = data.items.filter(item => item.orderId && item.orderId.startsWith('DRAFT-ORD-'));
+        const newOrderItems = data.items.filter(item => {
+            const isDraft = item.orderId && item.orderId.startsWith('DRAFT-ORD-');
+            if (!isDraft) return false;
+            if (targetOrderId && item.orderId !== targetOrderId) return false;
+            return true;
+        });
         
         if (newOrderItems.length === 0) {
-            toast({ title: 'No Drafts', description: 'All orders are already saved.' });
+            if (targetOrderId) {
+                toast({ title: 'Already Saved', description: 'This order is already persisted.' });
+            } else {
+                toast({ title: 'No Drafts', description: 'All orders are already saved.' });
+            }
             return;
         }
 
@@ -393,6 +414,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 orderGroups.set(item.orderId!, group);
             });
 
+            let currentItemsForDrafts = [...form.getValues('items')];
             for (const [tempOrderId, groupItems] of orderGroups.entries()) {
                 const validItems = groupItems.filter(i => i.date);
                 if (validItems.length === 0) continue;
@@ -413,21 +435,21 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         id: gi.id, 
                         mealType: gi.mealType,
                         eventType: gi.eventType,
-                        numberOfPeople: gi.pax,
-                        unitPrice: gi.unitPrice,
-                        total: gi.total,
+                        numberOfPeople: Number(gi.pax) || 0,
+                        unitPrice: Number(gi.unitPrice) || 0,
+                        total: (Number(gi.pax) || 0) * (Number(gi.unitPrice) || 0),
                         date: gi.date,
                         vatType: gi.vatType,
                         clientId: data.clientId!,
                         particularDescription: gi.particularDescription,
-                        particularType: gi.particularType
+                        particularType: gi.particularType,
+                        recipes: []
                     }))
                 };
 
                 const newOrder = await addOrder(orderPayload as any);
                 if (newOrder) {
-                    const currentItems = form.getValues('items');
-                    const updatedItems = currentItems.map(ci => {
+                    currentItemsForDrafts = currentItemsForDrafts.map(ci => {
                         if (ci.orderId === tempOrderId) {
                             const matchingEvent = newOrder.clientEvents?.find(e => 
                                 e.particularDescription === ci.particularDescription && 
@@ -441,9 +463,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         }
                         return ci;
                     });
-                    form.setValue('items', updatedItems);
                 }
             }
+            form.setValue('items', currentItemsForDrafts);
 
             toast({ title: 'Save Successful', description: 'Draft orders have been persisted to the system.' });
         } catch (error) {
@@ -662,13 +684,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                              <div className="flex justify-between items-center bg-primary/5 p-4 rounded-xl border border-primary/10">
                                                 <h3 className="text-lg font-bold flex items-center gap-2 text-primary"><Utensils className="h-5 w-5" /> Line Items</h3>
                                                 <div className="flex items-center gap-2">
-                                                    <Button type="button" variant="outline" size="sm" onClick={persistDraftOrders} disabled={isPersistingDrafts || !form.watch('items').some(i => i.orderId?.startsWith('DRAFT-'))} className="bg-background">
-                                                        {isPersistingDrafts ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-                                                        Save Draft Orders
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => persistDraftOrders()} disabled={isPersistingDrafts} className="bg-background font-black italic text-[10px] tracking-widest border-2">
+                                                        {isPersistingDrafts ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                                                        SAVE ALL DRAFTS
                                                     </Button>
-                                                    <Button type="button" size="sm" onClick={() => append({ 
-                                                        id: `DRAFT-EVT-${Date.now()}`, 
-                                                        orderId: `DRAFT-ORD-${Date.now()}`, 
+                                                    <Button type="button" size="sm" className="font-black italic text-[10px] tracking-widest" onClick={() => append({ 
+                                                        id: `DRAFT-EVT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+                                                        orderId: `DRAFT-ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
                                                         particularType: 'event', 
                                                         eventType: eventTypes[0], 
                                                         mealType: mealTypes[0], 
@@ -678,35 +700,41 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                         date: format(new Date(), 'yyyy-MM-dd'), 
                                                         vatType: 'inclusive' 
                                                     })}>
-                                                        <Plus className="w-4 h-4 mr-1" /> Add Row
+                                                        <Plus className="w-4 h-4 mr-1" /> ADD SERVICE ENTRY
                                                     </Button>
                                                 </div>
                                             </div>
                                             <div className="rounded-xl border overflow-hidden">
                                                 <table className="w-full text-sm">
-                                                    <thead className="bg-muted/50 border-b">
-                                                        <tr>
-                                                            <th className="px-4 py-3 text-left w-[120px]">Category</th>
-                                                            <th className="px-4 py-3 text-left w-[150px]">Type</th>
-                                                            <th className="px-4 py-3 text-left w-[140px]">Date</th>
-                                                            <th className="px-4 py-3 text-left">Final Particulars</th>
-                                                            <th className="px-4 py-3 text-right w-[80px]">Qty</th>
-                                                            <th className="px-4 py-3 text-right w-[100px]">Rate</th>
-                                                            <th className="px-4 py-3 text-right w-[110px]">Total</th>
-                                                            <th className="px-4 py-3 text-center w-20">Actions</th>
+                                                    <thead className="bg-muted/80 backdrop-blur-sm sticky top-0 z-20 border-b shadow-sm">
+                                                        <tr className="divide-x divide-border/40">
+                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[110px]">Category</th>
+                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[140px]">Type</th>
+                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[130px]">Service Date</th>
+                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Particulars & Description</th>
+                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[150px]">Pax</th>
+                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[220px]">Unit Rate</th>
+                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[150px]">Grand Total</th>
+                                                            <th className="px-3 py-4 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground w-40">Actions</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y">
-                                                         {fields.map((item, index) => {
-                                                            const itemType = form.watch(`items.${index}.particularType`);
-                                                            
+                                                          {fields.map((item, index) => {
+                                                             const itemType = form.watch(`items.${index}.particularType`);
+                                                             const orderId = form.watch(`items.${index}.orderId`);
+                                                             const isFirstInOrder = index === 0 || form.watch(`items.${index - 1}.orderId`) !== orderId;
+                                                             const isSaved = orderId?.startsWith('ORD-');
+                                                             
                                                             return (
-                                                                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                                                                    <td className="px-4 py-3">
+                                                                <tr key={item.id} className={cn(
+                                                                    "group transition-all duration-200 border-b last:border-0 hover:bg-muted/30",
+                                                                    isSaved ? "bg-green-50/20" : ""
+                                                                )}>
+                                                                    <td className="px-3 py-3 align-middle">
                                                                         <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
                                                                             <FormItem>
                                                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                                                    <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger></FormControl>
+                                                                                    <FormControl><SelectTrigger className="h-9 text-xs font-semibold bg-background border-muted-foreground/20 focus:ring-primary/40"><SelectValue /></SelectTrigger></FormControl>
                                                                                     <SelectContent>
                                                                                         <SelectItem value="event">Event</SelectItem>
                                                                                         <SelectItem value="meal">Meal</SelectItem>
@@ -716,12 +744,12 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                             </FormItem>
                                                                         )} />
                                                                     </td>
-                                                                    <td className="px-4 py-3">
+                                                                    <td className="px-3 py-3 align-top">
                                                                         {itemType === 'event' && (
                                                                             <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
                                                                                 <FormItem>
                                                                                     <Select onValueChange={field.onChange} value={field.value}>
-                                                                                        <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger></FormControl>
+                                                                                        <FormControl><SelectTrigger className="h-9 text-xs bg-background border-muted-foreground/20 italic"><SelectValue /></SelectTrigger></FormControl>
                                                                                         <SelectContent>
                                                                                             {eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                                                                         </SelectContent>
@@ -733,7 +761,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                             <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
                                                                                 <FormItem>
                                                                                     <Select onValueChange={field.onChange} value={field.value}>
-                                                                                        <FormControl><SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger></FormControl>
+                                                                                        <FormControl><SelectTrigger className="h-9 text-xs bg-background border-muted-foreground/20 italic"><SelectValue /></SelectTrigger></FormControl>
                                                                                         <SelectContent>
                                                                                             {mealTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                                                                         </SelectContent>
@@ -742,16 +770,19 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                             )} />
                                                                         )}
                                                                         {itemType === 'custom' && (
-                                                                            <div className="text-[10px] text-muted-foreground italic font-semibold uppercase">Custom Entry</div>
+                                                                            <div className="flex h-9 items-center px-1">
+                                                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-40">Ad Hoc Entry</Badge>
+                                                                            </div>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-4 py-3">
+                                                                    <td className="px-3 py-3 align-top">
                                                                         <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
                                                                             <FormItem className="flex flex-col">
                                                                                 <Popover>
                                                                                     <PopoverTrigger asChild>
-                                                                                        <FormControl><Button variant={"outline"} className={cn("h-9 border w-full justify-start text-left font-normal text-xs px-2", !field.value && "text-muted-foreground")}>
-                                                                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "dd/MM/yyyy") : <span>DD/MM/YYYY</span>}
+                                                                                        <FormControl><Button variant={"outline"} className={cn("h-9 border-muted-foreground/20 w-full justify-start text-left font-medium text-xs px-2 bg-background", !field.value && "text-muted-foreground")}>
+                                                                                            <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-50" />
+                                                                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "dd/MM/yyyy") : <span>DATE</span>}
                                                                                         </Button></FormControl>
                                                                                     </PopoverTrigger>
                                                                                     <PopoverContent className="w-auto p-0" align="start">
@@ -772,33 +803,90 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                             </FormItem>
                                                                         )} />
                                                                     </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => <FormItem><FormControl><Input {...field} className="h-9" /></FormControl><FormMessage /></FormItem>} />
+                                                                    <td className="px-3 py-3 align-top">
+                                                                        <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormControl><Input {...field} className="h-9 bg-background border-muted-foreground/20 focus:border-primary font-medium" placeholder="E.g. Working Lunch Menu A" /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
                                                                     </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => <FormItem><FormControl><Input type="number" {...field} className="h-9 text-right" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>} />
+                                                                    <td className="px-3 py-3 align-middle text-right">
+                                                                        <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormControl><Input type="number" {...field} className="h-14 text-right bg-background border-muted-foreground/20 focus:ring-amber-500/20 font-bold text-base" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
                                                                     </td>
-                                                                    <td className="px-4 py-3">
-                                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => <FormItem><FormControl><Input type="number" {...field} className="h-9 text-right" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>} />
+                                                                    <td className="px-3 py-3 align-middle text-right">
+                                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
+                                                                            <FormItem>
+                                                                                <FormControl><Input type="number" {...field} className="h-14 text-right bg-background border-muted-foreground/20 focus:ring-amber-500/20 font-bold text-base" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                                                                <FormMessage />
+                                                                            </FormItem>
+                                                                        )} />
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-right font-bold">
-                                                                        {form.watch(`items.${index}.total`).toLocaleString()}
+                                                                    <td className="px-3 py-3 align-top text-right pt-5">
+                                                                        <span className="font-black text-xs text-primary/80">{form.watch(`items.${index}.total`).toLocaleString()}</span>
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-center">
-                                                                        {item.orderId?.startsWith('ORD-') ? (
-                                                                             <div className="flex flex-col items-center gap-1">
-                                                                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[9px] font-bold">SAVED</Badge>
-                                                                                <span className="text-[8px] text-muted-foreground font-mono">{item.orderId}</span>
-                                                                             </div>
-                                                                        ) : (
-                                                                            <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive transition-colors">
-                                                                                <Trash2 className="w-4 h-4" />
-                                                                            </Button>
-                                                                        )}
+                                                                    <td className="px-3 py-3 text-center align-middle">
+                                                                        <div className="flex items-center justify-center gap-2">
+                                                                             {isSaved ? (
+                                                                                <div className="flex items-center gap-2 group/saved">
+                                                                                    <div className="flex flex-col items-center gap-1 scale-95 opacity-60">
+                                                                                        <Badge variant="outline" className="bg-green-100/50 text-green-700 border-green-200 text-[9px] font-black tracking-tighter shadow-sm py-0.5 whitespace-nowrap">EXTRACTED</Badge>
+                                                                                        <span className="text-[7px] text-muted-foreground/60 font-mono tracking-widest">{orderId}</span>
+                                                                                    </div>
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="destructive" 
+                                                                                        size="sm" 
+                                                                                        onClick={async () => {
+                                                                                            if (confirm('Unlink this order from this proforma?')) {
+                                                                                                await updateOrder(orderId!, { proformaId: '' } as any);
+                                                                                                remove(index);
+                                                                                            }
+                                                                                        }} 
+                                                                                        className="h-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-2 animate-in fade-in zoom-in duration-300"
+                                                                                        title="Remove from Wizard"
+                                                                                    >
+                                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                                        DELETE
+                                                                                    </Button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="secondary" 
+                                                                                        size="sm" 
+                                                                                        onClick={() => persistDraftOrders(orderId)} 
+                                                                                        disabled={isPersistingDrafts}
+                                                                                        className="h-8 px-2 text-[8px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all active:scale-90 flex items-center gap-1.5"
+                                                                                        title="Save this Order to Database"
+                                                                                    >
+                                                                                        {isPersistingDrafts ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                                                                                        SAVE TO ORDER
+                                                                                    </Button>
+                                                                                    <Button 
+                                                                                        type="button" 
+                                                                                        variant="destructive" 
+                                                                                        size="sm" 
+                                                                                        onClick={() => remove(index)} 
+                                                                                        className="h-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-2"
+                                                                                        title="Remove Row"
+                                                                                    >
+                                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                                        DELETE
+                                                                                    </Button>
+                                                                                </>
+                                                                            )}
+                                                                        </div>
                                                                     </td>
                                                                 </tr>
                                                             );
-                                                        })}
+                                                         })}
                                                     </tbody>
                                                 </table>
                                             </div>

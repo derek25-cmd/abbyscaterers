@@ -34,9 +34,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders, onNewIssuance }) {
-    const [selectedDate, setSelectedDate] = useState(new Date());
-    const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders, onNewIssuance, defaultOrderIds = [], defaultDate }: any) {
+    const [selectedDate, setSelectedDate] = useState(defaultDate || new Date());
+    const [selectedOrderIds, setSelectedOrderIds] = useState(defaultOrderIds);
     const [issuedTo, setIssuedTo] = useState('');
     const [items, setItems] = useState([{ assetId: '', quantityIssued: 1 }]);
     const [notes, setNotes] = useState('');
@@ -53,8 +53,8 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
     }
 
     const resetForm = () => {
-        setSelectedDate(new Date());
-        setSelectedOrderIds([]);
+        setSelectedDate(defaultDate || new Date());
+        setSelectedOrderIds(defaultOrderIds || []);
         setIssuedTo('');
         setItems([{ assetId: '', quantityIssued: 1 }]);
         setNotes('');
@@ -68,7 +68,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
         if (isOpen) {
             resetForm();
         }
-    }, [isOpen]);
+    }, [isOpen, defaultDate, defaultOrderIds]);
 
     useEffect(() => {
         const value = items.reduce((acc, item) => {
@@ -296,7 +296,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
                     <Label className="text-sm font-bold uppercase tracking-tight">Issued Items</Label>
                     <span className="text-[10px] font-mono text-muted-foreground">{items.length} items</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-2 pb-2">
                 {items.map((item, index) => {
                     const asset = assets.find(a => a.id === item.assetId);
                     return (

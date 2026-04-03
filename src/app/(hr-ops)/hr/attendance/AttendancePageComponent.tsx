@@ -1,40 +1,63 @@
 'use client'
 
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-import { CalendarIcon, MoreHorizontal, Clock, Search, X, Users, UserCheck, UserX } from "lucide-react";
-import { format, parse } from "date-fns";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from 'next/navigation';
-import { EditAttendanceDialog } from "@/components/hr/edit-attendance-dialog";
-import { ViewAttendanceDialog } from "@/components/hr/view-attendance-dialog";
-import { LogAttendanceDialog } from "@/components/hr/log-attendance-dialog";
-import { getAttendanceRecords, addAttendanceRecord, updateAttendanceRecord, findAttendanceRecord } from "@/services/attendanceService";
-import { getEmployees } from "@/services/employeeService";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { 
+    Search, 
+    ChevronLeft, 
+    ChevronRight, 
+    MoreHorizontal, 
+    Check, 
+    UserCheck, 
+    UserX, 
+    Users, 
+    Calendar as CalendarIcon,
+    AlertCircle,
+    Clock,
+    Filter,
+    Loader2,
+    FileText
+} from "lucide-react";
+import { 
+    format, 
+    startOfMonth, 
+    endOfMonth, 
+    eachDayOfInterval, 
+    isWeekend, 
+    startOfYear, 
+    addMonths, 
+    isSameDay
+} from "date-fns";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter } from 'next/navigation';
+import { getAttendanceRecords, upsertAttendanceRecords } from "@/services/attendanceService";
+import { getEmployees } from "@/services/employeeService";
+import { Attendance, AttendanceStatus, Employee } from "@/types";
+import "./AttendanceRedesign.css";
+
+const STATUS_ORDER: (AttendanceStatus | null)[] = ['Present', 'Absent', 'Leave', 'Half Day', 'Late', null];
 
 export function AttendancePageComponent() {
-  const searchParams = useSearchParams();
-  const employeeIdFilter = searchParams.get('employeeId');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const employeeIdFilter = searchParams.get('employeeId');
 
-  const [records, setRecords] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+    const [records, setRecords] = useState<Attendance[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    
+    // Track unsaved changes: key is "employeeId:date", value is status
+    const [pendingChanges, setPendingChanges] = useState<Record<string, AttendanceStatus | null>>({});
+    
+    // Date states
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
-  useEffect(() => {
-    setSelectedDate(new Date());
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         const [recordsData, employeesData] = await Promise.all([
             getAttendanceRecords(),
@@ -43,275 +66,340 @@ export function AttendancePageComponent() {
         setRecords(recordsData);
         setEmployees(employeesData);
         setLoading(false);
-    }
-    fetchData();
-  }, []);
-  
-  const filteredRecords = useMemo(() => {
-    let dateFilteredRecords = [];
-    if (selectedDate) {
-        const dateStr = format(selectedDate, "yyyy-MM-dd");
-        dateFilteredRecords = records.filter(r => r.date === dateStr);
-    } else {
-        dateFilteredRecords = records;
-    }
-    
-    let employeeFilteredRecords = dateFilteredRecords;
-    if (employeeIdFilter) {
-        const employee = employees.find(e => e.id === employeeIdFilter);
-        if (employee) {
-            const fullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
-            employeeFilteredRecords = dateFilteredRecords.filter(r => r.employee === fullName);
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const daysInMonth = useMemo(() => {
+        const date = new Date(currentYear, currentMonth, 1);
+        const start = startOfMonth(date);
+        const end = endOfMonth(date);
+        return eachDayOfInterval({ start, end });
+    }, [currentMonth, currentYear]);
+
+    const yearMonths = useMemo(() => {
+        const yearStart = startOfYear(new Date(currentYear, 0, 1));
+        return Array.from({ length: 12 }).map((_, i) => addMonths(yearStart, i));
+    }, [currentYear]);
+
+    const filteredEmployees = useMemo(() => {
+        let result = employees.filter(e => e.status === 'Active');
+        if (employeeIdFilter) {
+            result = result.filter(e => e.id === employeeIdFilter);
         }
+        if (searchQuery) {
+            const lowerQuery = searchQuery.toLowerCase();
+            result = result.filter(e => 
+                `${e.firstName} ${e.lastName}`.toLowerCase().includes(lowerQuery)
+            );
+        }
+        return result;
+    }, [employees, searchQuery, employeeIdFilter]);
+
+    const handleToggleStatus = (employeeId: string, date: string, currentStatus?: AttendanceStatus) => {
+        const currentIndex = currentStatus ? STATUS_ORDER.indexOf(currentStatus) : 5;
+        const nextStatus = STATUS_ORDER[(currentIndex + 1) % STATUS_ORDER.length];
+        
+        const key = `${employeeId}:${date}`;
+        setPendingChanges(prev => ({
+            ...prev,
+            [key]: nextStatus as AttendanceStatus
+        }));
+    };
+
+    const handleSave = async () => {
+        if (Object.keys(pendingChanges).length === 0) return;
+        setSaving(true);
+
+        const updates: Partial<Attendance>[] = Object.entries(pendingChanges).map(([key, status]) => {
+            const [employeeId, date] = key.split(':');
+            const emp = employees.find(e => e.id === employeeId);
+            // Omit 'id' to let DB handle defaults for new records and avoid null constraint errors in bulk upserts
+            return {
+                employee_id: employeeId,
+                employee: emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown',
+                date: date,
+                status: status as AttendanceStatus
+            };
+        });
+
+        const result = await upsertAttendanceRecords(updates);
+        if (result) {
+            setRecords(prev => {
+                const newRecords = [...prev];
+                result.forEach(updated => {
+                    const idx = newRecords.findIndex(r => r.employee_id === updated.employee_id && r.date === updated.date);
+                    if (idx > -1) newRecords[idx] = updated;
+                    else newRecords.push(updated);
+                });
+                return newRecords;
+            });
+            setPendingChanges({}); // Clear pending changes
+        }
+        setSaving(false);
+    };
+
+    const handleMarkAllPresent = () => {
+        const today = format(new Date(), "yyyy-MM-dd");
+        const newPending = { ...pendingChanges };
+        let hasChanges = false;
+
+        filteredEmployees.forEach(emp => {
+            const existing = records.find(r => r.employee_id === emp.id && r.date === today);
+            const pending = pendingChanges[`${emp.id}:${today}`];
+            const currentStatus = pending !== undefined ? pending : existing?.status;
+
+            if (currentStatus !== 'Present') {
+                newPending[`${emp.id}:${today}`] = 'Present' as AttendanceStatus;
+                hasChanges = true;
+            }
+        });
+
+        if (hasChanges) {
+            setPendingChanges(newPending);
+        }
+    };
+
+    const getStatusInfo = (employeeId: string, date: Date) => {
+        const dateStr = format(date, "yyyy-MM-dd");
+        const key = `${employeeId}:${dateStr}`;
+        
+        // Priority: Pending Changes > Existing Records
+        const pendingStatus = pendingChanges[key];
+        const record = records.find(r => r.employee_id === employeeId && r.date === dateStr);
+        
+        return {
+            status: pendingStatus !== undefined ? pendingStatus : record?.status,
+            isUnsaved: pendingStatus !== undefined && pendingStatus !== record?.status
+        };
+    };
+
+    const summary = useMemo(() => {
+        const currentMonthStr = format(new Date(currentYear, currentMonth, 1), "yyyy-MM");
+        const visibleEmployeesIds = new Set(filteredEmployees.map(e => e.id));
+
+        // Create a combined set of status info for the visible month
+        let totalPresentUnits = 0;
+        let present = 0;
+        let absent = 0;
+        let halfDay = 0;
+        let late = 0;
+        let totalMarked = 0;
+
+        filteredEmployees.forEach(emp => {
+            daysInMonth.forEach(day => {
+                if (isWeekend(day)) return;
+                const dateStr = format(day, "yyyy-MM-dd");
+                const info = getStatusInfo(emp.id, day);
+                const status = info.status;
+
+                if (status) {
+                    totalMarked++;
+                    if (status === 'Present') { present++; totalPresentUnits += 1; }
+                    else if (status === 'Late') { late++; totalPresentUnits += 1; }
+                    else if (status === 'Half Day') { halfDay++; totalPresentUnits += 0.5; }
+                    else if (status === 'Absent') { absent++; }
+                }
+            });
+        });
+
+        return {
+            totalEmployees: filteredEmployees.length,
+            present: present + late,
+            absent,
+            late,
+            rate: totalMarked > 0 ? (totalPresentUnits / totalMarked) * 100 : 0
+        };
+    }, [records, currentMonth, currentYear, filteredEmployees, pendingChanges, daysInMonth]);
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <p className="text-lg font-semibold text-muted-foreground">Loading Registry...</p>
+                </div>
+            </div>
+        );
     }
-    
-    if (!searchQuery) {
-        return employeeFilteredRecords;
-    }
-    
-    const lowercasedQuery = searchQuery.toLowerCase();
-    return employeeFilteredRecords.filter(record => 
-        record.employee.toLowerCase().includes(lowercasedQuery)
+
+    return (
+        <main className="attendance-content-wrapper p-4 md:p-8">
+            <div className="attendance-container">
+                <div className="attendance-header">
+                    <h1>✨ Employee Attendance Registry</h1>
+                    <p>Streamlined daily presence tracking and registry management</p>
+                    <div className="attendance-date-range">
+                        <CalendarIcon className="mr-2 inline-block h-4 w-4" />
+                        {format(new Date(currentYear, currentMonth, 1), "MMMM yyyy")}
+                    </div>
+                </div>
+
+                <div className="attendance-controls">
+                    <div className="flex flex-1 items-center gap-4">
+                        <div className="relative w-full max-w-sm">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Search employees..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        <Button variant="outline" onClick={handleMarkAllPresent} className="hidden md:flex">
+                            <Check className="mr-2 h-4 w-4" /> Mark All Present Today
+                        </Button>
+                        
+                        {Object.keys(pendingChanges).length > 0 && (
+                            <Button className="btn-save" onClick={handleSave} disabled={saving}>
+                                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                Save Changes ({Object.keys(pendingChanges).length})
+                            </Button>
+                        )}
+                        
+                        <Button 
+                            variant="outline" 
+                            className="btn-report ml-2" 
+                            onClick={() => router.push(`/reports/monthly-attendance?month=${currentMonth}&year=${currentYear}`)}
+                        >
+                            <FileText className="mr-2 h-4 w-4" /> View Full Report
+                        </Button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center rounded-lg border bg-background p-1">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => {
+                                    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
+                                    else { setCurrentMonth(m => m - 1); }
+                                }}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="px-4 text-sm font-bold">
+                                {format(new Date(currentYear, currentMonth, 1), "MMM yyyy")}
+                            </span>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={() => {
+                                    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
+                                    else { setCurrentMonth(m => m + 1); }
+                                }}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <Button variant="ghost" size="icon">
+                            <Filter className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="attendance-month-selector">
+                    {yearMonths.map((m, i) => (
+                        <button
+                            key={i}
+                            className={cn("attendance-month-btn", currentMonth === i && "active")}
+                            onClick={() => setCurrentMonth(i)}
+                        >
+                            {format(m, "MMMM")}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="attendance-content">
+                    <div className="mb-6 flex flex-wrap gap-6 border-b pb-6">
+                        <div className="legend-item"><div className="legend-box attendance-cell p">P</div> <span>Present</span></div>
+                        <div className="legend-item"><div className="legend-box attendance-cell a">A</div> <span>Absent</span></div>
+                        <div className="legend-item"><div className="legend-box attendance-cell l">L</div> <span>Leave</span></div>
+                        <div className="legend-item"><div className="legend-box attendance-cell h">H</div> <span>Half Day</span></div>
+                        <div className="legend-item"><div className="legend-box attendance-cell t">T</div> <span>Late</span></div>
+                        <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            💡 Click cells to cycle status • <span className="text-destructive">●</span> Unsaved
+                        </div>
+                    </div>
+
+                    <div className="attendance-table-container">
+                        <table className="attendance-table">
+                            <thead>
+                                <tr>
+                                    <th>No.</th>
+                                    <th>Employee Name</th>
+                                    {daysInMonth.map(day => (
+                                        <th key={day.toString()} className={cn(isWeekend(day) && "attendance-weekend")}>
+                                            {format(day, "d")}
+                                            <div className="text-[10px] uppercase opacity-50">{format(day, "eee")}</div>
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredEmployees.map((emp, idx) => (
+                                    <tr key={emp.id}>
+                                        <td>{idx + 1}</td>
+                                        <td>
+                                            <div className="flex flex-col">
+                                                <span className="truncate">{emp.firstName} {emp.lastName}</span>
+                                                <span className="text-[10px] text-muted-foreground">{emp.role} • {emp.department}</span>
+                                            </div>
+                                        </td>
+                                        {daysInMonth.map(day => {
+                                            const isWknd = isWeekend(day);
+                                            const info = getStatusInfo(emp.id, day);
+                                            const status = info.status;
+                                            const isUnsaved = info.isUnsaved;
+                                            
+                                            return (
+                                                <td key={day.toString()} className={cn(isWknd && "attendance-weekend")}>
+                                                    <div 
+                                                        className={cn(
+                                                            "attendance-cell",
+                                                            status?.toLowerCase().replace(' ', ''),
+                                                            isUnsaved && "unsaved"
+                                                        )}
+                                                        onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), (status || undefined) as AttendanceStatus | undefined)}
+                                                    >
+                                                        {status ? status.charAt(0) : ''}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="attendance-summary-section">
+                        <h3>📊 Monthly Performance Summary</h3>
+                        <div className="attendance-summary-grid">
+                            <div className="attendance-summary-card">
+                                <div className="attendance-summary-number">{summary.totalEmployees}</div>
+                                <div className="attendance-summary-label">Active Staff</div>
+                            </div>
+                            <div className="attendance-summary-card">
+                                <div className="attendance-summary-number" style={{ color: '#22c55e' }}>{summary.present}</div>
+                                <div className="attendance-summary-label">Total Present</div>
+                            </div>
+                            <div className="attendance-summary-card">
+                                <div className="attendance-summary-number" style={{ color: '#ef4444' }}>{summary.absent}</div>
+                                <div className="attendance-summary-label">Total Absent</div>
+                            </div>
+                            <div className="attendance-summary-card">
+                                <div className="attendance-summary-number" style={{ color: '#8b5cf6' }}>{summary.rate.toFixed(1)}%</div>
+                                <div className="attendance-summary-label">Attendance Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     );
-  }, [records, selectedDate, searchQuery, employeeIdFilter, employees]);
-
-
-  const handleEditRecord = async (updatedRecord: any) => {
-    await updateAttendanceRecord(updatedRecord.id, updatedRecord);
-    setRecords(prevRecords => 
-        prevRecords.map(record => 
-            record.id === updatedRecord.id ? updatedRecord : record
-        )
-    );
-  };
-
-  const handleLogAttendance = async (logData: any) => {
-    const now = new Date();
-    const time = format(now, 'hh:mm a'); // e.g., 05:30 PM
-    const date = format(now, 'yyyy-MM-dd');
-    
-    const employee = employees.find(e => e.id === logData.employeeId);
-    if (!employee) return;
-    
-    const employeeFullName = [employee.firstName, employee.middleName, employee.lastName].filter(Boolean).join(' ');
-    const existingRecord = await findAttendanceRecord(employeeFullName, date);
-
-    if (existingRecord) {
-       // Clocking out
-      const updatedRecord = { ...existingRecord, clockOut: time };
-      
-      const clockInTime = parse(`${existingRecord.date} ${existingRecord.clockIn}`, 'yyyy-MM-dd hh:mm a', new Date());
-      const clockOutTime = parse(`${date} ${time}`, 'yyyy-MM-dd hh:mm a', new Date());
-
-      const diffMs = clockOutTime.getTime() - clockInTime.getTime();
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffMins = Math.floor((diffMs % 3600000) / 60000);
-      updatedRecord.totalHours = `${diffHours}h ${diffMins}m`;
-      
-      await updateAttendanceRecord(existingRecord.id, updatedRecord);
-      setRecords(records.map(r => r.id === existingRecord.id ? updatedRecord : r));
-    } else {
-      // Clocking in
-      const newRecord = {
-        employee: employeeFullName,
-        date: date,
-        clockIn: time,
-        clockOut: "—",
-        totalHours: "—",
-      };
-      const newId = await addAttendanceRecord(newRecord);
-      setRecords([{ id: newId, ...newRecord }, ...records]);
-    }
-  };
-
-  const openEditDialog = (record: any) => {
-    setSelectedRecord(record);
-    setIsEditDialogOpen(true);
-  };
-  
-  const openViewDialog = (record: any) => {
-    setSelectedRecord(record);
-    setIsViewDialogOpen(true);
-  };
-  
-  const openLogDialog = () => {
-    setIsLogDialogOpen(true);
-  }
-  
-  const attendanceSummary = useMemo(() => {
-    const activeEmployees = employees.filter(e => e.status === 'Active');
-    const presentToday = new Set(filteredRecords.map(r => r.employee));
-    const absentCount = activeEmployees.length - presentToday.size;
-    return {
-        total: activeEmployees.length,
-        present: presentToday.size,
-        absent: absentCount < 0 ? 0 : absentCount,
-    }
-  }, [employees, filteredRecords]);
-
-  return (
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
-          <h1 className="font-headline text-2xl font-bold">Attendance Log</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <Button size="sm" className="h-8 gap-1" onClick={openLogDialog}>
-                <Clock className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Clock In / Out
-                </span>
-            </Button>
-          </div>
-        </div>
-
-         <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{attendanceSummary.total}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Present Today</CardTitle>
-                    <UserCheck className="h-4 w-4 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{attendanceSummary.present}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Absent Today</CardTitle>
-                    <UserX className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold text-red-600">{attendanceSummary.absent}</div>
-                </CardContent>
-            </Card>
-        </div>
-
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Attendance</CardTitle>
-            <CardDescription>
-              {selectedDate ? `Showing records for ${format(selectedDate, "MMMM dd, yyyy")}` : "Showing all records"}.
-            </CardDescription>
-          </CardHeader>
-           <div className="p-6 pt-0 flex items-center gap-2">
-              <div className="relative flex-1 md:grow-0">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search by employee..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
-                />
-              </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal h-9",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-               {selectedDate && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)}>
-                  <X className="h-4 w-4 mr-1" />
-                  Show All
-                </Button>
-              )}
-          </div>
-          <CardContent>
-            {loading ? (
-                <p>Loading attendance records...</p>
-            ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Clock In</TableHead>
-                  <TableHead>Clock Out</TableHead>
-                  <TableHead>Total Hours</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecords.length > 0 ? filteredRecords.map((record) => (
-                  <TableRow key={record.id}>
-                    <TableCell className="font-medium">{record.employee}</TableCell>
-                    <TableCell>{record.clockIn}</TableCell>
-                    <TableCell>{record.clockOut}</TableCell>
-                    <TableCell>{record.totalHours}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => openViewDialog(record)}>View Details</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(record)}>Edit</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )) : (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No attendance records found for the selected criteria.</TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            )}
-          </CardContent>
-        </Card>
-      
-      {selectedRecord && (
-        <EditAttendanceDialog
-          isOpen={isEditDialogOpen}
-          setIsOpen={setIsEditDialogOpen}
-          record={selectedRecord}
-          onEditRecord={handleEditRecord}
-        />
-      )}
-       {selectedRecord && (
-        <ViewAttendanceDialog
-          isOpen={isViewDialogOpen}
-          setIsOpen={setIsViewDialogOpen}
-          record={selectedRecord}
-        />
-      )}
-      <LogAttendanceDialog
-        isOpen={isLogDialogOpen}
-        setIsOpen={setIsLogDialogOpen}
-        employees={employees.filter(e => e.status === 'Active')}
-        onLogAttendance={handleLogAttendance}
-      />
-    </main>
-  );
 }

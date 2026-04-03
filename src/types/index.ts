@@ -89,7 +89,7 @@ export interface RecipeIngredientItem {
   unit: UnitOfMeasure;
 }
 
-export const RECIPE_TYPES = ["Breakfast", "Lunch/Dinner", "Evening Tea"] as const;
+export const RECIPE_TYPES = ["Breakfast", "Lunch", "Dinner", "Brunch", "Evening Tea", "Cocktail"] as const;
 export type RecipeType = (typeof RECIPE_TYPES)[number];
 
 export interface Recipe {
@@ -245,6 +245,19 @@ export interface Booking {
   updated_at: string;
 }
 
+// --- CUSTOMER FEEDBACK ---
+export interface ServiceFeedback {
+  id: string; // UUID
+  report_date: string; // DATE
+  order_id?: string | null; // TEXT (ORD-XXXXX)
+  overall_summary: string;
+  positive_feedback: string;
+  complaints: string;
+  waiter_challenges: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // --- DELIVERY NOTE ---
 export interface DeliveryNoteItem {
   qty: number;
@@ -262,6 +275,9 @@ export interface DeliveryNote {
   vehicle_reg_no?: string;
   delivered_by: string;
   items: DeliveryNoteItem[];
+  event_id?: string;
+  is_narration?: boolean;
+  narration_text?: string;
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -345,26 +361,73 @@ export interface Employee {
   updatedAt: string;
 }
 
+export type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day' | 'Late';
+
 export interface Attendance {
     id: string;
-    employee: string;
+    employee_id: string;
+    employee: string; // Maintain for backwards compatibility with legacy UI
     date: string;
-    clockIn: string;
-    clockOut: string;
-    totalHours: string;
+    status: AttendanceStatus;
+    notes?: string;
     createdAt: string;
     updatedAt: string;
 }
 
-export interface Position {
+export interface TrainingSession {
     id: string;
     title: string;
     department: string;
     location: string;
     type: string;
     applicants: number;
+    training_date?: string;
+    description?: string;
+    trainer_name?: string;
+    duration_days?: number;
+    module_code?: string;
+    learning_objectives?: string[];
+    assessment_method?: string;
+    resource_requirements?: string;
+    target_audience?: string;
+    expected_outcomes?: string;
+    custom_skills?: string[];
+    session_status?: 'Upcoming' | 'In Progress' | 'Completed';
     createdAt: string;
     updatedAt: string;
+}
+
+export interface TrainingParticipant {
+    id: string;
+    training_id: string;
+    employee_id: string;
+    status: 'Enrolled' | 'In Progress' | 'Completed' | 'Failed';
+    grade?: string;
+    notes?: string;
+    employee_name?: string; // Virtual property for UI
+    created_at: string;
+    updated_at: string;
+}
+
+export const DEFAULT_TRAINING_SKILLS = [
+    'Punctuality',
+    'Attentiveness',
+    'Practical Skills',
+    'Theory Knowledge',
+    'Teamwork'
+] as const;
+
+export interface TrainingEvaluation {
+    id: string;
+    participant_id: string;
+    training_id: string;
+    evaluation_date: string;
+    score: number; // 1-5
+    skills_demonstrated: string[];
+    notes: string;
+    evaluator_name: string;
+    created_at: string;
+    updated_at?: string;
 }
 
 export interface Payroll {
@@ -419,6 +482,7 @@ export interface StockLog {
 
 export interface DailyMenu {
     id: number;
+    order_id: string; // References Order.id
     event_id: string; // References ClientEvent.id
     menu_date: string; // YYYY-MM-DD
     recipes: { rowIndex: number; recipeId?: string; name: string }[];

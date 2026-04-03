@@ -19,6 +19,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
@@ -193,17 +194,20 @@ export function ProformaInvoiceViewPageComponent() {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
+        const { isInvoiced, booking_id, createdAt, updatedAt, proformaId, ...cleanInvoiceProps } = invoice as any;
+
         const newInvoiceData = {
-            ...invoice,
+            ...cleanInvoiceProps,
             id: details.invoiceId,
             invoiceDate: details.invoiceDate,
             region: details.region,
             proformaId: invoice.id,
             status: 'outstanding' as const,
             signedAtDate: new Date().toISOString(),
-            signedAtLocation: 'Dar es Salaam'
+            signedAtLocation: 'Dar es Salaam',
+            amountPaid: 0
         };
-        const newInvoice = await addInvoice(newInvoiceData);
+        const newInvoice = await addInvoice(newInvoiceData as any);
         
         await updateProformaInvoice(invoice.id, { isInvoiced: true });
 
