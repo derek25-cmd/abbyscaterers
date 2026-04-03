@@ -60,10 +60,12 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
       const fetchEmployees = async () => {
         setLoadingEmployees(true);
         const data = await getEmployees();
-        setEmployees(data);
+        setEmployees(data || []);
         setLoadingEmployees(false);
       };
       fetchEmployees();
+    } else {
+        resetForm();
     }
   }, [isOpen]);
 
@@ -92,10 +94,18 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
     );
   };
 
+  const nextStep = () => {
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
+      nextStep();
       return;
     }
 
@@ -123,7 +133,7 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
     }
   };
 
-  const filteredEmployees = employees.filter(emp => 
+  const filteredEmployees = (employees || []).filter(emp => 
     `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     emp.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -138,7 +148,7 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
                 <GraduationCap className="h-6 w-6" />
               </div>
               <DialogHeader className="p-0">
-                <DialogTitle className="text-2xl font-black">Create Training Module</DialogTitle>
+                <DialogTitle className="text-2xl font-black text-foreground">Create Training Module</DialogTitle>
                 <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Step {currentStep} of 3</DialogDescription>
               </DialogHeader>
             </div>
@@ -172,15 +182,15 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold">Topic / Training Title *</Label>
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Topic / Training Title *</Label>
                         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Kitchen Safety" required />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold">Module Code</Label>
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Module Code</Label>
                         <Input value={moduleCode} readOnly className="bg-muted/50 font-mono text-xs" />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold">Managing Department</Label>
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Managing Department</Label>
                         <select 
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
                           value={department}
@@ -195,15 +205,15 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
                     </div>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold">Training Date *</Label>
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Training Date *</Label>
                         <Input type="date" value={trainingDate} onChange={(e) => setTrainingDate(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold">Lead Trainer *</Label>
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lead Trainer *</Label>
                         <Input value={trainer_name} onChange={(e) => setTrainerName(e.target.value)} placeholder="Trainer Name" required />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold">Venue / Location *</Label>
+                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Venue / Location *</Label>
                         <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Main Kitchen" required />
                       </div>
                     </div>
@@ -214,20 +224,20 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
               {currentStep === 2 && (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold">Module Overview</Label>
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Module Overview</Label>
                     <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description..." rows={3} />
                   </div>
                   <div className="space-y-3">
-                    <Label className="text-xs font-bold">Learning Objectives</Label>
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Learning Objectives</Label>
                     <div className="flex gap-2">
                       <Input placeholder="Define an objective..." value={newObjective} onChange={(e) => setNewObjective(e.target.value)} />
-                      <Button type="button" size="icon" onClick={addObjective}><Plus className="h-4 w-4" /></Button>
+                      <Button type="button" size="icon" onClick={addObjective} className="shrink-0"><Plus className="h-4 w-4" /></Button>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {learningObjectives.map((obj, i) => (
-                        <Badge key={i} variant="secondary" className="gap-1 py-1">
+                        <Badge key={i} variant="secondary" className="gap-1 py-1 font-semibold text-xs">
                           {obj}
-                          <X className="h-3 w-3 cursor-pointer" onClick={() => setLearningObjectives(learningObjectives.filter((_, idx) => idx !== i))} />
+                          <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => setLearningObjectives(learningObjectives.filter((_, idx) => idx !== i))} />
                         </Badge>
                       ))}
                     </div>
@@ -239,39 +249,70 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }) {
                 <div className="space-y-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search staff..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <Input placeholder="Search staff by name or department..." className="pl-10" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                   </div>
-                  <div className="border rounded-xl bg-muted/5 divide-y">
-                    {filteredEmployees.map(emp => (
-                      <div key={emp.id} className="flex items-center gap-3 p-3 hover:bg-background transition-colors">
-                        <input 
-                          type="checkbox" 
-                          id={`emp-${emp.id}`}
-                          className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
-                          checked={selectedEmployees.includes(emp.id)}
-                          onChange={() => toggleEmployee(emp.id)}
-                        />
-                        <label htmlFor={`emp-${emp.id}`} className="flex-1 cursor-pointer">
-                          <p className="text-sm font-bold">{emp.firstName} {emp.lastName}</p>
-                          <p className="text-[10px] uppercase font-black text-muted-foreground">{emp.department} • {emp.role}</p>
-                        </label>
-                      </div>
-                    ))}
+                  <div className="border rounded-xl bg-muted/5 divide-y overflow-hidden">
+                    {loadingEmployees ? (
+                        <div className="p-10 flex flex-col items-center gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground">Retrieving Personnel...</p>
+                        </div>
+                    ) : filteredEmployees.length > 0 ? (
+                        filteredEmployees.map(emp => (
+                            <div 
+                                key={emp.id} 
+                                className={cn(
+                                    "flex items-center gap-3 p-4 transition-colors hover:bg-muted/30 cursor-pointer",
+                                    selectedEmployees.includes(emp.id) && "bg-primary/5"
+                                )}
+                                onClick={() => toggleEmployee(emp.id)}
+                            >
+                                <div className="relative flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        id={`emp-${emp.id}`}
+                                        className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                        checked={selectedEmployees.includes(emp.id)}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            toggleEmployee(emp.id);
+                                        }}
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-foreground">{emp.firstName} {emp.lastName}</p>
+                                    <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">{emp.department} • {emp.role}</p>
+                                </div>
+                                {selectedEmployees.includes(emp.id) && (
+                                    <Badge className="bg-primary/10 text-primary border-primary/20 text-[8px] font-black uppercase">Selected</Badge>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-10 text-center text-muted-foreground italic text-sm">
+                            No employees found matching your search.
+                        </div>
+                    )}
                   </div>
                 </div>
               )}
           </ScrollArea>
 
-          <DialogFooter className="bg-muted/10 border-t px-8 py-4">
-            <div className="flex justify-between w-full">
+          <DialogFooter className="bg-muted/10 border-t px-8 py-4 flex flex-row items-center justify-between w-full sm:justify-between">
               <Button type="button" variant="ghost" onClick={currentStep === 1 ? () => setIsOpen(false) : prevStep} className="font-bold">
                 {currentStep === 1 ? 'Cancel' : 'Back'}
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="font-bold px-8">
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {currentStep < 3 ? 'Continue' : 'Launch Session'}
-              </Button>
-            </div>
+              <div className="flex items-center gap-3">
+                  {currentStep === 3 && selectedEmployees.length > 0 && (
+                      <span className="text-[10px] font-black uppercase text-primary tracking-widest">
+                          {selectedEmployees.length} Enrolled
+                      </span>
+                  )}
+                  <Button type="submit" disabled={isSubmitting} className="font-bold px-8 shadow-lg shadow-primary/20">
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {currentStep < 3 ? 'Continue' : 'Launch Session'}
+                  </Button>
+              </div>
           </DialogFooter>
         </form>
       </DialogContent>
