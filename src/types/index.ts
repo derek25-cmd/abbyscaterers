@@ -385,6 +385,11 @@ export interface TrainingSession {
     description?: string;
     trainer_name?: string;
     duration_days?: number;
+    module_code?: string;
+    learning_objectives?: string[];
+    assessment_method?: string;
+    resource_requirements?: string;
+    target_audience?: string;
     expected_outcomes?: string;
     custom_skills?: string[];
     session_status?: 'Upcoming' | 'In Progress' | 'Completed';

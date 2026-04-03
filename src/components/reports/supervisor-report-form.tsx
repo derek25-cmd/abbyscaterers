@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock, FileCheck, CheckCircle2, XCircle, MessageSquareText } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Send, AlertTriangle, FileText, Download, Lock, Unlock, FileCheck, CheckCircle2, XCircle, MessageSquareText, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,9 +19,10 @@ import { getOrders } from "@/services/orderService";
 import { getStockLogs } from "@/services/stockLogService";
 import { getIssuances } from "@/services/issuanceService";
 import { getMenusByDate } from "@/services/dailyMenuService";
-import { getDeliveryNotes } from "@/services/deliveryNoteService";
+import { getDeliveryNotes, getDeliveryNotesByDate } from "@/services/deliveryNoteService";
 import { getAttendanceByDate } from "@/services/attendanceService";
-import { getTrainingSessions } from "@/services/trainingService";
+import { getTrainingSessions, getEvaluationsByDate } from "@/services/trainingService";
+import { getFeedbackByDate } from "@/services/feedbackService";
 import { getClients } from "@/services/clientService";
 import { supabase } from "@/lib/supabase-client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -72,6 +73,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isBundleDialogOpen, setIsBundleDialogOpen] = useState(false);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
 
   const [reportData, setReportData] = useState<Partial<SupervisorReport>>({
     report_date: format(new Date(), 'yyyy-MM-dd'),
@@ -97,7 +99,9 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     deliveryNotes: false,
     costing: false,
     trainings: false,
-    attendance: false
+    attendance: false,
+    evaluations: false,
+    feedback: false
   });
   const [selectedAttachments, setSelectedAttachments] = useState({
     orders: true,
@@ -108,7 +112,9 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     deliveryNotes: true,
     costing: true,
     trainings: true,
-    attendance: true
+    attendance: true,
+    evaluations: true,
+    feedback: true
   });
 
   useEffect(() => {
@@ -129,21 +135,34 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
   }, [reportId, toast, router]);
 
   const checkOtherReportsAvailability = async (date: string) => {
-    const [ordersData, stockData, issuanceData, menusData, allDeliveryNotes, { data: allProformas }, { data: allInvoices }, { data: allCosting }, attendanceData] = await Promise.all([
+    const [
+      ordersData, 
+      stockData, 
+      issuanceData, 
+      menusData, 
+      deliveryNotesData, 
+      { data: allProformas }, 
+      { data: allInvoices }, 
+      { data: allCosting }, 
+      attendanceData,
+      evaluationsData,
+      feedbackData
+    ] = await Promise.all([
       getOrders(),
       getStockLogs(),
       getIssuances(),
       getMenusByDate(date),
-      getDeliveryNotes(),
+      getDeliveryNotesByDate(date),
       supabase.from('proforma_invoices').select('*'),
       supabase.from('invoices').select('*'),
       supabase.from('costing_reports').select('*'),
-      getAttendanceByDate(date)
+      getAttendanceByDate(date),
+      getEvaluationsByDate(date),
+      getFeedbackByDate(date)
     ]);
 
     const dateProformas = (allProformas || []).filter(p => p.invoiceDate === date || p.createdAt?.startsWith(date));
     const dateInvoices = (allInvoices || []).filter(i => i.invoiceDate === date || i.createdAt?.startsWith(date));
-    const dateDeliveryNotes = allDeliveryNotes.filter(d => d.delivery_date?.startsWith(date));
     const dateCosting = (allCosting || []).filter(c => c.report_date === date || c.created_at?.startsWith(date));
 
     const trainingsData = await getTrainingSessions();
@@ -155,10 +174,12 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       issuance: issuanceData.some(i => i.date === date),
       proformas: dateProformas.length > 0,
       invoices: dateInvoices.length > 0,
-      deliveryNotes: dateDeliveryNotes.length > 0,
+      deliveryNotes: deliveryNotesData.length > 0,
       costing: dateCosting.length > 0,
       trainings: dateTrainings.length > 0,
-      attendance: attendanceData.length > 0
+      attendance: attendanceData.length > 0,
+      evaluations: evaluationsData.length > 0,
+      feedback: feedbackData.length > 0
     });
   };
 
@@ -311,12 +332,35 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       });
 
       currentY = (doc as any).lastAutoTable.finalY + 10;
+      
+      // --- SECTION: GENERAL COMMENTS (Multi-page support) ---
       checkPageSpace(20);
       doc.setFont("helvetica", "bold");
-      doc.text("General Comments:", 14, currentY);
+      doc.setFontSize(10);
+      doc.text("General Comments / Day Overview:", 14, currentY);
       doc.setFont("helvetica", "normal");
-      doc.text(reportData.general_comments || "None", 14, currentY + 5, { maxWidth: 180 });
-      currentY += 20;
+      doc.setFontSize(9);
+      
+      const comments = reportData.general_comments || "No general comments provided for this session.";
+      const splitComments = doc.splitTextToSize(comments, 180);
+      const lineHeight = 5;
+      const commentHeight = splitComments.length * lineHeight;
+      
+      // If the entire comment block doesn't fit, we use autoTable for automatic page breaking
+      (doc as any).autoTable({
+        startY: currentY + 4,
+        body: [[comments]],
+        theme: 'plain',
+        styles: { 
+          fontSize: 9, 
+          fontStyle: 'italic', 
+          cellPadding: 0,
+          overflow: 'linebreak'
+        },
+        columnStyles: { 0: { cellWidth: 182 } }
+      });
+      
+      currentY = (doc as any).lastAutoTable.finalY + 15;
 
       checkPageSpace(15);
       doc.text(`Prepared By: ${reportData.prepared_by}`, 14, currentY);
@@ -483,6 +527,71 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         }
       }
 
+      // --- SECTION: DAILY TRAINING EVALUATIONS ---
+      if (selectedAttachments.evaluations && availability.evaluations) {
+        const evaluations = await getEvaluationsByDate(reportDate);
+        if (evaluations.length > 0) {
+          addSectionTitle("8. Training Evaluation Progress", [234, 88, 12]);
+          (doc as any).autoTable({
+            head: [['Trainee', 'Training Module', 'Score', 'Key Skills Observed', 'Trainer']],
+            body: evaluations.map(e => [
+                e.trainee_name, 
+                e.training_title, 
+                `${e.total_score}%`, 
+                (e.skills_demonstrated || []).join(', '),
+                e.evaluator_name || 'Supervisor'
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [234, 88, 12] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
+      // --- SECTION: CUSTOMER FEEDBACK ---
+      if (selectedAttachments.feedback && availability.feedback) {
+        const feedback = await getFeedbackByDate(reportDate);
+        if (feedback.length > 0) {
+          addSectionTitle("9. Customer Feedback Summary", [190, 24, 93]);
+          (doc as any).autoTable({
+            head: [['Order', 'Overall Summary', 'Positive Feedback', 'Complaints']],
+            body: feedback.map(f => [
+                f.order_id || 'General', 
+                f.overall_summary || '-', 
+                f.positive_feedback || '-', 
+                f.complaints || '-'
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [190, 24, 93] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
+      // --- SECTION: DELIVERY NOTES ISSUED ---
+      if (selectedAttachments.deliveryNotes && availability.deliveryNotes) {
+        const notes = await getDeliveryNotesByDate(reportDate);
+        if (notes.length > 0) {
+          addSectionTitle("10. Delivery Notes Issued Today", [71, 85, 105]);
+          (doc as any).autoTable({
+            head: [['Note ID', 'Client', 'Destination', 'Vehicle', 'Delivered By']],
+            body: notes.map(n => [
+                n.id, 
+                n.client_name, 
+                n.delivery_location, 
+                n.vehicle_reg_no || '-', 
+                n.delivered_by
+            ]),
+            startY: currentY,
+            headStyles: { fillColor: [71, 85, 105] },
+            styles: { fontSize: 8 }
+          });
+          currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+      }
+
       doc.save(`Supervisor_Daily_Report_Package_${reportDate}.pdf`);
       toast({ title: 'Export Successful', description: 'All selected reports have been bundled into a continuous PDF.' });
     } catch (error) {
@@ -618,60 +727,86 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
           </div>
 
           {/* ── GENERAL COMMENTS & DAY OVERVIEW ── */}
-          <div className="relative my-2">
+          <div className="relative my-2 group">
             {/* Gradient accent border */}
-            <div className="absolute -inset-px rounded-xl bg-gradient-to-br from-primary/30 via-primary/10 to-amber-500/20 pointer-events-none" />
-            <div className="relative rounded-xl bg-amber-50/40 dark:bg-amber-950/10 border border-primary/10 p-6 space-y-4">
+            <div className="absolute -inset-px rounded-xl bg-gradient-to-br from-primary/30 via-primary/10 to-amber-500/20 pointer-events-none transition-all group-hover:from-primary/50 group-hover:to-amber-500/40" />
+            <div className="relative rounded-xl bg-amber-50/40 dark:bg-amber-950/10 border border-primary/10 p-6 space-y-4 shadow-inner">
               {/* Header Row */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10 text-primary">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary shadow-lg text-primary-foreground">
                     <MessageSquareText className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold tracking-tight">General Comments & Day Overview</h3>
-                    <p className="text-[11px] text-muted-foreground font-medium">Summarize the day\u2019s highlights, issues, and notes for management</p>
+                    <h3 className="text-base font-black tracking-tight">General Comments & Day Overview</h3>
+                    <p className="text-[11px] text-muted-foreground font-semibold">Operational highlights, logistical hurdles, and staffing metrics</p>
                   </div>
                 </div>
-                {!isLocked && reportData.general_comments && (
-                  <Badge variant="outline" className="bg-background text-[10px] font-black tabular-nums border-primary/20">
-                    {reportData.general_comments.trim().split(/\s+/).filter(Boolean).length} words
-                  </Badge>
+                {!isLocked && (
+                  <div className="flex items-center gap-2">
+                    {reportData.general_comments && (
+                      <Badge variant="outline" className="bg-background text-[10px] font-black tabular-nums border-primary/20 h-6">
+                        {reportData.general_comments.trim().split(/\s+/).filter(Boolean).length} words
+                      </Badge>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setIsWorkspaceOpen(true)}
+                      className="h-7 text-[10px] font-black uppercase tracking-widest gap-1.5 border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm"
+                    >
+                      <Sparkles className="h-3 w-3" /> Expand Workspace
+                    </Button>
+                  </div>
                 )}
               </div>
 
               {/* Body */}
               {isLocked ? (
                 /* ── READ-ONLY: Styled blockquote view ── */
-                <div className="relative pl-5 py-4 border-l-4 border-primary/30 bg-background/60 rounded-r-lg">
-                  <span className="absolute -top-2 left-2 text-4xl text-primary/15 font-serif leading-none select-none">\u201C</span>
-                  <p className="text-sm leading-relaxed text-foreground/80 italic whitespace-pre-wrap">
-                    {reportData.general_comments || 'No comments were provided for this report.'}
+                <div className="relative pl-6 py-6 border-l-4 border-primary bg-background/80 rounded-r-xl shadow-sm overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                    <MessageSquareText className="h-24 w-24" />
+                  </div>
+                  <span className="absolute -top-1 left-3 text-6xl text-primary/10 font-serif leading-none select-none">“</span>
+                  <p className="text-sm leading-relaxed text-foreground/90 italic font-medium whitespace-pre-wrap relative z-10">
+                    {reportData.general_comments || 'No operational overview was provided for this report period.'}
                   </p>
-                  <span className="absolute -bottom-4 right-4 text-4xl text-primary/15 font-serif leading-none select-none">\u201D</span>
+                  <span className="absolute -bottom-6 right-6 text-6xl text-primary/10 font-serif leading-none select-none">”</span>
                 </div>
               ) : (
-                /* ── EDITABLE: Textarea + metrics ── */
-                <div className="space-y-3">
-                  <Textarea
-                    placeholder="Summarize the day\u2019s operations \u2014 key wins, challenges, staffing notes, and anything management should be aware of..."
-                    rows={5}
-                    maxLength={1000}
-                    className="bg-background/80 border-primary/15 focus-visible:ring-primary/30 text-sm leading-relaxed resize-none"
-                    value={reportData.general_comments}
-                    onChange={(e) => setReportData(prev => ({ ...prev, general_comments: e.target.value }))}
-                  />
-                  {/* Character + word metrics bar */}
-                  <div className="flex items-center gap-4">
+                /* ── EDITABLE: Summary view with action ── */
+                <div className="space-y-4">
+                  <div 
+                    className="group/text cursor-pointer relative"
+                    onClick={() => setIsWorkspaceOpen(true)}
+                  >
+                    <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-amber-50/80 dark:from-amber-950/40 to-transparent pointer-events-none z-10" />
+                    <Textarea
+                      placeholder="Summarize the day’s operations — key wins, challenges, staffing notes, and anything management should be aware of..."
+                      rows={4}
+                      readOnly
+                      className="bg-background/60 border-primary/10 text-sm leading-relaxed cursor-pointer group-hover/text:border-primary/30 transition-all border-dashed"
+                      value={reportData.general_comments}
+                    />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover/text:opacity-100 transition-all z-20">
+                      <Button variant="secondary" className="font-black text-xs h-8 shadow-xl border border-primary/20">
+                        OPEN ANALYTICAL WORKSPACE
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Metrics status bar */}
+                  <div className="flex items-center gap-4 px-1">
                     <Progress
                       value={((reportData.general_comments?.length || 0) / 1000) * 100}
-                      className="flex-1 h-1.5 bg-primary/5"
+                      className="flex-1 h-2 bg-primary/5 shadow-inner"
                     />
                     <span className={cn(
-                      "text-[10px] font-black tabular-nums whitespace-nowrap",
-                      (reportData.general_comments?.length || 0) > 900 ? "text-destructive" : "text-muted-foreground"
+                      "text-[10px] font-black tabular-nums tracking-widest",
+                      (reportData.general_comments?.length || 0) > 900 ? "text-destructive" : "text-primary/60"
                     )}>
-                      {reportData.general_comments?.length || 0} / 1,000
+                      {reportData.general_comments?.length || 0} / 1,000 CHARS
                     </span>
                   </div>
                 </div>
@@ -853,11 +988,101 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
                   disabled={!availability.attendance}
                 />
               </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  {availability.evaluations ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
+                  <div className="flex flex-col">
+                    <Label className="font-semibold">Daily Training Evaluations</Label>
+                    <span className="text-xs text-muted-foreground">{availability.evaluations ? 'Available' : 'No records found'}</span>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={selectedAttachments.evaluations}
+                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, evaluations: !!val }))}
+                  disabled={!availability.evaluations}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-md">
+                <div className="flex items-center gap-2">
+                  {availability.feedback ? <CheckCircle2 className="text-green-500 h-5 w-5" /> : <XCircle className="text-muted-foreground h-5 w-5" />}
+                  <div className="flex flex-col">
+                    <Label className="font-semibold">Daily Customer Feedback</Label>
+                    <span className="text-xs text-muted-foreground">{availability.feedback ? 'Available' : 'No records found'}</span>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={selectedAttachments.feedback}
+                  onCheckedChange={(val) => setSelectedAttachments(prev => ({ ...prev, feedback: !!val }))}
+                  disabled={!availability.feedback}
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsBundleDialogOpen(false)}>Cancel</Button>
             <Button onClick={generatePDFBundle}>Generate Bundle</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isWorkspaceOpen} onOpenChange={setIsWorkspaceOpen}>
+        <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+          <div className="bg-primary p-8 text-white">
+            <DialogHeader>
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <MessageSquareText className="h-6 w-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black tracking-tight">Expanded Analytical Workspace</DialogTitle>
+                  <DialogDescription className="text-white/60 font-bold uppercase tracking-widest text-xs">
+                    Drafting elite operational overviews
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+          
+          <div className="flex-1 p-8 flex flex-col space-y-6 bg-background relative overflow-hidden">
+             {/* Decorative watermark */}
+             <div className="absolute bottom-4 right-4 opacity-[0.03] select-none pointer-events-none">
+                <FileText className="h-64 w-64 rotate-12" />
+             </div>
+
+             <div className="flex-1 space-y-4 relative z-10">
+                <div className="flex items-center justify-between px-1">
+                   <Label className="text-xs font-black uppercase tracking-widest text-primary/60">Professional Observations & Commentary</Label>
+                   <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="h-6 font-black text-[10px] border-primary/20 px-3">
+                        {reportData.general_comments?.trim().split(/\s+/).filter(Boolean).length || 0} WORDS
+                      </Badge>
+                      <Badge className={cn(
+                        "h-6 font-black text-[10px] px-3",
+                        (reportData.general_comments?.length || 0) > 900 ? "bg-destructive shadow-lg shadow-destructive/20" : "bg-primary"
+                      )}>
+                        {reportData.general_comments?.length || 0} / 1,000 CHARS
+                      </Badge>
+                   </div>
+                </div>
+                <Textarea
+                  placeholder="Record precise operational data, staffing performance, client feedback, and strategic notes for this session..."
+                  className="flex-1 min-h-[350px] text-lg font-medium leading-relaxed resize-none border-primary/10 focus-visible:ring-primary/20 bg-muted/5 p-6 rounded-2xl shadow-inner scrollbar-thin"
+                  value={reportData.general_comments}
+                  maxLength={1000}
+                  onChange={(e) => setReportData(prev => ({ ...prev, general_comments: e.target.value }))}
+                />
+             </div>
+          </div>
+
+          <DialogFooter className="p-6 bg-muted/20 border-t flex items-center justify-between">
+            <p className="text-[10px] font-bold text-muted-foreground italic max-w-xs leading-tight">
+              NOTE: This commentary is exported directly into the daily report package and is visible to management auditing.
+            </p>
+            <Button onClick={() => setIsWorkspaceOpen(false)} className="bg-primary font-black px-10 shadow-xl shadow-primary/20">
+              SAVE & SYNC WORKSPACE
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

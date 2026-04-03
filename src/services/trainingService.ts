@@ -171,3 +171,28 @@ export const updateSessionStatus = async (id: string, status: 'Upcoming' | 'In P
     }
     return !error;
 };
+
+export const getEvaluationsByDate = async (date: string): Promise<any[]> => {
+    const { data, error } = await supabase
+        .from('training_evaluations')
+        .select(`
+            *,
+            training_participants:participant_id (
+              employees:employee_id (firstName, lastName)
+            ),
+            positions:training_id (title)
+        `)
+        .eq('evaluation_date', date)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching daily evaluations:', error);
+        return [];
+    }
+    
+    return data.map(e => ({
+        ...e,
+        trainee_name: `${e.training_participants?.employees?.firstName} ${e.training_participants?.employees?.lastName}`,
+        training_title: e.positions?.title
+    }));
+};

@@ -134,3 +134,19 @@ export const getDeliveryNoteById = async (id: string): Promise<DeliveryNote | nu
     }
     return data as DeliveryNote;
 }
+
+export const getDeliveryNotesByDate = async (date: string): Promise<DeliveryNote[]> => {
+    // We assume delivery_date is stored as ISO string, so we filter by prefix or start/end
+    const { data, error } = await supabase
+        .from('delivery_notes')
+        .select('*')
+        .gte('delivery_date', `${date}T00:00:00`)
+        .lte('delivery_date', `${date}T23:59:59`)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching delivery notes by date:', error);
+        return [];
+    }
+    return data as DeliveryNote[];
+};
