@@ -12,7 +12,14 @@ export const getProducts = async (): Promise<Product[]> => {
 };
 
 export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdAt' | 'updatedAt'>): Promise<Product | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        console.error("User not authenticated to add a product.");
+        return null;
+    }
+
     const { name, category, quantity, unit, unitPrice, minStock, maxStock, expiryDate } = product;
+    const now = new Date().toISOString();
 
     const productDataForSupabase = {
       name,
@@ -23,7 +30,10 @@ export const addProduct = async (product: Omit<Product, 'id' | 'sku' | 'createdA
       minStock: Number(minStock),
       maxStock: maxStock ? Number(maxStock) : null,
       expiryDate,
-      sku: `SKU-${Date.now()}`
+      sku: `SKU-${Date.now()}`,
+      user_id: user.id,
+      createdAt: now,
+      updatedAt: now
     };
 
     const { data, error } = await supabase.from('products').insert([productDataForSupabase]).select();
