@@ -81,13 +81,13 @@ export default function DailyMenuPlannerPage() {
         if (event.date?.startsWith(dateStr)) {
           // Filter for ONLY Breakfast and Lunch (No Brunch, Dinner, Tea, or Cocktail)
           const orderMealType = event.mealType?.toLowerCase() || '';
-          const isSpecial = orderMealType.includes('brunch') || 
-                           orderMealType.includes('dinner') || 
-                           orderMealType.includes('tea') || 
-                           orderMealType.includes('cocktail');
-          
+          const isSpecial = orderMealType.includes('brunch') ||
+            orderMealType.includes('dinner') ||
+            orderMealType.includes('tea') ||
+            orderMealType.includes('cocktail');
+
           const isMain = orderMealType.includes('breakfast') || orderMealType.includes('lunch');
-          
+
           if (isSpecial || !isMain) return;
 
           // Apply region filter
@@ -131,7 +131,7 @@ export default function DailyMenuPlannerPage() {
                 .map(recipeId => {
                   const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
                   const isMatch = (mealType === 'Breakfast' && recipe?.recipeType === 'Breakfast') ||
-                                 (mealType === 'Lunch' && recipe?.recipeType === 'Lunch');
+                    (mealType === 'Lunch' && recipe?.recipeType === 'Lunch');
                   return isMatch ? recipe?.recipeName : null;
                 })
                 .filter((name): name is string => name !== null);
@@ -226,6 +226,40 @@ export default function DailyMenuPlannerPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
+
+      // Draw watermark over the content of the current page before moving to the next
+      const drawWatermark = () => {
+        const dateText = selectedDate ? format(selectedDate, "dd MMM yyyy").toUpperCase() : 'ALL DATES';
+
+        if (typeof (doc as any).GState !== 'undefined') {
+          doc.setGState(new (doc as any).GState({ opacity: 0.12 }));
+        }
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(100);
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+
+        doc.text(dateText, pageWidth / 2, pageHeight / 2, {
+          align: 'center',
+          baseline: 'middle'
+        });
+
+        if (typeof (doc as any).GState !== 'undefined') {
+          doc.setGState(new (doc as any).GState({ opacity: 1 }));
+        }
+      };
+
+      // Monkey-patch addPage to catch any pages created manually or automatically by autoTable
+      // We draw the watermark right before the page is flipped.
+      const originalAddPage = doc.addPage.bind(doc);
+      doc.addPage = function (...args: any[]) {
+        drawWatermark();
+        const result = originalAddPage(...args);
+        return result;
+      };
+
       const COLUMNS_PER_PAGE = 5;
       const breakfastEvents = menuData.filter(e => e.mealType.toLowerCase().includes('breakfast'));
       const lunchEvents = menuData.filter(e => e.mealType.toLowerCase().includes('lunch'));
@@ -236,7 +270,7 @@ export default function DailyMenuPlannerPage() {
       for (let i = 0; i < breakfastEvents.length; i += COLUMNS_PER_PAGE) {
         if (!isFirstPage) doc.addPage();
         isFirstPage = false;
-        
+
         const pageMenuData = breakfastEvents.slice(i, i + COLUMNS_PER_PAGE);
         const head = [pageMenuData.map(order => `${order.clientName.toUpperCase()}\n# ${order.pax} PAX`)];
         const breakfastBody = Array.from({ length: 11 }).map((_, rowIndex) =>
@@ -251,22 +285,22 @@ export default function DailyMenuPlannerPage() {
           margin: { top: 5, bottom: 5, left: 5, right: 5 },
           pageBreak: 'avoid',
           headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 12, fontStyle: 'bold', halign: 'center', minCellHeight: 12 },
-          styles: { 
-            cellPadding: 2, 
+          styles: {
+            cellPadding: 2,
             fontSize: 20, // High visibility font size
-            fontStyle: 'bold', 
-            halign: 'center', 
-            valign: 'middle', 
-            textColor: [0, 0, 0], 
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle',
+            textColor: [0, 0, 0],
             lineWidth: 0.2,
             minCellHeight: 17 // Precision height for 11 rows to fit A4 Landscape
           },
           didParseCell: function (data: any) {
             if (data.row.section === 'head') return;
             if (data.row.index === 0) { // Header row "Breakfast"
-               data.cell.styles.fillColor = [254, 249, 195];
-               data.cell.styles.textColor = [161, 98, 7];
-               data.cell.styles.fontSize = 14;
+              data.cell.styles.fillColor = [254, 249, 195];
+              data.cell.styles.textColor = [161, 98, 7];
+              data.cell.styles.fontSize = 14;
             }
           }
         });
@@ -291,26 +325,29 @@ export default function DailyMenuPlannerPage() {
           margin: { top: 5, bottom: 5, left: 5, right: 5 },
           pageBreak: 'avoid',
           headStyles: { fillColor: [244, 244, 245], textColor: [0, 0, 0], fontSize: 12, fontStyle: 'bold', halign: 'center', minCellHeight: 12 },
-          styles: { 
-            cellPadding: 2, 
+          styles: {
+            cellPadding: 2,
             fontSize: 20, // High visibility font size
-            fontStyle: 'bold', 
-            halign: 'center', 
-            valign: 'middle', 
-            textColor: [0, 0, 0], 
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle',
+            textColor: [0, 0, 0],
             lineWidth: 0.2,
             minCellHeight: 11.5 // Precision height for 16 rows to fit A4 Landscape
           },
           didParseCell: function (data: any) {
             if (data.row.section === 'head') return;
             if (data.row.index === 0) { // Header row "Lunch"
-               data.cell.styles.fillColor = [254, 249, 195];
-               data.cell.styles.textColor = [161, 98, 7];
-               data.cell.styles.fontSize = 14;
+              data.cell.styles.fillColor = [254, 249, 195];
+              data.cell.styles.textColor = [161, 98, 7];
+              data.cell.styles.fontSize = 14;
             }
           }
         });
       }
+
+      // Draw watermark on the final page
+      drawWatermark();
 
       doc.save(`Daily_Menu_Report_${regionFilter}_${selectedDate ? format(selectedDate, "yyyy-MM-dd") : 'all_dates'}.pdf`);
       toast({ title: "Export Successful", description: "Report exported to PDF." });

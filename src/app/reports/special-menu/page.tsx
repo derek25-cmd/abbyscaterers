@@ -74,7 +74,7 @@ export default function SpecialMenuPage() {
             order.clientEvents.forEach((event, eventIndex) => {
                 if (event.date?.startsWith(dateStr)) {
                     const mealTypeStr = event.mealType?.toLowerCase() || '';
-                    
+
                     const activeTypes: SpecialMealType[] = [];
                     if (mealTypeStr.includes('brunch')) activeTypes.push('Brunch');
                     if (mealTypeStr.includes('evening tea') || mealTypeStr.includes('tea')) activeTypes.push('Evening Tea');
@@ -161,7 +161,7 @@ export default function SpecialMenuPage() {
         try {
             const menusToSave: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>[] = configs.map(config => {
                 const recipes: { rowIndex: number; name: string; recipeId?: string }[] = [];
-                
+
                 config.activeTypes.forEach(type => {
                     const range = SPECIAL_MEAL_RANGES[type];
                     config.menus[type].forEach((item, idx) => {
@@ -203,20 +203,53 @@ export default function SpecialMenuPage() {
         setIsExporting(true);
         try {
             const doc = new jsPDF();
+            // Draw watermark over the content of the current page before moving to the next
+            const drawWatermark = () => {
+                const dateText = selectedDate ? format(selectedDate, "dd MMM yyyy").toUpperCase() : 'ALL DATES';
+                
+                if (typeof (doc as any).GState !== 'undefined') {
+                    doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
+                }
+                
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(100);
+
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+
+                doc.text(dateText, pageWidth / 2, pageHeight / 2, { 
+                    align: 'center', 
+                    baseline: 'middle' // Angle removed to lay flat horizontally 
+                });
+                
+                if (typeof (doc as any).GState !== 'undefined') {
+                    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+                }
+            };
+
+            // Monkey-patch addPage to catch any pages created manually or automatically by autoTable
+            // We draw the watermark right before the page is flipped.
+            const originalAddPage = doc.addPage.bind(doc);
+            doc.addPage = function(...args: any[]) {
+                drawWatermark();
+                const result = originalAddPage(...args);
+                return result;
+            };
+
             const EVENTS_PER_PAGE = 5;
             let currentY = 0;
 
             configs.forEach((config, idx) => {
                 const isNewPage = idx % EVENTS_PER_PAGE === 0;
-                
+
                 if (isNewPage) {
                     if (idx > 0) doc.addPage();
-                    
+
                     // Page Header
                     doc.setFontSize(18);
                     doc.setTextColor(245, 158, 11); // Amber-500
                     doc.text("Daily Special Menus", 105, 15, { align: 'center' });
-                    
+
                     doc.setFontSize(10);
                     doc.setTextColor(100, 100, 100);
                     doc.text(`${format(selectedDate, "PPPP")} | Page ${Math.floor(idx / EVENTS_PER_PAGE) + 1}`, 105, 22, { align: 'center' });
@@ -237,12 +270,12 @@ export default function SpecialMenuPage() {
                 doc.setTextColor(0, 0, 0);
                 doc.setFont("helvetica", "bold");
                 doc.text(`${config.clientName} (${config.region})`, 20, currentY);
-                
+
                 doc.setFont("helvetica", "normal");
                 doc.setFontSize(9);
                 doc.setTextColor(100, 100, 100);
                 doc.text(`Pax: ${config.pax} | Type: ${config.mealType} | ID: ${config.eventId}`, 20, currentY + 5);
-                
+
                 currentY += 12;
 
                 config.activeTypes.forEach(type => {
@@ -274,6 +307,9 @@ export default function SpecialMenuPage() {
 
                 currentY += 5; // Extra spacing after client block
             });
+
+            // Draw watermark on the final page
+            drawWatermark();
 
             doc.save(`Special_Event_Menus_${format(selectedDate, "yyyy-MM-dd")}.pdf`);
             toast({ title: 'Exported!', description: 'Menu PDF has been generated with grouped events.' });
@@ -307,7 +343,7 @@ export default function SpecialMenuPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                         <Select value={regionFilter} onValueChange={(v: string) => setRegionFilter(v as Region | "All")}>
+                        <Select value={regionFilter} onValueChange={(v: string) => setRegionFilter(v as Region | "All")}>
                             <SelectTrigger className="w-[140px] h-10">
                                 <SelectValue placeholder="Region" />
                             </SelectTrigger>
@@ -398,10 +434,10 @@ export default function SpecialMenuPage() {
                                                                     <Popover>
                                                                         <PopoverTrigger asChild>
                                                                             <div className="relative">
-                                                                                <Input 
-                                                                                    value={item.name} 
+                                                                                <Input
+                                                                                    value={item.name}
                                                                                     readOnly
-                                                                                    placeholder="Select a recipe..." 
+                                                                                    placeholder="Select a recipe..."
                                                                                     className="h-11 bg-slate-50 border-slate-100 focus:bg-white focus:border-amber-500/50 font-medium text-sm cursor-pointer pr-10"
                                                                                 />
                                                                                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
@@ -414,7 +450,7 @@ export default function SpecialMenuPage() {
                                                                                     <CommandEmpty>No recipes found.</CommandEmpty>
                                                                                     <CommandGroup heading="Available Food Management">
                                                                                         {availableRecipes.map(recipe => (
-                                                                                            <CommandItem 
+                                                                                            <CommandItem
                                                                                                 key={recipe.recipeNumber}
                                                                                                 onSelect={() => handleUpdateItem(configIndex, type, itemIdx, { name: recipe.recipeName, recipeId: recipe.recipeNumber })}
                                                                                                 className="text-xs py-3 px-4 border-b last:border-0 border-slate-50 cursor-pointer"
