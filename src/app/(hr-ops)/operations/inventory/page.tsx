@@ -11,7 +11,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { ViewProductDialog } from "@/components/hr/view-product-dialog";
 import { Input } from "@/components/ui/input";
 import { getProducts, addProduct, updateProduct } from "@/services/productService";
-import type { Product } from "@/types";
+import type { Product, Branch } from "@/types";
+import { BRANCHES, BRANCH_KEYS } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type BranchFilter = Branch | 'All Branches';
 
 export default function InventoryPage() {
   const [stock, setStock] = useState<Product[]>([]);
@@ -22,6 +26,7 @@ export default function InventoryPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("name");
+  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>('Dar es Salaam');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -63,9 +68,26 @@ export default function InventoryPage() {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
 
+  const getBranchQty = (item: Product): number => {
+    if (selectedBranch === 'All Branches') {
+      return (item.quantity_dar || 0) + (item.quantity_arusha || 0) + (item.quantity_dodoma || 0);
+    }
+    const key = BRANCH_KEYS[selectedBranch];
+    return Number(item[key.qty]) || 0;
+  };
+
+  const getBranchPrice = (item: Product): number => {
+    if (selectedBranch === 'All Branches') {
+      return Number(item.unitPrice_dar) || 0; // Default to Dar price for aggregate
+    }
+    const key = BRANCH_KEYS[selectedBranch];
+    return Number(item[key.price]) || 0;
+  };
+
   const getStatusText = (item: Product) => {
-    if (item.quantity === 0) return 'out of stock';
-    if (item.quantity < item.minStock) return 'low stock';
+    const qty = getBranchQty(item);
+    if (qty === 0) return 'out of stock';
+    if (qty < item.minStock) return 'low stock';
     return 'in stock';
   };
 
@@ -87,16 +109,42 @@ export default function InventoryPage() {
                 return item.name.toLowerCase().includes(lowercasedQuery);
         }
     });
-  }, [stock, searchQuery, filterType]);
+  }, [stock, searchQuery, filterType, selectedBranch]);
 
-  const totalInventoryValue = useMemo(() => stock.reduce((total, item) => total + (item.unitPrice * item.quantity), 0), [stock]);
-  const lowStockItems = useMemo(() => stock.filter(item => item.quantity > 0 && item.quantity < item.minStock).length, [stock]);
-  const outOfStockItems = useMemo(() => stock.filter(item => item.quantity === 0).length, [stock]);
+  const totalInventoryValue = useMemo(() => {
+    return stock.reduce((total, item) => {
+      if (selectedBranch === 'All Branches') {
+        return total 
+          + (item.quantity_dar || 0) * (item.unitPrice_dar || 0)
+          + (item.quantity_arusha || 0) * (item.unitPrice_arusha || 0)
+          + (item.quantity_dodoma || 0) * (item.unitPrice_dodoma || 0);
+      }
+      return total + getBranchQty(item) * getBranchPrice(item);
+    }, 0);
+  }, [stock, selectedBranch]);
+
+  const lowStockItems = useMemo(() => stock.filter(item => {
+    const qty = getBranchQty(item);
+    return qty > 0 && qty < item.minStock;
+  }).length, [stock, selectedBranch]);
+
+  const outOfStockItems = useMemo(() => stock.filter(item => getBranchQty(item) === 0).length, [stock, selectedBranch]);
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h1 className="font-headline text-2xl font-bold">Product Catalog</h1>
+            <div className="flex items-center gap-2">
+              <Select value={selectedBranch} onValueChange={(v) => setSelectedBranch(v as BranchFilter)}>
+                <SelectTrigger className="w-[200px] h-9 font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Branches">All Branches</SelectItem>
+                  {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
             <Card>
@@ -119,7 +167,7 @@ export default function InventoryPage() {
                 <CardContent>
                     <div className="text-2xl font-bold">{formatCurrency(totalInventoryValue)}</div>
                     <p className="text-xs text-muted-foreground">
-                        Sum of all products in stock
+                        {selectedBranch === 'All Branches' ? 'Sum across all branches' : `${selectedBranch} branch`}
                     </p>
                 </CardContent>
             </Card>
@@ -216,40 +264,43 @@ export default function InventoryPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredStock.map((item) => (
-                        <TableRow key={item.id}>
-                            <TableCell className="font-medium font-mono text-xs">{item.id}</TableCell>
-                            <TableCell className="font-medium">{item.name}</TableCell>
-                            <TableCell>{item.category}</TableCell>
-                            <TableCell>{item.unit}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                            <TableCell className="text-right font-semibold">{item.quantity}</TableCell>
-                            <TableCell>
-                            {item.quantity === 0 ? (
-                                <Badge variant="destructive">Out of Stock</Badge>
-                            ) : item.quantity < item.minStock ? (
-                                <Badge className="bg-orange-500 hover:bg-orange-600">Low Stock</Badge>
-                            ) : (
-                                <Badge className="bg-green-600 hover:bg-green-700">In Stock</Badge>
-                            )}
-                            </TableCell>
-                            <TableCell>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Toggle menu</span>
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => openViewDialog(item)}>View Details</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openEditDialog(item)}>Edit</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                        ))}
+                        {filteredStock.map((item) => {
+                            const qty = getBranchQty(item);
+                            const price = getBranchPrice(item);
+                            return (
+                            <TableRow key={item.id}>
+                                <TableCell className="font-medium font-mono text-xs">{item.id}</TableCell>
+                                <TableCell className="font-medium">{item.name}</TableCell>
+                                <TableCell>{item.category}</TableCell>
+                                <TableCell>{item.unit}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(price)}</TableCell>
+                                <TableCell className="text-right font-semibold">{qty}</TableCell>
+                                <TableCell>
+                                {qty === 0 ? (
+                                    <Badge variant="destructive">Out of Stock</Badge>
+                                ) : qty < item.minStock ? (
+                                    <Badge className="bg-orange-500 hover:bg-orange-600">Low Stock</Badge>
+                                ) : (
+                                    <Badge className="bg-green-600 hover:bg-green-700">In Stock</Badge>
+                                )}
+                                </TableCell>
+                                <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                        <span className="sr-only">Toggle menu</span>
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => openViewDialog(item)}>View Details</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openEditDialog(item)}>Edit</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        )})}
                     </TableBody>
                     </Table>
                 </div>

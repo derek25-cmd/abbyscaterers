@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,17 +6,18 @@ import { Input } from "@/components/ui/input";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { Loader2, Check, AlertTriangle, ArrowRight } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Branch, BRANCHES } from "@/types";
 
 export function CostingReconciliationDialog({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [selectedBranch, setSelectedBranch] = useState<Branch>('Dar es Salaam');
     const [isSaving, setIsSaving] = useState(false);
     const [step, setStep] = useState<'form' | 'review' | 'progress' | 'success'>('form');
     const [currentProgress, setCurrentProgress] = useState(0);
@@ -32,9 +31,9 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
         const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
         return logs.filter(log => {
             const logDateStr = log.date ? log.date.substring(0, 10) : '';
-            return logDateStr === selectedDateStr && log.type === 'Stock Out';
+            return logDateStr === selectedDateStr && log.type === 'Stock Out' && !log.reason?.includes('Branch Transfer') && (log.branch || 'Dar es Salaam') === selectedBranch;
         });
-    }, [selectedDate, logs]);
+    }, [selectedDate, selectedBranch, logs]);
 
     const [actuals, setActuals] = useState<Record<string, number>>({});
 
@@ -101,7 +100,7 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
             }
             
             setStep('success');
-            toast({ title: "Reconciliation Saved", description: `${successCount} items updated successfully.` });
+            toast({ title: "Reconciliation Saved", description: `${successCount} items updated successfully for ${selectedBranch}.` });
         } catch (e) {
             console.error("Save Error:", e);
             toast({ variant: "destructive", title: "Save Failed", description: "An error occurred during reconciliation." });
@@ -134,13 +133,22 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
                     {step === 'form' && (
                     <>
                     <div className="flex flex-col sm:flex-row items-center gap-4 p-4 border rounded-lg bg-muted/20">
-                        <Label className="whitespace-nowrap font-semibold">Select Date to Reconcile:</Label>
-                        <div className="w-full sm:w-64">
+                        <Label className="whitespace-nowrap font-semibold">Select Date:</Label>
+                        <div className="w-full sm:w-48">
                             <DatePicker 
                                 selectedDate={selectedDate} 
                                 onDateChange={setSelectedDate}
                             />
                         </div>
+                        <Label className="whitespace-nowrap font-semibold ml-auto">Branch:</Label>
+                        <Select value={selectedBranch} onValueChange={(v) => setSelectedBranch(v as Branch)}>
+                            <SelectTrigger className="w-full sm:w-48">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {isLoading ? (
@@ -148,7 +156,7 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
                     ) : dailyLogs.length === 0 ? (
                         <div className="text-center p-12 text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
                             <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                            No Stock Out logs found for {format(selectedDate, 'PPP')}
+                            No Stock Out logs found for {selectedBranch} on {format(selectedDate, 'PPP')}
                         </div>
                     ) : (
                         <div className="border rounded-lg overflow-x-auto shadow-sm">
@@ -225,7 +233,7 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
                                     <p className="text-3xl font-black text-primary">{summaryImpact.modifiedCount}</p>
                                     <p className="text-sm font-bold text-muted-foreground">Items with Variations</p>
                                     <p className="text-xs text-center mt-2 text-muted-foreground">
-                                        Comparing {dailyLogs.length} logged stock movements for {format(selectedDate, 'PPP')}.
+                                        Comparing {dailyLogs.length} logged stock movements for {format(selectedDate, 'PPP')} ({selectedBranch}).
                                     </p>
                                 </div>
                             </div>
@@ -235,7 +243,7 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
                                 <div>
                                     <h4 className="font-bold text-yellow-800">Careful Review Required</h4>
                                     <p className="text-xs text-yellow-700 leading-relaxed">
-                                        Saving these actual quantities will update the stock logs and directly impact the costing reports.
+                                        Saving these actual quantities will update the stock logs and directly impact the costing reports for {selectedBranch}.
                                         Ensure all manual entries are verified against physical production sheets.
                                     </p>
                                 </div>
@@ -275,7 +283,7 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
                             <div>
                                 <h3 className="text-2xl font-bold text-green-700">Reconciliation Saved!</h3>
                                 <p className="text-muted-foreground mt-2">
-                                    Physical actuals for {format(selectedDate, 'PPP')} have been successfully recorded.
+                                    Physical actuals for {selectedBranch} on {format(selectedDate, 'PPP')} have been successfully recorded.
                                 </p>
                             </div>
                             <Button className="w-full sm:w-48 mx-auto" onClick={() => setIsOpen(false)}>

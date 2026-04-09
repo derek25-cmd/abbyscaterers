@@ -3,9 +3,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2, Loader2, ArrowRightLeft } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { LogStockMovementDialog } from "@/components/hr/log-stock-movement-dialog";
+import { TransferStockDialog } from "@/components/hr/transfer-stock-dialog";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { EditStockLogDialog } from "@/components/hr/edit-stock-log-dialog";
@@ -15,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import { StockLog } from "@/types";
+import { StockLog, Branch, BRANCHES, BRANCH_KEYS } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState, ColumnDef } from "@tanstack/react-table";
@@ -23,19 +24,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogHeader as AlertDialogHeaderComponent, AlertDialogTitle as AlertDialogTitleComponent, AlertDialogDescription as AlertDialogDescriptionComponent, AlertDialogFooter as AlertDialogFooterComponent, AlertDialogContent as AlertDialogContentComponent } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+type BranchFilter = Branch | 'All Branches';
 
 export default function StockLogsPage() {
   const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, deleteStockLog, deleteStockLogs, refreshLogs } = useStockLogStorage();
-  const { products, isLoading: productsLoading, updateProduct: updateProductInStore } = useProductStorage();
+  const { products, isLoading: productsLoading, updateProduct: updateProductInStore, refreshProducts } = useProductStorage();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [isLogDialogOpen, setIsLogDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [logType, setLogType] = useState<'Stock In' | 'Stock Out'>('Stock In');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [isDateTransferDialogOpen, setIsDateTransferDialogOpen] = useState(false);
   const [isPasteDialogOpen, setIsPasteDialogOpen] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   
@@ -49,6 +53,7 @@ export default function StockLogsPage() {
   const [selectedLog, setSelectedLog] = useState<StockLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<StockLog | null>(null);
   const [copiedLogs, setCopiedLogs] = useState<StockLog[] | null>(null);
+  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>('Dar es Salaam');
   
   // Table State
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -60,6 +65,12 @@ export default function StockLogsPage() {
   useEffect(() => {
     setLoading(logsLoading || productsLoading);
   }, [logsLoading, productsLoading]);
+
+  // Filter logs by branch
+  const branchFilteredLogs = useMemo(() => {
+    if (selectedBranch === 'All Branches') return logs;
+    return logs.filter(log => (log.branch || 'Dar es Salaam') === selectedBranch);
+  }, [logs, selectedBranch]);
   
   const formatCurrency = (amount: number) => {
     if(typeof amount !== 'number') return 'TZS 0.00';
@@ -93,6 +104,7 @@ export default function StockLogsPage() {
       { accessorKey: 'price', header: 'Price (TZS)', cell: (info) => <div className="text-right">{formatCurrency(info.getValue() as number)}</div> },
       { accessorKey: 'reason', header: 'Reason' },
       { accessorKey: 'date', header: 'Date' },
+      { accessorKey: 'branch', header: 'Branch', cell: (info) => <Badge variant="outline" className="text-xs">{(info.getValue() as string) || 'Dar es Salaam'}</Badge> },
       { accessorKey: 'status', header: 'Status' },
       {
           id: 'actions',
@@ -117,7 +129,7 @@ export default function StockLogsPage() {
   ], []);
   
   const table = useReactTable({
-      data: logs,
+      data: branchFilteredLogs,
       columns,
       state: {
           sorting,
@@ -151,29 +163,85 @@ export default function StockLogsPage() {
         throw new Error("Product not found");
     }
 
+    const movementBranch: Branch = movement.branch || 'Dar es Salaam';
+    const branchKey = BRANCH_KEYS[movementBranch];
+
     try {
         const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
         await addStockLog(logData);
 
-        const updatedProduct = { ...product };
+        const currentBranchQty = Number(product[branchKey.qty]) || 0;
+
         if(movement.type === 'Stock In') {
-            updatedProduct.quantity += movement.quantity;
+            await updateProductInStore(product.id, { 
+                [branchKey.qty]: currentBranchQty + movement.quantity,
+                [branchKey.price]: movement.actual_unit_price,
+            } as any);
         } else {
-            if(product.quantity < movement.quantity) {
-                toast({ variant: 'destructive', title: "Not enough stock to log out" });
+            if(currentBranchQty < movement.quantity) {
+                toast({ variant: 'destructive', title: `Not enough stock in ${movementBranch}` });
                 throw new Error("Not enough stock");
             }
-            updatedProduct.quantity -= movement.quantity;
+            await updateProductInStore(product.id, { 
+                [branchKey.qty]: currentBranchQty - movement.quantity,
+                [branchKey.price]: movement.actual_unit_price,
+            } as any);
         }
-        
-        await updateProductInStore(product.id, { 
-            quantity: updatedProduct.quantity,
-            unitPrice: movement.actual_unit_price,
-        });
     } catch (error: any) {
         console.error("Movement logging failed", error);
         throw new Error("Failed to register stock log. Please check your connection.");
     }
+  };
+
+  const handleTransferStock = async (transfer: any) => {
+    const product = products.find(p => p.id === transfer.productId);
+    if (!product) throw new Error("Product not found");
+
+    const sourceKey = BRANCH_KEYS[transfer.sourceBranch as Branch];
+    const destKey = BRANCH_KEYS[transfer.destBranch as Branch];
+    const sourceQty = Number(product[sourceKey.qty]) || 0;
+    const destQty = Number(product[destKey.qty]) || 0;
+
+    if (sourceQty < transfer.quantity) {
+      throw new Error("Not enough stock");
+    }
+
+    // Create Stock Out log for source branch
+    await addStockLog({
+      productId: transfer.productId,
+      productName: transfer.productName,
+      type: 'Stock Out',
+      reason: `Branch Transfer → ${transfer.destBranch}`,
+      quantity: transfer.quantity,
+      price: transfer.unitPrice * transfer.quantity,
+      actual_unit_price: transfer.unitPrice,
+      date: transfer.date,
+      branch: transfer.sourceBranch,
+      status: 'Completed',
+    } as any);
+
+    // Create Stock In log for destination branch
+    await addStockLog({
+      productId: transfer.productId,
+      productName: transfer.productName,
+      type: 'Stock In',
+      reason: `Branch Transfer ← ${transfer.sourceBranch}`,
+      quantity: transfer.quantity,
+      price: transfer.unitPrice * transfer.quantity,
+      actual_unit_price: transfer.unitPrice,
+      date: transfer.date,
+      branch: transfer.destBranch,
+      status: 'Completed',
+    } as any);
+
+    // Update product quantities
+    await updateProductInStore(product.id, {
+      [sourceKey.qty]: sourceQty - transfer.quantity,
+      [destKey.qty]: destQty + transfer.quantity,
+    } as any);
+
+    await refreshProducts();
+    toast({ title: "Transfer Complete", description: `${transfer.quantity} ${product.unit} transferred from ${transfer.sourceBranch} to ${transfer.destBranch}.` });
   };
 
   const handleEditLog = async (updatedLog: any) => {
@@ -222,12 +290,12 @@ export default function StockLogsPage() {
 
   useEffect(() => {
     const selectedDate = columnFilters.find(f => f.id === 'date')?.value as string;
-    table.setPagination(selectedDate ? { pageIndex: 0, pageSize: logs.length } : { pageIndex: 0, pageSize: 10 });
-  }, [columnFilters, table, logs.length]);
+    table.setPagination(selectedDate ? { pageIndex: 0, pageSize: branchFilteredLogs.length } : { pageIndex: 0, pageSize: 10 });
+  }, [columnFilters, table, branchFilteredLogs.length]);
   
   const dailySummary = useMemo(() => {
     const selectedDateStr = columnFilters.find(f => f.id === 'date')?.value as string | undefined;
-    const currentLogs = selectedDateStr ? logs.filter(log => log.date === selectedDateStr) : logs;
+    const currentLogs = selectedDateStr ? branchFilteredLogs.filter(log => log.date === selectedDateStr) : branchFilteredLogs;
     
     const summary = currentLogs.reduce((acc, log) => {
       const price = Number(log.price) || 0;
@@ -243,11 +311,20 @@ export default function StockLogsPage() {
     }, { stockedIn: { items: 0, value: 0 }, stockedOut: { items: 0, value: 0 } });
     
     return summary;
-  }, [logs, columnFilters]);
+  }, [branchFilteredLogs, columnFilters]);
 
   const totalStockValue = useMemo(() => {
-    return products.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
-  }, [products]);
+    if (selectedBranch === 'All Branches') {
+      return products.reduce((sum, p) => {
+        return sum 
+          + (Number(p.quantity_dar) || 0) * (Number(p.unitPrice_dar) || 0)
+          + (Number(p.quantity_arusha) || 0) * (Number(p.unitPrice_arusha) || 0)
+          + (Number(p.quantity_dodoma) || 0) * (Number(p.unitPrice_dodoma) || 0);
+      }, 0);
+    }
+    const key = BRANCH_KEYS[selectedBranch];
+    return products.reduce((sum, p) => sum + (Number(p[key.qty]) || 0) * (Number(p[key.price]) || 0), 0);
+  }, [products, selectedBranch]);
 
   const handleDateFilterChange = (date: Date | undefined) => {
       const dateString = date ? format(date, "yyyy-MM-dd") : undefined;
@@ -262,11 +339,7 @@ export default function StockLogsPage() {
   
   const handleTransferSelected = async () => {
     if (!newTransferDate) {
-        toast({
-            variant: "destructive",
-            title: "No Date Selected",
-            description: "Please select a date to transfer the logs to.",
-        });
+        toast({ variant: "destructive", title: "No Date Selected", description: "Please select a date to transfer the logs to." });
         return;
     }
 
@@ -281,22 +354,14 @@ export default function StockLogsPage() {
             successCount++;
         }
         
-        toast({
-            title: "Transfer Successful",
-            description: `${successCount} log(s) have been moved to ${format(newTransferDate, 'PPP')}.`,
-        });
-
+        toast({ title: "Transfer Successful", description: `${successCount} log(s) have been moved to ${format(newTransferDate, 'PPP')}.` });
         table.resetRowSelection();
-        setIsTransferDialogOpen(false);
+        setIsDateTransferDialogOpen(false);
         await refreshLogs();
         handleDateFilterChange(newTransferDate);
 
     } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "Transfer Failed",
-            description: "An error occurred while transferring the logs.",
-        });
+        toast({ variant: "destructive", title: "Transfer Failed", description: "An error occurred while transferring the logs." });
     } finally {
         setIsTransferring(false);
     }
@@ -305,10 +370,7 @@ export default function StockLogsPage() {
   const handleCopySelected = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
     setCopiedLogs(selectedRows);
-    toast({
-      title: "Logs Copied",
-      description: `${selectedRows.length} log(s) have been copied to the clipboard.`
-    });
+    toast({ title: "Logs Copied", description: `${selectedRows.length} log(s) have been copied to the clipboard.` });
   };
 
   const handlePasteConfirm = async () => {
@@ -328,10 +390,7 @@ export default function StockLogsPage() {
         });
         successCount++;
       }
-      toast({
-        title: "Paste Successful",
-        description: `${successCount} log(s) have been pasted to ${format(pasteDate, 'PPP')}.`
-      });
+      toast({ title: "Paste Successful", description: `${successCount} log(s) have been pasted to ${format(pasteDate, 'PPP')}.` });
       setCopiedLogs(null);
       table.resetRowSelection();
       setIsPasteDialogOpen(false);
@@ -347,20 +406,29 @@ export default function StockLogsPage() {
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <h1 className="font-headline text-2xl font-bold">Stock Movement Logs</h1>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+             <Select value={selectedBranch} onValueChange={(v) => { setSelectedBranch(v as BranchFilter); table.resetRowSelection(); }}>
+                <SelectTrigger className="w-[180px] h-9 font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Branches">All Branches</SelectItem>
+                  {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                </SelectContent>
+              </Select>
+             <Button size="sm" variant="outline" className="h-9 gap-1" onClick={() => setIsTransferDialogOpen(true)}>
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Transfer Stock</span>
+             </Button>
              <Button size="sm" variant="outline" className="h-9 gap-1" onClick={() => handleOpenLogDialog('Stock Out')}>
                 <MinusCircle className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Log Stock Out
-                </span>
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Log Stock Out</span>
             </Button>
             <Button size="sm" className="h-9 gap-1" onClick={() => handleOpenLogDialog('Stock In')}>
               <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Log Stock In
-              </span>
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Log Stock In</span>
             </Button>
           </div>
         </div>
@@ -368,7 +436,7 @@ export default function StockLogsPage() {
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
              <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stocked In</CardTitle><ArrowDown className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(dailySummary.stockedIn.value)}</div><p className="text-xs text-muted-foreground">{dailySummary.stockedIn.items} items received</p></CardContent></Card>
              <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stocked Out</CardTitle><ArrowUp className="h-4 w-4 text-red-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(dailySummary.stockedOut.value)}</div><p className="text-xs text-muted-foreground">{dailySummary.stockedOut.items} items issued</p></CardContent></Card>
-             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(totalStockValue)}</div><p className="text-xs text-muted-foreground">Current value of all products</p></CardContent></Card>
+             <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(totalStockValue)}</div><p className="text-xs text-muted-foreground">{selectedBranch === 'All Branches' ? 'All branches' : selectedBranch}</p></CardContent></Card>
         </div>
 
 
@@ -377,6 +445,7 @@ export default function StockLogsPage() {
             <CardTitle>Movement History</CardTitle>
             <CardDescription>
               {table.getColumn('date')?.getFilterValue() ? `Showing stock movements for ${format(parseISO(table.getColumn('date')?.getFilterValue() as string), "MMMM dd, yyyy")}` : 'Track all inventory coming in and going out.'}
+              {selectedBranch !== 'All Branches' && ` — ${selectedBranch}`}
             </CardDescription>
           </CardHeader>
           <div className="p-6 pt-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -401,7 +470,7 @@ export default function StockLogsPage() {
                     <>
                     <Button size="sm" variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Delete {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
                     <Button size="sm" variant="outline" onClick={handleCopySelected}><Copy className="mr-2 h-4 w-4" /> Copy {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
-                    <Button size="sm" onClick={() => setIsTransferDialogOpen(true)}><MoveRight className="mr-2 h-4 w-4" />Transfer {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
+                    <Button size="sm" onClick={() => setIsDateTransferDialogOpen(true)}><MoveRight className="mr-2 h-4 w-4" />Transfer {table.getFilteredSelectedRowModel().rows.length} Selected</Button>
                     </>
                 )}
                 {copiedLogs && copiedLogs.length > 0 && (
@@ -428,14 +497,15 @@ export default function StockLogsPage() {
         </Card>
       
       <LogStockMovementDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} logType={logType} onLogMovement={handleLogMovement} products={products}/>
+      <TransferStockDialog isOpen={isTransferDialogOpen} setIsOpen={setIsTransferDialogOpen} onTransfer={handleTransferStock} products={products}/>
       {selectedLog && ( <EditStockLogDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} log={selectedLog} onEditLog={handleEditLog} products={products} /> )}
       {selectedLog && ( <ViewStockLogDialog isOpen={isViewDialogOpen} setIsOpen={setIsViewDialogOpen} log={selectedLog} /> )}
        
-       <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+       <Dialog open={isDateTransferDialogOpen} onOpenChange={setIsDateTransferDialogOpen}>
             <DialogContent>
                 <DialogHeader><DialogTitle>Transfer Stock Logs</DialogTitle><DialogDescription>Select a new date to move the selected {table.getFilteredSelectedRowModel().rows.length} log(s) to.</DialogDescription></DialogHeader>
                 <div className="py-4 flex justify-center"><Calendar mode="single" selected={newTransferDate} onSelect={setNewTransferDate} initialFocus/></div>
-                <DialogFooter><Button variant="outline" onClick={() => setIsTransferDialogOpen(false)} disabled={isTransferring}>Cancel</Button><Button onClick={handleTransferSelected} disabled={isTransferring}>{isTransferring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm Transfer</Button></DialogFooter>
+                <DialogFooter><Button variant="outline" onClick={() => setIsDateTransferDialogOpen(false)} disabled={isTransferring}>Cancel</Button><Button onClick={handleTransferSelected} disabled={isTransferring}>{isTransferring && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm Transfer</Button></DialogFooter>
             </DialogContent>
         </Dialog>
 

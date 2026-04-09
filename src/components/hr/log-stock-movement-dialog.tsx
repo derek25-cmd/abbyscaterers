@@ -24,12 +24,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
+import { BRANCHES, BRANCH_KEYS } from "@/types";
 
 export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
   const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
   const [date, setDate] = useState(new Date());
+  const [branch, setBranch] = useState('Dar es Salaam');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<'form' | 'review' | 'progress' | 'success'>('form');
+  const [step, setStep] = useState('form');
   const [currentProgress, setCurrentProgress] = useState(0);
   const [currentItemName, setCurrentItemName] = useState('');
   const [results, setResults] = useState({ success: 0, failed: 0, errors: [] });
@@ -69,8 +71,9 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
     
     if (field === 'productId') {
         const product = getProduct(value);
-        if (product) {
-            newItems[index]['actual_unit_price'] = product.unitPrice;
+        if (product && branch) {
+            const branchKey = BRANCH_KEYS[branch];
+            newItems[index]['actual_unit_price'] = Number(product[branchKey?.price]) || product.unitPrice || 0;
         }
     }
 
@@ -130,6 +133,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 price: Number(item.actual_unit_price) * Number(item.quantity),
                 actual_unit_price: Number(item.actual_unit_price),
                 date: format(date, 'yyyy-MM-dd'),
+                branch: branch,
             });
 
             if (result === null) throw new Error("Service returned failure");
@@ -158,6 +162,18 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
   }
 
+  const getBranchQty = (product) => {
+    if (!product || !branch) return product?.quantity || 0;
+    const branchKey = BRANCH_KEYS[branch];
+    return Number(product[branchKey?.qty]) || 0;
+  };
+
+  const getBranchPrice = (product) => {
+    if (!product || !branch) return product?.unitPrice || 0;
+    const branchKey = BRANCH_KEYS[branch];
+    return Number(product[branchKey?.price]) || 0;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent 
@@ -181,14 +197,26 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
           <>
           <ScrollArea className="h-[60vh] p-1">
           <div className="space-y-4 py-4">
-             <div className="p-2 border rounded-md bg-muted/30">
-                <Label className="block mb-2 font-semibold">Date of Movement</Label>
-                 <Popover>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-2 border rounded-md bg-muted/30">
+                <div>
+                  <Label className="block mb-2 font-semibold">Branch <span className="text-destructive">*</span></Label>
+                  <Select value={branch} onValueChange={setBranch}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="block mb-2 font-semibold">Date of Movement</Label>
+                  <Popover>
                     <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
                         className={cn(
-                        "w-[240px] justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal",
                         !date && "text-muted-foreground"
                         )}
                     >
@@ -204,11 +232,12 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                         initialFocus
                     />
                     </PopoverContent>
-                </Popover>
-            </div>
+                  </Popover>
+                </div>
+             </div>
             {items.map((item, index) => {
                 const product = getProduct(item.productId);
-                const catalogPrice = product?.unitPrice || 0;
+                const catalogPrice = getBranchPrice(product);
                 const priceVariation = item.actual_unit_price - catalogPrice;
 
                return (
@@ -258,7 +287,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                                             )}
                                         />
                                         <span className="flex-1">{p.name}</span>
-                                        <span className="text-xs text-muted-foreground ml-2">Qty: {p.quantity}</span>
+                                        <span className="text-xs text-muted-foreground ml-2">Qty: {getBranchQty(p)}</span>
                                         </CommandItem>
                                     ))}
                                     </CommandGroup>
@@ -270,8 +299,8 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                      <div>
                         <Label>Quantity <span className="text-destructive">*</span></Label>
                         <Input type="number" step="any" className="mt-1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} min="0.01" />
-                        {logType === 'Stock Out' && product && item.quantity > product.quantity && (
-                            <p className="text-[10px] text-destructive mt-1 font-semibold">Exceeds current stock!</p>
+                        {logType === 'Stock Out' && product && item.quantity > getBranchQty(product) && (
+                            <p className="text-[10px] text-destructive mt-1 font-semibold">Exceeds current stock in {branch}!</p>
                         )}
                      </div>
                  </div>
@@ -279,12 +308,12 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 {product && (
                     <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
                          <div className="p-2 bg-muted/50 rounded-md border">
-                            <p className="text-muted-foreground">In Stock</p>
-                            <p className="font-bold">{product.quantity} {product.unit}</p>
+                            <p className="text-muted-foreground">In Stock ({branch})</p>
+                            <p className="font-bold">{getBranchQty(product)} {product.unit}</p>
                         </div>
                         <div className="p-2 bg-muted/50 rounded-md border">
-                            <p className="text-muted-foreground">Catalog Price</p>
-                            <p className="font-bold">{formatCurrency(product.unitPrice)}</p>
+                            <p className="text-muted-foreground">Branch Price</p>
+                            <p className="font-bold">{formatCurrency(catalogPrice)}</p>
                         </div>
                         <div className="p-2 bg-muted/50 rounded-md border">
                             <p className="text-muted-foreground">Actual Unit Price</p>
@@ -329,7 +358,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                  {product && (
                     <div className="mt-3 p-2 bg-blue-500/5 border border-blue-500/20 rounded-md">
                         <p className="text-[10px] md:text-xs font-semibold text-blue-800 flex justify-between">
-                            <span>Price Variation (vs Catalog):</span>
+                            <span>Price Variation (vs Branch Price):</span>
                             <span className={cn("font-bold", priceVariation > 0 ? "text-destructive" : priceVariation < 0 ? "text-green-600" : "text-muted-foreground")}>
                                 {priceVariation !== 0 && (priceVariation > 0 ? '+' : '')}{formatCurrency(priceVariation)}
                             </span>
@@ -344,7 +373,11 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
               </Button>
           </div>
           </ScrollArea>
-          <div className="mt-4 p-4 border rounded-lg bg-primary/5 grid grid-cols-3 gap-4">
+          <div className="mt-4 p-4 border rounded-lg bg-primary/5 grid grid-cols-4 gap-4">
+              <div className="text-center border-r">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold">Branch</p>
+                <p className="text-sm font-bold">{branch}</p>
+              </div>
               <div className="text-center border-r">
                 <p className="text-[10px] text-muted-foreground uppercase font-bold">Total Items</p>
                 <p className="text-xl font-bold">{summary.itemCount}</p>
@@ -363,6 +396,9 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
 
           {step === 'review' && (
               <div className="space-y-6 py-4">
+                  <div className="p-3 bg-muted/30 rounded-md border text-sm">
+                    <span className="font-semibold">Branch:</span> {branch} &nbsp;|&nbsp; <span className="font-semibold">Date:</span> {format(date, "PPP")}
+                  </div>
                   <div className="border rounded-md overflow-hidden">
                       <table className="w-full text-xs">
                           <thead className="bg-muted">
@@ -402,7 +438,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                           <Check className="h-4 w-4 mr-2" /> Accuracy Check
                       </h4>
                       <p className="text-xs text-yellow-700">
-                          Please verify all quantities and prices above. Once confirmed, these stock movements will be irreversibly logged for {format(date, "PPP")}.
+                          Please verify all quantities and prices above. Once confirmed, these stock movements will be irreversibly logged for <strong>{branch}</strong> on {format(date, "PPP")}.
                       </p>
                   </div>
               </div>
@@ -415,26 +451,8 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                         {currentProgress}%
                     </div>
                     <svg className="w-full h-full transform -rotate-90">
-                        <circle
-                            cx="64"
-                            cy="64"
-                            r="58"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="transparent"
-                            className="text-muted"
-                        />
-                        <circle
-                            cx="64"
-                            cy="64"
-                            r="58"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="transparent"
-                            strokeDasharray={364.4}
-                            strokeDashoffset={364.4 - (364.4 * currentProgress) / 100}
-                            className="text-primary transition-all duration-300"
-                        />
+                        <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-muted" />
+                        <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={364.4} strokeDashoffset={364.4 - (364.4 * currentProgress) / 100} className="text-primary transition-all duration-300" />
                     </svg>
                   </div>
                   <div>
@@ -454,7 +472,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                       <div>
                           <h3 className="text-2xl font-bold text-green-700">Successfully Processed!</h3>
                           <p className="text-muted-foreground">
-                              {results.success} items logged successfully.
+                              {results.success} items logged successfully to <strong>{branch}</strong>.
                               {results.failed > 0 && <span className="text-destructive font-bold ml-1"> {results.failed} failed.</span>}
                           </p>
                       </div>
@@ -529,6 +547,3 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
     </Dialog>
   );
 }
-
-
-

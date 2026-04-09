@@ -46,7 +46,9 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
   const fetchMiscItems = async () => {
     if (reportDate) {
       const items = await getCostingReportsByDate(reportDate);
-      setMiscItems(items);
+      // Filter the items by branch if a specific branch is selected
+      const filteredItems = request.branch === 'All Branches' ? items : items.filter(item => (item.branch || 'Dar es Salaam') === request.branch);
+      setMiscItems(filteredItems);
     }
   };
 
@@ -75,7 +77,8 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     const clientName = request.type === 'individual' && request.clientId
       ? clients.find(c => c.id === request.clientId)?.companyName 
       : 'Aggregate';
-    const reportTitle = `${clientName} Costing Report for ${dateRangeStr}`;
+    const branchName = request.branch === 'All Branches' ? 'All Branches' : request.branch;
+    const reportTitle = `${clientName} Costing Report for ${dateRangeStr} (${branchName})`;
 
     const allClientEvents = orders.flatMap(order =>
       order.clientEvents.map((event: any) => ({ ...event, clientId: event.clientId || order.clientId }))
@@ -92,7 +95,13 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     const stockLogsForReport = allLogs.filter(log => {
       if (!log.date) return false;
       const logDateStr = log.date.substring(0, request.periodType === 'daily' ? 10 : 7);
-      return selectedDateStrings.has(logDateStr);
+      if (!selectedDateStrings.has(logDateStr)) return false;
+      
+      // Ignore branch transfers in costing
+      if (log.reason?.includes('Branch Transfer')) return false;
+
+      if (request.branch === 'All Branches') return true;
+      return (log.branch || 'Dar es Salaam') === request.branch;
     });
     
     // Distinguish waste, training, and regular stock outs
@@ -141,6 +150,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
           type,
           description: '',
           amount: 0,
+          branch: request.branch === 'All Branches' ? 'Dar es Salaam' : request.branch,
           created_at: new Date().toISOString(),
       } as CostingReportItem]);
   }
@@ -164,6 +174,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
                       type: item.type,
                       description: item.description,
                       amount: item.amount,
+                      branch: item.branch || (request.branch === 'All Branches' ? 'Dar es Salaam' : request.branch)
                   });
               }
           }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,12 +5,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { Checkbox } from '@/components/ui/checkbox';
-import { User, Users, Loader2, CalendarIcon } from 'lucide-react';
-import { format, startOfMonth } from 'date-fns';
-import { Client } from '@/types';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { cn } from '@/lib/utils';
+import { User, Users, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { Client, Branch, BRANCHES } from '@/types';
 import { DatePicker } from '../ui/date-picker';
 import { CostingReconciliationDialog } from './costing-reconciliation-dialog';
 
@@ -27,6 +23,7 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
   const [periodType, setPeriodType] = useState('daily');
   const [dates, setDates] = useState<Date[]>([]);
   const [month, setMonth] = useState<Date>(new Date());
+  const [branch, setBranch] = useState<Branch | 'All Branches'>('Dar es Salaam');
   
   const handleSubmit = () => {
     const isDaily = periodType === 'daily';
@@ -50,7 +47,8 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
       type: costingType,
       clientId: costingType === 'individual' ? clientId : null,
       periodType,
-      dates: formattedDates
+      dates: formattedDates,
+      branch
     });
   }
 
@@ -105,19 +103,33 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                 <CardDescription>Select your parameters for the {costingType} costing report.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {costingType === 'individual' && (
-                    <div>
-                        <Label>Client</Label>
-                        <Select onValueChange={setClientId} disabled={isLoading}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a client..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                      <Label>Branch Filter</Label>
+                      <Select value={branch} onValueChange={(v) => setBranch(v as Branch | 'All Branches')} disabled={isLoading}>
+                          <SelectTrigger className="mt-2">
+                              <SelectValue placeholder="Select a branch..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="All Branches">All Branches</SelectItem>
+                              {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  {costingType === 'individual' && (
+                      <div>
+                          <Label>Client</Label>
+                          <Select onValueChange={setClientId} disabled={isLoading}>
+                              <SelectTrigger className="mt-2">
+                                  <SelectValue placeholder="Select a client..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
+                      </div>
+                  )}
+                </div>
 
                 <div>
                     <Label>Period</Label>
@@ -137,7 +149,7 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                     {periodType === 'daily' ? (
                         <>
                         <Label>Select Date(s)</Label>
-                        <div className="p-2 border rounded-md">
+                        <div className="p-2 border rounded-md mt-2">
                            <Calendar
                                 mode="multiple"
                                 selected={dates}
@@ -149,7 +161,7 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                     ) : (
                         <div>
                             <Label>Select Month</Label>
-                            <div>
+                            <div className="mt-2">
                                 <DatePicker
                                     selectedDate={month}
                                     onDateChange={setMonth}
@@ -161,7 +173,7 @@ export function CostingForm({ clients, onSubmit, isLoading }: CostingFormProps) 
                     )}
                 </div>
 
-                <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
+                <Button onClick={handleSubmit} disabled={isLoading} className="w-full h-12 text-lg font-bold">
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generate Report
                 </Button>

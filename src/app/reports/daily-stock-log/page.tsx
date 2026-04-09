@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function DailyStockLogReportPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -24,10 +25,15 @@ export default function DailyStockLogReportPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("productName");
-
+  const [branch, setBranch] = useState("Dar es Salaam");
 
   const dailyLogs = useMemo(() => {
     let filtered = logs;
+    
+    // Filter by branch
+    if (branch !== "All Branches") {
+      filtered = filtered.filter(log => (log.branch || 'Dar es Salaam') === branch);
+    }
     if(selectedDate) {
         const targetDateStr = format(selectedDate, 'yyyy-MM-dd');
         filtered = filtered.filter(log => log.date === targetDateStr);
@@ -46,7 +52,7 @@ export default function DailyStockLogReportPage() {
     }
 
     return filtered;
-  }, [selectedDate, logs, searchQuery, filterType]);
+  }, [selectedDate, logs, searchQuery, filterType, branch]);
 
   const summary = useMemo(() => {
     const stockIn = dailyLogs.filter(log => log.type === 'Stock In');
@@ -67,7 +73,7 @@ export default function DailyStockLogReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      doc.text(`Daily Stock Log Report - ${selectedDate ? format(selectedDate, 'PPP') : 'All Dates'}`, 14, 15);
+      doc.text(`Daily Stock Log Report - ${selectedDate ? format(selectedDate, 'PPP') : 'All Dates'} (${branch})`, 14, 15);
       
       const tableColumn = ["Log ID", "Product", "Type", "Reason", "Quantity", "Total Value"];
       const tableRows: (string | number)[][] = [];
@@ -141,6 +147,17 @@ export default function DailyStockLogReportPage() {
                   <DropdownMenuCheckboxItem checked={filterType === 'reason'} onCheckedChange={() => setFilterType('reason')}>Reason</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Select value={branch} onValueChange={setBranch}>
+                 <SelectTrigger className="w-[180px]">
+                     <SelectValue placeholder="Branch" />
+                 </SelectTrigger>
+                 <SelectContent>
+                     <SelectItem value="All Branches">All Branches</SelectItem>
+                     <SelectItem value="Dar es Salaam">Dar es Salaam</SelectItem>
+                     <SelectItem value="Arusha">Arusha</SelectItem>
+                     <SelectItem value="Dodoma">Dodoma</SelectItem>
+                 </SelectContent>
+              </Select>
               <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
               <Button onClick={handlePdfExport} variant="outline" size="sm" disabled={isExporting}>
                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}

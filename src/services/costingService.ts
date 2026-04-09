@@ -1,12 +1,18 @@
 
 import { supabase } from '@/lib/supabase-client';
-import type { CostingReportItem } from '@/types';
+import type { CostingReportItem, Branch } from '@/types';
 
-export const getCostingReportsByDate = async (date: string): Promise<CostingReportItem[]> => {
-    const { data, error } = await supabase
+export const getCostingReportsByDate = async (date: string, branch?: Branch | 'All Branches'): Promise<CostingReportItem[]> => {
+    let query = supabase
         .from('costing_reports')
         .select('*')
         .eq('report_date', date);
+
+    if (branch && branch !== 'All Branches') {
+        query = query.eq('branch', branch);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching costing reports:', error);
@@ -18,7 +24,7 @@ export const getCostingReportsByDate = async (date: string): Promise<CostingRepo
 export const addCostingReport = async (item: Omit<CostingReportItem, 'id' | 'created_at'>): Promise<CostingReportItem | null> => {
     const { data, error } = await supabase
         .from('costing_reports')
-        .upsert({ ...item }, { onConflict: 'report_date, type, description' })
+        .upsert({ ...item, branch: item.branch || 'Dar es Salaam' }, { onConflict: 'report_date, type, description, branch' })
         .select()
         .single();
     

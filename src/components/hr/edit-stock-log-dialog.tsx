@@ -20,7 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-
+import { Badge } from "@/components/ui/badge";
+import { BRANCH_KEYS } from "@/types";
 
 export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products }) {
   const [productId, setProductId] = useState('');
@@ -95,6 +96,12 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
     setIsOpen(false);
   };
 
+  const currentBranchQty = useMemo(() => {
+    if (!selectedProduct || !log?.branch) return 0;
+    const key = BRANCH_KEYS[log.branch];
+    return Number(selectedProduct[key?.qty]) || 0;
+  }, [selectedProduct, log?.branch]);
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
@@ -106,6 +113,11 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="flex justify-between items-center bg-muted/20 p-2 rounded-md border">
+              <span className="text-sm font-semibold text-muted-foreground">Branch Layout</span>
+              <Badge variant="outline" className="text-sm bg-background">{log?.branch || 'Dar es Salaam'}</Badge>
+            </div>
+
             <div className="grid gap-2">
                 <Label htmlFor="date">Date</Label>
                 <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -138,7 +150,10 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                         <CommandList>
                             <CommandEmpty>No product found.</CommandEmpty>
                             <CommandGroup>
-                            {products.map((p) => (
+                            {products.map((p) => {
+                                const key = BRANCH_KEYS[log?.branch || 'Dar es Salaam'];
+                                const qty = Number(p[key?.qty]) || 0;
+                                return (
                                 <CommandItem
                                 value={`${p.name} (${p.id})`}
                                 key={p.id}
@@ -150,9 +165,9 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
                                     p.id === productId ? "opacity-100" : "opacity-0"
                                     )}
                                 />
-                                {p.name} (Qty: {p.quantity})
+                                {p.name} (Qty: {qty})
                                 </CommandItem>
-                            ))}
+                            )})}
                             </CommandGroup>
                         </CommandList>
                         </Command>
@@ -162,12 +177,15 @@ export function EditStockLogDialog({ isOpen, setIsOpen, log, onEditLog, products
 
             {selectedProduct && (
                 <Card className="bg-muted/50 p-3 text-sm">
-                    <CardHeader className="p-0 pb-2">
+                    <CardHeader className="p-0 pb-2 flex flex-row items-center justify-between">
                         <CardTitle className="text-base">{selectedProduct.name}</CardTitle>
+                        <span className="text-xs text-muted-foreground">{log?.branch}</span>
                     </CardHeader>
                     <CardContent className="p-0 grid grid-cols-2 gap-4">
-                        <p><strong>Current Stock:</strong> {selectedProduct.quantity} {selectedProduct.unit}</p>
-                        <p><strong>Catalog Price:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(selectedProduct.unitPrice).replace('TZS', 'TZS ')}</p>
+                        <p><strong>Current Stock:</strong> {currentBranchQty} {selectedProduct.unit}</p>
+                        <p>
+                          <strong>Branch Price:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(Number(selectedProduct[BRANCH_KEYS[log?.branch || 'Dar es Salaam']?.price]) || 0).replace('TZS', 'TZS ')}
+                        </p>
                     </CardContent>
                 </Card>
             )}

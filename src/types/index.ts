@@ -454,15 +454,29 @@ export interface Product {
     sku: string;
     name: string;
     category: string;
-    quantity: number;
+    quantity: number;          // Legacy aggregate (kept for compat)
     unit: string;
-    unitPrice: number;
+    unitPrice: number;         // Legacy aggregate (kept for compat)
     minStock: number;
     maxStock: number;
     expiryDate: string | null;
+    // Per-branch quantities
+    quantity_dar: number;
+    quantity_arusha: number;
+    quantity_dodoma: number;
+    // Per-branch unit prices
+    unitPrice_dar: number;
+    unitPrice_arusha: number;
+    unitPrice_dodoma: number;
     createdAt: string;
     updatedAt: string;
 }
+
+export const BRANCH_KEYS: Record<Branch, { qty: keyof Product; price: keyof Product }> = {
+    'Dar es Salaam': { qty: 'quantity_dar', price: 'unitPrice_dar' },
+    'Arusha': { qty: 'quantity_arusha', price: 'unitPrice_arusha' },
+    'Dodoma': { qty: 'quantity_dodoma', price: 'unitPrice_dodoma' },
+};
 
 export interface StockLog {
     id: string;
@@ -476,6 +490,7 @@ export interface StockLog {
     reason: string;
     date: string;
     status: string;
+    branch: Branch;
     createdAt: string;
     updatedAt: string;
 }
@@ -532,6 +547,7 @@ export interface CostingReportItem {
     type: 'income' | 'expense';
     description: string;
     amount: number;
+    branch: Branch;
     created_at: string;
 }
 

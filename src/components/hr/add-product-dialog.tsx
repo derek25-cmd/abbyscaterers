@@ -14,22 +14,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { BRANCHES } from "@/types";
 
 export function AddProductDialog({ isOpen, setIsOpen, onAddProduct }) {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [unit, setUnit] = useState('');
-  const [unitPrice, setUnitPrice] = useState(0);
-  const [quantity, setQuantity] = useState(0);
   const [minStock, setMinStock] = useState(0);
+
+  // Per-branch state
+  const [qtyDar, setQtyDar] = useState(0);
+  const [qtyArusha, setQtyArusha] = useState(0);
+  const [qtyDodoma, setQtyDodoma] = useState(0);
+  const [priceDar, setPriceDar] = useState(0);
+  const [priceArusha, setPriceArusha] = useState(0);
+  const [priceDodoma, setPriceDodoma] = useState(0);
 
   const resetForm = () => {
     setName('');
     setCategory('');
     setUnit('');
-    setUnitPrice(0);
-    setQuantity(0);
     setMinStock(0);
+    setQtyDar(0);
+    setQtyArusha(0);
+    setQtyDodoma(0);
+    setPriceDar(0);
+    setPriceArusha(0);
+    setPriceDodoma(0);
   }
 
   const handleSubmit = (e) => {
@@ -43,23 +54,35 @@ export function AddProductDialog({ isOpen, setIsOpen, onAddProduct }) {
       name,
       category,
       unit,
-      unitPrice: Number(unitPrice),
-      quantity: Number(quantity),
+      unitPrice: Number(priceDar),
+      quantity: Number(qtyDar) + Number(qtyArusha) + Number(qtyDodoma),
       minStock: Number(minStock),
+      quantity_dar: Number(qtyDar),
+      quantity_arusha: Number(qtyArusha),
+      quantity_dodoma: Number(qtyDodoma),
+      unitPrice_dar: Number(priceDar),
+      unitPrice_arusha: Number(priceArusha),
+      unitPrice_dodoma: Number(priceDodoma),
     });
 
     resetForm();
     setIsOpen(false);
   };
 
+  const branchFields = [
+    { label: 'Dar es Salaam', qty: qtyDar, setQty: setQtyDar, price: priceDar, setPrice: setPriceDar },
+    { label: 'Arusha', qty: qtyArusha, setQty: setQtyArusha, price: priceArusha, setPrice: setPriceArusha },
+    { label: 'Dodoma', qty: qtyDodoma, setQty: setQtyDodoma, price: priceDodoma, setPrice: setPriceDodoma },
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Add New Product</DialogTitle>
             <DialogDescription>
-              Enter the details for the new product.
+              Enter the details for the new product. Set quantities and prices per branch.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -111,16 +134,28 @@ export function AddProductDialog({ isOpen, setIsOpen, onAddProduct }) {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="unitPrice" className="text-right">Unit Price (TZS)</Label>
-              <Input id="unitPrice" type="number" step="any" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} className="col-span-3" min="0" />
-            </div>
-             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="quantity" className="text-right">Quantity</Label>
-              <Input id="quantity" type="number" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="col-span-3" min="0" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="minStock" className="text-right">Min. Stock</Label>
               <Input id="minStock" type="number" step="any" value={minStock} onChange={(e) => setMinStock(e.target.value)} className="col-span-3" min="0" />
+            </div>
+
+            {/* Per-branch quantities and prices */}
+            <div className="border-t pt-4 mt-2">
+              <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Branch Quantities & Prices</Label>
+              <div className="mt-3 space-y-3">
+                {branchFields.map((b) => (
+                  <div key={b.label} className="grid grid-cols-5 items-center gap-2 p-3 bg-muted/30 rounded-lg border">
+                    <Label className="text-xs font-bold col-span-1">{b.label}</Label>
+                    <div className="col-span-2">
+                      <Label className="text-[10px] text-muted-foreground">Quantity</Label>
+                      <Input type="number" step="any" value={b.qty} onChange={(e) => b.setQty(e.target.value)} min="0" />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-[10px] text-muted-foreground">Unit Price (TZS)</Label>
+                      <Input type="number" step="any" value={b.price} onChange={(e) => b.setPrice(e.target.value)} min="0" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

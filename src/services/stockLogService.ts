@@ -19,7 +19,8 @@ export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'upda
         date: log.date || format(now, 'yyyy-MM-dd'),
         quantity: Number(log.quantity),
         price: Number(log.price),
-        actual_unit_price: Number(log.actual_unit_price)
+        actual_unit_price: Number(log.actual_unit_price),
+        branch: log.branch || 'Dar es Salaam',
     };
 
     const { data, error } = await supabase.from('stock_logs').insert([newLogData]).select();
