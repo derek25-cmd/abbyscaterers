@@ -399,9 +399,9 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                   <div className="p-3 bg-muted/30 rounded-md border text-sm">
                     <span className="font-semibold">Branch:</span> {branch} &nbsp;|&nbsp; <span className="font-semibold">Date:</span> {format(date, "PPP")}
                   </div>
-                  <div className="border rounded-md overflow-hidden">
+                  <div className="border rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
                       <table className="w-full text-xs">
-                          <thead className="bg-muted">
+                          <thead className="bg-muted sticky top-0 z-10 shadow-sm">
                               <tr>
                                   <th className="p-2 text-left">Product</th>
                                   <th className="p-2 text-right">Qty</th>
@@ -422,12 +422,12 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                                   )
                               })}
                           </tbody>
-                          <tfoot className="bg-muted/50 font-bold">
+                          <tfoot className="bg-muted/50 font-bold sticky bottom-0 z-10 shadow-sm border-t">
                               <tr>
-                                  <td className="p-2">TOTAL</td>
-                                  <td className="p-2 text-right">{summary.totalQuantity.toFixed(2)}</td>
-                                  <td className="p-2"></td>
-                                  <td className="p-2 text-right text-primary">{formatCurrency(summary.totalValue)}</td>
+                                  <td className="p-2 bg-muted/50">TOTAL</td>
+                                  <td className="p-2 text-right bg-muted/50">{summary.totalQuantity.toFixed(2)}</td>
+                                  <td className="p-2 bg-muted/50"></td>
+                                  <td className="p-2 text-right text-primary bg-muted/50">{formatCurrency(summary.totalValue)}</td>
                               </tr>
                           </tfoot>
                       </table>
