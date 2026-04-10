@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2, Loader2, ArrowRightLeft } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
-import { LogStockMovementDialog } from "@/components/hr/log-stock-movement-dialog";
+import { PlusCircle, MinusCircle, MoreHorizontal, CalendarIcon, Search, ListFilter, ArrowDown, ArrowUp, DollarSign, MoveRight, Copy, CopyCheck, Trash2, Loader2, ArrowRightLeft, FileWarning, Play, Clock, AlertTriangle, Package } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { LogStockMovementDialog, getDraftsFromStorage, removeDraftFromStorage, type StockOutDraft } from "@/components/hr/log-stock-movement-dialog";
 import { TransferStockDialog } from "@/components/hr/transfer-stock-dialog";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
@@ -54,6 +54,32 @@ export default function StockLogsPage() {
   const [logToDelete, setLogToDelete] = useState<StockLog | null>(null);
   const [copiedLogs, setCopiedLogs] = useState<StockLog[] | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<BranchFilter>('Dar es Salaam');
+
+  // Draft state
+  const [drafts, setDrafts] = useState<StockOutDraft[]>([]);
+  const [selectedDraft, setSelectedDraft] = useState<StockOutDraft | null>(null);
+
+  const refreshDrafts = useCallback(() => {
+    setDrafts(getDraftsFromStorage());
+  }, []);
+
+  useEffect(() => {
+    refreshDrafts();
+  }, [refreshDrafts]);
+
+  const handleDeleteDraft = (draftId: string) => {
+    if (confirm('Delete this draft? This cannot be undone.')) {
+      removeDraftFromStorage(draftId);
+      refreshDrafts();
+      toast({ title: 'Draft Deleted', description: 'The stock-out draft has been removed.' });
+    }
+  };
+
+  const handleResumeDraft = (draft: StockOutDraft) => {
+    setSelectedDraft(draft);
+    setLogType('Stock Out');
+    setIsLogDialogOpen(true);
+  };
   
   // Table State
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -439,6 +465,95 @@ export default function StockLogsPage() {
              <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Closing Stock Value</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(totalStockValue)}</div><p className="text-xs text-muted-foreground">{selectedBranch === 'All Branches' ? 'All branches' : selectedBranch}</p></CardContent></Card>
         </div>
 
+        {/* Pending Drafts Section */}
+        {drafts.length > 0 && (
+          <Card className="border-amber-300 bg-amber-50/30">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <FileWarning className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Pending Stock-Out Drafts</CardTitle>
+                    <CardDescription className="text-xs">Batches waiting to be completed after restocking</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="border-amber-400 text-amber-700 bg-amber-100 font-bold">{drafts.length} Draft{drafts.length > 1 ? 's' : ''}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {drafts.map((draft) => {
+                  // Re-check shortages against current product state
+                  const shortageItems = draft.items.filter(di => {
+                    const product = products.find(p => p.id === di.productId);
+                    if (!product) return true;
+                    const branchKey = BRANCH_KEYS[draft.branch as Branch];
+                    const available = Number(product[branchKey?.qty]) || 0;
+                    return di.quantity > available;
+                  });
+                  const isReady = shortageItems.length === 0;
+
+                  return (
+                    <div key={draft.id} className={cn(
+                      "p-4 rounded-xl border-2 transition-all",
+                      isReady ? "border-green-300 bg-green-50/50" : "border-amber-200 bg-white"
+                    )}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            {isReady ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-300 text-[9px] font-bold gap-1"><Package className="h-3 w-3" /> READY</Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-amber-400 text-amber-700 bg-amber-50 text-[9px] font-bold gap-1"><Clock className="h-3 w-3" /> PENDING</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm font-bold">{draft.branch}</p>
+                          <p className="text-xs text-muted-foreground">Movement date: {draft.date}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteDraft(draft.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-[10px] mb-3">
+                        <div className="text-center p-1.5 bg-muted/50 rounded">
+                          <p className="text-muted-foreground">Items</p>
+                          <p className="font-bold text-sm">{draft.items.length}</p>
+                        </div>
+                        <div className="text-center p-1.5 bg-muted/50 rounded">
+                          <p className="text-muted-foreground">Short</p>
+                          <p className={cn("font-bold text-sm", shortageItems.length > 0 ? "text-destructive" : "text-green-600")}>{shortageItems.length}</p>
+                        </div>
+                        <div className="text-center p-1.5 bg-muted/50 rounded">
+                          <p className="text-muted-foreground">Created</p>
+                          <p className="font-bold text-[9px]">{format(new Date(draft.createdAt), 'dd/MM HH:mm')}</p>
+                        </div>
+                      </div>
+                      {!isReady && shortageItems.length > 0 && (
+                        <div className="text-[10px] text-amber-700 bg-amber-100/50 rounded p-2 mb-3 flex items-start gap-1.5">
+                          <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          <span>{shortageItems.length} item(s) still need restocking: {shortageItems.slice(0, 3).map(i => i.productName).join(', ')}{shortageItems.length > 3 ? '...' : ''}</span>
+                        </div>
+                      )}
+                      <Button 
+                        size="sm" 
+                        className={cn(
+                          "w-full h-8 text-xs font-bold gap-1.5",
+                          isReady ? "bg-green-600 hover:bg-green-700" : ""
+                        )}
+                        onClick={() => handleResumeDraft(draft)}
+                      >
+                        <Play className="h-3 w-3" />
+                        {isReady ? 'Process Now' : 'Resume & Review'}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -496,7 +611,26 @@ export default function StockLogsPage() {
             )}
         </Card>
       
-      <LogStockMovementDialog isOpen={isLogDialogOpen} setIsOpen={setIsLogDialogOpen} logType={logType} onLogMovement={handleLogMovement} products={products}/>
+      <LogStockMovementDialog 
+        isOpen={isLogDialogOpen} 
+        setIsOpen={(open) => {
+          setIsLogDialogOpen(open);
+          if (!open) setSelectedDraft(null);
+        }} 
+        logType={logType} 
+        onLogMovement={handleLogMovement} 
+        products={products}
+        draftToResume={selectedDraft}
+        onDraftSaved={() => {
+          refreshDrafts();
+          toast({ title: 'Draft Saved', description: 'Stock-out batch saved as a draft. Resume it after restocking.' });
+        }}
+        onDraftCompleted={(draftId) => {
+          refreshDrafts();
+          refreshProducts();
+          refreshLogs();
+        }}
+      />
       <TransferStockDialog isOpen={isTransferDialogOpen} setIsOpen={setIsTransferDialogOpen} onTransfer={handleTransferStock} products={products}/>
       {selectedLog && ( <EditStockLogDialog isOpen={isEditDialogOpen} setIsOpen={setIsEditDialogOpen} log={selectedLog} onEditLog={handleEditLog} products={products} /> )}
       {selectedLog && ( <ViewStockLogDialog isOpen={isViewDialogOpen} setIsOpen={setIsViewDialogOpen} log={selectedLog} /> )}

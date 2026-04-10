@@ -17,7 +17,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useOrderStorage } from "@/hooks/use-order-storage";
-import { PlusCircle, Trash2, Check, ChevronsUpDown, ArrowRight, CalendarIcon } from "lucide-react";
+import { PlusCircle, Trash2, Check, ChevronsUpDown, ArrowRight, CalendarIcon, AlertTriangle, Download, FileWarning, CheckCircle2, XCircle } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
@@ -25,8 +25,66 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
 import { BRANCHES, BRANCH_KEYS } from "@/types";
+import { Badge } from "../ui/badge";
+import jsPDF from "jspdf";
 
-export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products }) {
+// --- Draft Types ---
+export interface StockOutDraftItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  reason: string;
+  orderId: string;
+  actual_unit_price: number;
+  unit: string;
+  availableAtDraft: number;
+  shortfall: number;
+}
+
+export interface StockOutDraft {
+  id: string;
+  branch: string;
+  date: string;
+  items: StockOutDraftItem[];
+  createdAt: string;
+  status: 'pending' | 'ready';
+}
+
+const DRAFTS_STORAGE_KEY = 'stock_out_drafts';
+
+export function getDraftsFromStorage(): StockOutDraft[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(DRAFTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDraftsToStorage(drafts: StockOutDraft[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
+}
+
+export function removeDraftFromStorage(draftId: string) {
+  const drafts = getDraftsFromStorage().filter(d => d.id !== draftId);
+  saveDraftsToStorage(drafts);
+}
+
+// --- Component ---
+interface LogStockMovementDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  logType: 'Stock In' | 'Stock Out';
+  onLogMovement: (movement: any) => Promise<any>;
+  products: any[];
+  draftToResume?: StockOutDraft | null;
+  onDraftSaved?: ((draft?: StockOutDraft) => void) | null;
+  onDraftCompleted?: ((draftId: string) => void) | null;
+}
+
+export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMovement, products, draftToResume = null, onDraftSaved = null, onDraftCompleted = null }: LogStockMovementDialogProps) {
   const [items, setItems] = useState([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
   const [date, setDate] = useState(new Date());
   const [branch, setBranch] = useState('Dar es Salaam');
@@ -35,11 +93,31 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
   const [currentProgress, setCurrentProgress] = useState(0);
   const [currentItemName, setCurrentItemName] = useState('');
   const [results, setResults] = useState({ success: 0, failed: 0, errors: [] });
+  const [resumingDraftId, setResumingDraftId] = useState(null);
   const { orders } = useOrderStorage();
   
   const stockInReasons = ["Vendor Delivery", "Internal Production", "Stock Transfer"];
   const stockOutReasons = ["Customer Order", "Internal Use", "Spoilage", "Breakage", "Stock Transfer", "Training costs"];
   const reasonOptions = logType === 'Stock In' ? stockInReasons : stockOutReasons;
+
+  const getProduct = (productId) => products.find(p => p.id === productId);
+
+  const formatCurrency = (amount) => {
+    if (typeof amount !== 'number') return 'TZS 0.00';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
+  }
+
+  const getBranchQty = (product) => {
+    if (!product || !branch) return product?.quantity || 0;
+    const branchKey = BRANCH_KEYS[branch];
+    return Number(product[branchKey?.qty]) || 0;
+  };
+
+  const getBranchPrice = (product) => {
+    if (!product || !branch) return product?.unitPrice || 0;
+    const branchKey = BRANCH_KEYS[branch];
+    return Number(product[branchKey?.price]) || 0;
+  };
 
   const summary = useMemo(() => {
     const validItems = items.filter(item => item.productId && item.quantity > 0);
@@ -48,16 +126,56 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
     return { totalValue, totalQuantity, itemCount: validItems.length };
   }, [items]);
 
+  // Compute shortages for Stock Out review
+  const reviewData = useMemo(() => {
+    if (logType !== 'Stock Out') return { items: [], hasShortages: false, shortageCount: 0 };
+    
+    const validItems = items.filter(item => item.productId && item.quantity > 0 && item.reason && item.actual_unit_price >= 0);
+    const reviewItems = validItems.map(item => {
+      const product = getProduct(item.productId);
+      const available = getBranchQty(product);
+      const shortfall = Math.max(0, item.quantity - available);
+      return {
+        ...item,
+        productName: product?.name || 'Unknown',
+        unit: product?.unit || '',
+        available,
+        shortfall,
+        isAdequate: shortfall === 0,
+      };
+    });
+    
+    const shortageCount = reviewItems.filter(i => !i.isAdequate).length;
+    return { items: reviewItems, hasShortages: shortageCount > 0, shortageCount };
+  }, [items, products, branch, logType]);
+
   useEffect(() => {
     if (isOpen) {
+      if (draftToResume) {
+        // Resume from draft
+        setResumingDraftId(draftToResume.id);
+        setBranch(draftToResume.branch);
+        setDate(new Date(draftToResume.date));
+        setItems(draftToResume.items.map(di => ({
+          productId: di.productId,
+          quantity: di.quantity,
+          reason: di.reason,
+          orderId: di.orderId || '',
+          actual_unit_price: di.actual_unit_price,
+        })));
+        // Go straight to review for draft resume
+        setTimeout(() => setStep('review'), 100);
+      } else {
         setItems([{ productId: '', quantity: 1, reason: '', orderId: '', actual_unit_price: 0 }]);
         setDate(new Date());
         setStep('form');
-        setCurrentProgress(0);
-        setCurrentItemName('');
-        setResults({ success: 0, failed: 0, errors: [] });
+        setResumingDraftId(null);
+      }
+      setCurrentProgress(0);
+      setCurrentItemName('');
+      setResults({ success: 0, failed: 0, errors: [] });
     }
-  }, [isOpen]);
+  }, [isOpen, draftToResume]);
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
@@ -149,30 +267,210 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         await new Promise(resolve => setTimeout(resolve, 200)); 
     }
     
+    // If we were resuming a draft and it succeeded, remove it
+    if (resumingDraftId && successCount > 0) {
+      removeDraftFromStorage(resumingDraftId);
+      onDraftCompleted?.(resumingDraftId);
+    }
+
     setResults({ success: successCount, failed: failCount, errors });
     setStep('success');
     setIsSubmitting(false);
   };
 
-  
-  const getProduct = (productId) => products.find(p => p.id === productId);
+  // --- Save as Draft ---
+  const handleSaveAsDraft = () => {
+    const validItems = items.filter(item => item.productId && item.quantity > 0 && item.reason && item.actual_unit_price >= 0);
+    
+    const draftItems: StockOutDraftItem[] = validItems.map(item => {
+      const product = getProduct(item.productId);
+      const available = getBranchQty(product);
+      return {
+        productId: item.productId,
+        productName: product?.name || 'Unknown',
+        quantity: item.quantity,
+        reason: item.reason,
+        orderId: item.orderId || '',
+        actual_unit_price: item.actual_unit_price,
+        unit: product?.unit || '',
+        availableAtDraft: available,
+        shortfall: Math.max(0, item.quantity - available),
+      };
+    });
 
-  const formatCurrency = (amount) => {
-    if (typeof amount !== 'number') return 'TZS 0.00';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
-  }
+    const draft: StockOutDraft = {
+      id: resumingDraftId || `DRAFT-${Date.now()}`,
+      branch,
+      date: format(date, 'yyyy-MM-dd'),
+      items: draftItems,
+      createdAt: resumingDraftId 
+        ? getDraftsFromStorage().find(d => d.id === resumingDraftId)?.createdAt || new Date().toISOString()
+        : new Date().toISOString(),
+      status: 'pending',
+    };
 
-  const getBranchQty = (product) => {
-    if (!product || !branch) return product?.quantity || 0;
-    const branchKey = BRANCH_KEYS[branch];
-    return Number(product[branchKey?.qty]) || 0;
+    // Replace or add draft
+    const existing = getDraftsFromStorage().filter(d => d.id !== draft.id);
+    saveDraftsToStorage([...existing, draft]);
+    onDraftSaved?.(draft);
+    setStep('draft_saved');
   };
 
-  const getBranchPrice = (product) => {
-    if (!product || !branch) return product?.unitPrice || 0;
-    const branchKey = BRANCH_KEYS[branch];
-    return Number(product[branchKey?.price]) || 0;
+  // --- Export Shortage PDF ---
+  const handleExportShortagePDF = () => {
+    const shortItems = reviewData.items.filter(i => !i.isAdequate);
+    if (shortItems.length === 0) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const tableWidth = pageWidth - 28;
+    
+    // Header
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("STOCK SHORTAGE REPORT", pageWidth / 2, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Branch: ${branch}`, 14, 32);
+    doc.text(`Date: ${format(date, "dd/MM/yyyy")}`, 14, 38);
+    doc.text(`Generated: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 14, 44);
+    doc.text(`Total Shortage Items: ${shortItems.length}`, 14, 50);
+    
+    // Table config — colWidths must sum to tableWidth (182)
+    const startY = 60;
+    const colWidths = [8, 40, 18, 20, 20, 12, 28, 36]; // #, Product, Available, Requested, Required, Unit, Unit Price, Cost
+    const headers = ["#", "Product", "Available", "Requested", "Required", "Unit", "Unit Price", "Cost (TZS)"];
+    const rightAlignCols = [2, 3, 4, 6, 7]; // indices of right-aligned columns
+    
+    // Table header row
+    doc.setFillColor(41, 37, 36);
+    doc.rect(14, startY - 6, tableWidth, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(0.1);
+    
+    let xPos = 14;
+    headers.forEach((header, idx) => {
+      // Draw header column dividers
+      if (idx > 0) doc.line(xPos, startY - 6, xPos, startY + 2);
+      
+      if (rightAlignCols.includes(idx)) {
+        doc.text(header, xPos + colWidths[idx] - 2, startY, { align: 'right' });
+      } else {
+        doc.text(header, xPos + 2, startY);
+      }
+      xPos += colWidths[idx];
+    });
+    
+    // Draw black border around the header
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(14, startY - 6, tableWidth, 8, 'D');
+    
+    // Table rows
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    
+    let yPos = startY + 2; // Right below header
+    let grandTotal = 0;
+
+    shortItems.forEach((item, idx) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+        
+        // Redraw header on new page
+        doc.setFillColor(41, 37, 36);
+        doc.rect(14, yPos - 8, tableWidth, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setDrawColor(255, 255, 255);
+        
+        let tx = 14;
+        headers.forEach((h, i) => {
+          if (i > 0) doc.line(tx, yPos - 8, tx, yPos);
+          if (rightAlignCols.includes(i)) {
+            doc.text(h, tx + colWidths[i] - 2, yPos - 2.5, { align: 'right' });
+          } else {
+            doc.text(h, tx + 2, yPos - 2.5);
+          }
+          tx += colWidths[i];
+        });
+        doc.setDrawColor(0, 0, 0);
+        doc.rect(14, yPos - 8, tableWidth, 8, 'D');
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+      }
+      
+      // Alternating row bg
+      if (idx % 2 === 0) {
+        doc.setFillColor(254, 243, 199);
+        doc.rect(14, yPos, tableWidth, 8, 'F');
+      }
+      
+      const lineCost = item.actual_unit_price * item.shortfall;
+      grandTotal += lineCost;
+
+      const rowData = [
+        `${idx + 1}`,
+        item.productName.length > 24 ? item.productName.substring(0, 22) + '...' : item.productName,
+        `${item.available}`,
+        `${item.quantity}`,
+        `${item.shortfall}`,
+        item.unit,
+        item.actual_unit_price.toLocaleString(),
+        lineCost.toLocaleString(),
+      ];
+      
+      // Draw grid lines
+      doc.setDrawColor(0, 0, 0);
+      doc.rect(14, yPos, tableWidth, 8, 'D'); // Row outline
+      
+      let currentXPos = 14;
+      rowData.forEach((text, colIdx) => {
+        // Vertical divider for each column
+        if (colIdx > 0) doc.line(currentXPos, yPos, currentXPos, yPos + 8);
+        
+        if (rightAlignCols.includes(colIdx)) {
+          doc.text(text, currentXPos + colWidths[colIdx] - 2, yPos + 5.5, { align: 'right' });
+        } else {
+          doc.text(text, currentXPos + 2, yPos + 5.5);
+        }
+        currentXPos += colWidths[colIdx];
+      });
+      
+      yPos += 8;
+    });
+    
+    // Grand total row (flush with the last table row)
+    doc.setFillColor(41, 37, 36);
+    doc.rect(14, yPos, tableWidth, 10, 'F');
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(14, yPos, tableWidth, 10, 'D'); // Outer border for total row
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text("TOTAL PURCHASE REQUIRED:", 16, yPos + 6.5);
+    doc.text(`TZS ${grandTotal.toLocaleString()}`, 14 + tableWidth - 2, yPos + 6.5, { align: 'right' });
+    
+    // Footer note
+    doc.setTextColor(0, 0, 0);
+    yPos += 18;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text("Please procure the above items before the stock-out batch can be processed.", 14, yPos);
+
+    doc.save(`Shortage_Report_${branch.replace(/\s/g,'_')}_${format(date, "yyyy-MM-dd")}.pdf`);
   };
+
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -184,12 +482,16 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         >
         <form onSubmit={handleReview}>
           <DialogHeader>
-            <DialogTitle>{logType}</DialogTitle>
+            <DialogTitle>{logType}{resumingDraftId ? ' (Resuming Draft)' : ''}</DialogTitle>
             <DialogDescription>
               {step === 'form' && "Log one or more stock movements into the inventory."}
-              {step === 'review' && "Carefully review the movements before confirming."}
+              {step === 'review' && (logType === 'Stock Out' && reviewData.hasShortages 
+                ? `⚠️ ${reviewData.shortageCount} item(s) have insufficient stock. Review shortages below.`
+                : "Carefully review the movements before confirming."
+              )}
               {step === 'progress' && `Processing item ${Math.ceil((currentProgress / 100) * summary.itemCount)} of ${summary.itemCount}...`}
               {step === 'success' && "Batch processing complete."}
+              {step === 'draft_saved' && "Draft has been saved successfully."}
             </DialogDescription>
           </DialogHeader>
 
@@ -239,9 +541,14 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 const product = getProduct(item.productId);
                 const catalogPrice = getBranchPrice(product);
                 const priceVariation = item.actual_unit_price - catalogPrice;
+                const currentStock = getBranchQty(product);
+                const hasShortage = logType === 'Stock Out' && product && item.quantity > currentStock;
 
                return (
-               <Card key={index} className="relative p-4 border-2 border-muted hover:border-primary/20 transition-colors">
+               <Card key={index} className={cn(
+                 "relative p-4 border-2 transition-colors",
+                 hasShortage ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60" : "border-muted hover:border-primary/20"
+               )}>
                 {items.length > 1 && (
                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeItem(index)}>
                         <Trash2 className="h-4 w-4"/>
@@ -299,8 +606,13 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                      <div>
                         <Label>Quantity <span className="text-destructive">*</span></Label>
                         <Input type="number" step="any" className="mt-1" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} min="0.01" />
-                        {logType === 'Stock Out' && product && item.quantity > getBranchQty(product) && (
-                            <p className="text-[10px] text-destructive mt-1 font-semibold">Exceeds current stock in {branch}!</p>
+                        {hasShortage && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                <p className="text-[10px] text-destructive font-bold">
+                                    Short by {(item.quantity - currentStock).toFixed(2)} {product?.unit} in {branch}
+                                </p>
+                            </div>
                         )}
                      </div>
                  </div>
@@ -309,7 +621,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                     <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
                          <div className="p-2 bg-muted/50 rounded-md border">
                             <p className="text-muted-foreground">In Stock ({branch})</p>
-                            <p className="font-bold">{getBranchQty(product)} {product.unit}</p>
+                            <p className={cn("font-bold", hasShortage && "text-destructive")}>{currentStock} {product.unit}</p>
                         </div>
                         <div className="p-2 bg-muted/50 rounded-md border">
                             <p className="text-muted-foreground">Branch Price</p>
@@ -398,24 +710,83 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
               <div className="space-y-6 py-4">
                   <div className="p-3 bg-muted/30 rounded-md border text-sm">
                     <span className="font-semibold">Branch:</span> {branch} &nbsp;|&nbsp; <span className="font-semibold">Date:</span> {format(date, "PPP")}
+                    {resumingDraftId && (
+                      <Badge variant="outline" className="ml-3 text-[9px] font-bold bg-amber-100 text-amber-800 border-amber-300">DRAFT RESUME</Badge>
+                    )}
                   </div>
+
+                  {/* Shortage Alert Banner */}
+                  {logType === 'Stock Out' && reviewData.hasShortages && (
+                    <div className="p-4 bg-destructive/5 border-2 border-destructive/30 rounded-lg flex items-start gap-3">
+                      <FileWarning className="h-6 w-6 text-destructive flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-bold text-destructive flex items-center gap-2">
+                          Insufficient Stock Detected
+                        </h4>
+                        <p className="text-xs text-destructive/80 mt-1">
+                          {reviewData.shortageCount} product(s) require additional stock before this batch can be processed. 
+                          You can export the shortage list as a PDF and save this batch as a draft.
+                        </p>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-3 text-xs font-bold bg-background border-destructive/30 text-destructive hover:bg-destructive/5"
+                          onClick={handleExportShortagePDF}
+                        >
+                          <Download className="h-3.5 w-3.5 mr-2" />
+                          Export Shortage List (PDF)
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="border rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
                       <table className="w-full text-xs">
                           <thead className="bg-muted sticky top-0 z-10 shadow-sm">
                               <tr>
                                   <th className="p-2 text-left">Product</th>
                                   <th className="p-2 text-right">Qty</th>
+                                  {logType === 'Stock Out' && (
+                                    <>
+                                      <th className="p-2 text-right">Available</th>
+                                      <th className="p-2 text-center">Status</th>
+                                    </>
+                                  )}
                                   <th className="p-2 text-right">Unit Price</th>
                                   <th className="p-2 text-right">Total</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y">
-                              {items.filter(i => i.productId && i.quantity > 0).map((item, idx) => {
-                                  const p = getProduct(item.productId);
+                              {(logType === 'Stock Out' ? reviewData.items : items.filter(i => i.productId && i.quantity > 0)).map((item, idx) => {
+                                  const p = logType === 'Stock Out' ? item : (() => { const pr = getProduct(item.productId); return { ...item, productName: pr?.name, unit: pr?.unit, available: getBranchQty(pr), isAdequate: true, shortfall: 0 }; })();
+                                  const isShort = logType === 'Stock Out' && !p.isAdequate;
                                   return (
-                                      <tr key={idx} className="hover:bg-muted/30">
-                                          <td className="p-2 font-medium">{p?.name}</td>
-                                          <td className="p-2 text-right">{item.quantity} {p?.unit}</td>
+                                      <tr key={idx} className={cn(
+                                        "hover:bg-muted/30",
+                                        isShort && "bg-destructive/5"
+                                      )}>
+                                          <td className="p-2 font-medium">
+                                            {p.productName}
+                                            {isShort && <span className="text-[9px] text-destructive font-bold ml-2">SHORTAGE</span>}
+                                          </td>
+                                          <td className="p-2 text-right">{item.quantity} {p.unit}</td>
+                                          {logType === 'Stock Out' && (
+                                            <>
+                                              <td className="p-2 text-right">{p.available} {p.unit}</td>
+                                              <td className="p-2 text-center">
+                                                {p.isAdequate ? (
+                                                  <Badge className="bg-green-100 text-green-700 border-green-300 text-[9px] font-bold gap-1">
+                                                    <CheckCircle2 className="h-3 w-3" /> OK
+                                                  </Badge>
+                                                ) : (
+                                                  <Badge variant="destructive" className="text-[9px] font-bold gap-1">
+                                                    <XCircle className="h-3 w-3" /> -{p.shortfall}
+                                                  </Badge>
+                                                )}
+                                              </td>
+                                            </>
+                                          )}
                                           <td className="p-2 text-right">{formatCurrency(item.actual_unit_price)}</td>
                                           <td className="p-2 text-right font-bold">{formatCurrency(item.actual_unit_price * item.quantity)}</td>
                                       </tr>
@@ -426,6 +797,12 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                               <tr>
                                   <td className="p-2 bg-muted/50">TOTAL</td>
                                   <td className="p-2 text-right bg-muted/50">{summary.totalQuantity.toFixed(2)}</td>
+                                  {logType === 'Stock Out' && (
+                                    <>
+                                      <td className="p-2 bg-muted/50"></td>
+                                      <td className="p-2 bg-muted/50"></td>
+                                    </>
+                                  )}
                                   <td className="p-2 bg-muted/50"></td>
                                   <td className="p-2 text-right text-primary bg-muted/50">{formatCurrency(summary.totalValue)}</td>
                               </tr>
@@ -433,14 +810,27 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                       </table>
                   </div>
 
-                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  {/* Accuracy check or shortage notice */}
+                  {logType === 'Stock Out' && reviewData.hasShortages ? (
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                      <h4 className="text-sm font-bold text-amber-800 flex items-center mb-1">
+                        <AlertTriangle className="h-4 w-4 mr-2" /> Save as Draft
+                      </h4>
+                      <p className="text-xs text-amber-700">
+                        This batch cannot be processed until all items have adequate stock in <strong>{branch}</strong>. 
+                        Save it as a draft and come back after restocking the short items.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                       <h4 className="text-sm font-bold text-yellow-800 flex items-center mb-1">
-                          <Check className="h-4 w-4 mr-2" /> Accuracy Check
+                        <Check className="h-4 w-4 mr-2" /> Accuracy Check
                       </h4>
                       <p className="text-xs text-yellow-700">
-                          Please verify all quantities and prices above. Once confirmed, these stock movements will be irreversibly logged for <strong>{branch}</strong> on {format(date, "PPP")}.
+                        Please verify all quantities and prices above. Once confirmed, these stock movements will be irreversibly logged for <strong>{branch}</strong> on {format(date, "PPP")}.
                       </p>
-                  </div>
+                    </div>
+                  )}
               </div>
           )}
 
@@ -507,6 +897,28 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
               </div>
           )}
 
+          {step === 'draft_saved' && (
+              <div className="py-8 space-y-6">
+                  <div className="flex flex-col items-center justify-center text-center space-y-4">
+                      <div className="w-16 h-16 bg-amber-500/20 text-amber-600 rounded-full flex items-center justify-center">
+                          <FileWarning className="h-10 w-10" />
+                      </div>
+                      <div>
+                          <h3 className="text-2xl font-bold text-amber-700">Draft Saved</h3>
+                          <p className="text-muted-foreground">
+                              This batch has been saved as a draft for <strong>{branch}</strong>. 
+                              You can resume it from the Stock Logs page after restocking the short items.
+                          </p>
+                      </div>
+                  </div>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs text-amber-800 font-semibold">
+                      💡 Tip: Stock in the missing quantities, then click "Resume" on the draft card to complete this batch.
+                    </p>
+                  </div>
+              </div>
+          )}
+
           <DialogFooter className="pt-4 gap-2">
             {step === 'form' && (
                 <>
@@ -524,9 +936,16 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 <Button type="button" variant="outline" onClick={() => setStep('form')} disabled={isSubmitting}>
                     Back to Edit
                 </Button>
-                <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+                {logType === 'Stock Out' && reviewData.hasShortages ? (
+                  <Button type="button" onClick={handleSaveAsDraft} className="bg-amber-600 hover:bg-amber-700 text-white">
+                    <FileWarning className="h-4 w-4 mr-2" />
+                    Save as Draft
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
                     {isSubmitting ? "Processing..." : "Confirm & Log All"}
-                </Button>
+                  </Button>
+                )}
                 </>
             )}
 
@@ -536,7 +955,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                 </div>
             )}
 
-            {step === 'success' && (
+            {(step === 'success' || step === 'draft_saved') && (
                 <Button type="button" className="w-full" onClick={() => setIsOpen(false)}>
                     Close
                 </Button>
