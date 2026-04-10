@@ -282,19 +282,19 @@ export default function SpecialMenuPage() {
                     const items = config.menus[type];
                     if (items.length === 0) return;
 
-                    doc.setFontSize(9);
+                    doc.setFontSize(12);
                     doc.setTextColor(245, 158, 11);
                     doc.setFont("helvetica", "bold");
                     doc.text(`${type.toUpperCase()} ITEMS`, 25, currentY);
-                    currentY += 4;
+                    currentY += 6;
 
                     const body = items.map((item, i) => [`${i + 1}.`, item.name]);
                     (doc as any).autoTable({
                         startY: currentY,
                         body: body,
                         theme: 'plain',
-                        styles: { fontSize: 9, cellPadding: 1 },
-                        columnStyles: { 0: { cellWidth: 10 } },
+                        styles: { fontSize: 12, cellPadding: 2 },
+                        columnStyles: { 0: { cellWidth: 15 } },
                         margin: { left: 30, right: 30 },
                         didDrawPage: (data: any) => {
                             // If autoTable caused a page jump, we need to handle that, 

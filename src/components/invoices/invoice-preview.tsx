@@ -178,7 +178,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                 </Button>
               </div>
             </div>
-            <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', position: 'relative', paddingBottom: '80px' }}>
+            <Card id="invoice-pdf-content" className="p-8 bg-white text-black print:shadow-none" style={{ fontFamily: 'sans-serif', position: 'relative', paddingBottom: '160px' }}>
               {/* HEADER SECTION */}
               <div className="flex justify-between items-start mb-6 relative">
                 <div className="flex-1"></div>
@@ -285,7 +285,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                 <div className="text-center text-xs">
                   <p className="mb-1">For and on behalf of:-</p>
                   <p className="mb-2 font-semibold">Abby&apos;s Legendary Caterers Limited</p>
-                  <Image alt="Signature and Seal" height={80} width={200} className="h-20 w-auto block mx-auto mb-2" src="https://placehold.co/200x80.png" data-ai-hint="signature seal"/>
+                  <Image alt="Signature and Seal" height={160} width={400} className="h-40 w-auto block mx-auto mb-2" src="https://placehold.co/400x160.png" data-ai-hint="signature seal"/>
                   <p>Signature: ___________________</p>
                 </div>
               </div>
