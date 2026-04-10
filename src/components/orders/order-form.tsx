@@ -434,10 +434,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
         <div className="space-y-6">
              <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-primary flex items-center"><CalendarIcon className="mr-2 h-6 w-6"/>Daily Events / Deliveries</h3>
-                <Button type="button" variant="outline" size="sm" onClick={() => append({ date: watchedStartDate || format(new Date(), 'yyyy-MM-dd'), mealType: "Lunch only", numberOfPeople: 10, unitPrice: 0, total: 0, vatType: "inclusive", recipes: [], region: "Dar es Salaam", particularType: "event" })} disabled={isSubmitting}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Event
-                </Button>
              </div>
+
              {fields.map((item, index) => (
                 <Card key={item.id} className="relative bg-card/50 border-accent/20">
                     <CardHeader className="py-3 px-4 border-b bg-muted/30">
@@ -460,6 +458,31 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                     </CardContent>
                 </Card>
              ))}
+
+             <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full py-8 border-dashed border-2 hover:bg-primary/5 hover:border-primary/50 transition-all duration-200 group h-auto" 
+                onClick={() => append({ 
+                    date: watchedStartDate || format(new Date(), 'yyyy-MM-dd'), 
+                    mealType: "Lunch only", 
+                    numberOfPeople: 10, 
+                    unitPrice: 0, 
+                    total: 0, 
+                    vatType: "inclusive", 
+                    recipes: [], 
+                    region: "Dar es Salaam", 
+                    particularType: "event" 
+                })} 
+                disabled={isSubmitting}
+             >
+                <div className="flex flex-col items-center gap-2">
+                    <PlusCircle className="h-8 w-8 text-primary group-hover:scale-110 transition-transform" />
+                    <span className="text-lg font-semibold">Add New Event Entry</span>
+                    <span className="text-xs text-muted-foreground italic">Add another line item to this order</span>
+                </div>
+             </Button>
+
              <FormMessage>{(form.formState.errors.clientEvents as any)?.message || (form.formState.errors.clientEvents as any)?.root?.message}</FormMessage>
         </div>
 

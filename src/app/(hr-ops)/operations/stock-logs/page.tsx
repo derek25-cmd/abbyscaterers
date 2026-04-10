@@ -277,22 +277,85 @@ export default function StockLogsPage() {
   
   const handleDeleteConfirm = async () => {
     if (logToDelete) {
+        // Revert stock quantity
+        const product = products.find(p => p.id === logToDelete.productId);
+        if (product) {
+            const branchKey = BRANCH_KEYS[logToDelete.branch as Branch] || BRANCH_KEYS['Dar es Salaam'];
+            const currentQty = Number(product[branchKey.qty]) || 0;
+            const logQty = Number(logToDelete.quantity) || 0;
+            
+            // Revert movement: Stock Out -> add back to reserves, Stock In -> subtract
+            const newQty = logToDelete.type === 'Stock Out' 
+                ? currentQty + logQty 
+                : Math.max(0, currentQty - logQty);
+
+            await updateProductInStore(product.id, {
+                [branchKey.qty]: newQty
+            } as any);
+        }
+
         await deleteStockLog(logToDelete.id);
-        toast({ title: "Log Deleted", description: "The stock log entry has been removed." });
+        toast({ title: "Log Deleted", description: "The stock log entry has been removed and stock reserves updated." });
         setLogToDelete(null);
+        await refreshProducts();
     }
   }
 
   const handleBulkDeleteConfirm = async () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
-    const idsToDelete = selectedRows.map(row => row.original.id);
+    const logsToDelete = selectedRows.map(row => row.original);
+    const idsToDelete = logsToDelete.map(log => log.id);
     
     setIsDeleting(true);
     try {
+        // Calculate net changes per product to revert them efficiently
+        const productChanges: Record<string, { quantity_dar: number, quantity_arusha: number, quantity_dodoma: number }> = {};
+        
+        logsToDelete.forEach(log => {
+            if (!productChanges[log.productId]) {
+                productChanges[log.productId] = { quantity_dar: 0, quantity_arusha: 0, quantity_dodoma: 0 };
+            }
+            
+            const branchKey = BRANCH_KEYS[log.branch as Branch] || BRANCH_KEYS['Dar es Salaam'];
+            const qtyKey = branchKey.qty as 'quantity_dar' | 'quantity_arusha' | 'quantity_dodoma';
+            const logQty = Number(log.quantity) || 0;
+            
+            // Revert movement action
+            if (log.type === 'Stock Out') {
+                productChanges[log.productId][qtyKey] += logQty; // Add back
+            } else if (log.type === 'Stock In') {
+                productChanges[log.productId][qtyKey] -= logQty; // Subtract
+            }
+        });
+
+        // Apply changes to products
+        for (const [productId, changes] of Object.entries(productChanges)) {
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                const updatePayload: any = {};
+                let hasChanges = false;
+                
+                ['quantity_dar', 'quantity_arusha', 'quantity_dodoma'].forEach(key => {
+                    const qtyKey = key as 'quantity_dar' | 'quantity_arusha' | 'quantity_dodoma';
+                    const change = changes[qtyKey];
+                    if (change !== 0) {
+                        const currentQty = Number(product[qtyKey]) || 0;
+                        updatePayload[qtyKey] = Math.max(0, currentQty + change);
+                        hasChanges = true;
+                    }
+                });
+                
+                if (hasChanges) {
+                    await updateProductInStore(productId, updatePayload);
+                }
+            }
+        }
+        
         const success = await deleteStockLogs(idsToDelete);
         if (success) {
-            toast({ title: "Logs Deleted", description: `${idsToDelete.length} stock log entries have been removed.` });
+            toast({ title: "Logs Deleted", description: `${idsToDelete.length} stock log entries have been removed and stock reserves updated.` });
             table.resetRowSelection();
+            await refreshProducts();
         } else {
             throw new Error("Bulk delete failed");
         }

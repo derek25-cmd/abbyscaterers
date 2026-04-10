@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, Plus, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil, AlertCircle, ArrowRight, ArrowLeft, Utensils, RefreshCw, Download } from 'lucide-react';
+import { CalendarIcon, Plus, PlusCircle, Trash2, Loader2, Save, ChevronsUpDown, Check, Settings2, User, Info, FileText, CheckCircle, Building, Pencil, AlertCircle, ArrowRight, ArrowLeft, Utensils, RefreshCw, Download } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
@@ -646,20 +646,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                         {isPersistingDrafts ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                                                         SAVE ALL DRAFTS
                                                     </Button>
-                                                    <Button type="button" size="sm" className="font-black italic text-[10px] tracking-widest" onClick={() => append({ 
-                                                        id: `DRAFT-EVT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
-                                                        orderId: `DRAFT-ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
-                                                        particularType: 'event', 
-                                                        eventType: eventTypes[0], 
-                                                        mealType: mealTypes[0], 
-                                                        pax: 1, 
-                                                        unitPrice: 0, 
-                                                        total: 0, 
-                                                        date: format(new Date(), 'yyyy-MM-dd'), 
-                                                        vatType: 'inclusive' 
-                                                    })}>
-                                                        <Plus className="w-4 h-4 mr-1" /> ADD SERVICE ENTRY
-                                                    </Button>
                                                 </div>
                                             </div>
                                             <div className="space-y-4">
@@ -856,6 +842,30 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                         </div>
                                                     );
                                                  })}
+
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    className="w-full py-10 border-dashed border-2 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 group h-auto rounded-xl" 
+                                                    onClick={() => append({ 
+                                                        id: `DRAFT-EVT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+                                                        orderId: `DRAFT-ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+                                                        particularType: 'event', 
+                                                        eventType: eventTypes[0], 
+                                                        mealType: mealTypes[0], 
+                                                        pax: 1, 
+                                                        unitPrice: 0, 
+                                                        total: 0, 
+                                                        date: format(new Date(), 'yyyy-MM-dd'), 
+                                                        vatType: 'inclusive' 
+                                                    })}
+                                                >
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <PlusCircle className="h-10 w-10 text-primary group-hover:scale-110 transition-transform" />
+                                                        <span className="text-sm font-black italic uppercase tracking-widest">Add New Service Entry</span>
+                                                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Click to add another event or delivery item</span>
+                                                    </div>
+                                                </Button>
                                             </div>
                                         </motion.div>
                                     )}
