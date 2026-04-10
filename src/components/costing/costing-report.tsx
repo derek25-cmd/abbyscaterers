@@ -9,6 +9,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import CostingSummary from "./CostingSummary";
 import StockLogTable from "./StockLogTable"; 
+import RegionalComparisonTable from "./RegionalComparisonTable";
 import { format, parseISO } from "date-fns";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
@@ -57,7 +58,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
   }, [reportDate]);
 
 
-  const { title, filteredEvents, filteredStockLogs, spoilageLogs, trainingLogs, spoilageCost, trainingCost, ingredientCost, forecastedIngredientCost } = useMemo(() => {
+  const { title, filteredEvents, filteredStockLogs, spoilageLogs, trainingLogs, spoilageCost, trainingCost, ingredientCost, forecastedIngredientCost, regionalData } = useMemo(() => {
     if (!request || isLoading) {
       return { 
         title: "Loading Report...", 
@@ -68,7 +69,8 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         spoilageCost: 0,
         trainingCost: 0,
         ingredientCost: 0,
-        forecastedIngredientCost: 0
+        forecastedIngredientCost: 0,
+        regionalData: {}
       };
     }
 
@@ -90,6 +92,11 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
 
     if (request.type === 'individual' && request.clientId) {
       eventsForReport = eventsForReport.filter((event: any) => event.clientId === request.clientId);
+    }
+
+    // Branch/Region filtering for events
+    if (request.branch !== 'All Branches') {
+      eventsForReport = eventsForReport.filter((event: any) => (event.region || 'Dar es Salaam') === request.branch);
     }
     
     const stockLogsForReport = allLogs.filter(log => {
@@ -122,6 +129,42 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
     const spoilageCost = spoilageLogs.reduce((sum, log) => sum + (log.price || 0), 0);
     const trainingCost = trainingLogs.reduce((sum, log) => sum + (log.price || 0), 0);
     
+    // Regional Breakdown logic
+    const regionalData: Record<string, any> = {};
+    const extractRegion = (branch: string) => branch || 'Dar es Salaam';
+
+    // 1. Process Event Income by Region
+    eventsForReport.forEach((event: any) => {
+        const r = extractRegion(event.region);
+        if (!regionalData[r]) regionalData[r] = { region: r, revenue: 0, expenses: 0, profit: 0, margin: 0 };
+        regionalData[r].revenue += (event.unitPrice * event.numberOfPeople);
+    });
+
+    // 2. Process All Stock Out Expenses by Region (Regular + Spoilage + Training)
+    allStockOutLogs.forEach(log => {
+        const r = extractRegion(log.branch);
+        if (!regionalData[r]) regionalData[r] = { region: r, revenue: 0, expenses: 0, profit: 0, margin: 0 };
+        
+        const qty = log.actual_quantity ?? log.quantity;
+        const cost = (qty * (log.actual_unit_price || 0));
+        regionalData[r].expenses += cost;
+    });
+
+    // 3. Process Misc Items by Region
+    miscItems.forEach(item => {
+        const r = extractRegion(item.branch);
+        if (!regionalData[r]) regionalData[r] = { region: r, revenue: 0, expenses: 0, profit: 0, margin: 0 };
+        if (item.type === 'income') regionalData[r].revenue += item.amount;
+        else regionalData[r].expenses += item.amount;
+    });
+
+    // Calculate profit and margin for each region
+    Object.keys(regionalData).forEach(r => {
+        const data = regionalData[r];
+        data.profit = data.revenue - data.expenses;
+        data.margin = data.revenue > 0 ? (data.expenses / data.revenue) * 100 : 0;
+    });
+
     return { 
       title: reportTitle,
       filteredEvents: eventsForReport, 
@@ -131,7 +174,8 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
       spoilageCost,
       trainingCost,
       ingredientCost: calculatedActualIngredientCost,
-      forecastedIngredientCost: calculatedForecastIngredientCost
+      forecastedIngredientCost: calculatedForecastIngredientCost,
+      regionalData
     };
 
   }, [request, clients, orders, allLogs, recipes, ingredients, isLoading]);
@@ -251,6 +295,30 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
             startY: lastY + 20,
             headStyles: { fillColor: [220, 38, 38], halign: 'center' },
             columnStyles: { 1: { halign: 'right' } }
+        });
+        lastY = (doc as any).autoTable.previous.finalY;
+    }
+
+    if (Object.keys(regionalData).length > 0) {
+        doc.text("Regional Performance Breakdown", 14, lastY + 15);
+        (doc as any).autoTable({
+            theme: 'grid',
+            head: [['Region', 'Revenue', 'Expenses', 'Net Profit/Loss', 'Margin']],
+            body: Object.values(regionalData).sort((a: any, b: any) => b.revenue - a.revenue).map((r: any) => [
+                r.region,
+                r.revenue.toLocaleString(),
+                r.expenses.toLocaleString(),
+                r.profit.toLocaleString(),
+                `${r.margin.toFixed(1)}%`
+            ]),
+            startY: lastY + 20,
+            headStyles: { fillColor: [67, 56, 202], halign: 'center' },
+            columnStyles: { 
+                1: { halign: 'right' },
+                2: { halign: 'right' },
+                3: { halign: 'right' },
+                4: { halign: 'right' }
+            }
         });
         lastY = (doc as any).autoTable.previous.finalY;
     }
@@ -414,6 +482,8 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
                 </div>
             </CardContent>
         </Card>
+
+        <RegionalComparisonTable data={regionalData} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
           <StockLogTable logs={filteredStockLogs} totalCost={ingredientCost} />

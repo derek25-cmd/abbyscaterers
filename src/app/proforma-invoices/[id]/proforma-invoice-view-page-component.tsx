@@ -49,6 +49,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
+  const [preserveSpace, setPreserveSpace] = useState(false);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
@@ -157,7 +158,7 @@ export function ProformaInvoiceViewPageComponent() {
               0, 0,
               sliceCanvas.width, sliceCanvas.height
             );
-             pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop + (showHeaders ? headerHeight : 0), usableWidth, sliceHeight);
+             pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop + ((showHeaders || preserveSpace) ? headerHeight : 0), usableWidth, sliceHeight);
           }
 
            if (showHeaders) {
@@ -282,6 +283,14 @@ export function ProformaInvoiceViewPageComponent() {
                     {showHeaders ? <Eye className="w-4 h-4 mr-1"/> : <EyeOff className="w-4 h-4 mr-1"/>}
                     Show Header &amp; Footer
                 </Label>
+                {!showHeaders && (
+                  <div className="flex items-center space-x-2 border-l pl-4 ml-4">
+                      <Switch id="preserve-space" checked={preserveSpace} onCheckedChange={setPreserveSpace} />
+                      <Label htmlFor="preserve-space" className="text-sm text-muted-foreground">
+                          Preserve Space (for Letterhead)
+                      </Label>
+                  </div>
+                )}
             </div>
           </div>
           <div className="space-x-2 flex flex-wrap">
@@ -331,7 +340,7 @@ export function ProformaInvoiceViewPageComponent() {
           </div>
         </div>
         <div ref={printRef}>
-          <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders}/>
+          <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace}/>
         </div>
         <CreateInvoiceDialog
             isOpen={isCreateInvoiceDialogOpen}

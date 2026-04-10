@@ -10,7 +10,7 @@ import { useSettingsStorage, AppSettings } from "@/hooks/use-settings-storage";
 import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { Loader2, UploadCloud, Hash, RefreshCw, FileType } from "lucide-react";
+import { Loader2, UploadCloud, Hash, RefreshCw, FileType, Trash2 } from "lucide-react";
 import { getLatestOrderNumber } from "@/services/orderService";
 import { Slider } from "@/components/ui/slider";
 
@@ -111,13 +111,36 @@ export function SettingsPageComponent() {
         }
     }
 
+    const handleRemoveImage = (imageKey: ImageKey) => {
+        updateSettings({ [imageKey]: null });
+        toast({
+            title: "Image Removed",
+            description: `The ${imageKey.replace('Url', '')} image has been cleared.`,
+        });
+    };
+
     const ImageUploader = ({ imageKey, label }: { imageKey: ImageKey, label: string }) => (
         <div className="space-y-2">
             <Label htmlFor={imageKey}>{label}</Label>
             <div className="flex items-center gap-4">
-                <div className="w-32 h-20 rounded-md border flex items-center justify-center bg-muted/50 overflow-hidden">
+                <div className="w-32 h-20 rounded-md border flex items-center justify-center bg-muted/50 overflow-hidden relative group">
                     {settings[imageKey] ? (
-                        <Image src={settings[imageKey]!} alt={`${label} preview`} width={128} height={80} className="object-contain" />
+                        <>
+                            <Image src={settings[imageKey]!} alt={`${label} preview`} width={128} height={80} className="object-contain" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Button 
+                                    size="icon" 
+                                    variant="destructive" 
+                                    className="h-8 w-8 rounded-full"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveImage(imageKey);
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </>
                     ) : (
                         <span className="text-xs text-muted-foreground">No Image</span>
                     )}
@@ -141,7 +164,7 @@ export function SettingsPageComponent() {
                     ) : (
                         <UploadCloud className="mr-2 h-4 w-4" />
                     )}
-                    {uploading[imageKey] ? "Uploading..." : "Change"}
+                    {uploading[imageKey] ? "Uploading..." : settings[imageKey] ? "Change" : "Upload"}
                 </Button>
             </div>
         </div>

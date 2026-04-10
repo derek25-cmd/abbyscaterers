@@ -34,6 +34,7 @@ export function InvoiceViewPageComponent() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
+  const [preserveSpace, setPreserveSpace] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
@@ -150,7 +151,7 @@ export function InvoiceViewPageComponent() {
             tempCanvas.toDataURL('image/png', 1.0),
             'PNG',
             marginX,
-            marginTop + (showHeaders ? headerHeight : 0),
+            marginTop + ((showHeaders || preserveSpace) ? headerHeight : 0),
             usableWidth,
             sliceHeight
           );
@@ -252,6 +253,14 @@ export function InvoiceViewPageComponent() {
                     {showHeaders ? <Eye className="w-4 h-4 mr-1"/> : <EyeOff className="w-4 h-4 mr-1"/>}
                     Show Header &amp; Footer
                 </Label>
+                {!showHeaders && (
+                  <div className="flex items-center space-x-2 border-l pl-4 ml-4">
+                      <Switch id="preserve-space" checked={preserveSpace} onCheckedChange={setPreserveSpace} />
+                      <Label htmlFor="preserve-space" className="text-sm text-muted-foreground">
+                          Preserve Space (for Letterhead)
+                      </Label>
+                  </div>
+                )}
             </div>
           </div>
           <div className="space-x-2 flex flex-wrap">
@@ -285,7 +294,7 @@ export function InvoiceViewPageComponent() {
         )}
         
         <div ref={printRef}>
-            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} />
+            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} />
         </div>
     </>
   );

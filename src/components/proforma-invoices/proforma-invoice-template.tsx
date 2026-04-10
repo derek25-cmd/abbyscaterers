@@ -17,6 +17,7 @@ interface ProformaInvoiceTemplateProps {
     invoiceData: ProformaInvoice;
     client: Client | undefined;
     showHeaders?: boolean;
+    preserveSpace?: boolean;
 }
 
 const convertToWords = (amount: number): string => {
@@ -75,7 +76,7 @@ interface EditParticularsState {
 }
 
 
-export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = true }: ProformaInvoiceTemplateProps) {
+export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = true, preserveSpace = false }: ProformaInvoiceTemplateProps) {
     
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
@@ -140,7 +141,10 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                     fontSize: '15px',
                 }}
             >
-                <div id="proforma-header" style={{ display: showHeaders ? 'block' : 'none' }}>
+                <div id="proforma-header" style={{ 
+                    display: (showHeaders || preserveSpace) ? 'block' : 'none',
+                    visibility: showHeaders ? 'visible' : 'hidden'
+                }}>
                       {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
@@ -273,7 +277,10 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                     </div>
                 </div>
                 
-                 <div id="proforma-footer" style={{ display: showHeaders ? 'block' : 'none' }}>
+                 <div id="proforma-footer" style={{ 
+                    display: (showHeaders || preserveSpace) ? 'block' : 'none',
+                    visibility: showHeaders ? 'visible' : 'hidden'
+                 }}>
                       {settings.footerUrl && (
                         <div className="mt-4">
                             <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />

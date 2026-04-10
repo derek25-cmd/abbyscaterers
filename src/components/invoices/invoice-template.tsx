@@ -15,6 +15,7 @@ interface InvoiceTemplateProps {
     invoiceData: Invoice;
     client: Client | undefined;
     showHeaders?: boolean;
+    preserveSpace?: boolean;
 }
 
 // ... (keep convertToWords function as is)
@@ -68,7 +69,7 @@ const formatDate = (dateStr?: string) => {
     return format(parseISO(dateStr), 'do MMMM yyyy');
 };
 
-export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: InvoiceTemplateProps) {
+export function InvoiceTemplate({ invoiceData, client, showHeaders = true, preserveSpace = false }: InvoiceTemplateProps) {
     const [notes, setNotes] = useState("");
     const [serviceDescription, setServiceDescription] = useState(invoiceData.serviceDesc);
     const { settings } = useSettingsStorage();
@@ -126,7 +127,10 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
                     fontSize: '15px',
                 }}
             >
-                <div id="invoice-header" style={{ display: showHeaders ? 'block' : 'none' }}>
+                <div id="invoice-header" style={{ 
+                    display: (showHeaders || preserveSpace) ? 'block' : 'none',
+                    visibility: showHeaders ? 'visible' : 'hidden'
+                }}>
                     {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
@@ -258,7 +262,10 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true }: Inv
                     </div>
                 </div>
 
-                <div id="invoice-footer" style={{ display: showHeaders ? 'block' : 'none' }}>
+                <div id="invoice-footer" style={{ 
+                    display: (showHeaders || preserveSpace) ? 'block' : 'none',
+                    visibility: showHeaders ? 'visible' : 'hidden'
+                }}>
                     {settings.footerUrl && (
                         <div className="mt-4">
                             <Image src={settings.footerUrl} alt="Footer" layout="responsive" width={700} height={100} />
