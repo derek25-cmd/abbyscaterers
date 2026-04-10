@@ -662,191 +662,200 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                     </Button>
                                                 </div>
                                             </div>
-                                            <div className="rounded-xl border overflow-hidden">
-                                                <table className="w-full text-sm">
-                                                    <thead className="bg-muted/80 backdrop-blur-sm sticky top-0 z-20 border-b shadow-sm">
-                                                        <tr className="divide-x divide-border/40">
-                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[110px]">Category</th>
-                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[180px]">Type</th>
-                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[130px]">Service Date</th>
-                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Particulars & Description</th>
-                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[100px]">Pax</th>
-                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[160px]">Unit Rate</th>
-                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[130px]">Grand Total</th>
-                                                            <th className="px-3 py-4 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground w-40">Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y">
-                                                          {fields.map((item, index) => {
-                                                             const itemType = form.watch(`items.${index}.particularType`);
-                                                             const orderId = form.watch(`items.${index}.orderId`);
-                                                             const isFirstInOrder = index === 0 || form.watch(`items.${index - 1}.orderId`) !== orderId;
-                                                             const isSaved = orderId?.startsWith('ORD-');
-                                                             
-                                                            return (
-                                                                <tr key={item.id} className={cn(
-                                                                    "group transition-all duration-200 border-b last:border-0 hover:bg-muted/30",
-                                                                    isSaved ? "bg-green-50/20" : ""
-                                                                )}>
-                                                                    <td className="px-3 py-3 align-middle">
-                                                                        <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
+                                            <div className="space-y-4">
+                                                {fields.length === 0 && (
+                                                    <div className="text-center p-8 border-2 border-dashed rounded-xl bg-muted/20">
+                                                        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">No services added</p>
+                                                        <p className="text-xs text-muted-foreground mt-1">Click the button above to add an entry.</p>
+                                                    </div>
+                                                )}
+                                                {fields.map((item, index) => {
+                                                    const itemType = form.watch(`items.${index}.particularType`);
+                                                    const orderId = form.watch(`items.${index}.orderId`);
+                                                    const isSaved = orderId?.startsWith('ORD-');
+                                                    
+                                                    return (
+                                                        <div key={item.id} className={cn(
+                                                            "rounded-xl border p-5 transition-all duration-200 shadow-sm",
+                                                            isSaved ? "bg-green-50/30 border-green-200" : "bg-muted/10"
+                                                        )}>
+                                                            <div className="flex justify-between items-start border-b pb-3 mb-4 border-muted-foreground/10">
+                                                                <div className="font-black text-xs uppercase tracking-widest text-primary/80 flex items-center gap-2">
+                                                                    <div className="h-6 w-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">{index + 1}</div>
+                                                                    Service Entry
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    {isSaved ? (
+                                                                        <div className="flex items-center gap-2 group/saved">
+                                                                            <div className="flex flex-col items-end gap-1 scale-95 opacity-80">
+                                                                                <Badge variant="outline" className="bg-green-100/50 text-green-700 border-green-200 text-[9px] font-black tracking-tighter shadow-sm py-0.5 whitespace-nowrap">EXTRACTED</Badge>
+                                                                                <span className="text-[8px] text-muted-foreground/80 font-mono tracking-widest">{orderId}</span>
+                                                                            </div>
+                                                                            <Button 
+                                                                                type="button" 
+                                                                                variant="destructive" 
+                                                                                size="sm" 
+                                                                                onClick={async () => {
+                                                                                    if (confirm('Unlink this order from this form?')) {
+                                                                                        await updateOrder(orderId!, { proformaId: '' } as any);
+                                                                                        remove(index);
+                                                                                    }
+                                                                                }} 
+                                                                                className="h-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-3"
+                                                                            >
+                                                                                <Trash2 className="w-3.5 h-3.5" /> UNLINK
+                                                                            </Button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Button 
+                                                                                type="button" 
+                                                                                variant="secondary" 
+                                                                                size="sm" 
+                                                                                onClick={() => persistDraftOrders(orderId)} 
+                                                                                disabled={isPersistingDrafts}
+                                                                                className="h-8 px-3 text-[9px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all"
+                                                                            >
+                                                                                {isPersistingDrafts ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : <Save className="w-3 h-3 mr-1.5" />}
+                                                                                SAVE DRAFT
+                                                                            </Button>
+                                                                            <Button 
+                                                                                type="button" 
+                                                                                variant="destructive" 
+                                                                                size="sm" 
+                                                                                onClick={() => remove(index)} 
+                                                                                className="h-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-3"
+                                                                            >
+                                                                                <Trash2 className="w-3.5 h-3.5" /> REMOVE
+                                                                            </Button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                                                                {/* First Line */}
+                                                                <div className="col-span-12 md:col-span-3 lg:col-span-2 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Category</FormLabel>
+                                                                    <FormField control={form.control} name={`items.${index}.particularType`} render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                                                <FormControl><SelectTrigger className="h-10 text-xs font-semibold bg-background"><SelectValue /></SelectTrigger></FormControl>
+                                                                                <SelectContent>
+                                                                                    <SelectItem value="event">Event</SelectItem>
+                                                                                    <SelectItem value="meal">Meal</SelectItem>
+                                                                                    <SelectItem value="custom">Custom</SelectItem>
+                                                                                </SelectContent>
+                                                                            </Select>
+                                                                        </FormItem>
+                                                                    )} />
+                                                                </div>
+                                                                
+                                                                <div className="col-span-12 md:col-span-5 lg:col-span-4 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Service Type</FormLabel>
+                                                                    {itemType === 'event' && (
+                                                                        <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
                                                                             <FormItem>
                                                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                                                    <FormControl><SelectTrigger className="h-9 text-xs font-semibold bg-background border-muted-foreground/20 focus:ring-primary/40"><SelectValue /></SelectTrigger></FormControl>
+                                                                                    <FormControl><SelectTrigger className="h-10 text-xs bg-background italic"><SelectValue /></SelectTrigger></FormControl>
                                                                                     <SelectContent>
-                                                                                        <SelectItem value="event">Event</SelectItem>
-                                                                                        <SelectItem value="meal">Meal</SelectItem>
-                                                                                        <SelectItem value="custom">Custom</SelectItem>
+                                                                                        {eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                                                                     </SelectContent>
                                                                                 </Select>
                                                                             </FormItem>
                                                                         )} />
-                                                                    </td>
-                                                                    <td className="px-3 py-3 align-top">
-                                                                        {itemType === 'event' && (
-                                                                            <FormField control={form.control} name={`items.${index}.eventType`} render={({ field }) => (
-                                                                                <FormItem>
-                                                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                                                        <FormControl><SelectTrigger className="h-9 text-xs bg-background border-muted-foreground/20 italic"><SelectValue /></SelectTrigger></FormControl>
-                                                                                        <SelectContent>
-                                                                                            {eventTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                                                                        </SelectContent>
-                                                                                    </Select>
-                                                                                </FormItem>
-                                                                            )} />
-                                                                        )}
-                                                                        {itemType === 'meal' && (
-                                                                            <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
-                                                                                <FormItem>
-                                                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                                                        <FormControl><SelectTrigger className="h-9 text-xs bg-background border-muted-foreground/20 italic"><SelectValue /></SelectTrigger></FormControl>
-                                                                                        <SelectContent>
-                                                                                            {mealTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                                                                        </SelectContent>
-                                                                                    </Select>
-                                                                                </FormItem>
-                                                                            )} />
-                                                                        )}
-                                                                        {itemType === 'custom' && (
-                                                                            <div className="flex h-9 items-center px-1">
-                                                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter opacity-40">Ad Hoc Entry</Badge>
-                                                                            </div>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="px-3 py-3 align-top">
-                                                                        <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
-                                                                            <FormItem className="flex flex-col">
-                                                                                <Popover>
-                                                                                    <PopoverTrigger asChild>
-                                                                                        <FormControl><Button variant={"outline"} className={cn("h-9 border-muted-foreground/20 w-full justify-start text-left font-medium text-xs px-2 bg-background", !field.value && "text-muted-foreground")}>
-                                                                                            <CalendarIcon className="mr-1.5 h-3.5 w-3.5 opacity-50" />
-                                                                                            {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "dd/MM/yyyy") : <span>DATE</span>}
-                                                                                        </Button></FormControl>
-                                                                                    </PopoverTrigger>
-                                                                                    <PopoverContent className="w-auto p-0" align="start">
-                                                                                        <Calendar 
-                                                                                            mode="single" 
-                                                                                            selected={field.value ? parseISO(field.value) : undefined} 
-                                                                                            onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} 
-                                                                                            disabled={(date) => {
-                                                                                                const s = form.getValues('startDate');
-                                                                                                const e = form.getValues('endDate');
-                                                                                                if (!s || !e) return false;
-                                                                                                return date < parseISO(s) || date > parseISO(e);
-                                                                                            }}
-                                                                                            initialFocus 
-                                                                                        />
-                                                                                    </PopoverContent>
-                                                                                </Popover>
-                                                                            </FormItem>
-                                                                        )} />
-                                                                    </td>
-                                                                    <td className="px-3 py-3 align-top min-w-[300px]">
-                                                                        <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => (
+                                                                    )}
+                                                                    {itemType === 'meal' && (
+                                                                        <FormField control={form.control} name={`items.${index}.mealType`} render={({ field }) => (
                                                                             <FormItem>
-                                                                                <FormControl><Textarea {...field} className="min-h-[56px] bg-background border-muted-foreground/20 focus:border-primary font-medium resize-y py-2" placeholder="E.g. Working Lunch Menu A" /></FormControl>
-                                                                                <FormMessage />
+                                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                                    <FormControl><SelectTrigger className="h-10 text-xs bg-background italic"><SelectValue /></SelectTrigger></FormControl>
+                                                                                    <SelectContent>
+                                                                                        {mealTypes.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                                                                    </SelectContent>
+                                                                                </Select>
                                                                             </FormItem>
                                                                         )} />
-                                                                    </td>
-                                                                    <td className="px-3 py-3 align-middle text-right">
-                                                                        <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
-                                                                            <FormItem>
-                                                                                <FormControl><Input type="number" {...field} className="h-14 text-right bg-background border-muted-foreground/20 focus:ring-amber-500/20 font-bold text-base" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                    </td>
-                                                                    <td className="px-3 py-3 align-middle text-right">
-                                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
-                                                                            <FormItem>
-                                                                                <FormControl><Input type="number" {...field} className="h-14 text-right bg-background border-muted-foreground/20 focus:ring-amber-500/20 font-bold text-base" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
-                                                                                <FormMessage />
-                                                                            </FormItem>
-                                                                        )} />
-                                                                    </td>
-                                                                    <td className="px-3 py-3 align-top text-right pt-5">
-                                                                        <span className="font-black text-xs text-primary/80">{form.watch(`items.${index}.total`).toLocaleString()}</span>
-                                                                    </td>
-                                                                    <td className="px-3 py-3 text-center align-middle">
-                                                                        <div className="flex items-center justify-center gap-2">
-                                                                             {isSaved ? (
-                                                                                <div className="flex items-center gap-2 group/saved">
-                                                                                    <div className="flex flex-col items-center gap-1 scale-95 opacity-60">
-                                                                                        <Badge variant="outline" className="bg-green-100/50 text-green-700 border-green-200 text-[9px] font-black tracking-tighter shadow-sm py-0.5 whitespace-nowrap">EXTRACTED</Badge>
-                                                                                        <span className="text-[7px] text-muted-foreground/60 font-mono tracking-widest">{orderId}</span>
-                                                                                    </div>
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="destructive" 
-                                                                                        size="sm" 
-                                                                                        onClick={async () => {
-                                                                                            if (confirm('Unlink this order from this proforma?')) {
-                                                                                                await updateOrder(orderId!, { proformaId: '' } as any);
-                                                                                                remove(index);
-                                                                                            }
-                                                                                        }} 
-                                                                                        className="h-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-2 animate-in fade-in zoom-in duration-300"
-                                                                                        title="Remove from Wizard"
-                                                                                    >
-                                                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                                                        DELETE
-                                                                                    </Button>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="secondary" 
-                                                                                        size="sm" 
-                                                                                        onClick={() => persistDraftOrders(orderId)} 
-                                                                                        disabled={isPersistingDrafts}
-                                                                                        className="h-8 px-2 text-[8px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all active:scale-90 flex items-center gap-1.5"
-                                                                                        title="Save this Order to Database"
-                                                                                    >
-                                                                                        {isPersistingDrafts ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                                                                                        SAVE TO ORDER
-                                                                                    </Button>
-                                                                                    <Button 
-                                                                                        type="button" 
-                                                                                        variant="destructive" 
-                                                                                        size="sm" 
-                                                                                        onClick={() => remove(index)} 
-                                                                                        className="h-8 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-tighter px-2"
-                                                                                        title="Remove Row"
-                                                                                    >
-                                                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                                                        DELETE
-                                                                                    </Button>
-                                                                                </>
-                                                                            )}
+                                                                    )}
+                                                                    {itemType === 'custom' && (
+                                                                        <div className="flex h-10 items-center">
+                                                                            <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest opacity-60">Ad Hoc / Free Text Layout</Badge>
                                                                         </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                         })}
-                                                    </tbody>
-                                                </table>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Service Date</FormLabel>
+                                                                    <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
+                                                                        <FormItem className="flex flex-col">
+                                                                            <Popover>
+                                                                                <PopoverTrigger asChild>
+                                                                                    <FormControl><Button variant={"outline"} className={cn("h-10 w-full justify-start text-left font-medium text-xs px-3 bg-background", !field.value && "text-muted-foreground")}>
+                                                                                        <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                                                                        {field.value && isValid(parseISO(field.value)) ? format(parseISO(field.value), "dd/MM/yyyy") : <span>SELECT DATE</span>}
+                                                                                    </Button></FormControl>
+                                                                                </PopoverTrigger>
+                                                                                <PopoverContent className="w-auto p-0" align="start">
+                                                                                    <Calendar 
+                                                                                        mode="single" 
+                                                                                        selected={field.value ? parseISO(field.value) : undefined} 
+                                                                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} 
+                                                                                        disabled={(date) => {
+                                                                                            const s = form.getValues('startDate');
+                                                                                            const e = form.getValues('endDate');
+                                                                                            if (!s || !e) return false;
+                                                                                            return date < parseISO(s) || date > parseISO(e);
+                                                                                        }}
+                                                                                        initialFocus 
+                                                                                    />
+                                                                                </PopoverContent>
+                                                                            </Popover>
+                                                                        </FormItem>
+                                                                    )} />
+                                                                </div>
+
+                                                                <div className="col-span-12 lg:col-span-3 lg:row-span-2 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Grand Total</FormLabel>
+                                                                    <div className="h-[calc(100%-20px)] w-full rounded-xl bg-background border-2 border-dashed flex flex-col justify-center items-end p-4">
+                                                                        <span className="text-secondary-foreground/60 text-xs font-bold uppercase mb-1">Item Aggregate</span>
+                                                                        <span className="font-black text-2xl text-primary tracking-tighter">{form.watch(`items.${index}.total`).toLocaleString()}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Second Line */}
+                                                                <div className="col-span-12 lg:col-span-3 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Quantity (Pax)</FormLabel>
+                                                                    <FormField control={form.control} name={`items.${index}.pax`} render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <FormControl><Input type="number" {...field} className="h-14 font-black text-lg bg-background" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )} />
+                                                                </div>
+
+                                                                <div className="col-span-12 lg:col-span-3 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Unit Rate (TZS)</FormLabel>
+                                                                    <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <FormControl><Input type="number" {...field} className="h-14 font-black text-lg bg-background" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )} />
+                                                                </div>
+
+                                                                <div className="col-span-12 lg:col-span-3 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Particulars / Description</FormLabel>
+                                                                    <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <FormControl><Textarea {...field} className="min-h-[56px] h-14 bg-background font-medium resize-y py-3 text-sm border-2 focus:ring-primary/40" placeholder="E.g. Working Lunch Menu A" /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                 })}
                                             </div>
                                         </motion.div>
                                     )}
