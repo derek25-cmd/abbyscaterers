@@ -566,7 +566,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
                                             <div className="space-y-6">
                                                 <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2"><CalendarIcon className="h-5 w-5 text-primary" /> Service Period</h3>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <FormField control={form.control} name="startDate" render={({ field }) => (
                                                         <FormItem className="flex flex-col"><FormLabel className="font-semibold">START DATE</FormLabel>
                                                             <Popover>
@@ -597,6 +597,14 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                 </PopoverContent>
                                                             </Popover>
                                                             <FormMessage />
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="multiplyByDays" render={({ field }) => (
+                                                        <FormItem className="flex flex-col"><FormLabel className="font-semibold">BILLING BEHAVIOR</FormLabel>
+                                                            <div className="flex h-11 items-center space-x-3 rounded-md border-2 px-3 bg-muted/20">
+                                                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Multiply Subtotal by Days</span>
+                                                            </div>
                                                         </FormItem>
                                                     )} />
                                                 </div>
@@ -659,12 +667,12 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                     <thead className="bg-muted/80 backdrop-blur-sm sticky top-0 z-20 border-b shadow-sm">
                                                         <tr className="divide-x divide-border/40">
                                                             <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[110px]">Category</th>
-                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[140px]">Type</th>
+                                                            <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[180px]">Type</th>
                                                             <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[130px]">Service Date</th>
                                                             <th className="px-3 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Particulars & Description</th>
-                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[150px]">Pax</th>
-                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[220px]">Unit Rate</th>
-                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[150px]">Grand Total</th>
+                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[100px]">Pax</th>
+                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[160px]">Unit Rate</th>
+                                                            <th className="px-3 py-4 text-right text-[10px] font-black uppercase tracking-widest text-muted-foreground w-[130px]">Grand Total</th>
                                                             <th className="px-3 py-4 text-center text-[10px] font-black uppercase tracking-widest text-muted-foreground w-40">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -753,10 +761,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                             </FormItem>
                                                                         )} />
                                                                     </td>
-                                                                    <td className="px-3 py-3 align-top">
+                                                                    <td className="px-3 py-3 align-top min-w-[300px]">
                                                                         <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field }) => (
                                                                             <FormItem>
-                                                                                <FormControl><Input {...field} className="h-9 bg-background border-muted-foreground/20 focus:border-primary font-medium" placeholder="E.g. Working Lunch Menu A" /></FormControl>
+                                                                                <FormControl><Textarea {...field} className="min-h-[56px] bg-background border-muted-foreground/20 focus:border-primary font-medium resize-y py-2" placeholder="E.g. Working Lunch Menu A" /></FormControl>
                                                                                 <FormMessage />
                                                                             </FormItem>
                                                                         )} />
