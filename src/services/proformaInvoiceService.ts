@@ -90,7 +90,7 @@ export const getLatestProformaNumber = async (): Promise<number> => {
             .from('proforma_invoices')
             .select('id')
             .order('createdAt', { ascending: false })
-            .limit(20);
+            .limit(500);
         
         if (error || !data || data.length === 0) {
             return 1;
