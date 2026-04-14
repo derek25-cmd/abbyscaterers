@@ -13,3 +13,12 @@ export function calculateGrandTotal(invoice: any): number {
     const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
     return totalBeforeVat + vat;
 }
+
+export function incrementIdString(id: string): string {
+    const match = id.match(/\d+$/);
+    if (!match) return id + "1";
+    const numStr = match[0];
+    const nextNum = (parseInt(numStr, 10) + 1).toString();
+    // Preserve leading zeros by padding with the same length as the original matched digits
+    return id.substring(0, id.length - numStr.length) + nextNum.padStart(numStr.length, '0');
+}

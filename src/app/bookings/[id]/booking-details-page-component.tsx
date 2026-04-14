@@ -24,6 +24,7 @@ import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage"
 import { BulkOrderLoading } from "@/components/bookings/bulk-order-loading";
 import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
 import { useSettingsStorage } from "@/hooks/use-settings-storage";
+import { incrementIdString } from "@/lib/utils";
 
 
 export function BookingDetailsPageComponent() {
@@ -254,7 +255,7 @@ export function BookingDetailsPageComponent() {
                     await updateOrder(oid, { proformaId: newProforma.id } as any);
                 }
 
-             updateSettings({ nextProformaNumber: (settings.nextProformaNumber || 1) + 1 });
+             updateSettings({ nextProformaNumber: incrementIdString(settings.nextProformaNumber || "00001") });
              toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created and linked to ${orderIds.length} orders.` });
              router.push(`/proforma-invoices/${newProforma.id}`);
         } else {

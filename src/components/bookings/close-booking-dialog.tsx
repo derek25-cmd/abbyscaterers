@@ -69,7 +69,7 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
       if (!settingsLoading && isOpen) {
           const currentId = form.getValues('id');
           if (currentId && currentId.startsWith('PI-17')) {
-              form.setValue('id', String(settings.nextProformaNumber || 1).padStart(5, '0'));
+              form.setValue('id', settings.nextProformaNumber || '');
           }
       }
   }, [settingsLoading, settings.nextProformaNumber, isOpen, form]);

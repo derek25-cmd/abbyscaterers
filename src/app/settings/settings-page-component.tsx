@@ -73,9 +73,14 @@ export function SettingsPageComponent() {
 
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        const numValue = parseInt(value, 10);
-        if(!isNaN(numValue)){
-            setLocalSettings(prev => ({...prev, [name]: numValue}))
+        if (name === 'nextOrderNumber') {
+            const numValue = parseInt(value, 10);
+            if (!isNaN(numValue)) {
+                setLocalSettings(prev => ({ ...prev, [name]: numValue }))
+            }
+        } else {
+            // nextProformaNumber and nextInvoiceNumber are strings
+            setLocalSettings(prev => ({ ...prev, [name]: value }))
         }
     }
     
@@ -91,21 +96,23 @@ export function SettingsPageComponent() {
     const handleSync = async (sequenceKey: SequenceKey) => {
         setSyncing(prev => ({ ...prev, [sequenceKey]: true }));
         try {
-            let nextNumber: number | undefined;
+            let nextVal: string | number | undefined;
             if (sequenceKey === 'nextOrderNumber') {
-                nextNumber = await getLatestOrderNumber();
+                nextVal = await getLatestOrderNumber();
             } else if (sequenceKey === 'nextProformaNumber') {
-                nextNumber = await getLatestProformaNumber();
+                const num = await getLatestProformaNumber();
+                nextVal = String(num).padStart(5, '0');
             } else if (sequenceKey === 'nextInvoiceNumber') {
-                nextNumber = await getLatestInvoiceNumber();
+                const num = await getLatestInvoiceNumber();
+                nextVal = String(num).padStart(5, '0');
             }
             
-            if (nextNumber !== undefined) {
-                updateSettings({ [sequenceKey]: nextNumber });
-                setLocalSettings(prev => ({...prev, [sequenceKey]: nextNumber}));
-                toast({ title: "Sync Successful", description: `${sequenceKey} has been updated to ${nextNumber}.` });
+            if (nextVal !== undefined) {
+                updateSettings({ [sequenceKey]: nextVal as any });
+                setLocalSettings(prev => ({...prev, [sequenceKey]: nextVal}));
+                toast({ title: "Sync Successful", description: `${sequenceKey} has been updated to ${nextVal}.` });
             } else {
-                throw new Error("Could not determine next number.");
+                throw new Error("Could not determine next value.");
             }
 
         } catch (error) {
@@ -182,21 +189,21 @@ export function SettingsPageComponent() {
     const SequenceInput = ({ seqKey, label, helpText }: { seqKey: SequenceKey, label: string, helpText: string}) => (
         <div className="space-y-2">
             <Label htmlFor={seqKey} className="flex items-center"><Hash className="w-4 h-4 mr-2"/>{label}</Label>
-             <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <Input
                     id={seqKey}
                     name={seqKey}
-                    type="number"
-                    value={localSettings[seqKey] || 1}
+                    type={seqKey === 'nextOrderNumber' ? "number" : "text"}
+                    value={localSettings[seqKey] || (seqKey === 'nextOrderNumber' ? 1 : "00001")}
                     onChange={handleNumberChange}
-                    min="1"
+                    min={seqKey === 'nextOrderNumber' ? "1" : undefined}
                 />
                 <Button variant="outline" size="icon" onClick={() => handleSync(seqKey)} disabled={syncing[seqKey]}>
                     {syncing[seqKey] ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     <span className="sr-only">Sync with database</span>
                 </Button>
             </div>
-             <p className="text-xs text-muted-foreground">{helpText}{String(localSettings[seqKey] || 1).padStart(5, '0')}</p>
+             <p className="text-xs text-muted-foreground">{helpText}{seqKey === 'nextOrderNumber' ? `ORD-${String(localSettings[seqKey] || 1).padStart(5, '0')}` : localSettings[seqKey]}</p>
         </div>
     )
 

@@ -14,7 +14,7 @@ import { CalendarIcon, Plus, PlusCircle, Trash2, Loader2, Save, ChevronsUpDown, 
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, incrementIdString } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
@@ -124,9 +124,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     useEffect(() => {
         if (!settingsLoading && !isEditMode) {
             const currentId = form.getValues('id');
-            // If the ID is the default PI-timestamp, replace it with our configured number.
+            // If the ID is the default PI-timestamp, replace it with our configured value.
             if (currentId && currentId.startsWith('PI-17')) {
-                form.setValue('id', String(settings.nextProformaNumber || 1).padStart(5, '0'));
+                form.setValue('id', settings.nextProformaNumber || '');
             }
         }
     }, [settingsLoading, settings.nextProformaNumber, isEditMode, form]);
@@ -339,7 +339,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 }
 
                 if (!isEditMode) {
-                    updateSettings({ nextProformaNumber: (settings.nextProformaNumber || 1) + 1 });
+                    const nextId = incrementIdString(freshData.id || '');
+                    updateSettings({ nextProformaNumber: nextId });
                 }
 
                 toast({ title: 'Success', description: `Proforma ${isEditMode ? 'updated' : 'created'} successfully and source orders processed.` });

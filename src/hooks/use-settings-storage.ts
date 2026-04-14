@@ -11,8 +11,8 @@ export interface AppSettings {
     footerUrl?: string;
     signatureUrl?: string;
     nextOrderNumber?: number;
-    nextProformaNumber?: number;
-    nextInvoiceNumber?: number;
+    nextProformaNumber?: string;
+    nextInvoiceNumber?: string;
     pdfScale?: number; // Added for PDF fitting
 }
 
@@ -22,8 +22,8 @@ const defaultSettings: AppSettings = {
     footerUrl: "",
     signatureUrl: "",
     nextOrderNumber: 1,
-    nextProformaNumber: 1,
-    nextInvoiceNumber: 1,
+    nextProformaNumber: "00001",
+    nextInvoiceNumber: "00001",
     pdfScale: 2.0,
 }
 

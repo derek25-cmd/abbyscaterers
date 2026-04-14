@@ -151,22 +151,23 @@ export const getLatestOrderNumber = async (): Promise<number> => {
             .from('orders')
             .select('id')
             .order('createdAt', { ascending: false })
-            .limit(500); // Fetch more to ensure we scan past any timestamp IDs
+            .limit(10); // Fetch more to be sure we find a numeric one
         
-        let maxNum = 589; // Known baseline from earlier records
-        if (!error && data && data.length > 0) {
-            data.forEach(row => {
-                const match = row.id.match(/ORD-(\d{5})$/) || row.id.match(/^ORD-(\d+)$/);
-                if (match && match[1]) {
-                    const num = parseInt(match[1], 10);
-                    if (num > maxNum) maxNum = num;
-                }
-            });
+        if (error || !data || data.length === 0) {
+            return 589;
         }
-        return maxNum + 1;
+        
+        for (const row of data) {
+            const match = row.id.match(/ORD-(\d{5})$/);
+            if (match && match[1]) {
+                return parseInt(match[1], 10) + 1;
+            }
+        }
+
+        return 1;
     } catch (err) {
         console.error('Error in getLatestOrderNumber:', err);
-        return 590;
+        return 589;
     }
 }
 
@@ -177,21 +178,21 @@ export const getLatestEventNumber = async (): Promise<number> => {
             .from('orders')
             .select('clientEvents')
             .order('createdAt', { ascending: false })
-            .limit(200);
+            .limit(20);
         
+        if (error || !data) return 1;
+
         let maxNum = 0;
-        if (!error && data && data.length > 0) {
-            data.forEach((order: any) => {
-                const events = order.clientEvents || [];
-                events.forEach((evt: any) => {
-                    const match = evt.id?.match(/EVT-(\d+)/);
-                    if (match && match[1]) {
-                        const num = parseInt(match[1], 10);
-                        if (num > maxNum) maxNum = num;
-                    }
-                });
+        data.forEach((order: any) => {
+            const events = order.clientEvents || [];
+            events.forEach((evt: any) => {
+                const match = evt.id?.match(/EVT-(\d+)/);
+                if (match && match[1]) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNum) maxNum = num;
+                }
             });
-        }
+        });
 
         return maxNum + 1;
     } catch (err) {
