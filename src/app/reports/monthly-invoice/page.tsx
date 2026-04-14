@@ -12,7 +12,7 @@ import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { Invoice, Region } from "@/types";
-import { format, parseISO, isWithinInterval } from 'date-fns';
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, isAfter, isBefore, isSameDay } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { DateRange } from "react-day-picker";
@@ -50,11 +50,27 @@ export default function MonthlyInvoiceReportPage() {
     let filtered = invoices;
 
     // Filter by Date Range
-    if (dateRange?.from && dateRange?.to) {
+    if (dateRange?.from) {
         filtered = filtered.filter(invoice => {
             if (!invoice.invoiceDate) return false;
-            const invoiceDate = parseISO(invoice.invoiceDate);
-            return isWithinInterval(invoiceDate, { start: dateRange.from!, end: dateRange.to! });
+            const invoiceDate = startOfDay(parseISO(invoice.invoiceDate));
+            const fromDate = startOfDay(dateRange.from!);
+            
+            if (dateRange.to) {
+                const toDate = endOfDay(dateRange.to!);
+                return isWithinInterval(invoiceDate, { start: fromDate, end: toDate });
+            } else {
+                // If only 'from' is selected, show all from that day onwards
+                return isAfter(invoiceDate, fromDate) || isSameDay(invoiceDate, fromDate);
+            }
+        });
+    } else if (dateRange?.to) {
+        // If only 'to' is selected, show all up to that day
+        filtered = filtered.filter(invoice => {
+            if (!invoice.invoiceDate) return false;
+            const invoiceDate = startOfDay(parseISO(invoice.invoiceDate));
+            const toDate = endOfDay(dateRange.to!);
+            return isBefore(invoiceDate, toDate) || isSameDay(invoiceDate, toDate);
         });
     }
 
@@ -122,20 +138,20 @@ export default function MonthlyInvoiceReportPage() {
       doc.text(reportTitle, 14, 15);
       // ... (Rest of PDF logic - Snipped for brevity)
 
-      const tableColumns = ['S/N', 'Client Name', 'Invoice No.', 'Proforma No.', 'Region', 'Amount (TZS)', 'Invoice Date', 'Payment Made On', 'Outstanding (TZS)'];
+      const tableColumns = ['S/N', 'Client', 'Invoice No.', 'Status', 'Invoice Date', 'Total Amount', 'Paid', 'Outstanding'];
       const tableRows = filteredInvoices.map((invoice, index) => {
           const client = clients.find(c => c.id === invoice.clientId);
           const totalAmount = calculateTotal(invoice);
-          const outstandingAmount = invoice.status === 'paid' ? 0 : totalAmount;
+          const amountPaid = invoice.amountPaid || 0;
+          const outstandingAmount = totalAmount - amountPaid;
           return [
             index + 1,
             client?.companyName || "N/A",
             invoice.id,
-            invoice.proformaId || "N/A",
-            invoice.region || "N/A",
+            invoice.status.toUpperCase(),
+            invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
             formatCurrency(totalAmount),
-            invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A",
-            invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A',
+            formatCurrency(amountPaid),
             formatCurrency(outstandingAmount),
           ];
         });
@@ -319,11 +335,10 @@ export default function MonthlyInvoiceReportPage() {
                 <TableHead>S/N</TableHead>
                 <TableHead>Client Name</TableHead>
                 <TableHead>Invoice No.</TableHead>
-                <TableHead>Proforma No.</TableHead>
-                <TableHead>Region</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Invoice Date</TableHead>
-                <TableHead>Payment Made On</TableHead>
-                <TableHead>Outstanding (TZS)</TableHead>
+                <TableHead className="text-right">Total Amount (TZS)</TableHead>
+                <TableHead className="text-right">Outstanding (TZS)</TableHead>
                 <TableHead className="text-right">Registry</TableHead>
               </TableRow>
             </TableHeader>
@@ -339,11 +354,14 @@ export default function MonthlyInvoiceReportPage() {
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
                     <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
-                    <TableCell className="font-mono text-xs">{invoice.proformaId || 'N/A'}</TableCell>
-                    <TableCell>{invoice.region || 'N/A'}</TableCell>
-                    <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'PPP') : "N/A"}</TableCell>
-                    <TableCell>{invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'PPP') : 'N/A'}</TableCell>
-                    <TableCell className="font-semibold text-left">{formatCurrency(outstandingAmount)}</TableCell>
+                    <TableCell>
+                        <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'partially paid' ? 'outline' : 'destructive'} className="uppercase text-[9px]">
+                            {invoice.status}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A"}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(totalAmount)}</TableCell>
+                    <TableCell className="font-bold text-right text-orange-600">{formatCurrency(outstandingAmount)}</TableCell>
                     <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => setRegistryInvoice(invoice)}>
                             <Info className="h-4 w-4 text-primary" />

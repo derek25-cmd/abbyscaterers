@@ -151,23 +151,26 @@ export const getLatestOrderNumber = async (): Promise<number> => {
             .from('orders')
             .select('id')
             .order('createdAt', { ascending: false })
-            .limit(10); // Fetch more to be sure we find a numeric one
+            .limit(500);
         
         if (error || !data || data.length === 0) {
-            return 589;
+            return 1;
         }
         
+        let maxNum = 0;
         for (const row of data) {
+            // First try matching ORD-XXXXX (numeric only)
             const match = row.id.match(/ORD-(\d{5})$/);
             if (match && match[1]) {
-                return parseInt(match[1], 10) + 1;
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
             }
         }
 
-        return 1;
+        return maxNum > 0 ? maxNum + 1 : 1;
     } catch (err) {
         console.error('Error in getLatestOrderNumber:', err);
-        return 589;
+        return 1;
     }
 }
 
@@ -178,7 +181,7 @@ export const getLatestEventNumber = async (): Promise<number> => {
             .from('orders')
             .select('clientEvents')
             .order('createdAt', { ascending: false })
-            .limit(20);
+            .limit(100);
         
         if (error || !data) return 1;
 

@@ -15,7 +15,7 @@ import { Calendar, User, ArrowLeft, PlusCircle, FileText, ListPlus, Package } fr
 import { format, parseISO } from "date-fns";
 import { DailyOrdersTable } from "@/components/bookings/daily-orders-table";
 import { AddDailyOrderDialog } from "@/components/bookings/add-daily-order-dialog";
-import { BulkAddOrdersDialog } from "@/components/bookings/bulk-add-orders-dialog";
+import { BulkAddOrdersDialog, type BulkAddFormData } from "@/components/bookings/bulk-add-orders-dialog";
 import { AddBulkItemDialog } from "@/components/bookings/add-bulk-item-dialog";
 import { OrderFormData, ProformaInvoiceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
@@ -91,30 +91,30 @@ export function BookingDetailsPageComponent() {
     }
   }
 
-  const handleBulkAddOrders = async (bulkData: { dates: Date[], pax: number, unitPrice: number, mealType: string, vatType: 'inclusive' | 'exclusive' }) => {
+  const handleBulkAddOrders = async (bulkData: BulkAddFormData) => {
     if (!bookingId || !booking) return;
 
     setIsBulkCreating(true);
-    setBulkCreationProgress({ current: 0, total: bulkData.dates.length });
+    setBulkCreationProgress({ current: 0, total: bulkData.entries.length });
     setIsBulkAddOpen(false);
 
     try {
         const clientDetails = getClientById(booking.client_id);
-        const ordersToCreate: Partial<OrderFormData>[] = bulkData.dates.map((date) => {
-            const formattedDate = format(date, 'yyyy-MM-dd');
+        const ordersToCreate: Partial<OrderFormData>[] = bulkData.entries.map((entry) => {
+            const formattedDate = format(entry.date, 'yyyy-MM-dd');
             return {
                 booking_id: bookingId,
                 clientId: booking.client_id,
-                name: `Daily Order - ${format(date, 'MMM dd')} for ${clientDetails?.companyName || 'Booking Client'}`,
+                name: `Daily Order - ${format(entry.date, 'MMM dd')} for ${clientDetails?.companyName || 'Booking Client'}`,
                 startDate: formattedDate,
                 endDate: formattedDate,
                 clientEvents: [{
                     clientId: booking.client_id,
                     date: formattedDate,
-                    mealType: bulkData.mealType,
-                    numberOfPeople: bulkData.pax,
-                    unitPrice: bulkData.unitPrice,
-                    total: bulkData.pax * bulkData.unitPrice,
+                    mealType: entry.mealType,
+                    numberOfPeople: entry.pax,
+                    unitPrice: entry.unitPrice,
+                    total: entry.pax * entry.unitPrice,
                     vatType: bulkData.vatType,
                     recipes: []
                 }]

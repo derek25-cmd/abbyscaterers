@@ -39,19 +39,46 @@ export const addProformaInvoice = async (invoiceData: ProformaInvoiceFormData): 
 
 export const updateProformaInvoice = async (id: string, updates: Partial<ProformaInvoiceFormData>): Promise<ProformaInvoice | null> => {
     try {
-        const { id: proformaId, ...updatePayload } = updates;
-        const { data, error } = await supabase.from('proforma_invoices').update({ ...updatePayload, updatedAt: new Date().toISOString() }).eq('id', id).select().single();
+        const { id: newId, ...updatePayload } = updates;
+        const oldId = id;
+        const idChanged = newId && newId !== oldId;
+
+        // Perform the update. If id changed, it will target by oldId and set the new ID.
+        const actualPayload = idChanged ? { ...updatePayload, id: newId } : updatePayload;
+
+        const { data, error } = await supabase
+            .from('proforma_invoices')
+            .update({ ...actualPayload, updatedAt: new Date().toISOString() })
+            .eq('id', oldId)
+            .select()
+            .single();
+
         if (error) {
             console.error('Error updating proforma invoice:', JSON.stringify(error, null, 2));
             return null;
+        }
+
+        if (idChanged && data) {
+            // Cascade update to related tables
+            const finalId = data.id;
+            
+            // 1. Update Orders
+            await supabase.from('orders').update({ proformaId: finalId }).eq('proformaId', oldId);
+            
+            // 2. Update Bookings
+            await supabase.from('bookings').update({ proforma_invoice_id: finalId }).eq('proforma_invoice_id', oldId);
+            
+            // 3. Update Final Invoices
+            await supabase.from('invoices').update({ proformaId: finalId }).eq('proformaId', oldId);
         } else if (data) {
-            // Cascade update to final invoice if it exists
+            // Standard update for final invoice if it exists
             const { data: finalInvoice } = await supabase.from('invoices').select('id').eq('proformaId', id).single();
-            if(finalInvoice) {
+            if (finalInvoice) {
                 const { id: ignoredId, ...finalInvoiceUpdatePayload } = updates;
                 await supabase.from('invoices').update({ ...finalInvoiceUpdatePayload, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
             }
         }
+        
         return data as ProformaInvoice | null;
     } catch (err) {
         console.error('Unexpected error updating proforma invoice:', err);

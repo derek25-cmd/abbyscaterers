@@ -191,7 +191,13 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async (details: { invoiceId: string, invoiceDate: string, region: Region }) => {
+  const handleCreateFinalInvoice = async (details: { 
+    invoiceId: string, 
+    invoiceDate: string, 
+    region: Region,
+    signedAtDate: string,
+    signedAtLocation: string
+  }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
@@ -204,8 +210,8 @@ export function ProformaInvoiceViewPageComponent() {
             region: details.region,
             proformaId: invoice.id,
             status: 'outstanding' as const,
-            signedAtDate: new Date().toISOString(),
-            signedAtLocation: 'Dar es Salaam',
+            signedAtDate: details.signedAtDate,
+            signedAtLocation: details.signedAtLocation,
             amountPaid: 0
         };
         const newInvoice = await addInvoice(newInvoiceData as any);

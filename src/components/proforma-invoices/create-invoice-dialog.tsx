@@ -27,6 +27,8 @@ const CreateInvoiceSchema = z.object({
   invoiceId: z.string().min(1, "Invoice number is required."),
   invoiceDate: z.date({ required_error: "Invoice date is required." }),
   region: z.enum(REGIONS, { required_error: "Region is required." }),
+  signedAtDate: z.date({ required_error: "Signing date is required." }),
+  signedAtLocation: z.string().min(1, "Signing location is required."),
 });
 
 type CreateInvoiceFormData = z.infer<typeof CreateInvoiceSchema>;
@@ -34,7 +36,13 @@ type CreateInvoiceFormData = z.infer<typeof CreateInvoiceSchema>;
 interface CreateInvoiceDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSubmit: (data: { invoiceId: string, invoiceDate: string, region: Region }) => Promise<void>;
+  onSubmit: (data: { 
+    invoiceId: string, 
+    invoiceDate: string, 
+    region: Region,
+    signedAtDate: string,
+    signedAtLocation: string
+  }) => Promise<void>;
   isCreating: boolean;
   proformaId: string;
 }
@@ -46,6 +54,8 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
       invoiceId: `INV-${proformaId.replace('PI-', '')}`,
       invoiceDate: new Date(),
       region: "Dar es Salaam",
+      signedAtDate: new Date(),
+      signedAtLocation: "Dar es Salaam",
     },
   });
 
@@ -53,6 +63,7 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
     onSubmit({
         ...values,
         invoiceDate: format(values.invoiceDate, 'yyyy-MM-dd'),
+        signedAtDate: values.signedAtDate.toISOString(),
     });
   };
 
@@ -124,6 +135,46 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="signedAtDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Signed Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal h-10", !field.value && "text-muted-foreground")}>
+                              {field.value ? format(field.value, "PPP") : <span>Date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="signedAtLocation"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Signed At (Location)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="h-10" placeholder="e.g. Dar es Salaam" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isCreating}>
