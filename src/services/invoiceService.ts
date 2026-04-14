@@ -67,7 +67,7 @@ export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFor
 
 export const deleteInvoice = async (id: string): Promise<boolean> => {
     // First, get the invoice to check for a proformaId
-    const { data: invoice, error: fetchError } = await supabase.from('invoices').select('proformaId').eq('id', id).single();
+    const { data: invoice, error: fetchError } = await supabase.from('invoices').select('*').eq('id', id).single();
 
     if(fetchError){
         console.error('Error fetching invoice before deletion:', fetchError);
