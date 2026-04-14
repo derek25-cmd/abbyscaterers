@@ -83,3 +83,37 @@ export const deleteProformaInvoice = async (id: string): Promise<boolean> => {
         return false;
     }
 };
+
+export const getLatestProformaNumber = async (): Promise<number> => {
+    try {
+        const { data, error } = await supabase
+            .from('proforma_invoices')
+            .select('id')
+            .order('createdAt', { ascending: false })
+            .limit(20);
+        
+        if (error || !data || data.length === 0) {
+            return 1;
+        }
+        
+        let maxNum = 0;
+        for (const row of data) {
+            // First try matching PI-0012837
+            let match = row.id.match(/PI-(\d{5,})$/);
+            // If they are purely numbers like 0012837
+            if (!match) {
+                match = row.id.match(/^(\d{5,})$/);
+            }
+
+            if (match && match[1]) {
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
+            }
+        }
+
+        return maxNum > 0 ? maxNum + 1 : 1;
+    } catch (err) {
+        console.error('Error in getLatestProformaNumber:', err);
+        return 1;
+    }
+}

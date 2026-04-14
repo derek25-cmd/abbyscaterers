@@ -96,3 +96,35 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
     }
     return !deleteError;
 };
+
+export const getLatestInvoiceNumber = async (): Promise<number> => {
+    try {
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('id')
+            .order('createdAt', { ascending: false })
+            .limit(20);
+        
+        if (error || !data || data.length === 0) {
+            return 1;
+        }
+        
+        let maxNum = 0;
+        for (const row of data) {
+            let match = row.id.match(/INV-(\d{5,})$/);
+            if (!match) {
+                match = row.id.match(/^(\d{5,})$/);
+            }
+
+            if (match && match[1]) {
+                const num = parseInt(match[1], 10);
+                if (num > maxNum) maxNum = num;
+            }
+        }
+
+        return maxNum > 0 ? maxNum + 1 : 1;
+    } catch (err) {
+        console.error('Error in getLatestInvoiceNumber:', err);
+        return 1;
+    }
+}

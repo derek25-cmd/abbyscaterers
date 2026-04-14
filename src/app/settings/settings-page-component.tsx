@@ -12,10 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { Loader2, UploadCloud, Hash, RefreshCw, FileType, Trash2 } from "lucide-react";
 import { getLatestOrderNumber } from "@/services/orderService";
+import { getLatestProformaNumber } from "@/services/proformaInvoiceService";
+import { getLatestInvoiceNumber } from "@/services/invoiceService";
 import { Slider } from "@/components/ui/slider";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
-type SequenceKey = 'nextOrderNumber';
+type SequenceKey = 'nextOrderNumber' | 'nextProformaNumber' | 'nextInvoiceNumber';
 
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
@@ -80,6 +82,8 @@ export function SettingsPageComponent() {
     const handleSaveSequences = () => {
         updateSettings({ 
             nextOrderNumber: localSettings.nextOrderNumber,
+            nextProformaNumber: localSettings.nextProformaNumber,
+            nextInvoiceNumber: localSettings.nextInvoiceNumber,
         });
         toast({ title: "Settings Saved", description: "Numbering sequences have been updated." });
     };
@@ -87,14 +91,19 @@ export function SettingsPageComponent() {
     const handleSync = async (sequenceKey: SequenceKey) => {
         setSyncing(prev => ({ ...prev, [sequenceKey]: true }));
         try {
-            let nextNumber;
+            let nextNumber: number | undefined;
             if (sequenceKey === 'nextOrderNumber') {
                 nextNumber = await getLatestOrderNumber();
+            } else if (sequenceKey === 'nextProformaNumber') {
+                nextNumber = await getLatestProformaNumber();
+            } else if (sequenceKey === 'nextInvoiceNumber') {
+                nextNumber = await getLatestInvoiceNumber();
             }
             
             if (nextNumber !== undefined) {
                 updateSettings({ [sequenceKey]: nextNumber });
-                toast({ title: "Sync Successful", description: `Next Order Number has been updated to ${nextNumber}.` });
+                setLocalSettings(prev => ({...prev, [sequenceKey]: nextNumber}));
+                toast({ title: "Sync Successful", description: `${sequenceKey} has been updated to ${nextNumber}.` });
             } else {
                 throw new Error("Could not determine next number.");
             }
@@ -260,6 +269,8 @@ export function SettingsPageComponent() {
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
                      <SequenceInput seqKey="nextOrderNumber" label="Next Order Number" helpText="The next order created will be assigned ID: ORD-" />
+                     <SequenceInput seqKey="nextProformaNumber" label="Next Proforma Number" helpText="The next proforma created will be assigned ID: " />
+                     <SequenceInput seqKey="nextInvoiceNumber" label="Next Invoice Number" helpText="The next invoice created will be assigned ID: " />
                 </CardContent>
                  <CardFooter>
                     <Button onClick={handleSaveSequences}>Save Sequences</Button>

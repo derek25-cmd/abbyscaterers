@@ -23,6 +23,7 @@ import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { BulkOrderLoading } from "@/components/bookings/bulk-order-loading";
 import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
+import { useSettingsStorage } from "@/hooks/use-settings-storage";
 
 
 export function BookingDetailsPageComponent() {
@@ -33,6 +34,7 @@ export function BookingDetailsPageComponent() {
   const { orders, getOrdersByBookingId, addOrder, updateOrder, bulkAddOrders, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { proformaInvoices, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
+  const { settings, updateSettings } = useSettingsStorage();
 
   const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [bookingOrders, setBookingOrders] = useState<Order[]>([]);
@@ -58,9 +60,21 @@ export function BookingDetailsPageComponent() {
   }, [bookingId, bookingsLoading, orders, ordersLoading, getBookingById, getOrdersByBookingId, router]);
 
   const handleAddDailyOrder = async (orderData: Partial<OrderFormData>) => {
-    if (!bookingId) return;
+    if (!bookingId || !booking) return;
+
+    const firstEventDate = orderData.clientEvents?.[0]?.date || format(new Date(), 'yyyy-MM-dd');
+    const clientDetails = getClientById(booking.client_id);
+    
+    const enrichedOrderData: Partial<OrderFormData> = {
+        ...orderData,
+        clientId: booking.client_id,
+        name: `Daily Order - ${format(parseISO(firstEventDate), 'MMM dd')} for ${clientDetails?.companyName || 'Booking Client'}`,
+        startDate: firstEventDate,
+        endDate: firstEventDate,
+    };
+
     try {
-        const newOrder = await addOrder(orderData as OrderFormData);
+        const newOrder = await addOrder(enrichedOrderData as OrderFormData);
         if (newOrder) {
           toast({ title: "Success", description: "Daily order has been recorded."});
           setIsAddOrderOpen(false);
@@ -84,19 +98,27 @@ export function BookingDetailsPageComponent() {
     setIsBulkAddOpen(false);
 
     try {
-        const ordersToCreate: Partial<OrderFormData>[] = bulkData.dates.map((date) => ({
-            booking_id: bookingId,
-            clientEvents: [{
+        const clientDetails = getClientById(booking.client_id);
+        const ordersToCreate: Partial<OrderFormData>[] = bulkData.dates.map((date) => {
+            const formattedDate = format(date, 'yyyy-MM-dd');
+            return {
+                booking_id: bookingId,
                 clientId: booking.client_id,
-                date: format(date, 'yyyy-MM-dd'),
-                mealType: bulkData.mealType,
-                numberOfPeople: bulkData.pax,
-                unitPrice: bulkData.unitPrice,
-                total: bulkData.pax * bulkData.unitPrice,
-                vatType: bulkData.vatType,
-                recipes: []
-            }]
-        }));
+                name: `Daily Order - ${format(date, 'MMM dd')} for ${clientDetails?.companyName || 'Booking Client'}`,
+                startDate: formattedDate,
+                endDate: formattedDate,
+                clientEvents: [{
+                    clientId: booking.client_id,
+                    date: formattedDate,
+                    mealType: bulkData.mealType,
+                    numberOfPeople: bulkData.pax,
+                    unitPrice: bulkData.unitPrice,
+                    total: bulkData.pax * bulkData.unitPrice,
+                    vatType: bulkData.vatType,
+                    recipes: []
+                }]
+            };
+        });
 
         const results = await bulkAddOrders(ordersToCreate);
         if (results && results.length > 0) {
@@ -232,6 +254,7 @@ export function BookingDetailsPageComponent() {
                     await updateOrder(oid, { proformaId: newProforma.id } as any);
                 }
 
+             updateSettings({ nextProformaNumber: (settings.nextProformaNumber || 1) + 1 });
              toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created and linked to ${orderIds.length} orders.` });
              router.push(`/proforma-invoices/${newProforma.id}`);
         } else {
@@ -299,7 +322,7 @@ export function BookingDetailsPageComponent() {
                  ) : (
                     <Button variant="default" onClick={() => setIsCloseBookingOpen(true)} disabled={bookingOrders.length === 0}>
                         <FileText className="mr-2 h-4 w-4"/>
-                        Close & Generate Proforma
+                        Generate Proforma Invoice
                     </Button>
                  )}
             </div>

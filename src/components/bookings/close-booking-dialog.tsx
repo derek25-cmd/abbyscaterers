@@ -23,6 +23,8 @@ import { baseInvoiceSchema, type ProformaInvoiceFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { Textarea } from "../ui/textarea";
+import { useSettingsStorage } from "@/hooks/use-settings-storage";
+import { useEffect } from "react";
 
 interface CloseBookingDialogProps {
   isOpen: boolean;
@@ -61,6 +63,17 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
     },
   });
 
+  const { settings, isLoading: settingsLoading } = useSettingsStorage();
+
+  useEffect(() => {
+      if (!settingsLoading && isOpen) {
+          const currentId = form.getValues('id');
+          if (currentId && currentId.startsWith('PI-17')) {
+              form.setValue('id', String(settings.nextProformaNumber || 1).padStart(5, '0'));
+          }
+      }
+  }, [settingsLoading, settings.nextProformaNumber, isOpen, form]);
+
   const { isSubmitting } = form.formState;
 
   const handleSubmit = async (data: Partial<ProformaInvoiceFormData>) => {
@@ -75,7 +88,7 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
             <DialogHeader>
-              <DialogTitle>Close Booking & Generate Proforma Invoice</DialogTitle>
+              <DialogTitle>Generate Proforma Invoice</DialogTitle>
               <DialogDescription>
                 Provide the final details to generate an aggregated proforma invoice for this booking.
               </DialogDescription>

@@ -213,6 +213,8 @@ export const baseInvoiceSchema = z.object({
     serviceFields: z.record(z.boolean()),
     serviceDesc: z.string().optional(),
     items: z.array(InvoiceItemSchema).min(1, "At least one item is required."),
+    signedAtDate: z.string().optional(),
+    signedAtLocation: z.string().optional(),
 });
 
 // Proforma Invoice Schema
@@ -259,8 +261,6 @@ export const FinalInvoiceSchema = baseInvoiceSchema.extend({
     proformaId: z.string().optional(),
     status: z.enum(['outstanding', 'paid', 'partially paid']),
     paymentDate: z.string().optional().nullable(),
-    signedAtDate: z.string().optional(),
-    signedAtLocation: z.string().optional(),
     appendProformaId: z.boolean().optional(),
     amountPaid: z.number().optional().default(0),
     startDate: z.string().refine((d) => isValidDate(d), "A valid start date is required"),

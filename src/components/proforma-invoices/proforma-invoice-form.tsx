@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
 import { useOrderStorage } from '@/hooks/use-order-storage';
+import { useSettingsStorage } from '@/hooks/use-settings-storage';
 import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from '@/lib/schemas';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -72,6 +73,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const { clients, getClientById: getClientDetails, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
     const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
+    const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
     const { toast } = useToast();
 
     const isEditMode = !!invoiceId;
@@ -108,6 +110,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             serviceFields: Object.fromEntries(serviceFieldsList.map(f => [f.key, true])),
             serviceDesc: '',
             items: [],
+            signedAtDate: format(new Date(), 'yyyy-MM-dd'),
+            signedAtLocation: 'Dar es Salaam',
         }
     });
 
@@ -116,6 +120,16 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const watchedFormValues = form.watch();
     const selectedClientId = form.watch('clientId');
     const selectedClient = useMemo(() => selectedClientId ? getClientDetails(selectedClientId) : null, [selectedClientId, getClientDetails]);
+
+    useEffect(() => {
+        if (!settingsLoading && !isEditMode) {
+            const currentId = form.getValues('id');
+            // If the ID is the default PI-timestamp, replace it with our configured number.
+            if (currentId && currentId.startsWith('PI-17')) {
+                form.setValue('id', String(settings.nextProformaNumber || 1).padStart(5, '0'));
+            }
+        }
+    }, [settingsLoading, settings.nextProformaNumber, isEditMode, form]);
 
     // Check for matching orders
     useEffect(() => {
@@ -322,6 +336,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
                 for (const oid of linkedOrderIds) {
                     await updateOrder(oid, { proformaId: result.id } as any);
+                }
+
+                if (!isEditMode) {
+                    updateSettings({ nextProformaNumber: (settings.nextProformaNumber || 1) + 1 });
                 }
 
                 toast({ title: 'Success', description: `Proforma ${isEditMode ? 'updated' : 'created'} successfully and source orders processed.` });
@@ -888,6 +906,37 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                 <SelectItem value="exclusive">Exclusive (18%)</SelectItem>
                                                             </SelectContent>
                                                         </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                                                <FormField control={form.control} name="signedAtDate" render={({ field }) => (
+                                                    <FormItem className="flex flex-col">
+                                                        <FormLabel className="font-semibold">Date of Signing</FormLabel>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <FormControl>
+                                                                    <Button variant="outline" className={cn("h-11 pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                                        {field.value ? format(parseISO(field.value), "PPP") : <span>Pick a date</span>}
+                                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                                    </Button>
+                                                                </FormControl>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-auto p-0" align="start">
+                                                                <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} />
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="signedAtLocation" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="font-semibold">Signed At (Location)</FormLabel>
+                                                        <FormControl>
+                                                            <Input {...field} className="h-11" placeholder="e.g. Dar es Salaam" />
+                                                        </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )} />
