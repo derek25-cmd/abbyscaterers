@@ -24,7 +24,8 @@ export const getProformaInvoiceById = async (id: string): Promise<ProformaInvoic
 export const addProformaInvoice = async (invoiceData: ProformaInvoiceFormData): Promise<ProformaInvoice | null> => {
     try {
         const now = new Date().toISOString();
-        const newInvoiceData = { ...invoiceData, createdAt: now, updatedAt: now };
+        const { signedAtDate, signedAtLocation, ...validInvoiceData } = invoiceData;
+        const newInvoiceData = { ...validInvoiceData, createdAt: now, updatedAt: now };
         const { data, error } = await supabase.from('proforma_invoices').insert([newInvoiceData]).select().single();
         if (error) {
             console.error('Error adding proforma invoice:', JSON.stringify(error, null, 2));
@@ -39,7 +40,7 @@ export const addProformaInvoice = async (invoiceData: ProformaInvoiceFormData): 
 
 export const updateProformaInvoice = async (id: string, updates: Partial<ProformaInvoiceFormData>): Promise<ProformaInvoice | null> => {
     try {
-        const { id: newId, ...updatePayload } = updates;
+        const { id: newId, signedAtDate, signedAtLocation, ...updatePayload } = updates;
         const oldId = id;
         const idChanged = newId && newId !== oldId;
 

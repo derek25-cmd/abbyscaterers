@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -58,6 +59,18 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
       signedAtLocation: "Dar es Salaam",
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        invoiceId: `INV-${proformaId.replace('PI-', '')}`,
+        invoiceDate: new Date(),
+        region: "Dar es Salaam",
+        signedAtDate: new Date(),
+        signedAtLocation: "Dar es Salaam",
+      });
+    }
+  }, [isOpen, proformaId, form]);
 
   const handleSubmit = (values: CreateInvoiceFormData) => {
     onSubmit({
@@ -121,7 +134,7 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Region</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || "Dar es Salaam"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a region" />

@@ -92,7 +92,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         defaultValues: {
             id: `PI-${Date.now()}`,
             invoiceDate: format(new Date(), 'yyyy-MM-dd'),
-            clientId: clientId || null,
+            clientId: clientId || "",
             receiverName: '',
             receiverPosition: '',
             lpoNumber: '',
@@ -893,14 +893,14 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                         <motion.div key="step3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                                 <FormField control={form.control} name="serviceCharge" render={({ field }) => (
-                                                    <FormItem><FormLabel className="font-semibold">Service Charge</FormLabel><FormControl><Input type="number" {...field} className="h-11" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="font-semibold">Service Charge</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? 0} className="h-11" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="transportCosts" render={({ field }) => (
-                                                    <FormItem><FormLabel className="font-semibold">Transport Costs</FormLabel><FormControl><Input type="number" {...field} className="h-11" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="font-semibold">Transport Costs</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? 0} className="h-11" onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="vatType" render={({ field }) => (
                                                     <FormItem><FormLabel className="font-semibold">VAT Type</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                        <Select onValueChange={field.onChange} value={field.value || 'inclusive'}>
                                                             <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
                                                             <SelectContent>
                                                                 <SelectItem value="inclusive">Inclusive</SelectItem>
@@ -936,7 +936,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                     <FormItem>
                                                         <FormLabel className="font-semibold">Signed At (Location)</FormLabel>
                                                         <FormControl>
-                                                            <Input {...field} className="h-11" placeholder="e.g. Dar es Salaam" />
+                                                            <Input {...field} value={field.value || ''} className="h-11" placeholder="e.g. Dar es Salaam" />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -955,6 +955,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                         <FormControl>
                                                             <Textarea 
                                                                 {...field} 
+                                                                value={field.value || ''}
                                                                 className="min-h-[120px] font-medium text-sm border-2 focus:ring-primary leading-relaxed bg-primary/5" 
                                                                 onChange={e => { field.onChange(e); setIsServiceDescModified(true); }}
                                                             />
