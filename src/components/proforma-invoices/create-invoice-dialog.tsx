@@ -24,12 +24,18 @@ import { REGIONS, Region } from "@/types";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+import { Checkbox } from "@/components/ui/checkbox";
+
 const CreateInvoiceSchema = z.object({
   invoiceId: z.string().min(1, "Invoice number is required."),
   invoiceDate: z.date({ required_error: "Invoice date is required." }),
   region: z.enum(REGIONS, { required_error: "Region is required." }),
   signedAtDate: z.date({ required_error: "Signing date is required." }),
   signedAtLocation: z.string().min(1, "Signing location is required."),
+  appendProformaId: z.boolean().default(false),
+  lpoNumber: z.string().optional().nullable(),
+  receiverName: z.string().optional().nullable(),
+  receiverPosition: z.string().optional().nullable(),
 });
 
 type CreateInvoiceFormData = z.infer<typeof CreateInvoiceSchema>;
@@ -42,13 +48,29 @@ interface CreateInvoiceDialogProps {
     invoiceDate: string, 
     region: Region,
     signedAtDate: string,
-    signedAtLocation: string
+    signedAtLocation: string,
+    appendProformaId: boolean,
+    lpoNumber?: string | null,
+    receiverName?: string | null,
+    receiverPosition?: string | null
   }) => Promise<void>;
   isCreating: boolean;
   proformaId: string;
+  initialLpoNumber?: string | null;
+  initialReceiverName?: string | null;
+  initialReceiverPosition?: string | null;
 }
 
-export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, proformaId }: CreateInvoiceDialogProps) {
+export function CreateInvoiceDialog({ 
+  isOpen, 
+  setIsOpen, 
+  onSubmit, 
+  isCreating, 
+  proformaId,
+  initialLpoNumber,
+  initialReceiverName,
+  initialReceiverPosition,
+}: CreateInvoiceDialogProps) {
   const form = useForm<CreateInvoiceFormData>({
     resolver: zodResolver(CreateInvoiceSchema),
     defaultValues: {
@@ -57,6 +79,10 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
       region: "Dar es Salaam",
       signedAtDate: new Date(),
       signedAtLocation: "Dar es Salaam",
+      appendProformaId: true,
+      lpoNumber: initialLpoNumber || '',
+      receiverName: initialReceiverName || '',
+      receiverPosition: initialReceiverPosition || '',
     },
   });
 
@@ -68,9 +94,13 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
         region: "Dar es Salaam",
         signedAtDate: new Date(),
         signedAtLocation: "Dar es Salaam",
+        appendProformaId: true,
+        lpoNumber: initialLpoNumber || '',
+        receiverName: initialReceiverName || '',
+        receiverPosition: initialReceiverPosition || '',
       });
     }
-  }, [isOpen, proformaId, form]);
+  }, [isOpen, proformaId, form, initialLpoNumber, initialReceiverName, initialReceiverPosition]);
 
   const handleSubmit = (values: CreateInvoiceFormData) => {
     onSubmit({
@@ -188,6 +218,71 @@ export function CreateInvoiceDialog({ isOpen, setIsOpen, onSubmit, isCreating, p
                   )}
                 />
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="lpoNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>LPO Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="e.g. LPO-123" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receiverName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Receiver Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="e.g. John Doe" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="receiverPosition"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Receiver Position</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ''} placeholder="e.g. Manager" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="appendProformaId"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 bg-muted/20">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-semibold text-primary">
+                        Link to Proforma Invoice
+                      </FormLabel>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
+                        Append "as per Proforma Invoice No. {proformaId}" to description
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isCreating}>

@@ -174,21 +174,39 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async (data: { invoiceId: string, invoiceDate: string, region: any }) => {
+  const handleCreateFinalInvoice = async (details: { 
+    invoiceId: string, 
+    invoiceDate: string, 
+    region: any,
+    signedAtDate: string,
+    signedAtLocation: string,
+    appendProformaId: boolean,
+    lpoNumber?: string | null,
+    receiverName?: string | null,
+    receiverPosition?: string | null
+  }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
+        let serviceDesc = invoice.serviceDesc || '';
+        if (details.appendProformaId) {
+            const suffix = ` as per Proforma Invoice No. ${invoice.id}`;
+            if (!serviceDesc.includes(suffix)) {
+                serviceDesc = serviceDesc.trim() + suffix;
+            }
+        }
+
         const newInvoiceData = {
-            id: data.invoiceId,
+            id: details.invoiceId,
             proformaId: invoice.id,
             status: 'outstanding' as const,
-            invoiceDate: data.invoiceDate,
+            invoiceDate: details.invoiceDate,
             clientId: invoice.clientId,
-            receiverName: invoice.receiverName,
-            receiverPosition: invoice.receiverPosition,
-            lpoNumber: invoice.lpoNumber,
+            receiverName: details.receiverName,
+            receiverPosition: details.receiverPosition,
+            lpoNumber: details.lpoNumber,
             location: invoice.location,
-            region: data.region,
+            region: details.region,
             numberOfDays: invoice.numberOfDays,
             multiplyByDays: invoice.multiplyByDays,
             serviceCharge: invoice.serviceCharge,
@@ -199,10 +217,10 @@ export function ProformaInvoiceViewPageComponent() {
             startDate: invoice.startDate,
             endDate: invoice.endDate,
             serviceFields: invoice.serviceFields,
-            serviceDesc: invoice.serviceDesc,
+            serviceDesc,
             items: invoice.items.map(item => ({ ...item })),
-            signedAtDate: new Date().toISOString(),
-            signedAtLocation: 'Dar es Salaam',
+            signedAtDate: details.signedAtDate,
+            signedAtLocation: details.signedAtLocation,
             amountPaid: 0
         };
         const newInvoice = await addInvoice(newInvoiceData);
@@ -336,6 +354,9 @@ export function ProformaInvoiceViewPageComponent() {
                 proformaId={invoice.id}
                 isCreating={isCreatingInvoice}
                 onSubmit={handleCreateFinalInvoice}
+                initialLpoNumber={invoice.lpoNumber}
+                initialReceiverName={invoice.receiverName}
+                initialReceiverPosition={invoice.receiverPosition}
             />
         )}
 

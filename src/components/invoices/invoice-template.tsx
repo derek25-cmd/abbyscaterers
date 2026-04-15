@@ -121,7 +121,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
         <div style={{ marginLeft: '1cm' , marginRight: '0.8cm' }}>
              <Card
                 id="invoice-pdf-content"
-                className="p-8 bg-white text-black print:shadow-none"
+                className="p-8 pb-10 bg-white text-black print:shadow-none"
                 style={{
                     fontFamily: 'sans-serif',
                     fontSize: '15px',
@@ -241,7 +241,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                     <div className="text-left" style={{ fontSize: '15px' }}>
                         <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                     </div>
-                     <div className="flex justify-between items-end mt-4">
+                    <div className="flex justify-between items-end mt-4 mb-4">
                         <div style={{fontSize: '14px'}}>
                             <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
                             <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
@@ -260,9 +260,15 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                         <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
                         </div>
                     </div>
+
+                    <div className="mt-8 mb-6 p-4 bg-gray-100/50 rounded-lg border border-gray-200 text-center">
+                        <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                            We will issue EFD receipt once payment is received
+                        </p>
+                    </div>
                 </div>
 
-                <div id="invoice-footer" style={{ 
+                <div id="invoice-footer" className="pb-6" style={{ 
                     display: (showHeaders || preserveSpace) ? 'block' : 'none',
                     visibility: showHeaders ? 'visible' : 'hidden'
                 }}>

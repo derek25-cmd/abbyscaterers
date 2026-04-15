@@ -196,12 +196,24 @@ export function ProformaInvoiceViewPageComponent() {
     invoiceDate: string, 
     region: Region,
     signedAtDate: string,
-    signedAtLocation: string
+    signedAtLocation: string,
+    appendProformaId: boolean,
+    lpoNumber?: string | null,
+    receiverName?: string | null,
+    receiverPosition?: string | null
   }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
         const { isInvoiced, booking_id, createdAt, updatedAt, proformaId, ...cleanInvoiceProps } = invoice as any;
+
+        let serviceDesc = cleanInvoiceProps.serviceDesc || '';
+        if (details.appendProformaId) {
+            const suffix = ` as per Proforma Invoice No. ${invoice.id}`;
+            if (!serviceDesc.includes(suffix)) {
+                serviceDesc = serviceDesc.trim() + suffix;
+            }
+        }
 
         const newInvoiceData = {
             ...cleanInvoiceProps,
@@ -212,6 +224,10 @@ export function ProformaInvoiceViewPageComponent() {
             status: 'outstanding' as const,
             signedAtDate: details.signedAtDate,
             signedAtLocation: details.signedAtLocation,
+            lpoNumber: details.lpoNumber,
+            receiverName: details.receiverName,
+            receiverPosition: details.receiverPosition,
+            serviceDesc,
             amountPaid: 0
         };
         const newInvoice = await addInvoice(newInvoiceData as any);
@@ -354,6 +370,9 @@ export function ProformaInvoiceViewPageComponent() {
             onSubmit={handleCreateFinalInvoice}
             isCreating={isCreatingInvoice}
             proformaId={invoice.id}
+            initialLpoNumber={invoice.lpoNumber}
+            initialReceiverName={invoice.receiverName}
+            initialReceiverPosition={invoice.receiverPosition}
         />
     </>
   );

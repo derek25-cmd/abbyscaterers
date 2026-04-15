@@ -135,7 +135,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                                 
             <Card
                 id="proforma-invoice-pdf-content"
-                className="p-8 bg-white text-black print:shadow-none"
+                className="p-8 pb-10 bg-white text-black print:shadow-none"
                 style={{
                     fontFamily: 'sans-serif',
                     fontSize: '15px',
@@ -259,13 +259,15 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div className="flex justify-end items-end mt-4">
+                    <div className="flex justify-end items-end mt-4 mb-4">
                         <div className="text-center" style={{ fontSize: '14px' }}>
                         <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
                         {settings.signatureUrl && <Image alt="Signature and Seal" height={160} width={400} className="h-40 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
                         <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
                         </div>
                     </div>
+
+
                      <div className="text-sm mt-4">
                       <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
                       <ul className="space-y-1 list-disc list-inside" style={{ fontSize: '14px' }}>
@@ -277,7 +279,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                     </div>
                 </div>
                 
-                 <div id="proforma-footer" style={{ 
+                 <div id="proforma-footer" className="pb-6" style={{ 
                     display: (showHeaders || preserveSpace) ? 'block' : 'none',
                     visibility: showHeaders ? 'visible' : 'hidden'
                  }}>

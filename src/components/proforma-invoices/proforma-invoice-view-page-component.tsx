@@ -174,10 +174,28 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async (details: { invoiceId: string, invoiceDate: string, region: Region }) => {
+  const handleCreateFinalInvoice = async (details: { 
+    invoiceId: string, 
+    invoiceDate: string, 
+    region: Region,
+    signedAtDate: string,
+    signedAtLocation: string,
+    appendProformaId: boolean,
+    lpoNumber?: string | null,
+    receiverName?: string | null,
+    receiverPosition?: string | null
+  }) => {
     if (!invoice) return;
     setIsCreatingInvoice(true);
     try {
+        let serviceDesc = invoice.serviceDesc || '';
+        if (details.appendProformaId) {
+            const suffix = ` as per Proforma Invoice No. ${invoice.id}`;
+            if (!serviceDesc.includes(suffix)) {
+                serviceDesc = serviceDesc.trim() + suffix;
+            }
+        }
+
         const newInvoiceData = {
             ...invoice, // Spread all properties from proforma
             id: details.invoiceId, // Override with new ID
@@ -185,8 +203,13 @@ export function ProformaInvoiceViewPageComponent() {
             region: details.region, // Add region
             proformaId: invoice.id,
             status: 'outstanding' as const,
-            signedAtDate: new Date().toISOString(),
-            signedAtLocation: 'Dar es Salaam'
+            signedAtDate: details.signedAtDate,
+            signedAtLocation: details.signedAtLocation,
+            lpoNumber: details.lpoNumber,
+            receiverName: details.receiverName,
+            receiverPosition: details.receiverPosition,
+            serviceDesc,
+            amountPaid: 0
         };
         const newInvoice = await addInvoice(newInvoiceData);
         
@@ -320,6 +343,9 @@ export function ProformaInvoiceViewPageComponent() {
             onSubmit={handleCreateFinalInvoice}
             isCreating={isCreatingInvoice}
             proformaId={invoice.id}
+            initialLpoNumber={invoice.lpoNumber}
+            initialReceiverName={invoice.receiverName}
+            initialReceiverPosition={invoice.receiverPosition}
         />
     </>
   );
