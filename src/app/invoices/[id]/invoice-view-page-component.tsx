@@ -16,6 +16,7 @@ import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { PaymentStatusDialog, PaymentStatusFormData } from "@/components/invoices/payment-status-dialog";
+import { ExportDocumentDialog } from "@/components/proforma-invoices/export-document-dialog";
 import { CheckCircle2 } from "lucide-react";
 
 export function InvoiceViewPageComponent() {
@@ -35,6 +36,7 @@ export function InvoiceViewPageComponent() {
   const [exporting, setExporting] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
   const [preserveSpace, setPreserveSpace] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
 
@@ -69,7 +71,22 @@ export function InvoiceViewPageComponent() {
     }
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
-  const handleExportPDF = async () => {
+  const handleExportAction = async (options: { 
+    proformaOptions: { showHeaders: boolean; preserveSpace: boolean }; 
+    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean }; 
+    exportType: 'single' | 'bundle' 
+  }) => {
+    // For single invoice view, we use proformaOptions (which is just the first set of layout options in the dialog)
+    // Actually, in the dialog for single invoice, it's the "proformaOptions" that are passed.
+    const layout = options.proformaOptions;
+
+    const wasHeaders = showHeaders;
+    const wasSpace = preserveSpace;
+    setShowHeaders(layout.showHeaders);
+    setPreserveSpace(layout.preserveSpace);
+
+    await new Promise(res => setTimeout(res, 50));
+
     const headerElement = document.getElementById('invoice-header');
     const contentElement = document.getElementById('invoice-main-content');
     const footerElement = document.getElementById('invoice-footer');
@@ -80,6 +97,8 @@ export function InvoiceViewPageComponent() {
         title: 'Error',
         description: 'Could not find all required parts of the invoice to export.',
       });
+      setShowHeaders(wasHeaders);
+      setPreserveSpace(wasSpace);
       return;
     }
     setExporting(true);
@@ -112,7 +131,6 @@ export function InvoiceViewPageComponent() {
 
       const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
       
-      const contentDataURL = contentCanvas.toDataURL('image/png', 1.0);
       const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
       const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
 
@@ -124,7 +142,7 @@ export function InvoiceViewPageComponent() {
           pdf.addPage();
         }
 
-        if (showHeaders) {
+        if (layout.showHeaders) {
             pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
         }
 
@@ -151,13 +169,13 @@ export function InvoiceViewPageComponent() {
             tempCanvas.toDataURL('image/png', 1.0),
             'PNG',
             marginX,
-            marginTop + ((showHeaders || preserveSpace) ? headerHeight : 0),
+            marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0),
             usableWidth,
             sliceHeight
           );
         }
         
-        if (showHeaders) {
+        if (layout.showHeaders) {
              pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
         }
         
@@ -165,7 +183,8 @@ export function InvoiceViewPageComponent() {
         pageNumber++;
       }
 
-      pdf.save(`invoice_${invoice?.id}.pdf`);
+      const safeClientName = client?.companyName || 'Client';
+      pdf.save(`INV-${invoice?.id} - ${safeClientName} - at ${invoice?.invoiceDate}.pdf`);
       toast({ title: 'Success', description: 'Invoice exported as PDF.' });
     } catch (error) {
       console.error('PDF Export Error:', error);
@@ -174,8 +193,12 @@ export function InvoiceViewPageComponent() {
         title: 'Error',
         description: 'Failed to export PDF.',
       });
+    } finally {
+      setExporting(false);
+      setIsExportDialogOpen(false);
+      setShowHeaders(wasHeaders);
+      setPreserveSpace(wasSpace);
     }
-    setExporting(false);
   };
 
   const handleUpdatePaymentStatus = async (data: PaymentStatusFormData) => {
@@ -274,7 +297,7 @@ export function InvoiceViewPageComponent() {
             <Button variant="destructive" onClick={handleDelete}>
               <Trash2 className="w-4 h-4 mr-2" /> Delete
             </Button>
-            <Button variant="outline" onClick={handleExportPDF} disabled={exporting}>
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} disabled={exporting}>
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
@@ -296,6 +319,15 @@ export function InvoiceViewPageComponent() {
         <div ref={printRef}>
             <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} />
         </div>
+        
+        <ExportDocumentDialog 
+           isOpen={isExportDialogOpen}
+           setIsOpen={setIsExportDialogOpen}
+           onExport={handleExportAction}
+           isExporting={exporting}
+           hasAssociatedInvoice={false}
+           docType="invoice"
+        />
     </>
   );
 }

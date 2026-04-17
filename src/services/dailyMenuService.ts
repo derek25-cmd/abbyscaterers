@@ -94,3 +94,38 @@ export const getMenusByOrderId = async (orderId: string): Promise<DailyMenu[]> =
     }
     return data as DailyMenu[];
 };
+
+export const getMenusByClientAndRange = async (clientId: string, startDate: string, endDate: string): Promise<DailyMenu[]> => {
+    try {
+        // 1. Get all order IDs belonging to this client
+        const { data: orders, error: ordersError } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('client_id', clientId);
+
+        if (ordersError || !orders || orders.length === 0) {
+            return [];
+        }
+
+        const orderIds = orders.map(o => o.id);
+
+        // 2. Fetch daily menus for these orders within the date range
+        const { data, error } = await supabase
+            .from('daily_menus')
+            .select('*')
+            .in('order_id', orderIds)
+            .gte('menu_date', startDate)
+            .lte('menu_date', endDate)
+            .order('menu_date', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching menus by client and range:', JSON.stringify(error, null, 2));
+            return [];
+        }
+
+        return (data || []) as DailyMenu[];
+    } catch (err) {
+        console.error('Unexpected error in getMenusByClientAndRange:', err);
+        return [];
+    }
+};

@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { ProformaInvoiceTemplate } from "@/components/proforma-invoices/proforma-invoice-template";
+import { InvoiceTemplate } from "@/components/invoices/invoice-template";
+import { ExportDocumentDialog } from "@/components/proforma-invoices/export-document-dialog";
 import type { ProformaInvoice, Client, Region } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -35,7 +37,7 @@ export function ProformaInvoiceViewPageComponent() {
   const router = useRouter();
   const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading, updateProformaInvoice } = useProformaInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const { addInvoice } = useInvoiceStorage();
+  const { addInvoice, getInvoiceByProformaId } = useInvoiceStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
   const printRef = useRef<HTMLDivElement>(null);
@@ -50,10 +52,12 @@ export function ProformaInvoiceViewPageComponent() {
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
   const [preserveSpace, setPreserveSpace] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
   const isLocked = invoice?.isInvoiced && !isUnlocked;
+  const associatedInvoice = invoice ? getInvoiceByProformaId(invoice.id) : undefined;
 
   useEffect(() => {
     if (proformasLoading || clientsLoading) return;
@@ -86,24 +90,29 @@ export function ProformaInvoiceViewPageComponent() {
   };
 
 
-  const handleExportPDF = async () => {
-    const headerElement = document.getElementById('proforma-header');
-    const contentElement = document.getElementById('proforma-main-content');
-    const footerElement = document.getElementById('proforma-footer');
+  const handleExportAction = async (options: { 
+    proformaOptions: { showHeaders: boolean; preserveSpace: boolean }; 
+    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean }; 
+    exportType: 'single' | 'bundle' 
+  }) => {
+    const isBundle = options.exportType === 'bundle' && associatedInvoice;
+    
+    // We temporarily override the visual headers from the dialog options for export
+    const wasHeaders = showHeaders;
+    const wasSpace = preserveSpace;
+    
+    // For single export, we use proformaOptions
+    // For bundle, we'll toggle them dynamically during generation
+    setShowHeaders(options.proformaOptions.showHeaders);
+    setPreserveSpace(options.proformaOptions.preserveSpace);
 
-    if (!contentElement || !headerElement || !footerElement) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not find all required parts of the proforma to export.',
-      });
-      return;
-    }
+    // Wait a tick for react to evaluate the layout with the new toggles
+    await new Promise(res => setTimeout(res, 50));
 
     setExporting(true);
-    const pdfScale = settings.pdfScale || 2.0;
-
+    
     try {
+      const pdfScale = settings.pdfScale || 2.0;
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -119,68 +128,112 @@ export function ProformaInvoiceViewPageComponent() {
           allowTaint: true
       };
 
-      const headerCanvas = await html2canvas(headerElement, canvasOpts);
-      const contentCanvas = await html2canvas(contentElement, canvasOpts);
-      const footerCanvas = await html2canvas(footerElement, canvasOpts);
-
-      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-      const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-
-      const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-
-      const contentDataURL = contentCanvas.toDataURL('image/png', 1.0);
-      const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
-      const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
-      
-      let yOffset = 0;
-      let pageNumber = 1;
-
-      while (yOffset < contentImgHeight) {
-          if (pageNumber > 1) pdf.addPage();
-          
-          if (showHeaders) {
-              pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
-          }
-          
-          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-          
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = contentCanvas.width;
-          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
-          const sliceCtx = sliceCanvas.getContext('2d');
-          
-          if (sliceCtx) {
-            sliceCtx.drawImage(
-              contentCanvas,
-              0, (yOffset / usableWidth) * contentCanvas.width, // sourceY
-              contentCanvas.width, sliceCanvas.height,
-              0, 0,
-              sliceCanvas.width, sliceCanvas.height
-            );
-             pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop + ((showHeaders || preserveSpace) ? headerHeight : 0), usableWidth, sliceHeight);
+      const generatePageGroup = async (
+        prefix: string, 
+        pageNumberOffset: number, 
+        layout: { showHeaders: boolean; preserveSpace: boolean }
+      ) => {
+          // If we are doing a bundle, we need to update the template state before capturing
+          if (isBundle) {
+            setShowHeaders(layout.showHeaders);
+            setPreserveSpace(layout.preserveSpace);
+            // Wait for layout to re-render
+            await new Promise(res => setTimeout(res, 60));
           }
 
-           if (showHeaders) {
-             pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-           }
+          const headerElement = document.getElementById(`${prefix}-header`);
+          const contentElement = document.getElementById(`${prefix}-main-content`);
+          const footerElement = document.getElementById(`${prefix}-footer`);
+
+          if (!contentElement || !headerElement || !footerElement) {
+              throw new Error(`Could not find required parts for ${prefix}`);
+          }
+
+          const headerCanvas = await html2canvas(headerElement, canvasOpts);
+          const contentCanvas = await html2canvas(contentElement, canvasOpts);
+          const footerCanvas = await html2canvas(footerElement, canvasOpts);
           
-          yOffset += sliceHeight;
-          pageNumber++;
+          const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+          const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+          const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+    
+          const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+    
+          const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
+          const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+          
+          let yOffset = 0;
+          let pageNumber = pageNumberOffset;
+    
+          while (yOffset < contentImgHeight) {
+              if (pageNumber > 1) pdf.addPage();
+              
+              if (layout.showHeaders) {
+                  pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+              }
+              
+              const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+              
+              const sliceCanvas = document.createElement('canvas');
+              sliceCanvas.width = contentCanvas.width;
+              sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+              const sliceCtx = sliceCanvas.getContext('2d');
+              
+              if (sliceCtx) {
+                sliceCtx.drawImage(
+                  contentCanvas,
+                  0, (yOffset / usableWidth) * contentCanvas.width,
+                  contentCanvas.width, sliceCanvas.height,
+                  0, 0,
+                  sliceCanvas.width, sliceCanvas.height
+                );
+                 pdf.addImage(
+                   sliceCanvas.toDataURL('image/png', 1.0), 
+                   'PNG', 
+                   marginX, 
+                   marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0), 
+                   usableWidth, 
+                   sliceHeight
+                 );
+              }
+    
+               if (layout.showHeaders) {
+                 pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+               }
+              
+              yOffset += sliceHeight;
+              pageNumber++;
+          }
+          return pageNumber;
+      };
+
+      let nextPage = await generatePageGroup('proforma', 1, options.proformaOptions);
+
+      if (isBundle) {
+         await generatePageGroup('invoice', nextPage, options.invoiceOptions);
       }
-
-      pdf.save(`proforma_${invoice?.id}.pdf`);
-      toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
+      
+      const safeClientName = client?.companyName || 'Client';
+      if (isBundle) {
+          pdf.save(`BUNDLE - PI-${invoice?.id} and INV-${associatedInvoice.id} - ${safeClientName}.pdf`);
+      } else {
+          pdf.save(`PI-${invoice?.id} - ${safeClientName} - at ${invoice?.invoiceDate}.pdf`);
+      }
+      toast({ title: 'Success', description: 'Document exported successfully.' });
 
     } catch (error) {
-      console.error('PDF Export Error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to export PDF.',
-      });
+       console.error('PDF Export Error:', error);
+       toast({
+         variant: 'destructive',
+         title: 'Export Error',
+         description: 'Failed to generate PDF.',
+       });
+    } finally {
+       setExporting(false);
+       setIsExportDialogOpen(false);
+       setShowHeaders(wasHeaders);
+       setPreserveSpace(wasSpace);
     }
-    setExporting(false);
   };
   
   const handleDelete = () => {
@@ -351,7 +404,7 @@ export function ProformaInvoiceViewPageComponent() {
             <Button variant="destructive" onClick={handleDelete}>
               <Trash2 className="w-4 h-4 mr-2" /> Delete
             </Button>
-            <Button variant="outline" onClick={handleExportPDF} disabled={exporting}>
+            <Button variant="outline" onClick={() => setIsExportDialogOpen(true)} disabled={exporting}>
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
@@ -364,6 +417,23 @@ export function ProformaInvoiceViewPageComponent() {
         <div ref={printRef}>
           <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace}/>
         </div>
+        
+        {/* Hidden template for bundle export without disrupting layout */}
+        {associatedInvoice && (
+          <div className="absolute opacity-0 pointer-events-none" style={{ zIndex: -50, top: -10000, width: '1000px' }}>
+            <InvoiceTemplate invoiceData={associatedInvoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace}/>
+          </div>
+        )}
+
+        <ExportDocumentDialog 
+           isOpen={isExportDialogOpen}
+           setIsOpen={setIsExportDialogOpen}
+           onExport={handleExportAction}
+           isExporting={exporting}
+           hasAssociatedInvoice={!!associatedInvoice}
+           docType="proforma"
+        />
+
         <CreateInvoiceDialog
             isOpen={isCreateInvoiceDialogOpen}
             setIsOpen={setIsCreateInvoiceDialogOpen}

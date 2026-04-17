@@ -6,7 +6,7 @@ import { useRecipeStorage } from '@/hooks/use-recipe-storage';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck, Filter, X, Utensils, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Save, ArrowLeft, Download, Clipboard, ClipboardCheck, Filter, X, Utensils, RefreshCw, AlertCircle, CheckCircle2, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -20,6 +20,7 @@ import { DailyMenu, REGIONS, Region } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ConsistencyCheckerDialog } from '@/components/daily-menu/ConsistencyCheckerDialog';
 
 type MenuCell = { content: string; mealType: string };
 type EventMenu = {
@@ -54,6 +55,7 @@ export default function DailyMenuPlannerPage() {
 
   const [selectedColumn, setSelectedColumn] = useState<number | null>(null);
   const [clipboard, setClipboard] = useState<MenuCell[] | null>(null);
+  const [isConsistencyOpen, setIsConsistencyOpen] = useState(false);
 
   const isLoading = ordersLoading || clientsLoading || recipesLoading;
 
@@ -477,6 +479,11 @@ export default function DailyMenuPlannerPage() {
               </Link>
             </Button>
 
+            <Button variant="ghost" size="sm" className="h-9" onClick={() => setIsConsistencyOpen(true)}>
+              <Search className="mr-2 h-4 w-4 text-violet-500" />
+              Consistency
+            </Button>
+
             <Button onClick={handlePdfExport} variant="outline" size="sm" className="h-9" disabled={isExporting || isLoading || menuData.length === 0}>
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               Export
@@ -682,6 +689,8 @@ export default function DailyMenuPlannerPage() {
           ⚠️ YOU HAVE UNSAVED CHANGES • CLICK SAVE IN THE TOP RIGHT TO PERSIST DATA
         </div>
       )}
+
+      <ConsistencyCheckerDialog isOpen={isConsistencyOpen} setIsOpen={setIsConsistencyOpen} />
     </div>
   );
 }

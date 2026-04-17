@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -131,6 +131,9 @@ export function CreateInvoiceDialog({
                     <FormControl>
                       <Input {...field} placeholder="e.g., INV-2024-001" />
                     </FormControl>
+                    <FormDescription className="text-xs">
+                      Auto-generated based on the Proforma Invoice ID.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
