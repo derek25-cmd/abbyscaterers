@@ -162,13 +162,14 @@ export default function MonthlyInvoiceReportPage() {
         body: tableRows,
         startY: 25,
         columnStyles: {
-            5: { halign: 'left' },
-            8: { halign: 'left' },
+            5: { halign: 'right' },
+            6: { halign: 'right' },
+            7: { halign: 'right' },
         },
         foot: [
-            ['', '', '', '', '', '', '', 'Total Outstanding (TZS)', formatCurrency(summary.totalOutstanding)],
+            ['', '', '', '', 'TOTAL (TZS):', formatCurrency(summary.totalInvoiced), formatCurrency(summary.totalPaid), formatCurrency(summary.totalOutstanding)],
         ],
-        footStyles: { fontStyle: 'bold', halign: 'left' }
+        footStyles: { fontStyle: 'bold', halign: 'right' }
       });
       
       let fileName = "Invoice_Report";
