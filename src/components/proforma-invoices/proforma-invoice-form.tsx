@@ -303,6 +303,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     }))
                 };
                 form.reset(dataToLoad);
+                // Prevent the auto-rebuild effect from overwriting the saved description
+                setIsServiceDescModified(true);
             }
         } else if (clientId) {
             form.setValue('clientId', clientId);

@@ -107,16 +107,21 @@ export function ProformaInvoiceViewPageComponent() {
         const marginBottom = 5;
         const usableWidth = pageWidth - (marginX * 2);
 
-        const headerCanvas = await html2canvas(headerElement, { scale: 2 });
-        const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-        const footerCanvas = await html2canvas(footerElement, { scale: 2 });
+        // Dynamic scale pins the canvas to a fixed pixel width regardless of screen size,
+        // so text renders at the same PDF size on any viewport.
+        const pdfScale = settings.pdfScale || 2.0;
+        const scale = (1000 * pdfScale) / contentElement.scrollWidth;
+        const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
+
+        const headerCanvas = await html2canvas(headerElement, canvasOpts);
+        const contentCanvas = await html2canvas(contentElement, canvasOpts);
+        const footerCanvas = await html2canvas(footerElement, canvasOpts);
 
         const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
         const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
         const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
         const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-        const contentDataURL = contentCanvas.toDataURL('image/png');
         const headerDataURL = headerCanvas.toDataURL('image/png');
         const footerDataURL = footerCanvas.toDataURL('image/png');
 

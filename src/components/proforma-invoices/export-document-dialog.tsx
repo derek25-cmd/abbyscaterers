@@ -95,20 +95,20 @@ export function ExportDocumentDialog({
             )}
           </div>
 
-          {hasAssociatedInvoice && docType === 'proforma' && (
+          {hasAssociatedInvoice && (
             <div className="space-y-4 pt-4 border-t">
               <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Content to Export</h4>
               <RadioGroup value={exportType} onValueChange={(v:any) => setExportType(v)}>
                 <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExportType('single')}>
                   <RadioGroupItem value="single" id="r1" />
                   <Label htmlFor="r1" className="flex flex-1 items-center justify-between cursor-pointer">
-                    <span className="flex items-center"><FileText className="w-4 h-4 mr-2 text-primary" /> Proforma Only</span>
+                    <span className="flex items-center"><FileText className="w-4 h-4 mr-2 text-primary" /> {docType === 'invoice' ? 'Invoice Only' : 'Proforma Only'}</span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExportType('bundle')}>
                   <RadioGroupItem value="bundle" id="r2" />
                   <Label htmlFor="r2" className="flex flex-1 gap-2 items-center justify-between cursor-pointer">
-                    <span className="flex items-center text-primary font-medium"><Files className="w-4 h-4 mr-2" /> Bundle (Proforma + Final Invoice)</span>
+                    <span className="flex items-center text-primary font-medium"><Files className="w-4 h-4 mr-2" /> {docType === 'invoice' ? 'Bundle (Invoice + Proforma)' : 'Bundle (Proforma + Final Invoice)'}</span>
                     <span className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded-full uppercase font-bold text-nowrap">Combined PDF</span>
                   </Label>
                 </div>
@@ -118,7 +118,7 @@ export function ExportDocumentDialog({
 
           {exportType === 'bundle' && (
             <div className="space-y-4 pt-4 border-t animate-in fade-in slide-in-from-top-2">
-              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-amber-600">Final Invoice Layout</h4>
+              <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider text-amber-600">{docType === 'invoice' ? 'Proforma Invoice Layout' : 'Final Invoice Layout'}</h4>
               <div className="flex items-center justify-between">
                 <Label htmlFor="invoice-show-headers" className="flex flex-col space-y-1">
                   <span>Header & Footer</span>

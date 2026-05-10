@@ -4,7 +4,9 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
+import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { InvoiceTemplate } from "@/components/invoices/invoice-template";
+import { ProformaInvoiceTemplate } from "@/components/proforma-invoices/proforma-invoice-template";
 import type { Invoice, Client } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -24,6 +26,7 @@ export function InvoiceViewPageComponent() {
   const router = useRouter();
   const { getInvoiceById, deleteInvoice, isLoading: invoicesLoading } = useInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { getProformaById, isLoading: proformasLoading } = useProformaInvoiceStorage();
   const { updateInvoice } = useInvoiceStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
@@ -39,6 +42,8 @@ export function InvoiceViewPageComponent() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [proformaShowHeaders, setProformaShowHeaders] = useState(true);
+  const [proformaPreserveSpace, setProformaPreserveSpace] = useState(false);
 
   const calculateTotal = () => {
       if (!invoice) return 0;
@@ -50,9 +55,10 @@ export function InvoiceViewPageComponent() {
   };
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
+  const associatedProforma = invoice?.proformaId ? getProformaById(invoice.proformaId) : undefined;
 
   useEffect(() => {
-    if (invoicesLoading || clientsLoading) return;
+    if (invoicesLoading || clientsLoading || proformasLoading) return;
 
     if (!invoiceId) {
         setError("Invalid invoice ID.");
@@ -71,39 +77,36 @@ export function InvoiceViewPageComponent() {
     }
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
-  const handleExportAction = async (options: { 
-    proformaOptions: { showHeaders: boolean; preserveSpace: boolean }; 
-    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean }; 
-    exportType: 'single' | 'bundle' 
+  const handleExportAction = async (options: {
+    proformaOptions: { showHeaders: boolean; preserveSpace: boolean };
+    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean };
+    exportType: 'single' | 'bundle'
   }) => {
-    // For single invoice view, we use proformaOptions (which is just the first set of layout options in the dialog)
-    // Actually, in the dialog for single invoice, it's the "proformaOptions" that are passed.
-    const layout = options.proformaOptions;
+    const isBundle = options.exportType === 'bundle' && !!associatedProforma;
+    // From the invoice view: proformaOptions = invoice layout, invoiceOptions = proforma layout
+    const invoiceLayout = options.proformaOptions;
+    const proformaLayout = options.invoiceOptions;
 
     const wasHeaders = showHeaders;
     const wasSpace = preserveSpace;
-    setShowHeaders(layout.showHeaders);
-    setPreserveSpace(layout.preserveSpace);
+    const wasProformaHeaders = proformaShowHeaders;
+    const wasProformaSpace = proformaPreserveSpace;
+
+    setShowHeaders(invoiceLayout.showHeaders);
+    setPreserveSpace(invoiceLayout.preserveSpace);
+    if (isBundle) {
+      setProformaShowHeaders(proformaLayout.showHeaders);
+      setProformaPreserveSpace(proformaLayout.preserveSpace);
+    }
 
     await new Promise(res => setTimeout(res, 50));
-
-    const headerElement = document.getElementById('invoice-header');
-    const contentElement = document.getElementById('invoice-main-content');
-    const footerElement = document.getElementById('invoice-footer');
-
-    if (!contentElement || !headerElement || !footerElement) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not find all required parts of the invoice to export.',
-      });
-      setShowHeaders(wasHeaders);
-      setPreserveSpace(wasSpace);
-      return;
-    }
     setExporting(true);
 
     const pdfScale = settings.pdfScale || 2.0;
+    // Fixed target canvas width ensures consistent font sizes across all screen sizes.
+    // html2canvas uses the element's current rendered width, which varies with viewport.
+    // Pinning canvas width to this constant makes text size in PDF screen-independent.
+    const TARGET_CANVAS_WIDTH = 1000 * pdfScale;
 
     try {
       const pdf = new jsPDF('p', 'pt', 'a4');
@@ -114,90 +117,111 @@ export function InvoiceViewPageComponent() {
       const marginBottom = 5;
       const usableWidth = pageWidth - (marginX * 2);
 
-      const canvasOpts = { 
-          scale: pdfScale, 
-          useCORS: true,
-          logging: false,
-          allowTaint: true
+      const generatePageGroup = async (
+        prefix: string,
+        pageNumberOffset: number,
+        layout: { showHeaders: boolean; preserveSpace: boolean }
+      ) => {
+        if (isBundle) {
+          if (prefix === 'invoice') {
+            setShowHeaders(layout.showHeaders);
+            setPreserveSpace(layout.preserveSpace);
+          } else {
+            setProformaShowHeaders(layout.showHeaders);
+            setProformaPreserveSpace(layout.preserveSpace);
+          }
+          await new Promise(res => setTimeout(res, 60));
+        }
+
+        const headerElement = document.getElementById(`${prefix}-header`);
+        const contentElement = document.getElementById(`${prefix}-main-content`);
+        const footerElement = document.getElementById(`${prefix}-footer`);
+
+        if (!contentElement || !headerElement || !footerElement) {
+          throw new Error(`Could not find required parts for ${prefix}`);
+        }
+
+        const scale = TARGET_CANVAS_WIDTH / contentElement.scrollWidth;
+        const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
+
+        const headerCanvas = await html2canvas(headerElement, canvasOpts);
+        const contentCanvas = await html2canvas(contentElement, canvasOpts);
+        const footerCanvas = await html2canvas(footerElement, canvasOpts);
+
+        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
+        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+
+        const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
+        const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+
+        let yOffset = 0;
+        let pageNumber = pageNumberOffset;
+
+        while (yOffset < contentImgHeight) {
+          if (pageNumber > 1) pdf.addPage();
+
+          if (layout.showHeaders) {
+            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+          }
+
+          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = contentCanvas.width;
+          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+          const sliceCtx = sliceCanvas.getContext('2d');
+
+          if (sliceCtx) {
+            sliceCtx.drawImage(
+              contentCanvas,
+              0, (yOffset / usableWidth) * contentCanvas.width,
+              contentCanvas.width, sliceCanvas.height,
+              0, 0,
+              sliceCanvas.width, sliceCanvas.height
+            );
+            pdf.addImage(
+              sliceCanvas.toDataURL('image/png', 1.0),
+              'PNG',
+              marginX,
+              marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0),
+              usableWidth,
+              sliceHeight
+            );
+          }
+
+          if (layout.showHeaders) {
+            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+          }
+
+          yOffset += sliceHeight;
+          pageNumber++;
+        }
+        return pageNumber;
       };
 
-      const headerCanvas = await html2canvas(headerElement, canvasOpts);
-      const contentCanvas = await html2canvas(contentElement, canvasOpts);
-      const footerCanvas = await html2canvas(footerElement, canvasOpts);
-      
-      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-      const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-
-      const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-      
-      const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
-      const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
-
-      let yOffset = 0;
-      let pageNumber = 1;
-
-      while (yOffset < contentImgHeight) {
-        if (pageNumber > 1) {
-          pdf.addPage();
-        }
-
-        if (layout.showHeaders) {
-            pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
-        }
-
-        const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = contentCanvas.width;
-        tempCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
-        const tempCtx = tempCanvas.getContext('2d');
-
-        if (tempCtx) {
-          tempCtx.drawImage(
-            contentCanvas,
-            0,
-            (yOffset / usableWidth) * contentCanvas.width, // sourceY
-            contentCanvas.width,
-            tempCanvas.height,
-            0,
-            0,
-            tempCanvas.width,
-            tempCanvas.height
-          );
-          pdf.addImage(
-            tempCanvas.toDataURL('image/png', 1.0),
-            'PNG',
-            marginX,
-            marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0),
-            usableWidth,
-            sliceHeight
-          );
-        }
-        
-        if (layout.showHeaders) {
-             pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-        }
-        
-        yOffset += sliceHeight;
-        pageNumber++;
+      let nextPage = await generatePageGroup('invoice', 1, invoiceLayout);
+      if (isBundle) {
+        await generatePageGroup('proforma', nextPage, proformaLayout);
       }
 
       const safeClientName = client?.companyName || 'Client';
-      pdf.save(`INV-${invoice?.id} - ${safeClientName} - at ${invoice?.invoiceDate}.pdf`);
+      if (isBundle) {
+        pdf.save(`BUNDLE - INV-${invoice?.id} and PI-${associatedProforma.id} - ${safeClientName}.pdf`);
+      } else {
+        pdf.save(`INV-${invoice?.id} - ${safeClientName} - at ${invoice?.invoiceDate}.pdf`);
+      }
       toast({ title: 'Success', description: 'Invoice exported as PDF.' });
     } catch (error) {
       console.error('PDF Export Error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to export PDF.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
     } finally {
       setExporting(false);
       setIsExportDialogOpen(false);
       setShowHeaders(wasHeaders);
       setPreserveSpace(wasSpace);
+      setProformaShowHeaders(wasProformaHeaders);
+      setProformaPreserveSpace(wasProformaSpace);
     }
   };
 
@@ -232,7 +256,7 @@ export function InvoiceViewPageComponent() {
     }
   }
 
-  if (invoicesLoading || clientsLoading) {
+  if (invoicesLoading || clientsLoading || proformasLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin mr-2" />
@@ -319,13 +343,19 @@ export function InvoiceViewPageComponent() {
         <div ref={printRef}>
             <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} />
         </div>
-        
-        <ExportDocumentDialog 
+
+        {associatedProforma && (
+          <div className="absolute opacity-0 pointer-events-none" style={{ zIndex: -50, top: -10000, width: '1000px' }}>
+            <ProformaInvoiceTemplate invoiceData={associatedProforma} client={client} showHeaders={proformaShowHeaders} preserveSpace={proformaPreserveSpace} />
+          </div>
+        )}
+
+        <ExportDocumentDialog
            isOpen={isExportDialogOpen}
            setIsOpen={setIsExportDialogOpen}
            onExport={handleExportAction}
            isExporting={exporting}
-           hasAssociatedInvoice={false}
+           hasAssociatedInvoice={!!associatedProforma}
            docType="invoice"
         />
     </>
