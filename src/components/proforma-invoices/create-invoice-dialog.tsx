@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -43,9 +43,9 @@ type CreateInvoiceFormData = z.infer<typeof CreateInvoiceSchema>;
 interface CreateInvoiceDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onSubmit: (data: { 
-    invoiceId: string, 
-    invoiceDate: string, 
+  onSubmit: (data: {
+    invoiceId: string,
+    invoiceDate: string,
     region: Region,
     signedAtDate: string,
     signedAtLocation: string,
@@ -56,17 +56,19 @@ interface CreateInvoiceDialogProps {
   }) => Promise<void>;
   isCreating: boolean;
   proformaId: string;
+  suggestedInvoiceId?: string;
   initialLpoNumber?: string | null;
   initialReceiverName?: string | null;
   initialReceiverPosition?: string | null;
 }
 
-export function CreateInvoiceDialog({ 
-  isOpen, 
-  setIsOpen, 
-  onSubmit, 
-  isCreating, 
+export function CreateInvoiceDialog({
+  isOpen,
+  setIsOpen,
+  onSubmit,
+  isCreating,
   proformaId,
+  suggestedInvoiceId,
   initialLpoNumber,
   initialReceiverName,
   initialReceiverPosition,
@@ -74,7 +76,7 @@ export function CreateInvoiceDialog({
   const form = useForm<CreateInvoiceFormData>({
     resolver: zodResolver(CreateInvoiceSchema),
     defaultValues: {
-      invoiceId: `INV-${proformaId.replace('PI-', '')}`,
+      invoiceId: suggestedInvoiceId || '',
       invoiceDate: new Date(),
       region: "Dar es Salaam",
       signedAtDate: new Date(),
@@ -89,7 +91,7 @@ export function CreateInvoiceDialog({
   useEffect(() => {
     if (isOpen) {
       form.reset({
-        invoiceId: `INV-${proformaId.replace('PI-', '')}`,
+        invoiceId: suggestedInvoiceId || '',
         invoiceDate: new Date(),
         region: "Dar es Salaam",
         signedAtDate: new Date(),
@@ -100,7 +102,7 @@ export function CreateInvoiceDialog({
         receiverPosition: initialReceiverPosition || '',
       });
     }
-  }, [isOpen, proformaId, form, initialLpoNumber, initialReceiverName, initialReceiverPosition]);
+  }, [isOpen, suggestedInvoiceId, form, initialLpoNumber, initialReceiverName, initialReceiverPosition]);
 
   const handleSubmit = (values: CreateInvoiceFormData) => {
     onSubmit({

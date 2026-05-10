@@ -75,7 +75,7 @@ export function InvoiceViewPageComponent() {
     } else {
         setError("Invoice not found.");
     }
-  }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
+  }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading, proformasLoading]);
 
   const handleExportAction = async (options: {
     proformaOptions: { showHeaders: boolean; preserveSpace: boolean };

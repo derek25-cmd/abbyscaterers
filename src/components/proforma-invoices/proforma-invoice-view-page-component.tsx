@@ -36,7 +36,7 @@ export function ProformaInvoiceViewPageComponent() {
   const router = useRouter();
   const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading, updateProformaInvoice } = useProformaInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const { addInvoice } = useInvoiceStorage();
+  const { addInvoice, getNextInvoiceId } = useInvoiceStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
   const printRef = useRef<HTMLDivElement>(null);
@@ -49,6 +49,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [passcode, setPasscode] = useState("");
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const [suggestedInvoiceId, setSuggestedInvoiceId] = useState('');
   const [showHeaders, setShowHeaders] = useState(true);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
@@ -171,6 +172,12 @@ export function ProformaInvoiceViewPageComponent() {
     setExporting(false);
   };
   
+  const handleOpenCreateInvoiceDialog = async () => {
+    const nextId = await getNextInvoiceId();
+    setSuggestedInvoiceId(nextId);
+    setIsCreateInvoiceDialogOpen(true);
+  };
+
   const handleDelete = () => {
     if(invoiceId) {
         deleteProformaInvoice(invoiceId);
@@ -333,7 +340,7 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={() => setIsCreateInvoiceDialogOpen(true)} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+             <Button onClick={handleOpenCreateInvoiceDialog} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
                 {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
@@ -348,6 +355,7 @@ export function ProformaInvoiceViewPageComponent() {
             onSubmit={handleCreateFinalInvoice}
             isCreating={isCreatingInvoice}
             proformaId={invoice.id}
+            suggestedInvoiceId={suggestedInvoiceId}
             initialLpoNumber={invoice.lpoNumber}
             initialReceiverName={invoice.receiverName}
             initialReceiverPosition={invoice.receiverPosition}

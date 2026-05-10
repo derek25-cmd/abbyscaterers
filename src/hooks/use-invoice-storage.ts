@@ -4,12 +4,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Invoice } from "@/types";
 import type { FinalInvoiceFormData } from "@/lib/schemas";
-import { 
+import {
   getInvoices as getAllFromStorage,
   getInvoiceById as getByIdFromStorage,
   addInvoice as addToStorage,
   updateInvoice as updateInStorage,
-  deleteInvoice as deleteFromStorage 
+  deleteInvoice as deleteFromStorage,
+  getLatestInvoiceNumber
 } from '@/services/invoiceService';
 
 export function useInvoiceStorage() {
@@ -59,14 +60,20 @@ export function useInvoiceStorage() {
     return invoices.find(invoice => invoice.proformaId === proformaId);
   }, [invoices]);
 
-  return { 
-    invoices, 
-    isLoading, 
-    addInvoice, 
-    updateInvoice, 
-    deleteInvoice, 
+  const getNextInvoiceId = useCallback(async () => {
+    const num = await getLatestInvoiceNumber();
+    return String(num).padStart(7, '0');
+  }, []);
+
+  return {
+    invoices,
+    isLoading,
+    addInvoice,
+    updateInvoice,
+    deleteInvoice,
     getInvoiceById,
     getInvoiceByProformaId,
-    refreshInvoices 
+    refreshInvoices,
+    getNextInvoiceId
   };
 }
