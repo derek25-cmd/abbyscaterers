@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, Download, ArrowLeft, DollarSign, ShoppingCart, User, Search, ListFilter } from "lucide-react";
+import { FileText, Loader2, ArrowLeft, DollarSign, ShoppingCart, User, Search, ListFilter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import type { ClientEvent, Order } from "@/types";
-import { format, parseISO } from 'date-fns';
+import type { ClientEvent } from "@/types";
+import { format } from 'date-fns';
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { DatePicker } from "@/components/ui/date-picker";
 
 const calculateTotal = (events: ClientEvent[]) => {
@@ -30,6 +29,7 @@ export default function MonthlyOrderReportPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("customerName");
+  const [showUnlinkedOnly, setShowUnlinkedOnly] = useState(false);
 
   const monthlyOrders = useMemo(() => {
     const monthStr = format(selectedMonth, 'yyyy-MM');
@@ -40,6 +40,10 @@ export default function MonthlyOrderReportPage() {
         return (start && start <= monthStr) && (end && end >= monthStr);
     });
     
+    if (showUnlinkedOnly) {
+        filtered = filtered.filter(order => !order.proformaId);
+    }
+
     if (searchQuery) {
         const lowercasedQuery = searchQuery.toLowerCase();
         filtered = filtered.filter(order => {
@@ -53,7 +57,7 @@ export default function MonthlyOrderReportPage() {
     }
 
     return filtered;
-  }, [selectedMonth, orders, searchQuery, filterType, getClientById]);
+  }, [selectedMonth, orders, searchQuery, filterType, getClientById, showUnlinkedOnly]);
 
   const summary = useMemo(() => {
     const totalSales = monthlyOrders.reduce((sum, order) => sum + calculateTotal(order.clientEvents), 0);
@@ -155,6 +159,8 @@ export default function MonthlyOrderReportPage() {
                   <DropdownMenuSeparator />
                   <DropdownMenuCheckboxItem checked={filterType === 'customerName'} onCheckedChange={() => setFilterType('customerName')}>Customer Name</DropdownMenuCheckboxItem>
                   <DropdownMenuCheckboxItem checked={filterType === 'id'} onCheckedChange={() => setFilterType('id')}>Order ID</DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem checked={showUnlinkedOnly} onCheckedChange={setShowUnlinkedOnly}>Unlinked to Proforma</DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <DatePicker

@@ -45,6 +45,12 @@ const reportCategories = [
         icon: FileText,
       },
       {
+        title: "Proforma Invoice Report",
+        description: "List and export proforma invoices for any date range, filtered by client and status.",
+        href: "/reports/monthly-proforma",
+        icon: FileText,
+      },
+      {
         title: "Costing Report",
         description: "Analyze ingredient costs against event income.",
         href: "/costing",

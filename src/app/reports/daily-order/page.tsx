@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -31,6 +31,7 @@ export default function DailyOrderReportPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("customerName");
+  const [showUnlinkedOnly, setShowUnlinkedOnly] = useState(false);
 
   const dailyEvents: DailyEventInfo[] = useMemo(() => {
     let eventsForDate: DailyEventInfo[] = [];
@@ -48,6 +49,10 @@ export default function DailyOrderReportPage() {
         );
     }
     
+    if (showUnlinkedOnly) {
+        eventsForDate = eventsForDate.filter(event => !event.proformaId);
+    }
+
     if (searchQuery) {
         const lowercasedQuery = searchQuery.toLowerCase();
         return eventsForDate.filter(event => {
@@ -61,11 +66,11 @@ export default function DailyOrderReportPage() {
                 default:
                     return clientName.includes(lowercasedQuery);
             }
-        })
+        });
     }
 
     return eventsForDate;
-  }, [selectedDate, orders, searchQuery, filterType, getClientById]);
+  }, [selectedDate, orders, searchQuery, filterType, getClientById, showUnlinkedOnly]);
 
   const calculateGrandTotal = (event: ClientEvent) => {
     const total = (event.unitPrice || 0) * (event.numberOfPeople || 0);
@@ -203,6 +208,8 @@ export default function DailyOrderReportPage() {
                         <DropdownMenuCheckboxItem checked={filterType === 'orderId'} onCheckedChange={() => setFilterType('orderId')}>Order ID</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterType === 'proformaId'} onCheckedChange={() => setFilterType('proformaId')}>Proforma No.</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterType === 'mealType'} onCheckedChange={() => setFilterType('mealType')}>Meal Type</DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem checked={showUnlinkedOnly} onCheckedChange={setShowUnlinkedOnly}>Unlinked to Proforma</DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <DateSelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
