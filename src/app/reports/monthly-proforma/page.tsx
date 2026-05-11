@@ -9,6 +9,7 @@ import { FileText, Loader2, ArrowLeft, DollarSign, FileCheck, FileClock, Downloa
 import { useToast } from "@/hooks/use-toast";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
+import { useInvoiceStorage } from "@/hooks/use-invoice-storage";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import type { ProformaInvoice } from "@/types";
@@ -36,6 +37,7 @@ export default function MonthlyProformaReportPage() {
     const { toast } = useToast();
     const { proformaInvoices, isLoading: proformasLoading } = useProformaInvoiceStorage();
     const { clients, isLoading: clientsLoading } = useClientStorage();
+    const { getInvoiceByProformaId, isLoading: invoicesLoading } = useInvoiceStorage();
     const [isExporting, setIsExporting] = useState(false);
 
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
@@ -100,10 +102,12 @@ export default function MonthlyProformaReportPage() {
 
             const rows = filtered.map((pi, i) => {
                 const client = clients.find(c => c.id === pi.clientId);
+                const linkedInvoice = getInvoiceByProformaId(pi.id);
                 return [
                     i + 1,
                     client?.companyName || "N/A",
                     pi.id,
+                    linkedInvoice?.id || "—",
                     pi.invoiceDate ? format(parseISO(pi.invoiceDate), "dd/MM/yyyy") : "N/A",
                     `${pi.startDate ? format(parseISO(pi.startDate), "dd/MM/yyyy") : "?"} – ${pi.endDate ? format(parseISO(pi.endDate), "dd/MM/yyyy") : "?"}`,
                     pi.isInvoiced ? "Invoiced" : "Pending",
@@ -113,11 +117,11 @@ export default function MonthlyProformaReportPage() {
 
             (doc as any).autoTable({
                 theme: "grid",
-                head: [["S/N", "Client", "Proforma No.", "Date", "Service Period", "Status", "Total (TZS)"]],
+                head: [["S/N", "Client", "Proforma No.", "Invoice No.", "Date", "Service Period", "Status", "Total (TZS)"]],
                 body: rows,
                 startY: 26,
-                columnStyles: { 6: { halign: "right" } },
-                foot: [["", "", "", "", "", "GRAND TOTAL (TZS)", formatCurrency(summary.total)]],
+                columnStyles: { 7: { halign: "right" } },
+                foot: [["", "", "", "", "", "", "GRAND TOTAL (TZS)", formatCurrency(summary.total)]],
                 footStyles: { fontStyle: "bold", halign: "right" },
             });
 
@@ -132,20 +136,22 @@ export default function MonthlyProformaReportPage() {
     };
 
     const handleCsvExport = () => {
-        const headers = ["S/N", "Client", "Proforma No.", "Invoice Date", "Service Period", "Status", "Total (TZS)"];
+        const headers = ["S/N", "Client", "Proforma No.", "Invoice No.", "Invoice Date", "Service Period", "Status", "Total (TZS)"];
         const rows = filtered.map((pi, i) => {
             const client = clients.find(c => c.id === pi.clientId);
+            const linkedInvoice = getInvoiceByProformaId(pi.id);
             return [
                 i + 1,
                 `"${(client?.companyName || "N/A").replace(/"/g, '""')}"`,
                 pi.id,
+                linkedInvoice?.id || "",
                 pi.invoiceDate ? format(parseISO(pi.invoiceDate), "dd/MM/yyyy") : "N/A",
                 `"${pi.startDate ? format(parseISO(pi.startDate), "dd/MM/yyyy") : "?"} – ${pi.endDate ? format(parseISO(pi.endDate), "dd/MM/yyyy") : "?"}"`,
                 pi.isInvoiced ? "Invoiced" : "Pending",
                 calculateTotal(pi).toFixed(2),
             ].join(",");
         });
-        rows.push(["", "", "", "", "", "GRAND TOTAL", formatCurrency(summary.total)].join(","));
+        rows.push(["", "", "", "", "", "", "GRAND TOTAL", formatCurrency(summary.total)].join(","));
 
         const blob = new Blob([[headers.join(","), ...rows].join("\r\n")], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -157,7 +163,7 @@ export default function MonthlyProformaReportPage() {
         toast({ title: "Export Successful", description: "Report exported to CSV." });
     };
 
-    const isLoading = proformasLoading || clientsLoading;
+    const isLoading = proformasLoading || clientsLoading || invoicesLoading;
 
     return (
         <div className="container mx-auto p-6 space-y-6">
@@ -316,6 +322,7 @@ export default function MonthlyProformaReportPage() {
                                 <TableHead className="w-10">S/N</TableHead>
                                 <TableHead>Client</TableHead>
                                 <TableHead>Proforma No.</TableHead>
+                                <TableHead>Invoice No.</TableHead>
                                 <TableHead>Invoice Date</TableHead>
                                 <TableHead>Service Period</TableHead>
                                 <TableHead>Status</TableHead>
@@ -324,14 +331,20 @@ export default function MonthlyProformaReportPage() {
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={7} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
                             ) : filtered.length > 0 ? filtered.map((pi, i) => {
                                 const client = clients.find(c => c.id === pi.clientId);
+                                const linkedInvoice = getInvoiceByProformaId(pi.id);
                                 return (
                                     <TableRow key={pi.id}>
                                         <TableCell>{i + 1}</TableCell>
                                         <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
                                         <TableCell className="font-mono text-xs">{pi.id}</TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                            {linkedInvoice?.id
+                                                ? <span className="text-primary">{linkedInvoice.id}</span>
+                                                : <span className="text-muted-foreground">—</span>}
+                                        </TableCell>
                                         <TableCell>{pi.invoiceDate ? format(parseISO(pi.invoiceDate), "dd/MM/yyyy") : "N/A"}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
                                             {pi.startDate ? format(parseISO(pi.startDate), "dd/MM/yyyy") : "?"} – {pi.endDate ? format(parseISO(pi.endDate), "dd/MM/yyyy") : "?"}
@@ -345,12 +358,12 @@ export default function MonthlyProformaReportPage() {
                                     </TableRow>
                                 );
                             }) : (
-                                <TableRow><TableCell colSpan={7} className="text-center h-24 text-muted-foreground">No proforma invoices found for the selected criteria.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={8} className="text-center h-24 text-muted-foreground">No proforma invoices found for the selected criteria.</TableCell></TableRow>
                             )}
                         </TableBody>
                         <TableFooter>
                             <TableRow>
-                                <TableCell colSpan={6} className="text-right font-bold text-lg">Grand Total (TZS)</TableCell>
+                                <TableCell colSpan={7} className="text-right font-bold text-lg">Grand Total (TZS)</TableCell>
                                 <TableCell className="text-right font-bold text-lg text-primary">{formatCurrency(summary.total)}</TableCell>
                             </TableRow>
                         </TableFooter>
