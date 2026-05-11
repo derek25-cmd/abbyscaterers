@@ -57,7 +57,7 @@ interface CreateInvoiceDialogProps {
   isCreating: boolean;
   proformaId: string;
   suggestedInvoiceId?: string;
-  checkInvoiceIdExists: (id: string) => boolean;
+  checkInvoiceIdExists?: (id: string) => boolean;
   initialLpoNumber?: string | null;
   initialReceiverName?: string | null;
   initialReceiverPosition?: string | null;
@@ -107,7 +107,7 @@ export function CreateInvoiceDialog({
   }, [isOpen, suggestedInvoiceId, form, initialLpoNumber, initialReceiverName, initialReceiverPosition]);
 
   const handleSubmit = async (values: CreateInvoiceFormData) => {
-    if (checkInvoiceIdExists(values.invoiceId)) {
+    if (checkInvoiceIdExists?.(values.invoiceId)) {
       form.setError('invoiceId', {
         message: `Invoice ID "${values.invoiceId}" is already in use. Please choose a different number.`,
       });

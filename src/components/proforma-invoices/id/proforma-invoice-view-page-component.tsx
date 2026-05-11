@@ -36,9 +36,10 @@ export function ProformaInvoiceViewPageComponent() {
   const router = useRouter();
   const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading, updateProformaInvoice } = useProformaInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const { addInvoice } = useInvoiceStorage();
+  const { addInvoice, getInvoiceById, getNextInvoiceId } = useInvoiceStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
+  const pdfScale = settings.pdfScale || 2.0;
   const printRef = useRef<HTMLDivElement>(null);
 
   const [invoice, setInvoice] = useState<ProformaInvoice | undefined>(undefined);
@@ -50,6 +51,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
+  const [suggestedInvoiceId, setSuggestedInvoiceId] = useState('');
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
@@ -110,9 +112,12 @@ export function ProformaInvoiceViewPageComponent() {
       const marginBottom = 5;
       const usableWidth = pageWidth - (marginX * 2);
 
-      const headerCanvas = await html2canvas(headerElement, { scale: 2 });
-      const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-      const footerCanvas = await html2canvas(footerElement, { scale: 2 });
+      const scale = (1000 * pdfScale) / contentElement.scrollWidth;
+      const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
+
+      const headerCanvas = await html2canvas(headerElement, canvasOpts);
+      const contentCanvas = await html2canvas(contentElement, canvasOpts);
+      const footerCanvas = await html2canvas(footerElement, canvasOpts);
 
       const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
       const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
@@ -120,7 +125,6 @@ export function ProformaInvoiceViewPageComponent() {
 
       const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-      const contentDataURL = contentCanvas.toDataURL('image/png', 1.0);
       const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
       const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
       
@@ -182,7 +186,13 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
-  const handleCreateFinalInvoice = async (details: { 
+  const handleOpenCreateInvoiceDialog = async () => {
+    const nextId = await getNextInvoiceId();
+    setSuggestedInvoiceId(nextId);
+    setIsCreateInvoiceDialogOpen(true);
+  };
+
+  const handleCreateFinalInvoice = async (details: {
     invoiceId: string, 
     invoiceDate: string, 
     region: Region,
@@ -336,7 +346,7 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={() => setIsCreateInvoiceDialogOpen(true)} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+             <Button onClick={handleOpenCreateInvoiceDialog} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
                 {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
@@ -351,6 +361,8 @@ export function ProformaInvoiceViewPageComponent() {
             onSubmit={handleCreateFinalInvoice}
             isCreating={isCreatingInvoice}
             proformaId={invoice.id}
+            suggestedInvoiceId={suggestedInvoiceId}
+            checkInvoiceIdExists={(id) => !!getInvoiceById(id)}
             initialLpoNumber={invoice.lpoNumber}
             initialReceiverName={invoice.receiverName}
             initialReceiverPosition={invoice.receiverPosition}
