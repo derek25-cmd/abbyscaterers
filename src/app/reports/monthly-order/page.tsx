@@ -4,7 +4,8 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { FileText, Loader2, ArrowLeft, DollarSign, ShoppingCart, User, Search, ListFilter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Loader2, ArrowLeft, DollarSign, ShoppingCart, User, Search, ListFilter, ChevronsUpDown, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useOrderStorage } from "@/hooks/use-order-storage";
 import { useClientStorage } from "@/hooks/use-client-storage";
@@ -16,6 +17,9 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 const calculateTotal = (events: ClientEvent[]) => {
     return events.reduce((sum, event) => sum + (event.unitPrice * event.numberOfPeople), 0);
@@ -25,21 +29,27 @@ export default function MonthlyOrderReportPage() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const { toast } = useToast();
   const { orders, isLoading: ordersLoading } = useOrderStorage();
-  const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { clients, getClientById, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("customerName");
   const [showUnlinkedOnly, setShowUnlinkedOnly] = useState(false);
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
 
   const monthlyOrders = useMemo(() => {
     const monthStr = format(selectedMonth, 'yyyy-MM');
-    // Filter orders whose contract overlaps with the selected month
     let filtered = orders.filter(order => {
         const start = order.startDate?.substring(0, 7);
         const end = order.endDate?.substring(0, 7);
         return (start && start <= monthStr) && (end && end >= monthStr);
     });
-    
+
+    if (selectedClientIds.length > 0) {
+        const set = new Set(selectedClientIds);
+        filtered = filtered.filter(order => order.clientId && set.has(order.clientId));
+    }
+
     if (showUnlinkedOnly) {
         filtered = filtered.filter(order => !order.proformaId);
     }
@@ -57,13 +67,13 @@ export default function MonthlyOrderReportPage() {
     }
 
     return filtered;
-  }, [selectedMonth, orders, searchQuery, filterType, getClientById, showUnlinkedOnly]);
+  }, [selectedMonth, orders, searchQuery, filterType, getClientById, showUnlinkedOnly, selectedClientIds]);
 
   const summary = useMemo(() => {
     const totalSales = monthlyOrders.reduce((sum, order) => sum + calculateTotal(order.clientEvents), 0);
     const totalOrders = monthlyOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-    
+
     const clientOrderCounts = monthlyOrders.reduce((acc, order) => {
         const clientId = order.clientId;
         acc[clientId] = (acc[clientId] || 0) + 1;
@@ -130,7 +140,7 @@ export default function MonthlyOrderReportPage() {
           </Button>
         </div>
       </div>
-      
+
        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Sales</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(summary.totalSales)}</div></CardContent></Card>
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Orders</CardTitle><ShoppingCart className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{summary.totalOrders}</div></CardContent></Card>
@@ -141,15 +151,56 @@ export default function MonthlyOrderReportPage() {
       <Card>
           <CardHeader>
             <CardTitle>Orders for: {format(selectedMonth, 'MMMM yyyy')}</CardTitle>
-             <div className="flex items-center gap-2 pt-4">
-              <div className="relative flex-1">
+            <div className="flex items-center gap-2 pt-4 flex-wrap">
+
+              {/* Client multi-select */}
+              <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full md:w-[200px] justify-between">
+                    {selectedClientIds.length > 0 ? `${selectedClientIds.length} client(s)` : "All Clients"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search client..." />
+                    <CommandList>
+                      <CommandEmpty>No clients found.</CommandEmpty>
+                      <CommandGroup>
+                        {clients
+                          .slice()
+                          .sort((a, b) => a.companyName.localeCompare(b.companyName))
+                          .map(client => (
+                            <CommandItem
+                              key={client.id}
+                              value={client.companyName}
+                              onSelect={() =>
+                                setSelectedClientIds(prev =>
+                                  prev.includes(client.id)
+                                    ? prev.filter(id => id !== client.id)
+                                    : [...prev, client.id]
+                                )
+                              }
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", selectedClientIds.includes(client.id) ? "opacity-100" : "opacity-0")} />
+                              {client.companyName}
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              {/* Text search + field filter */}
+              <div className="relative flex-1 min-w-[160px]">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder={`Search by ${filterType === 'id' ? 'Order ID' : 'Customer Name'}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg bg-background pl-8 md:w-[240px]"
+                  className="w-full rounded-lg bg-background pl-8"
                 />
               </div>
               <DropdownMenu>
@@ -174,6 +225,29 @@ export default function MonthlyOrderReportPage() {
                  {isExporting ? 'Exporting...' : 'Export PDF'}
               </Button>
             </div>
+
+            {/* Active client filter badges */}
+            {selectedClientIds.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {selectedClientIds.map(id => {
+                  const client = clients.find(c => c.id === id);
+                  return (
+                    <Badge key={id} variant="secondary" className="pl-2">
+                      {client?.companyName}
+                      <button
+                        onClick={() => setSelectedClientIds(prev => prev.filter(cid => cid !== id))}
+                        className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+                <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={() => setSelectedClientIds([])}>
+                  Clear all
+                </Button>
+              </div>
+            )}
         </CardHeader>
         <CardContent>
            <Table>
