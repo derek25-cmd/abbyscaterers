@@ -73,8 +73,14 @@ export default function MonthlyProformaReportPage() {
         if (statusFilter === "invoiced") result = result.filter(pi => !!pi.isInvoiced);
         if (statusFilter === "pending") result = result.filter(pi => !pi.isInvoiced);
 
+        result = [...result].sort((a, b) => {
+            const nameA = clients.find(c => c.id === a.clientId)?.companyName ?? "";
+            const nameB = clients.find(c => c.id === b.clientId)?.companyName ?? "";
+            return nameA.localeCompare(nameB);
+        });
+
         return result;
-    }, [proformaInvoices, dateRange, selectedClientIds, statusFilter]);
+    }, [proformaInvoices, dateRange, selectedClientIds, statusFilter, clients]);
 
     const summary = useMemo(() => {
         const total = filtered.reduce((s, pi) => s + calculateTotal(pi), 0);
