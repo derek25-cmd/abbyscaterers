@@ -36,7 +36,7 @@ export function ProformaInvoiceViewPageComponent() {
   const router = useRouter();
   const { getProformaById, deleteProformaInvoice, isLoading: proformasLoading, updateProformaInvoice } = useProformaInvoiceStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
-  const { addInvoice, getNextInvoiceId } = useInvoiceStorage();
+  const { addInvoice, getNextInvoiceId, getInvoiceById } = useInvoiceStorage();
   const { toast } = useToast();
   const { settings } = useSettingsStorage();
   const printRef = useRef<HTMLDivElement>(null);
@@ -224,8 +224,6 @@ export function ProformaInvoiceViewPageComponent() {
             amountPaid: 0
         };
         const newInvoice = await addInvoice(newInvoiceData);
-        
-        await updateProformaInvoice(invoice.id, { isInvoiced: true });
 
         if (newInvoice) {
             toast({
@@ -234,7 +232,7 @@ export function ProformaInvoiceViewPageComponent() {
             });
             router.push(`/invoices/${newInvoice.id}`);
         } else {
-             toast({
+            toast({
                 variant: "destructive",
                 title: "Error",
                 description: "An error occurred while creating the final invoice."
@@ -356,6 +354,7 @@ export function ProformaInvoiceViewPageComponent() {
             isCreating={isCreatingInvoice}
             proformaId={invoice.id}
             suggestedInvoiceId={suggestedInvoiceId}
+            checkInvoiceIdExists={(id) => !!getInvoiceById(id)}
             initialLpoNumber={invoice.lpoNumber}
             initialReceiverName={invoice.receiverName}
             initialReceiverPosition={invoice.receiverPosition}

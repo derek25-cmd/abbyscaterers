@@ -72,10 +72,12 @@ export const updateProformaInvoice = async (id: string, updates: Partial<Proform
             // 3. Update Final Invoices
             await supabase.from('invoices').update({ proformaId: finalId }).eq('proformaId', oldId);
         } else if (data) {
-            // Standard update for final invoice if it exists
+            // Sync content changes to the final invoice, excluding fields that belong
+            // exclusively to the invoice and must never be overwritten by the proforma.
             const { data: finalInvoice } = await supabase.from('invoices').select('id').eq('proformaId', id).single();
             if (finalInvoice) {
-                const { id: ignoredId, ...finalInvoiceUpdatePayload } = updates;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id: _id, invoiceDate: _invoiceDate, ...finalInvoiceUpdatePayload } = updates;
                 await supabase.from('invoices').update({ ...finalInvoiceUpdatePayload, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
             }
         }

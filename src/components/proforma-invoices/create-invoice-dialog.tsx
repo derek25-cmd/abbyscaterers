@@ -57,6 +57,7 @@ interface CreateInvoiceDialogProps {
   isCreating: boolean;
   proformaId: string;
   suggestedInvoiceId?: string;
+  checkInvoiceIdExists: (id: string) => boolean;
   initialLpoNumber?: string | null;
   initialReceiverName?: string | null;
   initialReceiverPosition?: string | null;
@@ -69,6 +70,7 @@ export function CreateInvoiceDialog({
   isCreating,
   proformaId,
   suggestedInvoiceId,
+  checkInvoiceIdExists,
   initialLpoNumber,
   initialReceiverName,
   initialReceiverPosition,
@@ -104,11 +106,17 @@ export function CreateInvoiceDialog({
     }
   }, [isOpen, suggestedInvoiceId, form, initialLpoNumber, initialReceiverName, initialReceiverPosition]);
 
-  const handleSubmit = (values: CreateInvoiceFormData) => {
-    onSubmit({
-        ...values,
-        invoiceDate: format(values.invoiceDate, 'yyyy-MM-dd'),
-        signedAtDate: values.signedAtDate.toISOString(),
+  const handleSubmit = async (values: CreateInvoiceFormData) => {
+    if (checkInvoiceIdExists(values.invoiceId)) {
+      form.setError('invoiceId', {
+        message: `Invoice ID "${values.invoiceId}" is already in use. Please choose a different number.`,
+      });
+      return;
+    }
+    await onSubmit({
+      ...values,
+      invoiceDate: format(values.invoiceDate, 'yyyy-MM-dd'),
+      signedAtDate: values.signedAtDate.toISOString(),
     });
   };
 
@@ -134,7 +142,7 @@ export function CreateInvoiceDialog({
                       <Input {...field} placeholder="e.g., INV-2024-001" />
                     </FormControl>
                     <FormDescription className="text-xs">
-                      Auto-generated based on the Proforma Invoice ID.
+                      Auto-generated from the latest invoice number. You can edit it if needed.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
