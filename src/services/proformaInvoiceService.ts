@@ -77,7 +77,7 @@ export const updateProformaInvoice = async (id: string, updates: Partial<Proform
             const { data: finalInvoice } = await supabase.from('invoices').select('id').eq('proformaId', id).single();
             if (finalInvoice) {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { id: _id, invoiceDate: _invoiceDate, ...finalInvoiceUpdatePayload } = updates;
+                const { id: _id, invoiceDate: _invoiceDate, signedAtDate: _signedAtDate, signedAtLocation: _signedAtLocation, ...finalInvoiceUpdatePayload } = updates;
                 await supabase.from('invoices').update({ ...finalInvoiceUpdatePayload, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
             }
         }

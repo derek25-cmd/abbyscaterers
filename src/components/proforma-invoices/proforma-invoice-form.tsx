@@ -131,36 +131,43 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     }, [settingsLoading, settings.nextProformaNumber, isEditMode, form]);
 
-    // Check for matching orders
+    // Check for matching orders (works in both create and edit mode)
     useEffect(() => {
         const start = watchedFormValues.startDate;
         const end = watchedFormValues.endDate;
 
-        if (!selectedClientId || !start || !end || isEditMode) {
+        if (!selectedClientId || !start || !end) {
             setMatchingOrders([]);
             return;
         }
 
-        const currentItemIds = new Set(watchedFormValues.items.map(item => item.id));
+        // Track order IDs already imported into the form
+        const currentOrderIds = new Set(
+            watchedFormValues.items.map(item => item.orderId).filter(Boolean)
+        );
 
         const matches = orders.filter(order => {
-            const belongsToClient = order.clientId === selectedClientId;
-            if (!belongsToClient) return false;
+            if (order.clientId !== selectedClientId) return false;
 
-            const inDateRange = (order.startDate && order.startDate >= start && order.startDate <= end) || 
-                               (order.endDate && order.endDate >= start && order.endDate <= end);
+            const inDateRange =
+                (order.startDate && order.startDate >= start && order.startDate <= end) ||
+                (order.endDate && order.endDate >= start && order.endDate <= end);
             if (!inDateRange) return false;
 
-            // EXCLUDE orders already linked to a proforma
-            if (order.proformaId) return false;
+            // Exclude orders linked to a different proforma
+            if (order.proformaId && order.proformaId !== invoiceId) return false;
 
-            if (currentItemIds.has(order.id)) return false;
+            // Exclude orders already linked to THIS proforma (already in form items)
+            if (order.proformaId === invoiceId) return false;
+
+            // Exclude orders already imported as form items
+            if (currentOrderIds.has(order.id)) return false;
 
             return true;
         });
 
         setMatchingOrders(matches);
-    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, isEditMode]);
+    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, invoiceId]);
 
     const handleImportSelected = (orderList: Order[]) => {
         const currentItems = form.getValues('items');
