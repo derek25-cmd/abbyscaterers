@@ -25,7 +25,7 @@ export default function DailyStockLogReportPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("productName");
-  const [branch, setBranch] = useState("Dar es Salaam");
+  const [branch, setBranch] = useState("All Branches");
 
   const dailyLogs = useMemo(() => {
     let filtered = logs;
@@ -192,7 +192,12 @@ export default function DailyStockLogReportPage() {
                     <TableCell className="text-right font-semibold">{formatCurrency(log.price)}</TableCell>
                   </TableRow>
               )) : (
-                <TableRow><TableCell colSpan={6} className="text-center h-24">No stock logs found for this date.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                  {logs.length === 0 
+                    ? 'No stock logs loaded from database. Check your Supabase connection.' 
+                    : `No logs found for this date/branch. (${logs.length} total logs loaded — try "All Branches")`
+                  }
+                </TableCell></TableRow>
               )}
             </TableBody>
           </Table>

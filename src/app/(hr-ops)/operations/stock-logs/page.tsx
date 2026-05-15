@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 type BranchFilter = Branch | 'All Branches';
 
 export default function StockLogsPage() {
-  const { logs, isLoading: logsLoading, addStockLog, updateStockLog: updateStockLogInStore, deleteStockLog, deleteStockLogs, refreshLogs } = useStockLogStorage();
+  const { logs, isLoading: logsLoading, fetchError, addStockLog, updateStockLog: updateStockLogInStore, deleteStockLog, deleteStockLogs, refreshLogs } = useStockLogStorage();
   const { products, isLoading: productsLoading, updateProduct: updateProductInStore, refreshProducts } = useProductStorage();
   const { toast } = useToast();
 
@@ -53,7 +53,7 @@ export default function StockLogsPage() {
   const [selectedLog, setSelectedLog] = useState<StockLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<StockLog | null>(null);
   const [copiedLogs, setCopiedLogs] = useState<StockLog[] | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>('Dar es Salaam');
+  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>('All Branches');
 
   // Draft state
   const [drafts, setDrafts] = useState<StockOutDraft[]>([]);
@@ -129,7 +129,7 @@ export default function StockLogsPage() {
       { accessorKey: 'quantity', header: 'Quantity', cell: (info) => <div className="text-right">{info.getValue() as number}</div> },
       { accessorKey: 'price', header: 'Price (TZS)', cell: (info) => <div className="text-right">{formatCurrency(info.getValue() as number)}</div> },
       { accessorKey: 'reason', header: 'Reason' },
-      { accessorKey: 'date', header: 'Date' },
+      { accessorKey: 'date', header: 'Date', filterFn: (row, columnId, filterValue) => row.getValue(columnId) === filterValue },
       { accessorKey: 'branch', header: 'Branch', cell: (info) => <Badge variant="outline" className="text-xs">{(info.getValue() as string) || 'Dar es Salaam'}</Badge> },
       { accessorKey: 'status', header: 'Status' },
       {
@@ -666,11 +666,20 @@ export default function StockLogsPage() {
               </div>
           </div>
           <CardContent>
-            {loading ? ( <p>Loading stock logs...</p> ) : (
+            {fetchError ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-3 text-center">
+                <p className="text-sm font-semibold text-destructive">⚠️ Failed to load stock logs</p>
+                <p className="text-xs text-muted-foreground max-w-md">{fetchError}</p>
+                <Button size="sm" variant="outline" onClick={refreshLogs}>Retry</Button>
+              </div>
+            ) : loading ? ( <p>Loading stock logs...</p> ) : (
             <div className="relative w-full overflow-auto">
+              <p className="text-xs text-muted-foreground pb-2">
+                {logs.length === 0 ? 'No logs loaded from database.' : `${branchFilteredLogs.length} of ${logs.length} logs shown (after branch filter).`}
+              </p>
               <Table>
                 <TableHeader>{table.getHeaderGroups().map(headerGroup => ( <TableRow key={headerGroup.id}>{headerGroup.headers.map(header => (<TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>))}</TableRow>))}</TableHeader>
-                <TableBody>{table.getRowModel().rows?.length > 0 ? (table.getRowModel().rows.map(row => (<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No results.</TableCell></TableRow>)}</TableBody>
+                <TableBody>{table.getRowModel().rows?.length > 0 ? (table.getRowModel().rows.map(row => (<TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>{row.getVisibleCells().map(cell => (<TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>))}</TableRow>))) : (<TableRow><TableCell colSpan={columns.length} className="h-24 text-center">No results. {logs.length > 0 ? 'Try selecting "All Branches" or clearing the date filter.' : 'No stock logs found in the database.'}</TableCell></TableRow>)}</TableBody>
               </Table>
             </div>
             )}

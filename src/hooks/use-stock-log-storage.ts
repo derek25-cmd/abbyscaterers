@@ -14,11 +14,19 @@ import {
 export function useStockLogStorage() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const refreshLogs = useCallback(async () => {
     setIsLoading(true);
-    const storedLogs = await getAllFromStorage();
-    const sanitizedLogs = storedLogs.map((log: StockLog) => ({
+    setFetchError(null);
+    const { data: storedLogs, error } = await getAllFromStorage();
+    if (error) {
+      console.error('Stock log fetch error:', JSON.stringify(error, null, 2));
+      setFetchError(`Failed to load stock logs: ${error.message}`);
+      setIsLoading(false);
+      return;
+    }
+    const sanitizedLogs = (storedLogs || []).map((log: StockLog) => ({
       ...log,
       quantity: Number(log.quantity) || 0,
       price: Number(log.price) || 0,
@@ -77,7 +85,8 @@ export function useStockLogStorage() {
 
   return { 
     logs, 
-    isLoading, 
+    isLoading,
+    fetchError,
     addStockLog, 
     updateStockLog,
     bulkUpdateStockLogs,

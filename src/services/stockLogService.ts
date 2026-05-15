@@ -3,14 +3,10 @@ import { supabase } from '@/lib/supabase-client';
 import { StockLog } from '@/types';
 import { format } from 'date-fns';
 
-export const getStockLogs = async (): Promise<StockLog[]> => {
-    const { data, error } = await supabase.from('stock_logs').select('*');
-    if (error) {
-        console.error('Error fetching stock logs:', error);
-        return [];
-    }
-    return data as StockLog[];
+export const getStockLogs = async () => {
+    return await supabase.from('stock_logs').select('*');
 };
+
 
 export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt' >): Promise<StockLog | null> => {
     const now = new Date();
