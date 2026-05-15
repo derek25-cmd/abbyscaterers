@@ -192,22 +192,31 @@ export default function StockLogsPage() {
     const movementBranch: Branch = movement.branch || 'Dar es Salaam';
     const branchKey = BRANCH_KEYS[movementBranch];
 
+    // Check stock sufficiency BEFORE writing anything
+    const currentBranchQty = Number(product[branchKey.qty]) || 0;
+    if (movement.type === 'Stock Out' && currentBranchQty < movement.quantity) {
+        toast({ variant: 'destructive', title: `Not enough stock in ${movementBranch}` });
+        throw new Error("Not enough stock");
+    }
+
     try {
-        const logData = { ...movement, price: movement.actual_unit_price * movement.quantity };
+        // Always include 'status' so the Supabase insert doesn't fail on a NOT NULL column
+        const logData = {
+            ...movement,
+            price: movement.actual_unit_price * movement.quantity,
+            status: movement.type, // 'Stock In' | 'Stock Out'
+        };
+
+        // Step 1: write the log first — if this fails, we do NOT update quantities
         await addStockLog(logData);
 
-        const currentBranchQty = Number(product[branchKey.qty]) || 0;
-
-        if(movement.type === 'Stock In') {
+        // Step 2: update product quantity only after log is confirmed written
+        if (movement.type === 'Stock In') {
             await updateProductInStore(product.id, { 
                 [branchKey.qty]: currentBranchQty + movement.quantity,
                 [branchKey.price]: movement.actual_unit_price,
             } as any);
         } else {
-            if(currentBranchQty < movement.quantity) {
-                toast({ variant: 'destructive', title: `Not enough stock in ${movementBranch}` });
-                throw new Error("Not enough stock");
-            }
             await updateProductInStore(product.id, { 
                 [branchKey.qty]: currentBranchQty - movement.quantity,
                 [branchKey.price]: movement.actual_unit_price,
@@ -215,7 +224,7 @@ export default function StockLogsPage() {
         }
     } catch (error: any) {
         console.error("Movement logging failed", error);
-        throw new Error("Failed to register stock log. Please check your connection.");
+        throw new Error(error.message || "Failed to register stock log. Please check your connection.");
     }
   };
 
@@ -243,7 +252,7 @@ export default function StockLogsPage() {
       actual_unit_price: transfer.unitPrice,
       date: transfer.date,
       branch: transfer.sourceBranch,
-      status: 'Completed',
+      status: 'Stock Out',
     } as any);
 
     // Create Stock In log for destination branch
@@ -257,7 +266,7 @@ export default function StockLogsPage() {
       actual_unit_price: transfer.unitPrice,
       date: transfer.date,
       branch: transfer.destBranch,
-      status: 'Completed',
+      status: 'Stock In',
     } as any);
 
     // Update product quantities

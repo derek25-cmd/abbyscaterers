@@ -32,8 +32,12 @@ export function useStockLogStorage() {
   }, [refreshLogs]);
 
   const addStockLog = useCallback(async (data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>) => {
-    await addToStorage(data);
-    refreshLogs(); // Refresh after adding
+    const result = await addToStorage(data);
+    if (!result) {
+      throw new Error('Failed to save stock log to database.');
+    }
+    refreshLogs();
+    return result;
   }, [refreshLogs]);
 
   const updateStockLog = useCallback(async (id: string, updates: Partial<StockLog>) => {

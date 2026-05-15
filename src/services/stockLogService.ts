@@ -25,11 +25,13 @@ export const addStockLog = async (log: Omit<StockLog, 'id' | 'createdAt' | 'upda
 
     const { data, error } = await supabase.from('stock_logs').insert([newLogData]).select();
     if (error) {
-        console.error('Error adding stock log:', error);
+        console.error('Error adding stock log — full error:', JSON.stringify(error, null, 2));
+        console.error('Attempted payload:', JSON.stringify(newLogData, null, 2));
         return null;
     }
     return data?.[0] as StockLog;
 };
+
 
 export const updateStockLog = async (id: string, updatedLog: Partial<StockLog>): Promise<boolean> => {
     const updatePayload: { [key: string]: any } = { ...updatedLog };
