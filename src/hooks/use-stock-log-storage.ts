@@ -19,19 +19,28 @@ export function useStockLogStorage() {
   const refreshLogs = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
+    console.log('[DEBUG StockLogs] Fetching from Supabase...');
     const { data: storedLogs, error } = await getAllFromStorage();
+    
     if (error) {
-      console.error('Stock log fetch error:', JSON.stringify(error, null, 2));
+      console.error('[DEBUG StockLogs] Supabase fetch error:', JSON.stringify(error, null, 2));
       setFetchError(`Failed to load stock logs: ${error.message}`);
       setIsLoading(false);
       return;
     }
+
+    console.log('[DEBUG StockLogs] Raw data from Supabase:', storedLogs);
+    
     const sanitizedLogs = (storedLogs || []).map((log: StockLog) => ({
       ...log,
       quantity: Number(log.quantity) || 0,
       price: Number(log.price) || 0,
     }));
-    setLogs(sanitizedLogs.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    
+    const sortedLogs = sanitizedLogs.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    console.log('[DEBUG StockLogs] Sanitized & Sorted logs count:', sortedLogs.length);
+    
+    setLogs(sortedLogs);
     setIsLoading(false);
   }, []);
 

@@ -4,7 +4,11 @@ import { StockLog } from '@/types';
 import { format } from 'date-fns';
 
 export const getStockLogs = async () => {
-    return await supabase.from('stock_logs').select('*');
+    return await supabase
+        .from('stock_logs')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(3000);
 };
 
 
