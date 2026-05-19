@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { REGIONS } from "@/types";
 import { InvoiceRegistryDialog } from "@/components/reports/invoice-registry-dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const calculateTotal = (inv: Invoice) => {
     const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -44,6 +46,9 @@ export default function MonthlyInvoiceReportPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
   const [registryInvoice, setRegistryInvoice] = useState<Invoice | null>(null);
+  
+  const [sortByClient, setSortByClient] = useState(false);
+  const [oneClientPerPage, setOneClientPerPage] = useState(false);
 
 
   const filteredInvoices = useMemo(() => {
@@ -90,8 +95,28 @@ export default function MonthlyInvoiceReportPage() {
         filtered = filtered.filter(inv => inv.region === regionFilter);
     }
 
-    return filtered;
-  }, [invoices, dateRange, selectedClientIds, statusFilter, regionFilter]);
+    let result = [...filtered];
+    if (sortByClient) {
+        result.sort((a, b) => {
+            const clientA = clients.find(c => c.id === a.clientId)?.companyName || "";
+            const clientB = clients.find(c => c.id === b.clientId)?.companyName || "";
+            if (clientA === clientB) {
+                const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0;
+                const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0;
+                return dateB - dateA;
+            }
+            return clientA.localeCompare(clientB);
+        });
+    } else {
+        result.sort((a, b) => {
+            const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0;
+            const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0;
+            return dateB - dateA;
+        });
+    }
+
+    return result;
+  }, [invoices, dateRange, selectedClientIds, statusFilter, regionFilter, sortByClient, clients]);
 
   const summary = useMemo(() => {
     const totalInvoiced = filteredInvoices.reduce((sum, inv) => sum + calculateTotal(inv), 0);
@@ -134,52 +159,134 @@ export default function MonthlyInvoiceReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      const reportTitle = generateDynamicTitle();
-      doc.text(reportTitle, 14, 15);
-      // ... (Rest of PDF logic - Snipped for brevity)
-
-      const tableColumns = ['S/N', 'Client', 'Invoice No.', 'Status', 'Invoice Date', 'Total Amount', 'Paid', 'Outstanding'];
-      const tableRows = filteredInvoices.map((invoice, index) => {
-          const client = clients.find(c => c.id === invoice.clientId);
-          const totalAmount = calculateTotal(invoice);
-          const amountPaid = invoice.amountPaid || 0;
-          const outstandingAmount = totalAmount - amountPaid;
-          return [
-            index + 1,
-            client?.companyName || "N/A",
-            invoice.id,
-            invoice.status.toUpperCase(),
-            invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
-            formatCurrency(totalAmount),
-            formatCurrency(amountPaid),
-            formatCurrency(outstandingAmount),
-          ];
-        });
-
-      (doc as any).autoTable({
-        theme: 'grid',
-        head: [tableColumns],
-        body: tableRows,
-        startY: 25,
-        columnStyles: {
-            5: { halign: 'right' },
-            6: { halign: 'right' },
-            7: { halign: 'right' },
-        },
-        foot: [
-            ['', '', '', '', 'TOTAL (TZS):', formatCurrency(summary.totalInvoiced), formatCurrency(summary.totalPaid), formatCurrency(summary.totalOutstanding)],
-        ],
-        footStyles: { fontStyle: 'bold', halign: 'right' }
-      });
       
-      let fileName = "Invoice_Report";
-      if (selectedClientIds.length === 1) {
-          const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
-          fileName = clientName.replace(/ /g, '_');
-      }
-      fileName += `_${statusFilter}.pdf`;
+      if (oneClientPerPage) {
+          const groupedInvoices: Record<string, Invoice[]> = {};
+          filteredInvoices.forEach(inv => {
+              const cid = inv.clientId || 'unknown';
+              if (!groupedInvoices[cid]) groupedInvoices[cid] = [];
+              groupedInvoices[cid].push(inv);
+          });
 
-      doc.save(fileName);
+          const clientIds = Object.keys(groupedInvoices);
+
+          clientIds.forEach((clientId, index) => {
+              if (index > 0) {
+                  doc.addPage();
+              }
+              const client = clients.find(c => c.id === clientId);
+              const clientName = client?.companyName || "N/A";
+              
+              let title = `Invoice Report - ${clientName}`;
+              if (dateRange?.from) {
+                  title += ` from ${format(dateRange.from, 'PPP')}`;
+                  if (dateRange?.to) {
+                      title += ` to ${format(dateRange.to, 'PPP')}`;
+                  }
+              }
+              if (statusFilter !== 'all') title += ` | Status: ${statusFilter}`;
+              if (regionFilter !== 'all') title += ` | Region: ${regionFilter}`;
+              
+              doc.setFontSize(14);
+              doc.text(title, 14, 15);
+              
+              const tableColumns = ['S/N', 'Invoice No.', 'Status', 'Invoice Date', 'Total Amount', 'Paid', 'Outstanding'];
+              const clientInvoices = groupedInvoices[clientId];
+              
+              let clientTotalInvoiced = 0;
+              let clientTotalPaid = 0;
+              let clientTotalOutstanding = 0;
+
+              const tableRows = clientInvoices.map((invoice, idx) => {
+                  const totalAmount = calculateTotal(invoice);
+                  const amountPaid = invoice.amountPaid || 0;
+                  const outstandingAmount = totalAmount - amountPaid;
+                  
+                  clientTotalInvoiced += totalAmount;
+                  clientTotalPaid += amountPaid;
+                  clientTotalOutstanding += outstandingAmount;
+
+                  return [
+                    idx + 1,
+                    invoice.id,
+                    invoice.status.toUpperCase(),
+                    invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
+                    formatCurrency(totalAmount),
+                    formatCurrency(amountPaid),
+                    formatCurrency(outstandingAmount),
+                  ];
+              });
+
+              (doc as any).autoTable({
+                theme: 'grid',
+                head: [tableColumns],
+                body: tableRows,
+                startY: 25,
+                columnStyles: {
+                    4: { halign: 'right' },
+                    5: { halign: 'right' },
+                    6: { halign: 'right' },
+                },
+                foot: [
+                    ['', '', '', 'TOTAL (TZS):', formatCurrency(clientTotalInvoiced), formatCurrency(clientTotalPaid), formatCurrency(clientTotalOutstanding)],
+                ],
+                footStyles: { fontStyle: 'bold', halign: 'right' }
+              });
+          });
+          
+          let fileName = "Invoice_Report_Per_Client";
+          if (statusFilter !== 'all') fileName += `_${statusFilter}`;
+          fileName += ".pdf";
+          doc.save(fileName);
+
+      } else {
+          const reportTitle = generateDynamicTitle();
+          doc.setFontSize(14);
+          doc.text(reportTitle, 14, 15);
+          
+          const tableColumns = ['S/N', 'Client', 'Invoice No.', 'Status', 'Invoice Date', 'Total Amount', 'Paid', 'Outstanding'];
+          const tableRows = filteredInvoices.map((invoice, index) => {
+              const client = clients.find(c => c.id === invoice.clientId);
+              const totalAmount = calculateTotal(invoice);
+              const amountPaid = invoice.amountPaid || 0;
+              const outstandingAmount = totalAmount - amountPaid;
+              return [
+                index + 1,
+                client?.companyName || "N/A",
+                invoice.id,
+                invoice.status.toUpperCase(),
+                invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
+                formatCurrency(totalAmount),
+                formatCurrency(amountPaid),
+                formatCurrency(outstandingAmount),
+              ];
+            });
+
+          (doc as any).autoTable({
+            theme: 'grid',
+            head: [tableColumns],
+            body: tableRows,
+            startY: 25,
+            columnStyles: {
+                5: { halign: 'right' },
+                6: { halign: 'right' },
+                7: { halign: 'right' },
+            },
+            foot: [
+                ['', '', '', '', 'TOTAL (TZS):', formatCurrency(summary.totalInvoiced), formatCurrency(summary.totalPaid), formatCurrency(summary.totalOutstanding)],
+            ],
+            footStyles: { fontStyle: 'bold', halign: 'right' }
+          });
+          
+          let fileName = "Invoice_Report";
+          if (selectedClientIds.length === 1) {
+              const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
+              fileName = clientName.replace(/ /g, '_');
+          }
+          fileName += `_${statusFilter}.pdf`;
+
+          doc.save(fileName);
+      }
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
@@ -311,6 +418,16 @@ export default function MonthlyInvoiceReportPage() {
                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                  {isExporting ? 'Exporting...' : 'Export PDF'}
               </Button>
+            </div>
+            <div className="flex items-center gap-6 pt-4 flex-wrap text-sm text-muted-foreground">
+                <div className="flex items-center space-x-2">
+                    <Switch id="sort-client" checked={sortByClient} onCheckedChange={setSortByClient} />
+                    <Label htmlFor="sort-client">Group by Client</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch id="one-client-page" checked={oneClientPerPage} onCheckedChange={setOneClientPerPage} />
+                    <Label htmlFor="one-client-page">1 Client per Page (PDF Export)</Label>
+                </div>
             </div>
              <div className="flex flex-wrap gap-2 pt-2">
                 {selectedClientIds.map((id) => {
