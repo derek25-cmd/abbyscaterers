@@ -159,6 +159,7 @@ export default function MonthlyInvoiceReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
+      let fileName = "Invoice_Report.pdf";
       
       if (oneClientPerPage) {
           const groupedInvoices: Record<string, Invoice[]> = {};
@@ -234,10 +235,9 @@ export default function MonthlyInvoiceReportPage() {
               });
           });
           
-          let fileName = "Invoice_Report_Per_Client";
+          fileName = "Invoice_Report_Per_Client";
           if (statusFilter !== 'all') fileName += `_${statusFilter}`;
           fileName += ".pdf";
-          doc.save(fileName);
 
       } else {
           const reportTitle = generateDynamicTitle();
@@ -278,15 +278,88 @@ export default function MonthlyInvoiceReportPage() {
             footStyles: { fontStyle: 'bold', halign: 'right' }
           });
           
-          let fileName = "Invoice_Report";
+          fileName = "Invoice_Report";
           if (selectedClientIds.length === 1) {
               const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
               fileName = clientName.replace(/ /g, '_');
           }
           fileName += `_${statusFilter}.pdf`;
-
-          doc.save(fileName);
       }
+
+      // --- Add Summary Page ---
+      if (filteredInvoices.length > 0) {
+          doc.addPage();
+          doc.setFontSize(16);
+          doc.setFont("helvetica", "bold");
+          doc.text("Executive Summary", 14, 20);
+          
+          let servicePeriodText = "All Time";
+          if (dateRange?.from) {
+              servicePeriodText = format(dateRange.from, 'PPP');
+              if (dateRange?.to) {
+                  servicePeriodText += ` - ${format(dateRange.to, 'PPP')}`;
+              }
+          }
+
+          const clientSummaryData: Record<string, { name: string, invoiced: number, paid: number, outstanding: number }> = {};
+          
+          filteredInvoices.forEach(inv => {
+              const cid = inv.clientId || 'unknown';
+              if (!clientSummaryData[cid]) {
+                  const client = clients.find(c => c.id === cid);
+                  clientSummaryData[cid] = {
+                      name: client?.companyName || "Unknown Client",
+                      invoiced: 0,
+                      paid: 0,
+                      outstanding: 0
+                  };
+              }
+              const totalAmount = calculateTotal(inv);
+              const amountPaid = inv.amountPaid || 0;
+              clientSummaryData[cid].invoiced += totalAmount;
+              clientSummaryData[cid].paid += amountPaid;
+              clientSummaryData[cid].outstanding += (totalAmount - amountPaid);
+          });
+
+          const summaryTableRows = Object.values(clientSummaryData)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((data, idx) => [
+                idx + 1,
+                data.name,
+                formatCurrency(data.invoiced),
+                formatCurrency(data.paid),
+                formatCurrency(data.outstanding)
+            ]);
+            
+          const numClients = Object.keys(clientSummaryData).length;
+
+          doc.setFontSize(11);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Service Period: ${servicePeriodText}`, 14, 30);
+          doc.text(`Total Clients: ${numClients}`, 14, 37);
+          
+          const summaryTableColumns = ['S/N', 'Client Name', 'Total Invoiced (TZS)', 'Total Paid (TZS)', 'Total Outstanding (TZS)'];
+
+          (doc as any).autoTable({
+            theme: 'grid',
+            head: [summaryTableColumns],
+            body: summaryTableRows,
+            startY: 45,
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            columnStyles: {
+                2: { halign: 'right' },
+                3: { halign: 'right' },
+                4: { halign: 'right', fontStyle: 'bold', textColor: [192, 57, 43] },
+            },
+            foot: [
+                ['', 'GRAND TOTAL:', formatCurrency(summary.totalInvoiced), formatCurrency(summary.totalPaid), formatCurrency(summary.totalOutstanding)],
+            ],
+            footStyles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 240, 240], textColor: [0, 0, 0] }
+          });
+      }
+      // ------------------------
+
+      doc.save(fileName);
       toast({ title: "Export Successful", description: "Report exported to PDF." });
     } catch (error) {
       console.error("Error exporting PDF:", error);
