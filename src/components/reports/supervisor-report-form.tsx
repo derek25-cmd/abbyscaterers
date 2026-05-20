@@ -137,7 +137,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
   const checkOtherReportsAvailability = async (date: string) => {
     const [
       ordersData, 
-      stockData, 
+      { data: stockData }, 
       issuanceData, 
       menusData, 
       deliveryNotesData, 
@@ -169,9 +169,9 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     const dateTrainings = (trainingsData || []).filter(t => t.training_date === date || t.createdAt?.startsWith(date));
 
     setAvailability({
-      orders: ordersData.some(o => o.startDate <= date && o.endDate >= date),
-      stock: stockData.some(l => l.date === date),
-      issuance: issuanceData.some(i => i.date === date),
+      orders: ordersData.some(o => o.clientEvents?.some(e => e.date?.startsWith(date))),
+      stock: (stockData || []).some((l: any) => l.date?.startsWith(date) || l.createdAt?.startsWith(date)),
+      issuance: issuanceData.some(i => i.date?.startsWith(date) || i.createdAt?.startsWith(date)),
       proformas: dateProformas.length > 0,
       invoices: dateInvoices.length > 0,
       deliveryNotes: deliveryNotesData.length > 0,
@@ -372,7 +372,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
         const orders = await getOrders();
         const dailyEvents = orders.flatMap(order =>
           order.clientEvents
-            .filter(e => e.date === reportDate)
+            .filter(e => e.date?.startsWith(reportDate))
             .map(e => ({ ...e, orderId: order.id, customer: order.name }))
         );
 
@@ -392,7 +392,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
       // --- SECTION: DAILY ISSUANCE ---
       if (selectedAttachments.issuance && availability.issuance) {
         const issuances = await getIssuances();
-        const dailyIssuances = issuances.filter(i => i.date === reportDate);
+        const dailyIssuances = issuances.filter(i => i.date?.startsWith(reportDate) || i.createdAt?.startsWith(reportDate));
 
         if (dailyIssuances.length > 0) {
           addSectionTitle("2. Daily Issuance Report", [255, 140, 0]);
@@ -409,14 +409,14 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
 
       // --- SECTION: DAILY STOCK MOVEMENT (LEDGER) ---
       if (selectedAttachments.stock && availability.stock) {
-        const stockLogs = await getStockLogs();
-        const dailyLogs = stockLogs.filter(l => l.date === reportDate);
+        const { data: stockLogs } = await getStockLogs();
+        const dailyLogs = (stockLogs || []).filter((l: any) => l.date?.startsWith(reportDate) || l.createdAt?.startsWith(reportDate));
 
         if (dailyLogs.length > 0) {
           addSectionTitle("3. Daily Stock Movement", [0, 128, 128]);
           (doc as any).autoTable({
             head: [['Time', 'Product', 'Type', 'Qty', 'Balance', 'Reason']],
-            body: dailyLogs.map(l => [
+            body: dailyLogs.map((l: any) => [
                 l.createdAt ? format(parseISO(l.createdAt), 'HH:mm') : '-',
                 l.productName, 
                 l.type, 
