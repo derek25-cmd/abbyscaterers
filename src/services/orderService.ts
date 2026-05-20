@@ -145,6 +145,21 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     }
 };
 
+export const bulkDeleteOrders = async (ids: string[]): Promise<boolean> => {
+    if (ids.length === 0) return true;
+    try {
+        const { error } = await supabase.from('orders').delete().in('id', ids);
+        if (error) {
+            console.error('Error bulk deleting orders:', error);
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('Unexpected error bulk deleting orders:', err);
+        return false;
+    }
+};
+
 export const getLatestOrderNumber = async (): Promise<number> => {
     try {
         const { data, error } = await supabase

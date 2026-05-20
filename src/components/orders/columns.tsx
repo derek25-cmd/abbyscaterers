@@ -15,6 +15,7 @@ import {
 import type { Order, Client } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type OrderWithClientName = Order & { customerName: string };
 
@@ -23,6 +24,27 @@ export const getOrderColumns = (
   getClientById: (id: string) => Client | undefined
 ): ColumnDef<OrderWithClientName>[] => {
   return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "id",
       header: "Order ID",

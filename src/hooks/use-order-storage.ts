@@ -10,7 +10,8 @@ import {
   addOrder as addToStorage,
   bulkAddOrders as bulkAddToStorage,
   updateOrder as updateInStorage,
-  deleteOrder as deleteFromStorage 
+  deleteOrder as deleteFromStorage,
+  bulkDeleteOrders as bulkDeleteFromStorage
 } from '@/services/orderService';
 import { format } from 'date-fns';
 
@@ -53,6 +54,14 @@ export function useOrderStorage() {
     return success;
   }, [refreshOrders]);
   
+  const bulkDeleteOrders = useCallback(async (ids: string[]) => {
+    const success = await bulkDeleteFromStorage(ids);
+    if (success) {
+      refreshOrders();
+    }
+    return success;
+  }, [refreshOrders]);
+  
   const bulkAddOrders = useCallback(async (ordersData: Partial<OrderFormData>[]) => {
     const newOrders = await bulkAddToStorage(ordersData);
     if (newOrders.length > 0) {
@@ -89,6 +98,7 @@ export function useOrderStorage() {
     updateOrder, 
     deleteOrder, 
     bulkAddOrders,
+    bulkDeleteOrders,
     getOrderById,
     getOrdersByBookingId,
     refreshOrders,

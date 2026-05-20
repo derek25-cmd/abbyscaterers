@@ -49,7 +49,7 @@ export function OrderListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
   
-  const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore } = useOrderStorage();
+  const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore, bulkDeleteOrders } = useOrderStorage();
   const { clients, isLoading: clientsLoading, getClientById } = useClientStorage();
   const { toast } = useToast();
   
@@ -57,7 +57,7 @@ export function OrderListTable() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
+  const [itemsToDelete, setItemsToDelete] = React.useState<string[] | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
   const [filterType, setFilterType] = React.useState("customerName");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -111,20 +111,30 @@ export function OrderListTable() {
   }, [orders, clientIdFilter, selectedDate, searchQuery, filterType, getClientName]);
 
   const handleDeleteRequest = React.useCallback((orderId: string) => {
-    setItemToDelete(orderId);
+    setItemsToDelete([orderId]);
   }, []);
 
-  const confirmDelete = React.useCallback(() => {
-    if (itemToDelete) {
-      const success = deleteOrderFromStore(itemToDelete);
-      if (success) {
-        toast({ title: "Order Deleted", description: "The order has been successfully deleted." });
+  const confirmDelete = React.useCallback(async () => {
+    if (itemsToDelete && itemsToDelete.length > 0) {
+      if (itemsToDelete.length === 1) {
+        const success = await deleteOrderFromStore(itemsToDelete[0]);
+        if (success) {
+          toast({ title: "Order Deleted", description: "The order has been successfully deleted." });
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Failed to delete the order." });
+        }
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to delete the order." });
+        const success = await bulkDeleteOrders(itemsToDelete);
+        if (success) {
+          toast({ title: "Orders Deleted", description: `${itemsToDelete.length} orders have been successfully deleted.` });
+          setRowSelection({});
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Failed to delete the orders." });
+        }
       }
-      setItemToDelete(null);
+      setItemsToDelete(null);
     }
-  }, [itemToDelete, deleteOrderFromStore, toast]);
+  }, [itemsToDelete, deleteOrderFromStore, bulkDeleteOrders, toast]);
   
   const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest, getClientById), [handleDeleteRequest, getClientById]);
 
@@ -217,6 +227,17 @@ export function OrderListTable() {
               )}
         </div>
         <div className="flex gap-2">
+          {Object.keys(rowSelection).length > 0 && (
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                const selectedIds = table.getFilteredSelectedRowModel().rows.map(r => r.original.id);
+                setItemsToDelete(selectedIds);
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Selected ({Object.keys(rowSelection).length})
+            </Button>
+          )}
           <Link href="/orders/new" passHref>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -293,16 +314,16 @@ export function OrderListTable() {
           Next
         </Button>
       </div>
-      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+      <AlertDialog open={!!itemsToDelete} onOpenChange={(open) => !open && setItemsToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the order.
+              This action cannot be undone. This will permanently delete {itemsToDelete?.length === 1 ? 'the order' : `${itemsToDelete?.length} orders`}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setItemsToDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
               Delete
             </AlertDialogAction>
