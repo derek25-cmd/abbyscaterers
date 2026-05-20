@@ -628,13 +628,9 @@ export default function MonthlyInvoiceReportPage() {
                  {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                  {isExporting ? 'Exporting...' : 'Export PDF'}
               </Button>
-              <Button onClick={handleCsvExport} variant="outline" size="sm">
-                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                 Export CSV
-              </Button>
               <Button onClick={handleExcelExport} variant="outline" size="sm">
                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                 Export Excel (Arial 12)
+                 Export CSV
               </Button>
             </div>
             <div className="flex items-center gap-6 pt-4 flex-wrap text-sm text-muted-foreground">
