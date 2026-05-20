@@ -79,12 +79,13 @@ export default function CostingTrackerReport() {
         actual: parseFloat(actualPercentage.toFixed(2)),
         forecast: parseFloat(forecastPercentage.toFixed(2)),
         income: totalIncome,
-        cost: actualCost
+        cost: actualCost,
+        forecastCost: forecastCost
       };
     });
 
     // 2. Calculate Top Ingredients by Quantity
-    const ingredientUsage: Record<string, { quantity: number, unit: string }> = {};
+    const ingredientUsage: Record<string, { quantity: number, unit: string, totalCost: number }> = {};
     
     allLogs.forEach(log => {
       const logDate = parseISO(log.date || "");
@@ -92,9 +93,11 @@ export default function CostingTrackerReport() {
         const product = products.find(p => p.id === log.productId);
         const name = log.productName || "Unknown Ingredient";
         if (!ingredientUsage[name]) {
-          ingredientUsage[name] = { quantity: 0, unit: product?.unit || 'qty' };
+          ingredientUsage[name] = { quantity: 0, unit: product?.unit || 'qty', totalCost: 0 };
         }
-        ingredientUsage[name].quantity += (log.actual_quantity ?? log.quantity);
+        const qty = (log.actual_quantity ?? log.quantity);
+        ingredientUsage[name].quantity += qty;
+        ingredientUsage[name].totalCost += qty * (log.actual_unit_price || 0);
       }
     });
 
@@ -109,17 +112,31 @@ export default function CostingTrackerReport() {
   const handleAiAnalysis = async () => {
     setIsAnalyzing(true);
     try {
+      const totalIncome = trendData.reduce((sum, d) => sum + d.income, 0);
+      const totalActualCost = trendData.reduce((sum, d) => sum + d.cost, 0);
+      const totalForecastCost = trendData.reduce((sum, d) => sum + (d.forecastCost || 0), 0);
+      
       const input = {
         trendData: trendData.map(d => ({
           date: d.fullDate,
           actualPercentage: d.actual,
-          forecastPercentage: d.forecast
+          forecastPercentage: d.forecast,
+          income: d.income,
+          cost: d.cost
         })),
         topIngredients: topIngredients.map(i => ({
           name: i.name,
           quantity: i.quantity,
-          unit: i.unit
-        }))
+          unit: i.unit,
+          totalCost: i.totalCost
+        })),
+        overallKPIs: {
+          totalIncome,
+          totalActualCost,
+          totalForecastCost,
+          overallActualPercentage: totalIncome > 0 ? (totalActualCost / totalIncome) * 100 : 0,
+          overallForecastPercentage: totalIncome > 0 ? (totalForecastCost / totalIncome) * 100 : 0,
+        }
       };
       
       const analysis = await generateCostingAnalysisAction(input);
