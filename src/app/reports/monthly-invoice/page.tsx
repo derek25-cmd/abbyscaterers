@@ -423,6 +423,89 @@ export default function MonthlyInvoiceReportPage() {
     }
   };
 
+  const handleExcelExport = () => {
+    try {
+      const headers = ["S/N", "Client Name", "Invoice Date", "LPO No. (if available)", "Invoice No.", "Amount Outstanding", "Status"];
+      const rows = filteredInvoices.map((invoice, index) => {
+        const client = clients.find((c) => c.id === invoice.clientId);
+        const totalAmount = calculateTotal(invoice);
+        const outstandingAmount = totalAmount - (invoice.amountPaid || 0);
+        return [
+          index + 1,
+          client?.companyName || "N/A",
+          invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
+          invoice.lpoNumber || "-",
+          invoice.id,
+          formatCurrency(outstandingAmount),
+          invoice.status.toUpperCase()
+        ];
+      });
+
+      let excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`;
+      excelHtml += `<head><meta charset="utf-8" />`;
+      excelHtml += `<style>`;
+      excelHtml += `table { font-family: Arial, sans-serif; font-size: 12pt; border-collapse: collapse; }`;
+      excelHtml += `th { font-family: Arial, sans-serif; font-size: 12pt; font-weight: bold; background-color: #f2f2f2; border: 1px solid #cccccc; padding: 6px; text-align: left; }`;
+      excelHtml += `td { font-family: Arial, sans-serif; font-size: 12pt; border: 1px solid #cccccc; padding: 6px; }`;
+      excelHtml += `.text-right { text-align: right; }`;
+      excelHtml += `</style>`;
+      excelHtml += `</head><body>`;
+      excelHtml += `<table>`;
+      
+      // Header row
+      excelHtml += `<tr>`;
+      headers.forEach(h => {
+        excelHtml += `<th>${h}</th>`;
+      });
+      excelHtml += `</tr>`;
+
+      // Data rows
+      rows.forEach(row => {
+        excelHtml += `<tr>`;
+        row.forEach((val, idx) => {
+          if (idx === 5) {
+            excelHtml += `<td class="text-right">${val}</td>`;
+          } else {
+            excelHtml += `<td>${val}</td>`;
+          }
+        });
+        excelHtml += `</tr>`;
+      });
+
+      // Total row
+      excelHtml += `<tr>`;
+      excelHtml += `<td colspan="5" style="font-weight: bold; text-align: right; font-family: Arial, sans-serif; font-size: 12pt;">Total Outstanding (TZS):</td>`;
+      excelHtml += `<td style="font-weight: bold; text-align: right; color: #d97706; font-family: Arial, sans-serif; font-size: 12pt;">${formatCurrency(summary.totalOutstanding)}</td>`;
+      excelHtml += `<td></td>`;
+      excelHtml += `</tr>`;
+
+      excelHtml += `</table></body></html>`;
+
+      const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      let fileName = "Invoice_Report";
+      if (selectedClientIds.length === 1) {
+        const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
+        fileName = clientName.replace(/ /g, '_');
+      }
+      fileName += `_${statusFilter}.xls`;
+
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({ title: "Export Successful", description: "Report exported to Excel (Arial 12pt)." });
+    } catch (error) {
+      console.error("Error exporting Excel:", error);
+      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the Excel export." });
+    }
+  };
+
   const isLoading = invoicesLoading || clientsLoading;
 
   return (
@@ -549,6 +632,10 @@ export default function MonthlyInvoiceReportPage() {
                  <FileSpreadsheet className="mr-2 h-4 w-4" />
                  Export CSV
               </Button>
+              <Button onClick={handleExcelExport} variant="outline" size="sm">
+                 <FileSpreadsheet className="mr-2 h-4 w-4" />
+                 Export Excel (Arial 12)
+              </Button>
             </div>
             <div className="flex items-center gap-6 pt-4 flex-wrap text-sm text-muted-foreground">
                 <div className="flex items-center space-x-2">
@@ -578,40 +665,40 @@ export default function MonthlyInvoiceReportPage() {
              </div>
         </CardHeader>
         <CardContent>
-           <Table style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-            <TableHeader style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-              <TableRow style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-                <TableHead style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>S/N</TableHead>
-                <TableHead style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Client Name</TableHead>
-                <TableHead style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Invoice Date</TableHead>
-                <TableHead style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>LPO No. (if available)</TableHead>
-                <TableHead style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Invoice No.</TableHead>
-                <TableHead className="text-right" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Amount Outstanding (TZS)</TableHead>
-                <TableHead style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Status</TableHead>
-                <TableHead className="text-right" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Registry</TableHead>
+           <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>S/N</TableHead>
+                <TableHead>Client Name</TableHead>
+                <TableHead>Invoice Date</TableHead>
+                <TableHead>LPO No. (if available)</TableHead>
+                <TableHead>Invoice No.</TableHead>
+                <TableHead className="text-right">Amount Outstanding (TZS)</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Registry</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+            <TableBody>
               {isLoading ? (
-                <TableRow style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}><TableCell colSpan={8} className="text-center h-24" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
               ) : filteredInvoices.length > 0 ? filteredInvoices.map((invoice, index) => {
                 const client = clients.find((c) => c.id === invoice.clientId);
                 const totalAmount = calculateTotal(invoice);
                 const outstandingAmount = totalAmount - (invoice.amountPaid || 0);
                 return (
-                  <TableRow key={invoice.id} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-                    <TableCell style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{index + 1}</TableCell>
-                    <TableCell className="font-medium" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{client?.companyName || "N/A"}</TableCell>
-                    <TableCell style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A"}</TableCell>
-                    <TableCell style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{invoice.lpoNumber || "-"}</TableCell>
-                    <TableCell className="font-mono text-xs" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{invoice.id}</TableCell>
-                    <TableCell className="font-bold text-right text-orange-600" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{formatCurrency(outstandingAmount)}</TableCell>
-                    <TableCell style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+                  <TableRow key={invoice.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell className="font-medium">{client?.companyName || "N/A"}</TableCell>
+                    <TableCell>{invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A"}</TableCell>
+                    <TableCell>{invoice.lpoNumber || "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{invoice.id}</TableCell>
+                    <TableCell className="font-bold text-right text-orange-600">{formatCurrency(outstandingAmount)}</TableCell>
+                    <TableCell>
                         <Badge variant={invoice.status === 'paid' ? 'default' : invoice.status === 'partially paid' ? 'outline' : 'destructive'} className="uppercase text-[9px]">
                             {invoice.status}
                         </Badge>
                     </TableCell>
-                    <TableCell className="text-right" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
+                    <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => setRegistryInvoice(invoice)}>
                             <Info className="h-4 w-4 text-primary" />
                         </Button>
@@ -619,14 +706,14 @@ export default function MonthlyInvoiceReportPage() {
                   </TableRow>
                 )
               }) : (
-                <TableRow style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}><TableCell colSpan={8} className="text-center h-24" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>No invoices found for the selected criteria.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center h-24">No invoices found for the selected criteria.</TableCell></TableRow>
               )}
             </TableBody>
-            <TableFooter style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-              <TableRow style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>
-                <TableCell colSpan={5} className="text-right font-bold text-sm" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>Total Outstanding (TZS)</TableCell>
-                <TableCell className="font-bold text-sm text-primary text-right" style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}>{formatCurrency(summary.totalOutstanding)}</TableCell>
-                <TableCell colSpan={2} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px' }}></TableCell>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={5} className="text-right font-bold text-sm">Total Outstanding (TZS)</TableCell>
+                <TableCell className="font-bold text-sm text-primary text-right">{formatCurrency(summary.totalOutstanding)}</TableCell>
+                <TableCell colSpan={2}></TableCell>
               </TableRow>
             </TableFooter>
           </Table>
