@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search, X } from "lucide-react";
+import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search, X, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { getOrderColumns } from "./columns"; 
 import { useOrderStorage } from "@/hooks/use-order-storage";
