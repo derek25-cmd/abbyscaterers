@@ -434,6 +434,10 @@ export interface Payroll {
     id: string;
     employeeId: string;
     employeeName: string;
+    event_id?: string; // Links casual wages directly to events, or 'MONTHLY_CORE'
+    staff_type?: 'permanent' | 'casual';
+    days_worked?: number;
+    daily_rate?: number;
     payPeriodStart: string;
     payPeriodEnd: string;
     basicSalary: number;
@@ -441,6 +445,7 @@ export interface Payroll {
     deductions: number;
     grossSalary: number;
     netSalary: number;
+    wcf_contrib?: number; // Workers Compensation Fund contribution (0.5% paid by employer)
     status: 'Paid' | 'Pending';
     paymentDate: string | null;
     createdAt: string;
@@ -509,9 +514,12 @@ export interface DailyMenu {
 // --- FINANCE MODULE ---
 export interface Purchase {
     id: string;
+    event_id?: string; // Linked Event ID
     date: string; // ISO date string
     supplier: string;
+    supplier_tin?: string; // Tanzanian TIN (9 digits)
     invoiceNumber: string;
+    efd_receipt?: string; // TRA EFD receipt number
     description: string;
     quantity: number;
     unitCost: number;
@@ -527,18 +535,49 @@ export interface Purchase {
 
 export interface Sale {
     id: string;
+    event_id?: string; // Linked Event ID
     date: string; // ISO date string
     customerId: string;
     invoiceNumber: string;
+    efd_receipt?: string; // TRA EFD receipt number
     description: string;
     quantity: number;
     unitPrice: number;
     totalAmount: number;
     taxAmount: number;
-    paymentMethod: 'cash' | 'bank' | 'credit';
-    paymentStatus: 'paid' | 'unpaid';
+    paymentMethod: 'cash' | 'bank' | 'credit' | 'mobile_money';
+    paymentStatus: 'paid' | 'unpaid' | 'outstanding';
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
+}
+
+export interface Expense {
+    id: string;
+    event_id: string; // Event ID or 'OVERHEAD'
+    date: string; // YYYY-MM-DD
+    payee: string;
+    ref_number: string;
+    category: 'Transport & Fuel' | 'Utilities' | 'Venue Rent' | 'Kitchen Consumables' | 'Marketing' | 'Office Overhead';
+    description: string;
+    amount: number;
+    vat_amount: number;
+    payment_md: 'cash' | 'bank' | 'mobile_money';
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface TaxRecord {
+    id: string;
+    event_id: string;
+    date: string;
+    tax_type: 'VAT Output' | 'VAT Input' | 'WHT Resident 5%' | 'WHT Resident 2%' | 'PAYE';
+    ref_ledger: 'sales' | 'purchases' | 'expenses' | 'payroll';
+    ref_record: string;
+    base_amount: number;
+    tax_rate: number;
+    tax_amount: number;
+    filing_st: 'accrued' | 'filed' | 'paid';
+    created_at?: string;
 }
 
 export interface CostingReportItem {

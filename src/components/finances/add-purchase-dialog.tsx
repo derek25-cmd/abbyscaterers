@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,13 +23,17 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useEffect } from "react";
 import { addPurchase, updatePurchase } from "@/services/purchaseService";
+import { getBookings } from "@/services/bookingService";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Purchase } from "@/types";
+import type { Purchase, Booking } from "@/types";
 
 const PurchaseSchema = z.object({
   date: z.date({ required_error: "A date is required." }),
   supplier: z.string().min(1, "Supplier name is required."),
+  supplier_tin: z.string().length(9, "Supplier TIN must be exactly 9 digits."),
   invoiceNumber: z.string().min(1, "Invoice number is required."),
+  efd_receipt: z.string().min(1, "EFD Receipt is mandatory to claim Input VAT."),
   description: z.string().min(1, "Description is required."),
   quantity: z.number().min(0.01, "Quantity must be greater than 0."),
   unitCost: z.number().min(0, "Unit cost cannot be negative."),
@@ -38,6 +41,7 @@ const PurchaseSchema = z.object({
   paymentMethod: z.enum(['cash', 'bank', 'credit']),
   paymentStatus: z.enum(['paid', 'unpaid']),
   expenseCategory: z.string().min(1, "Expense category is required."),
+  event_id: z.string().min(1, "Event linkage is required."),
 });
 
 type PurchaseFormData = z.infer<typeof PurchaseSchema>;
@@ -51,8 +55,29 @@ interface AddPurchaseDialogProps {
 
 export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPurchaseDialogProps) {
   const { toast } = useToast();
+  
   const form = useForm<PurchaseFormData>({
     resolver: zodResolver(PurchaseSchema),
+    defaultValues: {
+      supplier: "",
+      supplier_tin: "",
+      invoiceNumber: "",
+      efd_receipt: "",
+      description: "",
+      quantity: 1,
+      unitCost: 0,
+      taxAmount: 0,
+      paymentMethod: "credit",
+      paymentStatus: "unpaid",
+      expenseCategory: "Food Ingredients",
+      event_id: "",
+    }
+  });
+
+  const { data: bookings = [] } = useQuery<Booking[]>({
+    queryKey: ['bookings'],
+    queryFn: getBookings,
+    enabled: isOpen
   });
 
   useEffect(() => {
@@ -63,19 +88,25 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
         quantity: Number(purchase.quantity),
         unitCost: Number(purchase.unitCost),
         taxAmount: Number(purchase.taxAmount),
+        event_id: purchase.event_id || "",
+        supplier_tin: purchase.supplier_tin || "",
+        efd_receipt: purchase.efd_receipt || "",
       });
     } else {
       form.reset({
         date: new Date(),
         supplier: "",
+        supplier_tin: "",
         invoiceNumber: "",
+        efd_receipt: "",
         description: "",
         quantity: 1,
         unitCost: 0,
         taxAmount: 0,
         paymentMethod: "credit",
         paymentStatus: "unpaid",
-        expenseCategory: "raw materials",
+        expenseCategory: "Food Ingredients",
+        event_id: "",
       });
     }
   }, [purchase, form, isOpen]);
@@ -108,7 +139,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
             <DialogHeader>
               <DialogTitle>{purchase ? "Edit Purchase" : "Add New Purchase"}</DialogTitle>
               <DialogDescription>
-                Fill in the details of the purchase record.
+                Fill in the details of the purchase record. Purchases must carry a valid Event ID to calculate per-event gross margins.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto px-2">
@@ -121,7 +152,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                         <Popover>
                         <PopoverTrigger asChild>
                             <FormControl>
-                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}>
+                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                                 {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -135,15 +166,45 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                     </FormItem>
                     )}
                 />
-                <FormField control={form.control} name="supplier" render={({ field }) => (
-                    <FormItem><FormLabel>Supplier</FormLabel><FormControl><Input placeholder="Supplier Name" {...field} /></FormControl><FormMessage /></FormItem>
+                
+                <FormField control={form.control} name="event_id" render={({ field }) => (
+                    <FormItem><FormLabel>Event ID Linkage (Mandatory)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select linked Event Booking"/></SelectTrigger></FormControl>
+                            <SelectContent>
+                                {bookings.map(b => (
+                                    <SelectItem key={b.id} value={b.id}>{b.id} - {b.name}</SelectItem>
+                                ))}
+                                <SelectItem value="EVT-2026-0615-C782">EVT-2026-0615-C782 - BoT Gala Dinner (Mock)</SelectItem>
+                                <SelectItem value="EVT-2026-0701-W990">EVT-2026-0701-W990 - Private Wedding Reception (Mock)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
                 )} />
-                 <FormField control={form.control} name="invoiceNumber" render={({ field }) => (
-                    <FormItem><FormLabel>Invoice Number</FormLabel><FormControl><Input placeholder="Invoice #" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="supplier" render={({ field }) => (
+                      <FormItem><FormLabel>Supplier</FormLabel><FormControl><Input placeholder="e.g., Mwenge Fresh Foods Ltd" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="supplier_tin" render={({ field }) => (
+                      <FormItem><FormLabel>Supplier TIN (TRA 9-Digits)</FormLabel><FormControl><Input placeholder="e.g., 100234567" maxLength={9} {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="invoiceNumber" render={({ field }) => (
+                      <FormItem><FormLabel>Supplier Invoice #</FormLabel><FormControl><Input placeholder="e.g., MFF-2026-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="efd_receipt" render={({ field }) => (
+                      <FormItem><FormLabel>TRA EFD Receipt Number</FormLabel><FormControl><Input placeholder="e.g., 1204899010" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                
                  <FormField control={form.control} name="description" render={({ field }) => (
-                    <FormItem><FormLabel>Description</FormLabel><FormControl><Input placeholder="e.g., Basmati Rice" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Description</FormLabel><FormControl><Input placeholder="e.g., Perishables: 100kg Premium Beef Tenderloin" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+                
                 <div className="grid grid-cols-3 gap-4">
                      <FormField control={form.control} name="quantity" render={({ field }) => (
                         <FormItem><FormLabel>Quantity</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>
@@ -152,19 +213,19 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                         <FormItem><FormLabel>Unit Cost (TZS)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>
                     )} />
                      <FormField control={form.control} name="taxAmount" render={({ field }) => (
-                        <FormItem><FormLabel>Tax Amount (TZS)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Tax Amount (TZS - 18%)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
-                 <div className="text-right font-bold">Total Cost: {formatCurrency(totalCost)}</div>
+                 <div className="text-right font-bold text-lg text-primary">Total Cost: {formatCurrency(totalCost)}</div>
                  <FormField control={form.control} name="expenseCategory" render={({ field }) => (
-                    <FormItem><FormLabel>Expense Category</FormLabel><FormControl><Input placeholder="e.g., Raw Materials" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Expense Category</FormLabel><FormControl><Input placeholder="e.g., Food Ingredients" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="paymentMethod" render={({ field }) => (
-                        <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="credit">Credit</SelectItem></SelectContent></Select><FormMessage/></FormItem>
+                        <FormItem><FormLabel>Payment Method</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank">Bank</SelectItem><SelectItem value="credit">Credit</SelectItem></SelectContent></Select><FormMessage/></FormItem>
                     )}/>
                     <FormField control={form.control} name="paymentStatus" render={({ field }) => (
-                        <FormItem><FormLabel>Payment Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="paid">Paid</SelectItem><SelectItem value="unpaid">Unpaid</SelectItem></SelectContent></Select><FormMessage/></FormItem>
+                        <FormItem><FormLabel>Payment Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="paid">Paid</SelectItem><SelectItem value="unpaid">Unpaid</SelectItem></SelectContent></Select><FormMessage/></FormItem>
                     )}/>
                 </div>
             </div>
@@ -172,7 +233,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
               <DialogClose asChild>
                 <Button type="button" variant="outline" disabled={form.formState.isSubmitting}>Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
+              <Button type="submit" disabled={form.formState.isSubmitting} className="bg-amber-600 hover:bg-amber-700 text-white">
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {purchase ? 'Save Changes' : 'Add Purchase'}
               </Button>
@@ -185,5 +246,5 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
 }
 
 function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
 }
