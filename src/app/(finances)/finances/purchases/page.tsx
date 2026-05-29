@@ -2,7 +2,9 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, FileDown } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,7 @@ export default function PurchasesPage() {
   const { data: purchases = [], refetch, isLoading } = useQuery<Purchase[]>({
     queryKey: ['purchases'],
     queryFn: getPurchases,
+    staleTime: 5 * 60 * 1000,
   });
 
   const filteredPurchases = useMemo(() => {
@@ -66,6 +69,53 @@ export default function PurchasesPage() {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("ABBY'S CATERERS — PURCHASES JOURNAL", 14, 18);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
+    doc.text(`Total Records: ${filteredPurchases.length}`, 14, 30);
+
+    (doc as any).autoTable({
+      startY: 36,
+      theme: 'grid',
+      head: [['Date', 'Supplier', 'Description', 'Invoice #', 'Event ID', 'Net Cost (TZS)', 'Input VAT (TZS)', 'Total Cost (TZS)', 'Status']],
+      body: filteredPurchases.map(p => {
+        const netCost = p.totalCost - (p.taxAmount || 0);
+        return [
+          format(new Date(p.date), "dd/MM/yyyy"),
+          p.supplier,
+          p.description.slice(0, 35),
+          p.invoiceNumber,
+          p.event_id || '—',
+          netCost.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          (p.taxAmount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          p.totalCost.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          p.paymentStatus,
+        ];
+      }),
+      foot: [['', '', '', '', 'JOURNAL TOTALS',
+        totals.totalNet.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        totals.totalVAT.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        totals.totalCost.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        '',
+      ]],
+      styles: { fontSize: 7.5, cellPadding: 3 },
+      headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [30, 30, 30], fontStyle: 'bold' },
+      columnStyles: {
+        5: { halign: 'right' },
+        6: { halign: 'right' },
+        7: { halign: 'right' },
+      },
+    });
+
+    doc.save(`purchases-journal-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
   return (
     <>
       <Card>
@@ -77,9 +127,14 @@ export default function PurchasesPage() {
                 Record of all goods and services bought from suppliers (ingredients, consumables, equipment, services). Each entry is sourced from a supplier invoice.
               </CardDescription>
             </div>
-            <Button onClick={() => { setEditingPurchase(null); setIsAddDialogOpen(true); }}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleExportPDF}>
+                <FileDown className="mr-2 h-4 w-4" /> Export PDF
+              </Button>
+              <Button onClick={() => { setEditingPurchase(null); setIsAddDialogOpen(true); }}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase
+              </Button>
+            </div>
           </div>
           <div className="pt-4">
             <div className="relative">

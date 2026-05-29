@@ -54,12 +54,13 @@ export default function TaxBookPage() {
   const { data: taxRecords = [], refetch: refetchTax } = useQuery<TaxRecord[]>({
     queryKey: ['taxRecords'],
     queryFn: getTaxRecords,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const { data: invoices = [], refetch: refetchInvoices } = useQuery({ queryKey: ['invoices'], queryFn: getInvoices });
-  const { data: purchases = [] } = useQuery({ queryKey: ['purchases'], queryFn: getPurchases });
-  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: getExpenses });
-  const { data: payrolls = [] } = useQuery({ queryKey: ['payrolls'], queryFn: getPayrolls });
+  const { data: invoices = [], refetch: refetchInvoices } = useQuery({ queryKey: ['invoices'], queryFn: getInvoices, staleTime: 5 * 60 * 1000 });
+  const { data: purchases = [] } = useQuery({ queryKey: ['purchases'], queryFn: getPurchases, staleTime: 5 * 60 * 1000 });
+  const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: getExpenses, staleTime: 5 * 60 * 1000 });
+  const { data: payrolls = [] } = useQuery({ queryKey: ['payrolls'], queryFn: getPayrolls, staleTime: 5 * 60 * 1000 });
 
   // Build lookup maps from persisted tax records (filing status + DB id by source key)
   const taxFilingMap = useMemo(() => {

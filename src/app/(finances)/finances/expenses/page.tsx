@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect } from "react";
-import { PlusCircle, Search, DollarSign, Tag, CalendarIcon, Loader2, ArrowUpRight, Percent, Landmark } from "lucide-react";
+import { PlusCircle, Search, DollarSign, Tag, CalendarIcon, Loader2, ArrowUpRight, Percent, FileDown, PackageOpen } from "lucide-react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,7 @@ import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { getExpenses, addExpense, updateExpense, deleteExpense } from "@/services/expenseService";
 import { getBookings } from "@/services/bookingService";
+import { getStockLogs } from "@/services/stockLogService";
 import { Expense, Booking } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -45,15 +48,25 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [stockOutDate, setStockOutDate] = useState<Date>(new Date());
 
   const { data: expenses = [], refetch, isLoading } = useQuery<Expense[]>({
     queryKey: ['expenses'],
     queryFn: getExpenses,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: bookings = [] } = useQuery<Booking[]>({
     queryKey: ['bookings'],
     queryFn: getBookings,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: stockLogsRaw } = useQuery({
+    queryKey: ['stockLogs'],
+    queryFn: getStockLogs,
+    staleTime: 5 * 60 * 1000,
+    select: (result) => result.data ?? [],
   });
 
   const form = useForm<ExpenseFormData>({
@@ -146,8 +159,58 @@ export default function ExpensesPage() {
     refetch();
   };
 
+  // Stock-out COGS for the selected date
+  const stockOutForDate = useMemo(() => {
+    const dateStr = format(stockOutDate, 'yyyy-MM-dd');
+    const logs = (stockLogsRaw ?? []).filter(
+      (log: any) => log.type === 'Stock Out' && log.date === dateStr
+    );
+    const totalValue = logs.reduce((sum: number, log: any) => sum + (Number(log.actual_unit_price) * Number(log.quantity)), 0);
+    return { logs, totalValue };
+  }, [stockLogsRaw, stockOutDate]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("ABBY'S CATERERS — EXPENSE BOOK LEDGER", 14, 18);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
+    doc.text(`Total Records: ${filteredExpenses.length}`, 14, 30);
+
+    (doc as any).autoTable({
+      startY: 36,
+      theme: 'grid',
+      head: [['Date', 'Payee / Vendor', 'Category', 'Description', 'Event ID', 'Ref #', 'VAT Amount (TZS)', 'Total Cost (TZS)']],
+      body: filteredExpenses.map(e => [
+        format(new Date(e.date), "dd/MM/yyyy"),
+        e.payee,
+        e.category,
+        e.description.slice(0, 35),
+        e.event_id,
+        e.ref_number,
+        (e.vat_amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        e.amount.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+      ]),
+      foot: [['', '', '', '', '', 'TOTALS',
+        metrics.totalVAT.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        metrics.total.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+      ]],
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [245, 158, 11], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [30, 30, 30], fontStyle: 'bold' },
+      columnStyles: {
+        6: { halign: 'right' },
+        7: { halign: 'right' },
+      },
+    });
+
+    doc.save(`expenses-journal-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
@@ -209,9 +272,14 @@ export default function ExpensesPage() {
                 Record of all operational costs, fuel, rentals, utilities, and casual staff support.
               </CardDescription>
             </div>
-            <Button onClick={() => { setEditingExpense(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleExportPDF}>
+                <FileDown className="mr-2 h-4 w-4" /> Export PDF
+              </Button>
+              <Button onClick={() => { setEditingExpense(null); setIsDialogOpen(true); }} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
+              </Button>
+            </div>
           </div>
 
           {/* Search and Filters */}
@@ -313,6 +381,75 @@ export default function ExpensesPage() {
               </TableRow>
             </TableFooter>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Stock-Out COGS Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <PackageOpen className="h-5 w-5 text-amber-600" />
+                Daily Stock-Out COGS
+              </CardTitle>
+              <CardDescription>
+                Value of goods issued from stock for a given date — represents the cost of goods consumed in production (COGS from inventory).
+              </CardDescription>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[200px] justify-start font-normal">
+                  <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                  {format(stockOutDate, "PPP")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={stockOutDate} onSelect={(d) => d && setStockOutDate(d)} initialFocus />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {stockOutForDate.logs.length > 0 ? (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product Name</TableHead>
+                    <TableHead>Branch</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Qty Issued</TableHead>
+                    <TableHead className="text-right">Unit Price (TZS)</TableHead>
+                    <TableHead className="text-right">Line Total (TZS)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stockOutForDate.logs.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">{log.productName}</TableCell>
+                      <TableCell>{log.branch}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{log.reason}</TableCell>
+                      <TableCell className="text-right">{Number(log.quantity).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(log.actual_unit_price))}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(Number(log.actual_unit_price) * Number(log.quantity))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-right font-bold text-base">Total Stock-Out COGS</TableCell>
+                    <TableCell className="text-right font-bold text-base text-amber-600">{formatCurrency(stockOutForDate.totalValue)}</TableCell>
+                  </TableRow>
+                </TableFooter>
+              </Table>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground text-sm">
+              <PackageOpen className="h-8 w-8 mb-2 opacity-30" />
+              No stock-out records found for {format(stockOutDate, "PPP")}.
+            </div>
+          )}
         </CardContent>
       </Card>
 

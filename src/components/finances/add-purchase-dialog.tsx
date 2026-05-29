@@ -18,14 +18,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, PackagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { addPurchase, updatePurchase } from "@/services/purchaseService";
+import { addStockLog } from "@/services/stockLogService";
 import { getBookings } from "@/services/bookingService";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { Purchase, Booking } from "@/types";
 
 const PurchaseSchema = z.object({
@@ -42,6 +45,8 @@ const PurchaseSchema = z.object({
   paymentStatus: z.enum(['paid', 'unpaid']),
   expenseCategory: z.string().min(1, "Expense category is required."),
   event_id: z.string().min(1, "Event linkage is required."),
+  stockProductName: z.string().optional(),
+  stockBranch: z.enum(['Dar es Salaam', 'Arusha', 'Dodoma']).optional(),
 });
 
 type PurchaseFormData = z.infer<typeof PurchaseSchema>;
@@ -55,7 +60,8 @@ interface AddPurchaseDialogProps {
 
 export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPurchaseDialogProps) {
   const { toast } = useToast();
-  
+  const [recordStockIn, setRecordStockIn] = useState(false);
+
   const form = useForm<PurchaseFormData>({
     resolver: zodResolver(PurchaseSchema),
     defaultValues: {
@@ -107,27 +113,50 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
         paymentStatus: "unpaid",
         expenseCategory: "Food Ingredients",
         event_id: "",
+        stockProductName: "",
+        stockBranch: "Dar es Salaam",
       });
     }
+    if (!isOpen) setRecordStockIn(false);
   }, [purchase, form, isOpen]);
   
   const totalCost = (form.watch("quantity") || 0) * (form.watch("unitCost") || 0) + (form.watch("taxAmount") || 0);
 
   const handleSubmit = async (values: PurchaseFormData) => {
+    const dateStr = format(values.date, "yyyy-MM-dd");
     const payload = {
-        ...values,
-        date: format(values.date, "yyyy-MM-dd"),
-        totalCost,
+      ...values,
+      date: dateStr,
+      totalCost,
     };
-    
+
     if (purchase) {
-        await updatePurchase(purchase.id, payload);
-        toast({ title: "Success", description: "Purchase updated successfully." });
+      await updatePurchase(purchase.id, payload);
+      toast({ title: "Success", description: "Purchase updated successfully." });
     } else {
-        await addPurchase(payload);
+      await addPurchase(payload);
+
+      // Optionally also record a Stock In entry when goods are received into inventory
+      if (recordStockIn) {
+        const productName = values.stockProductName?.trim() || values.description;
+        await addStockLog({
+          productId: crypto.randomUUID(),
+          productName,
+          type: 'Stock In',
+          quantity: values.quantity,
+          price: totalCost,
+          actual_unit_price: values.unitCost,
+          reason: `Purchased from ${values.supplier} — Invoice ${values.invoiceNumber}`,
+          date: dateStr,
+          status: 'Verified',
+          branch: values.stockBranch || 'Dar es Salaam',
+        });
+        toast({ title: "Stock In Recorded", description: `${productName} added to stock inventory.` });
+      } else {
         toast({ title: "Success", description: "Purchase added successfully." });
+      }
     }
-    
+
     onSave();
   };
 
@@ -226,6 +255,55 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                         <FormItem><FormLabel>Payment Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="paid">Paid</SelectItem><SelectItem value="unpaid">Unpaid</SelectItem></SelectContent></Select><FormMessage/></FormItem>
                     )}/>
                 </div>
+
+                {/* Stock-In toggle — only shown for new purchases */}
+                {!purchase && (
+                  <div className="rounded-lg border border-dashed border-amber-400/50 bg-amber-50/5 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PackagePlus className="h-4 w-4 text-amber-600" />
+                        <Label htmlFor="stock-in-toggle" className="font-semibold text-sm cursor-pointer">
+                          Record as Stock-In entry
+                        </Label>
+                      </div>
+                      <Switch
+                        id="stock-in-toggle"
+                        checked={recordStockIn}
+                        onCheckedChange={setRecordStockIn}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Enable this to also add the purchased goods to the inventory stock log (Stock In). Use for raw ingredients, consumables, or any item tracked in stock.
+                    </p>
+                    {recordStockIn && (
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <FormField control={form.control} name="stockProductName" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Product Name in Stock</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Defaults to description if blank" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="stockBranch" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Receiving Branch</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="Dar es Salaam">Dar es Salaam</SelectItem>
+                                <SelectItem value="Arusha">Arusha</SelectItem>
+                                <SelectItem value="Dodoma">Dodoma</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                    )}
+                  </div>
+                )}
             </div>
             <DialogFooter>
               <DialogClose asChild>

@@ -18,10 +18,7 @@ function calcInvoiceGrossTotal(inv: Invoice): number {
   const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
   const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
   const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-  if (inv.vatType === 'exclusive') {
-    return totalBeforeVAT + totalBeforeVAT * 0.18;
-  }
-  return totalBeforeVAT;
+  return inv.vatType === 'exclusive' ? totalBeforeVAT * 1.18 : totalBeforeVAT;
 }
 
 export default function ReceivablesPage() {
@@ -31,6 +28,7 @@ export default function ReceivablesPage() {
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: ['invoices'],
     queryFn: getInvoices,
+    staleTime: 5 * 60 * 1000,
   });
 
   const getClientName = (clientId: string | null) => {
@@ -39,26 +37,30 @@ export default function ReceivablesPage() {
     return client?.companyName || 'Unknown Client';
   };
 
-  const outstandingInvoices = useMemo(() => {
-    return invoices.filter(i => i.status === 'outstanding' || i.status === 'partially paid');
-  }, [invoices]);
-
-  const filteredReceivables = useMemo(() => {
-    if (!searchQuery) return outstandingInvoices;
+  // Pre-compute all row values in one memo — no per-row calculation during render
+  const { rows, totalReceivables } = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return outstandingInvoices.filter(inv =>
-      getClientName(inv.clientId).toLowerCase().includes(q) ||
-      inv.id.toLowerCase().includes(q)
+    const outstanding = invoices.filter(i =>
+      i.status === 'outstanding' || i.status === 'partially paid'
     );
-  }, [outstandingInvoices, searchQuery, clients]);
+    const filtered = !searchQuery
+      ? outstanding
+      : outstanding.filter(inv =>
+          getClientName(inv.clientId).toLowerCase().includes(q) ||
+          inv.id.toLowerCase().includes(q)
+        );
 
-  const totalReceivables = useMemo(() => {
-    return filteredReceivables.reduce((sum, inv) => {
+    let total = 0;
+    const rows = filtered.map(inv => {
       const grandTotal = calcInvoiceGrossTotal(inv);
       const amountPaid = inv.amountPaid || 0;
-      return sum + (grandTotal - amountPaid);
-    }, 0);
-  }, [filteredReceivables]);
+      const balanceDue = grandTotal - amountPaid;
+      total += balanceDue;
+      return { inv, grandTotal, amountPaid, balanceDue };
+    });
+
+    return { rows, totalReceivables: total };
+  }, [invoices, searchQuery, clients]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
@@ -68,7 +70,7 @@ export default function ReceivablesPage() {
       <StatsCard
         title="Total Accounts Receivable"
         value={formatCurrency(totalReceivables)}
-        change={`${filteredReceivables.length} outstanding invoices`}
+        change={`${rows.length} outstanding invoices`}
         changeType="warning"
         icon={TrendingUp}
         description="Total amount owed by customers from outstanding and partially paid invoices."
@@ -112,30 +114,25 @@ export default function ReceivablesPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={7} className="h-24 text-center">Loading receivables...</TableCell></TableRow>
-              ) : filteredReceivables.length > 0 ? (
-                filteredReceivables.map((inv) => {
-                  const grandTotal = calcInvoiceGrossTotal(inv);
-                  const amountPaid = inv.amountPaid || 0;
-                  const balanceDue = grandTotal - amountPaid;
-                  return (
-                    <TableRow key={inv.id}>
-                      <TableCell className="whitespace-nowrap">{format(new Date(inv.invoiceDate), "PPP")}</TableCell>
-                      <TableCell className="font-medium">{getClientName(inv.clientId)}</TableCell>
-                      <TableCell className="font-mono text-sm">{inv.id}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={inv.status === 'partially paid' ? 'default' : 'outline'}
-                          className={inv.status === 'partially paid' ? 'bg-blue-600' : ''}
-                        >
-                          {inv.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{formatCurrency(grandTotal)}</TableCell>
-                      <TableCell className="text-right text-green-600">{formatCurrency(amountPaid)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(balanceDue)}</TableCell>
-                    </TableRow>
-                  );
-                })
+              ) : rows.length > 0 ? (
+                rows.map(({ inv, grandTotal, amountPaid, balanceDue }) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="whitespace-nowrap">{format(new Date(inv.invoiceDate), "PPP")}</TableCell>
+                    <TableCell className="font-medium">{getClientName(inv.clientId)}</TableCell>
+                    <TableCell className="font-mono text-sm">{inv.id}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={inv.status === 'partially paid' ? 'default' : 'outline'}
+                        className={inv.status === 'partially paid' ? 'bg-blue-600' : ''}
+                      >
+                        {inv.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(grandTotal)}</TableCell>
+                    <TableCell className="text-right text-green-600">{formatCurrency(amountPaid)}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(balanceDue)}</TableCell>
+                  </TableRow>
+                ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">

@@ -21,10 +21,10 @@ export default function CashBookPage() {
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("ALL");
 
   // Fetch all ledgers to construct the Cash Book dynamically (double-entry convergence)
-  const { data: invoices = [], isLoading: sLoading } = useQuery({ queryKey: ['invoices'], queryFn: getInvoices });
-  const { data: purchases = [], isLoading: pLoading } = useQuery({ queryKey: ['purchases'], queryFn: getPurchases });
-  const { data: expenses = [], isLoading: eLoading } = useQuery({ queryKey: ['expenses'], queryFn: getExpenses });
-  const { data: payrolls = [], isLoading: payLoading } = useQuery({ queryKey: ['payrolls'], queryFn: getPayrolls });
+  const { data: invoices = [], isLoading: sLoading } = useQuery({ queryKey: ['invoices'], queryFn: getInvoices, staleTime: 5 * 60 * 1000 });
+  const { data: purchases = [], isLoading: pLoading } = useQuery({ queryKey: ['purchases'], queryFn: getPurchases, staleTime: 5 * 60 * 1000 });
+  const { data: expenses = [], isLoading: eLoading } = useQuery({ queryKey: ['expenses'], queryFn: getExpenses, staleTime: 5 * 60 * 1000 });
+  const { data: payrolls = [], isLoading: payLoading } = useQuery({ queryKey: ['payrolls'], queryFn: getPayrolls, staleTime: 5 * 60 * 1000 });
 
   // Merge, filter, and sort transactions chronologically to calculate running balances
   const chronologicalCashFlow = useMemo(() => {

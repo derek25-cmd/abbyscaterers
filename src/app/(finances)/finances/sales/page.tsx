@@ -2,8 +2,10 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { Search, ExternalLink, BookOpen } from "lucide-react";
+import { Search, ExternalLink, BookOpen, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -19,15 +21,13 @@ function calcInvoiceTotals(inv: Invoice) {
   const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
   const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
   const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-
   if (inv.vatType === 'exclusive') {
     const vatAmount = totalBeforeVAT * 0.18;
     return { netAmount: totalBeforeVAT, vatAmount, grandTotal: totalBeforeVAT + vatAmount };
-  } else {
-    const grandTotal = totalBeforeVAT;
-    const netAmount = grandTotal / 1.18;
-    return { netAmount, vatAmount: grandTotal - netAmount, grandTotal };
   }
+  const grandTotal = totalBeforeVAT;
+  const netAmount = grandTotal / 1.18;
+  return { netAmount, vatAmount: grandTotal - netAmount, grandTotal };
 }
 
 export default function SalesPage() {
@@ -37,6 +37,7 @@ export default function SalesPage() {
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
     queryKey: ['invoices'],
     queryFn: getInvoices,
+    staleTime: 5 * 60 * 1000,
   });
 
   const getClientName = (clientId: string | null) => {
@@ -45,29 +46,76 @@ export default function SalesPage() {
     return client?.companyName || 'Unknown Client';
   };
 
-  const filtered = useMemo(() => {
-    if (!searchQuery) return invoices;
+  // Compute totals once in memo — avoids calling calcInvoiceTotals in the render loop
+  const { rows, totals } = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return invoices.filter(inv =>
-      inv.id.toLowerCase().includes(q) ||
-      getClientName(inv.clientId).toLowerCase().includes(q) ||
-      (inv.serviceDesc || '').toLowerCase().includes(q) ||
-      (inv.selectedEventType || '').toLowerCase().includes(q) ||
-      (inv.customEventType || '').toLowerCase().includes(q)
-    );
-  }, [invoices, searchQuery, clients]);
+    const filtered = !searchQuery
+      ? invoices
+      : invoices.filter(inv =>
+          inv.id.toLowerCase().includes(q) ||
+          getClientName(inv.clientId).toLowerCase().includes(q) ||
+          (inv.serviceDesc || '').toLowerCase().includes(q) ||
+          (inv.selectedEventType || '').toLowerCase().includes(q) ||
+          (inv.customEventType || '').toLowerCase().includes(q)
+        );
 
-  const totals = useMemo(() => {
-    const all = filtered.map(calcInvoiceTotals);
-    return {
-      net: all.reduce((s, t) => s + t.netAmount, 0),
-      vat: all.reduce((s, t) => s + t.vatAmount, 0),
-      gross: all.reduce((s, t) => s + t.grandTotal, 0),
-    };
-  }, [filtered]);
+    let net = 0, vat = 0, gross = 0;
+    const rows = filtered.map(inv => {
+      const t = calcInvoiceTotals(inv);
+      net += t.netAmount;
+      vat += t.vatAmount;
+      gross += t.grandTotal;
+      return { inv, ...t };
+    });
+
+    return { rows, totals: { net, vat, gross } };
+  }, [invoices, searchQuery, clients]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("ABBY'S CATERERS — SALES JOURNAL", 14, 18);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
+    doc.text(`Total Records: ${rows.length}`, 14, 30);
+
+    (doc as any).autoTable({
+      startY: 36,
+      theme: 'grid',
+      head: [['Invoice Date', 'Customer', 'Description', 'Invoice #', 'Net Amount (TZS)', 'VAT 18% (TZS)', 'Gross Total (TZS)', 'Status']],
+      body: rows.map(({ inv, netAmount, vatAmount, grandTotal }) => [
+        format(new Date(inv.invoiceDate), "dd/MM/yyyy"),
+        getClientName(inv.clientId),
+        (inv.serviceDesc || inv.customEventType || inv.selectedEventType || 'Catering Services').slice(0, 40),
+        inv.id,
+        netAmount.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        vatAmount.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        grandTotal.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        inv.status,
+      ]),
+      foot: [['', '', '', 'JOURNAL TOTALS',
+        totals.net.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        totals.vat.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        totals.gross.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        '',
+      ]],
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [30, 30, 30], fontStyle: 'bold' },
+      columnStyles: {
+        4: { halign: 'right' },
+        5: { halign: 'right' },
+        6: { halign: 'right' },
+      },
+    });
+
+    doc.save(`sales-journal-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
 
   const getStatusBadge = (status: Invoice['status']) => {
     if (status === 'paid') return <Badge className="bg-green-600">Paid</Badge>;
@@ -88,11 +136,16 @@ export default function SalesPage() {
               Revenue ledger auto-populated from issued invoices. To record a new sale, create an invoice in the Invoicing module.
             </CardDescription>
           </div>
-          <Link href="/invoicing/invoices">
-            <Button variant="outline" size="sm">
-              <ExternalLink className="mr-2 h-4 w-4" /> Invoicing Module
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportPDF}>
+              <FileDown className="mr-2 h-4 w-4" /> Export PDF
             </Button>
-          </Link>
+            <Link href="/invoicing/invoices">
+              <Button variant="outline" size="sm">
+                <ExternalLink className="mr-2 h-4 w-4" /> Invoicing Module
+              </Button>
+            </Link>
+          </div>
         </div>
         <div className="pt-4">
           <div className="relative">
@@ -123,9 +176,8 @@ export default function SalesPage() {
           <TableBody>
             {isLoading ? (
               <TableRow><TableCell colSpan={8} className="h-24 text-center">Loading sales journal...</TableCell></TableRow>
-            ) : filtered.length > 0 ? (
-              filtered.map((inv) => {
-                const { netAmount, vatAmount, grandTotal } = calcInvoiceTotals(inv);
+            ) : rows.length > 0 ? (
+              rows.map(({ inv, netAmount, vatAmount, grandTotal }) => {
                 const description = inv.serviceDesc || inv.customEventType || inv.selectedEventType || 'Catering Services';
                 return (
                   <TableRow key={inv.id}>
