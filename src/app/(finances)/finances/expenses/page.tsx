@@ -362,8 +362,6 @@ export default function ExpensesPage() {
                         {bookings.map(b => (
                           <SelectItem key={b.id} value={b.id}>{b.id} - {b.name}</SelectItem>
                         ))}
-                        <SelectItem value="EVT-2026-0615-C782">EVT-2026-0615-C782 - BoT Gala Dinner (Mock)</SelectItem>
-                        <SelectItem value="EVT-2026-0701-W990">EVT-2026-0701-W990 - Private Wedding Reception (Mock)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

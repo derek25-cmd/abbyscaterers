@@ -9,18 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { getSales } from "@/services/saleService";
+import { getInvoices } from "@/services/invoiceService";
 import { getPurchases } from "@/services/purchaseService";
 import { getExpenses } from "@/services/expenseService";
 import { getPayrolls } from "@/services/payrollService";
+import { Invoice } from "@/types";
 import { format } from "date-fns";
 
 export default function CashBookPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("ALL");
 
-  // Fetch all other books to construct the Cash Book dynamically (double-entry convergence)
-  const { data: sales = [], isLoading: sLoading } = useQuery({ queryKey: ['sales'], queryFn: getSales });
+  // Fetch all ledgers to construct the Cash Book dynamically (double-entry convergence)
+  const { data: invoices = [], isLoading: sLoading } = useQuery({ queryKey: ['invoices'], queryFn: getInvoices });
   const { data: purchases = [], isLoading: pLoading } = useQuery({ queryKey: ['purchases'], queryFn: getPurchases });
   const { data: expenses = [], isLoading: eLoading } = useQuery({ queryKey: ['expenses'], queryFn: getExpenses });
   const { data: payrolls = [], isLoading: payLoading } = useQuery({ queryKey: ['payrolls'], queryFn: getPayrolls });
@@ -38,19 +39,29 @@ export default function CashBookPage() {
       amount: number;
     }> = [];
 
-    // 1. Paid Sales are Inflows
-    sales.filter(s => s.paymentStatus === 'paid').forEach(s => {
-      cashBookEntries.push({
-        id: s.id,
-        date: s.date,
-        description: `Revenue: ${s.description}`,
-        event_id: s.event_id || 'GENERAL',
-        type: 'INFLOW',
-        method: s.paymentMethod === 'mobile_money' ? 'mobile_money' : s.paymentMethod === 'bank' ? 'bank' : 'cash',
-        reference: s.invoiceNumber,
-        amount: s.totalAmount
+    // 1. Paid and Partially Paid Invoices are Inflows
+    const calcGrossTotal = (inv: Invoice) => {
+      const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
+      const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
+      const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
+      return inv.vatType === 'exclusive' ? totalBeforeVAT * 1.18 : totalBeforeVAT;
+    };
+    invoices
+      .filter(inv => inv.status === 'paid' || inv.status === 'partially paid')
+      .forEach(inv => {
+        const amount = inv.status === 'partially paid' ? (inv.amountPaid || 0) : calcGrossTotal(inv);
+        if (amount <= 0) return;
+        cashBookEntries.push({
+          id: inv.id,
+          date: inv.paymentDate || inv.invoiceDate,
+          description: `Revenue: ${inv.serviceDesc || inv.customEventType || inv.selectedEventType || 'Catering Services'}`,
+          event_id: (inv as any).booking_id || 'GENERAL',
+          type: 'INFLOW',
+          method: 'bank',
+          reference: inv.id,
+          amount,
+        });
       });
-    });
 
     // 2. Paid Purchases are Outflows
     purchases.filter(p => p.paymentStatus === 'paid').forEach(p => {
@@ -111,7 +122,7 @@ export default function CashBookPage() {
         runningBalance
       };
     }).reverse(); // Reverse to display newest first in the UI
-  }, [sales, purchases, expenses, payrolls]);
+  }, [invoices, purchases, expenses, payrolls]);
 
   const filteredCashFlow = useMemo(() => {
     return chronologicalCashFlow.filter(e => {

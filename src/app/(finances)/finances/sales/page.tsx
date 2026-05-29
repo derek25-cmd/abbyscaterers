@@ -2,164 +2,163 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { PlusCircle, Search } from "lucide-react";
+import { Search, ExternalLink, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { getSales, deleteSale } from "@/services/saleService";
-import { AddSaleDialog } from "@/components/finances/add-sale-dialog";
-import { Sale } from "@/types";
-import { useToast } from "@/hooks/use-toast";
+import { getInvoices } from "@/services/invoiceService";
+import { Invoice } from "@/types";
 import { useClientStorage } from "@/hooks/use-client-storage";
+import Link from "next/link";
+
+function calcInvoiceTotals(inv: Invoice) {
+  const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
+  const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
+  const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
+
+  if (inv.vatType === 'exclusive') {
+    const vatAmount = totalBeforeVAT * 0.18;
+    return { netAmount: totalBeforeVAT, vatAmount, grandTotal: totalBeforeVAT + vatAmount };
+  } else {
+    const grandTotal = totalBeforeVAT;
+    const netAmount = grandTotal / 1.18;
+    return { netAmount, vatAmount: grandTotal - netAmount, grandTotal };
+  }
+}
 
 export default function SalesPage() {
-  const { toast } = useToast();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { clients } = useClientStorage();
 
-  const { data: sales = [], refetch, isLoading } = useQuery<Sale[]>({
-    queryKey: ['sales'],
-    queryFn: getSales,
+  const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
+    queryKey: ['invoices'],
+    queryFn: getInvoices,
   });
 
-  const getClientName = (customerId: string) => {
-    const client = clients.find(c => c.id === customerId);
-    return client?.companyName || 'Unknown';
+  const getClientName = (clientId: string | null) => {
+    if (!clientId) return 'Walk-in / Direct';
+    const client = clients.find(c => c.id === clientId);
+    return client?.companyName || 'Unknown Client';
   };
 
-  const filteredSales = useMemo(() => {
-    if (!searchQuery) return sales;
-    return sales.filter(s => 
-      getClientName(s.customerId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = useMemo(() => {
+    if (!searchQuery) return invoices;
+    const q = searchQuery.toLowerCase();
+    return invoices.filter(inv =>
+      inv.id.toLowerCase().includes(q) ||
+      getClientName(inv.clientId).toLowerCase().includes(q) ||
+      (inv.serviceDesc || '').toLowerCase().includes(q) ||
+      (inv.selectedEventType || '').toLowerCase().includes(q) ||
+      (inv.customEventType || '').toLowerCase().includes(q)
     );
-  }, [sales, searchQuery, clients]);
+  }, [invoices, searchQuery, clients]);
 
-  const handleAddOrEdit = () => {
-    refetch();
-    setIsAddDialogOpen(false);
-    setEditingSale(null);
+  const totals = useMemo(() => {
+    const all = filtered.map(calcInvoiceTotals);
+    return {
+      net: all.reduce((s, t) => s + t.netAmount, 0),
+      vat: all.reduce((s, t) => s + t.vatAmount, 0),
+      gross: all.reduce((s, t) => s + t.grandTotal, 0),
+    };
+  }, [filtered]);
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
+
+  const getStatusBadge = (status: Invoice['status']) => {
+    if (status === 'paid') return <Badge className="bg-green-600">Paid</Badge>;
+    if (status === 'partially paid') return <Badge className="bg-blue-600">Part Paid</Badge>;
+    return <Badge variant="outline">Outstanding</Badge>;
   };
-  
-  const handleEdit = (sale: Sale) => {
-    setEditingSale(sale);
-    setIsAddDialogOpen(true);
-  }
-
-  const handleDelete = async (id: string) => {
-    await deleteSale(id);
-    toast({
-      title: "Success",
-      description: "Sale record deleted successfully.",
-    });
-    refetch();
-  }
-  
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount);
-  }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Sales Book</CardTitle>
-              <CardDescription>
-                Record of all revenue-generating activities like catering orders and event sales.
-              </CardDescription>
-            </div>
-            <Button onClick={() => { setEditingSale(null); setIsAddDialogOpen(true); }}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Sale
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Sales Journal
+            </CardTitle>
+            <CardDescription>
+              Revenue ledger auto-populated from issued invoices. To record a new sale, create an invoice in the Invoicing module.
+            </CardDescription>
+          </div>
+          <Link href="/invoicing/invoices">
+            <Button variant="outline" size="sm">
+              <ExternalLink className="mr-2 h-4 w-4" /> Invoicing Module
             </Button>
+          </Link>
+        </div>
+        <div className="pt-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by customer, invoice number, or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg bg-background pl-8 md:w-[360px]"
+            />
           </div>
-           <div className="pt-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by customer, description, or invoice..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg bg-background pl-8 md:w-[320px]"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Invoice #</TableHead>
-                <TableHead className="text-right">Total Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="h-24 text-center">Loading...</TableCell></TableRow>
-              ) : filteredSales.length > 0 ? (
-                filteredSales.map((sale) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>{format(new Date(sale.date), "PPP")}</TableCell>
-                    <TableCell>{getClientName(sale.customerId)}</TableCell>
-                    <TableCell>{sale.description}</TableCell>
-                    <TableCell>{sale.invoiceNumber}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(sale.totalAmount)}</TableCell>
-                    <TableCell>
-                      <Badge variant={sale.paymentStatus === 'paid' ? 'default' : 'outline'} className={sale.paymentStatus === 'paid' ? 'bg-green-600' : ''}>
-                        {sale.paymentStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleEdit(sale)}>Edit</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDelete(sale.id)} className="text-destructive">Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invoice Date</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Invoice #</TableHead>
+              <TableHead className="text-right">Net Amount</TableHead>
+              <TableHead className="text-right">VAT (18%)</TableHead>
+              <TableHead className="text-right">Gross Total</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={8} className="h-24 text-center">Loading sales journal...</TableCell></TableRow>
+            ) : filtered.length > 0 ? (
+              filtered.map((inv) => {
+                const { netAmount, vatAmount, grandTotal } = calcInvoiceTotals(inv);
+                const description = inv.serviceDesc || inv.customEventType || inv.selectedEventType || 'Catering Services';
+                return (
+                  <TableRow key={inv.id}>
+                    <TableCell className="whitespace-nowrap">{format(new Date(inv.invoiceDate), "PPP")}</TableCell>
+                    <TableCell className="font-medium">{getClientName(inv.clientId)}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={description}>{description}</TableCell>
+                    <TableCell className="font-mono text-sm">{inv.id}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(netAmount)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatCurrency(vatAmount)}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(grandTotal)}</TableCell>
+                    <TableCell>{getStatusBadge(inv.status)}</TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    No sales recorded yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <AddSaleDialog 
-        isOpen={isAddDialogOpen}
-        setIsOpen={setIsAddDialogOpen}
-        onSave={handleAddOrEdit}
-        sale={editingSale}
-        clients={clients}
-      />
-    </>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                  No invoices found. Use the Invoicing module to create and issue sales invoices.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell colSpan={4} className="text-right font-bold text-base">Journal Totals</TableCell>
+              <TableCell className="text-right font-bold text-base">{formatCurrency(totals.net)}</TableCell>
+              <TableCell className="text-right font-bold text-base text-purple-600">{formatCurrency(totals.vat)}</TableCell>
+              <TableCell className="text-right font-bold text-base text-primary">{formatCurrency(totals.gross)}</TableCell>
+              <TableCell />
+            </TableRow>
+          </TableFooter>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
