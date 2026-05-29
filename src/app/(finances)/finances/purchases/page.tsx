@@ -82,34 +82,41 @@ export default function PurchasesPage() {
     (doc as any).autoTable({
       startY: 36,
       theme: 'grid',
-      head: [['Date', 'Supplier', 'Description', 'Invoice #', 'Event ID', 'Net Cost (TZS)', 'Input VAT (TZS)', 'Total Cost (TZS)', 'Status']],
+      head: [['Date', 'Supplier', 'Description', 'Invoice #', 'Net Cost (TZS)', 'Input VAT (TZS)', 'Total Cost (TZS)', 'Amount Paid (TZS)', 'Credit AP (TZS)', 'Status']],
       body: filteredPurchases.map(p => {
         const netCost = p.totalCost - (p.taxAmount || 0);
+        const paid = p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0);
+        const credit = Math.max(0, p.totalCost - paid);
         return [
           format(new Date(p.date), "dd/MM/yyyy"),
           p.supplier,
-          p.description.slice(0, 35),
+          p.description.slice(0, 30),
           p.invoiceNumber,
-          p.event_id || '—',
           netCost.toLocaleString('en-US', { maximumFractionDigits: 0 }),
           (p.taxAmount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }),
           p.totalCost.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          paid.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          credit > 0 ? credit.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
           p.paymentStatus,
         ];
       }),
-      foot: [['', '', '', '', 'JOURNAL TOTALS',
+      foot: [['', '', '', 'JOURNAL TOTALS',
         totals.totalNet.toLocaleString('en-US', { maximumFractionDigits: 0 }),
         totals.totalVAT.toLocaleString('en-US', { maximumFractionDigits: 0 }),
         totals.totalCost.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        filteredPurchases.reduce((s, p) => s + (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0)), 0).toLocaleString('en-US', { maximumFractionDigits: 0 }),
+        filteredPurchases.reduce((s, p) => s + Math.max(0, p.totalCost - (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0))), 0).toLocaleString('en-US', { maximumFractionDigits: 0 }),
         '',
       ]],
-      styles: { fontSize: 7.5, cellPadding: 3 },
+      styles: { fontSize: 7, cellPadding: 2.5 },
       headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
       footStyles: { fillColor: [241, 245, 249], textColor: [30, 30, 30], fontStyle: 'bold' },
       columnStyles: {
+        4: { halign: 'right' },
         5: { halign: 'right' },
         6: { halign: 'right' },
         7: { halign: 'right' },
+        8: { halign: 'right' },
       },
     });
 
@@ -156,38 +163,44 @@ export default function PurchasesPage() {
                 <TableHead>Supplier</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Invoice #</TableHead>
-                <TableHead>Event ID</TableHead>
                 <TableHead className="text-right">Net Cost</TableHead>
                 <TableHead className="text-right">Input VAT</TableHead>
                 <TableHead className="text-right">Total Cost</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
+                <TableHead className="text-right">Credit (AP)</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={10} className="h-24 text-center">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="h-24 text-center">Loading...</TableCell></TableRow>
               ) : filteredPurchases.length > 0 ? (
                 filteredPurchases.map((purchase) => {
                   const netCost = purchase.totalCost - (purchase.taxAmount || 0);
+                  const paid = purchase.amountPaid ?? (purchase.paymentStatus === 'paid' ? purchase.totalCost : 0);
+                  const credit = Math.max(0, purchase.totalCost - paid);
                   return (
                     <TableRow key={purchase.id}>
                       <TableCell className="whitespace-nowrap">{format(new Date(purchase.date), "PPP")}</TableCell>
                       <TableCell className="font-medium">{purchase.supplier}</TableCell>
-                      <TableCell className="max-w-[160px] truncate" title={purchase.description}>{purchase.description}</TableCell>
+                      <TableCell className="max-w-[140px] truncate" title={purchase.description}>{purchase.description}</TableCell>
                       <TableCell className="font-mono text-sm">{purchase.invoiceNumber}</TableCell>
-                      <TableCell>
-                        {purchase.event_id ? (
-                          <Badge variant="default" className="bg-blue-600 text-xs">{purchase.event_id}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">{formatCurrency(netCost)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(purchase.taxAmount || 0)}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(purchase.totalCost)}</TableCell>
+                      <TableCell className="text-right text-emerald-600">{formatCurrency(paid)}</TableCell>
+                      <TableCell className="text-right">
+                        {credit > 0
+                          ? <span className="font-semibold text-amber-600">{formatCurrency(credit)}</span>
+                          : <span className="text-muted-foreground text-xs">—</span>}
+                      </TableCell>
                       <TableCell>
-                        <Badge variant={purchase.paymentStatus === 'paid' ? 'default' : 'outline'} className={purchase.paymentStatus === 'paid' ? 'bg-green-600' : ''}>
+                        <Badge className={
+                          purchase.paymentStatus === 'paid' ? 'bg-green-600 text-white'
+                          : purchase.paymentStatus === 'partial' ? 'bg-amber-500 text-white'
+                          : 'bg-red-500 text-white'
+                        }>
                           {purchase.paymentStatus}
                         </Badge>
                       </TableCell>
@@ -212,7 +225,7 @@ export default function PurchasesPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={10} className="h-24 text-center">
+                  <TableCell colSpan={11} className="h-24 text-center">
                     No purchases recorded yet.
                   </TableCell>
                 </TableRow>
@@ -220,10 +233,16 @@ export default function PurchasesPage() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={5} className="text-right font-bold text-base">Journal Totals</TableCell>
+                <TableCell colSpan={4} className="text-right font-bold text-base">Journal Totals</TableCell>
                 <TableCell className="text-right font-bold text-base">{formatCurrency(totals.totalNet)}</TableCell>
                 <TableCell className="text-right font-bold text-base text-purple-600">{formatCurrency(totals.totalVAT)}</TableCell>
                 <TableCell className="text-right font-bold text-base text-primary">{formatCurrency(totals.totalCost)}</TableCell>
+                <TableCell className="text-right font-bold text-base text-emerald-600">
+                  {formatCurrency(filteredPurchases.reduce((s, p) => s + (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0)), 0))}
+                </TableCell>
+                <TableCell className="text-right font-bold text-base text-amber-600">
+                  {formatCurrency(filteredPurchases.reduce((s, p) => s + Math.max(0, p.totalCost - (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0))), 0))}
+                </TableCell>
                 <TableCell colSpan={2} />
               </TableRow>
             </TableFooter>

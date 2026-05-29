@@ -34,26 +34,35 @@ export const getPurchases = async (): Promise<Purchase[]> => {
     }
 
     // Map snake_case database columns to camelCase for the application
-    const mappedPurchases = data.map(p => ({
-        id: p.id,
-        date: p.date,
-        supplier: p.supplier,
-        invoiceNumber: p.invoicenumber || p.invoice_number,
-        description: p.description,
-        quantity: Number(p.quantity),
-        unitCost: Number(p.unitcost || p.unit_cost),
-        totalCost: Number(p.totalcost || p.total_cost),
-        taxAmount: Number(p.taxamount || p.tax_amount || 0),
-        paymentMethod: p.paymentmethod || p.payment_method || 'cash',
-        paymentStatus: p.paymentstatus || p.payment_status || 'unpaid',
-        expenseCategory: p.expensecategory || p.expense_category || 'Food Ingredients',
-        event_id: p.event_id || p.eventid || getLocalPurchases().find(lp => lp.id === p.id)?.event_id || '',
-        supplier_tin: p.supplier_tin || p.suppliertin || getLocalPurchases().find(lp => lp.id === p.id)?.supplier_tin || '',
-        efd_receipt: p.efd_receipt || p.efdreceipt || getLocalPurchases().find(lp => lp.id === p.id)?.efd_receipt || '',
-        user_id: p.user_id,
-        createdAt: p.createdat || p.created_at,
-        updatedAt: p.updatedat || p.updated_at,
-    })) as Purchase[];
+    const mappedPurchases = data.map(p => {
+        const totalCost = Number(p.totalcost || p.total_cost || 0);
+        const rawStatus = p.paymentstatus || p.payment_status || 'unpaid';
+        const amountPaid = p.amount_paid !== undefined && p.amount_paid !== null
+            ? Number(p.amount_paid)
+            : rawStatus === 'paid' ? totalCost : 0;
+        return {
+            id: p.id,
+            date: p.date,
+            supplier: p.supplier,
+            supplierId: p.supplier_id || p.supplierid || '',
+            invoiceNumber: p.invoicenumber || p.invoice_number,
+            description: p.description,
+            quantity: Number(p.quantity),
+            unitCost: Number(p.unitcost || p.unit_cost),
+            totalCost,
+            taxAmount: Number(p.taxamount || p.tax_amount || 0),
+            amountPaid,
+            paymentMethod: p.paymentmethod || p.payment_method || 'cash',
+            paymentStatus: rawStatus as 'paid' | 'unpaid' | 'partial',
+            expenseCategory: p.expensecategory || p.expense_category || 'Food Ingredients',
+            event_id: p.event_id || p.eventid || getLocalPurchases().find(lp => lp.id === p.id)?.event_id || '',
+            supplier_tin: p.supplier_tin || p.suppliertin || getLocalPurchases().find(lp => lp.id === p.id)?.supplier_tin || '',
+            efd_receipt: p.efd_receipt || p.efdreceipt || getLocalPurchases().find(lp => lp.id === p.id)?.efd_receipt || '',
+            user_id: p.user_id,
+            createdAt: p.createdat || p.created_at,
+            updatedAt: p.updatedat || p.updated_at,
+        };
+    }) as Purchase[];
 
     // Sync remote with local
     const localPurchases = getLocalPurchases();
@@ -81,12 +90,14 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
     const dbPurchase = {
         date: purchase.date,
         supplier: purchase.supplier,
+        supplier_id: purchase.supplierId || null,
         invoicenumber: purchase.invoiceNumber,
         description: purchase.description,
         quantity: Number(purchase.quantity),
         unitcost: Number(purchase.unitCost),
         totalcost: Number(purchase.totalCost),
         taxamount: Number(purchase.taxAmount || 0),
+        amount_paid: Number(purchase.amountPaid ?? purchase.totalCost),
         paymentmethod: purchase.paymentMethod,
         paymentstatus: purchase.paymentStatus,
         expensecategory: purchase.expenseCategory,
@@ -102,12 +113,14 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
     if (error) {
         console.warn('Could not insert purchase into Supabase. Creating in localStorage fallback:', error.message);
         
-        // Strip out columns if database errors on event_id/tax fields
-        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt')) {
+        // Strip out columns if database errors on optional fields
+        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt') || error.message.includes('amount_paid') || error.message.includes('supplier_id')) {
             const strippedDbPurchase = { ...dbPurchase };
             delete (strippedDbPurchase as any).event_id;
             delete (strippedDbPurchase as any).supplier_tin;
             delete (strippedDbPurchase as any).efd_receipt;
+            delete (strippedDbPurchase as any).amount_paid;
+            delete (strippedDbPurchase as any).supplier_id;
             
             const { data: strippedData, error: strippedError } = await supabase.from('purchases').insert([strippedDbPurchase]).select().single();
             if (!strippedError && strippedData) {
@@ -162,12 +175,14 @@ export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<P
     const dbUpdate: any = {};
     if (updatedPurchase.date !== undefined) dbUpdate.date = updatedPurchase.date;
     if (updatedPurchase.supplier !== undefined) dbUpdate.supplier = updatedPurchase.supplier;
+    if (updatedPurchase.supplierId !== undefined) dbUpdate.supplier_id = updatedPurchase.supplierId || null;
     if (updatedPurchase.invoiceNumber !== undefined) dbUpdate.invoicenumber = updatedPurchase.invoiceNumber;
     if (updatedPurchase.description !== undefined) dbUpdate.description = updatedPurchase.description;
     if (updatedPurchase.quantity !== undefined) dbUpdate.quantity = Number(updatedPurchase.quantity);
     if (updatedPurchase.unitCost !== undefined) dbUpdate.unitcost = Number(updatedPurchase.unitCost);
     if (updatedPurchase.totalCost !== undefined) dbUpdate.totalcost = Number(updatedPurchase.totalCost);
     if (updatedPurchase.taxAmount !== undefined) dbUpdate.taxamount = Number(updatedPurchase.taxAmount);
+    if (updatedPurchase.amountPaid !== undefined) dbUpdate.amount_paid = Number(updatedPurchase.amountPaid);
     if (updatedPurchase.paymentMethod !== undefined) dbUpdate.paymentmethod = updatedPurchase.paymentMethod;
     if (updatedPurchase.paymentStatus !== undefined) dbUpdate.paymentstatus = updatedPurchase.paymentStatus;
     if (updatedPurchase.expenseCategory !== undefined) dbUpdate.expensecategory = updatedPurchase.expenseCategory;
@@ -181,11 +196,13 @@ export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<P
         console.warn('Supabase update failed, falling back to local purchases storage:', error.message);
         
         // Strip column-missing keys if needed
-        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt')) {
+        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt') || error.message.includes('amount_paid') || error.message.includes('supplier_id')) {
             const strippedUpdate = { ...dbUpdate };
             delete strippedUpdate.event_id;
             delete strippedUpdate.supplier_tin;
             delete strippedUpdate.efd_receipt;
+            delete strippedUpdate.amount_paid;
+            delete strippedUpdate.supplier_id;
             await supabase.from('purchases').update(strippedUpdate).eq('id', id);
         }
     }

@@ -14,9 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { getExpenses, addExpense, updateExpense, deleteExpense } from "@/services/expenseService";
-import { getBookings } from "@/services/bookingService";
 import { getStockLogs } from "@/services/stockLogService";
-import { Expense, Booking } from "@/types";
+import { Expense } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -31,13 +30,12 @@ import { z } from "zod";
 const ExpenseSchema = z.object({
   date: z.date({ required_error: "A date is required." }),
   payee: z.string().min(1, "Payee is required."),
-  ref_number: z.string().min(1, "Reference number is required."),
+  ref_number: z.string().optional().default(''),
   category: z.enum(['Transport & Fuel', 'Utilities', 'Venue Rent', 'Kitchen Consumables', 'Marketing', 'Office Overhead']),
   description: z.string().min(1, "Description is required."),
   amount: z.number().min(0.01, "Amount must be greater than 0."),
-  vat_amount: z.number().min(0, "VAT cannot be negative."),
+  vat_amount: z.number().min(0).default(0),
   payment_md: z.enum(['cash', 'bank', 'mobile_money']),
-  event_id: z.string().min(1, "Event ID Linkage is required. Use 'OVERHEAD' for general business expenses."),
 });
 
 type ExpenseFormData = z.infer<typeof ExpenseSchema>;
@@ -56,11 +54,6 @@ export default function ExpensesPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: bookings = [] } = useQuery<Booking[]>({
-    queryKey: ['bookings'],
-    queryFn: getBookings,
-    staleTime: 5 * 60 * 1000,
-  });
 
   const { data: stockLogsRaw } = useQuery({
     queryKey: ['stockLogs'],
@@ -79,17 +72,20 @@ export default function ExpensesPage() {
       amount: 0,
       vat_amount: 0,
       payment_md: "cash",
-      event_id: "",
     }
   });
 
   useEffect(() => {
     if (editingExpense) {
       form.reset({
-        ...editingExpense,
         date: new Date(editingExpense.date),
+        payee: editingExpense.payee,
+        ref_number: editingExpense.ref_number || '',
+        category: editingExpense.category,
+        description: editingExpense.description,
         amount: Number(editingExpense.amount),
         vat_amount: Number(editingExpense.vat_amount),
+        payment_md: editingExpense.payment_md,
       });
     } else {
       form.reset({
@@ -101,7 +97,6 @@ export default function ExpensesPage() {
         amount: 0,
         vat_amount: 0,
         payment_md: "cash",
-        event_id: "",
       });
     }
   }, [editingExpense, form, isDialogOpen]);
@@ -133,6 +128,8 @@ export default function ExpensesPage() {
     const payload = {
       ...values,
       date: format(values.date, "yyyy-MM-dd"),
+      event_id: editingExpense?.event_id || 'GENERAL',
+      ref_number: values.ref_number || '',
     };
 
     if (editingExpense) {
@@ -489,21 +486,6 @@ export default function ExpensesPage() {
                     </FormItem>
                   )}
                 />
-
-                <FormField control={form.control} name="event_id" render={({ field }) => (
-                  <FormItem><FormLabel>Event ID Linkage (Mandatory)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select linked Event or OVERHEAD"/></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="OVERHEAD">OVERHEAD - General Core Business Operations</SelectItem>
-                        {bookings.map(b => (
-                          <SelectItem key={b.id} value={b.id}>{b.id} - {b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="payee" render={({ field }) => (

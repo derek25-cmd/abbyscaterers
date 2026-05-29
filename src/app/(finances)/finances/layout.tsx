@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Banknote, ShoppingCart, BookUser, BookUp, DollarSign, Building, FileText, Landmark, TrendingUp } from "lucide-react";
+import { Banknote, ShoppingCart, BookUser, BookUp, DollarSign, Building, FileText, Landmark, TrendingUp, BarChart2, Building2 } from "lucide-react";
 
 const financeNavItems = [
     { href: "/finances", label: "Event P&L Explorer", icon: TrendingUp },
@@ -15,6 +15,8 @@ const financeNavItems = [
     { href: "/finances/expenses", label: "Expenses Book", icon: DollarSign },
     { href: "/finances/assets", label: "Fixed Assets", icon: Building },
     { href: "/finances/tax", label: "Tax Book", icon: FileText },
+    { href: "/finances/suppliers", label: "Suppliers", icon: Building2 },
+    { href: "/finances/reports", label: "Reports", icon: BarChart2 },
 ];
 
 export default function FinancesLayout({

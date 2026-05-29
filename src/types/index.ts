@@ -512,11 +512,26 @@ export interface DailyMenu {
 }
 
 // --- FINANCE MODULE ---
+
+export interface Supplier {
+    id: string;
+    name: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    tin?: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Purchase {
     id: string;
     event_id?: string; // Linked Event ID
     date: string; // ISO date string
     supplier: string;
+    supplierId?: string; // FK to Supplier.id
     supplier_tin?: string; // Tanzanian TIN (9 digits)
     invoiceNumber: string;
     efd_receipt?: string; // TRA EFD receipt number
@@ -525,8 +540,9 @@ export interface Purchase {
     unitCost: number;
     totalCost: number;
     taxAmount: number;
+    amountPaid: number; // amount settled at time of purchase; remainder is AP credit
     paymentMethod: 'cash' | 'bank' | 'credit';
-    paymentStatus: 'paid' | 'unpaid';
+    paymentStatus: 'paid' | 'unpaid' | 'partial';
     expenseCategory: string;
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
