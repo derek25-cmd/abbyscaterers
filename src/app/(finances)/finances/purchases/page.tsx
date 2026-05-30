@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { PlusCircle, Search, FileDown } from "lucide-react";
+import { PlusCircle, Search, FileDown, Package, Wrench, ShoppingBag } from "lucide-react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { Button } from "@/components/ui/button";
@@ -163,6 +163,7 @@ export default function PurchasesPage() {
                 <TableHead>Supplier</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Invoice #</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead className="text-right">Net Cost</TableHead>
                 <TableHead className="text-right">Input VAT</TableHead>
                 <TableHead className="text-right">Total Cost</TableHead>
@@ -174,18 +175,29 @@ export default function PurchasesPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={11} className="h-24 text-center">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={12} className="h-24 text-center">Loading...</TableCell></TableRow>
               ) : filteredPurchases.length > 0 ? (
                 filteredPurchases.map((purchase) => {
                   const netCost = purchase.totalCost - (purchase.taxAmount || 0);
                   const paid = purchase.amountPaid ?? (purchase.paymentStatus === 'paid' ? purchase.totalCost : 0);
                   const credit = Math.max(0, purchase.totalCost - paid);
+                  const cat = (purchase.expenseCategory || '').toLowerCase();
+                  const purchaseType = cat.includes('fixed asset') ? 'fixed_asset' : cat.includes('food') || cat.includes('ingredient') || cat.includes('stock') ? 'stock_in' : 'general';
                   return (
                     <TableRow key={purchase.id}>
                       <TableCell className="whitespace-nowrap">{format(new Date(purchase.date), "PPP")}</TableCell>
                       <TableCell className="font-medium">{purchase.supplier}</TableCell>
-                      <TableCell className="max-w-[140px] truncate" title={purchase.description}>{purchase.description}</TableCell>
+                      <TableCell className="max-w-[130px] truncate" title={purchase.description}>{purchase.description}</TableCell>
                       <TableCell className="font-mono text-sm">{purchase.invoiceNumber}</TableCell>
+                      <TableCell>
+                        {purchaseType === 'fixed_asset' ? (
+                          <Badge variant="outline" className="text-purple-600 border-purple-300 text-xs gap-1"><Wrench className="h-3 w-3" />Fixed Asset</Badge>
+                        ) : purchaseType === 'stock_in' ? (
+                          <Badge variant="outline" className="text-blue-600 border-blue-300 text-xs gap-1"><Package className="h-3 w-3" />Stock In</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground text-xs gap-1"><ShoppingBag className="h-3 w-3" />General</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{formatCurrency(netCost)}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(purchase.taxAmount || 0)}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(purchase.totalCost)}</TableCell>
@@ -225,7 +237,7 @@ export default function PurchasesPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={11} className="h-24 text-center">
+                  <TableCell colSpan={12} className="h-24 text-center">
                     No purchases recorded yet.
                   </TableCell>
                 </TableRow>
@@ -233,7 +245,7 @@ export default function PurchasesPage() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={4} className="text-right font-bold text-base">Journal Totals</TableCell>
+                <TableCell colSpan={5} className="text-right font-bold text-base">Journal Totals</TableCell>
                 <TableCell className="text-right font-bold text-base">{formatCurrency(totals.totalNet)}</TableCell>
                 <TableCell className="text-right font-bold text-base text-purple-600">{formatCurrency(totals.totalVAT)}</TableCell>
                 <TableCell className="text-right font-bold text-base text-primary">{formatCurrency(totals.totalCost)}</TableCell>
