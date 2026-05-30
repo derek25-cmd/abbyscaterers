@@ -46,6 +46,8 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [stockOutDate, setStockOutDate] = useState<Date>(new Date());
 
   const { data: expenses = [], refetch, isLoading } = useQuery<Expense[]>({
@@ -102,18 +104,18 @@ export default function ExpensesPage() {
   }, [editingExpense, form, isDialogOpen]);
 
   const filteredExpenses = useMemo(() => {
+    const dateStr = dateFilter ? format(dateFilter, 'yyyy-MM-dd') : null;
     return expenses.filter(e => {
-      const matchesSearch = 
+      const matchesSearch =
         e.payee.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.event_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         e.ref_number.toLowerCase().includes(searchQuery.toLowerCase());
-      
       const matchesCategory = categoryFilter === "ALL" || e.category === categoryFilter;
-
-      return matchesSearch && matchesCategory;
+      const matchesDate = !dateStr || e.date === dateStr;
+      return matchesSearch && matchesCategory && matchesDate;
     });
-  }, [expenses, searchQuery, categoryFilter]);
+  }, [expenses, searchQuery, categoryFilter, dateFilter]);
 
   // Aggregate financial metrics
   const metrics = useMemo(() => {
@@ -280,16 +282,53 @@ export default function ExpensesPage() {
           </div>
 
           {/* Search and Filters */}
-          <div className="flex flex-col md:flex-row items-center gap-4 pt-4">
-            <div className="relative w-full md:w-[320px]">
+          <div className="flex flex-col md:flex-row items-center gap-3 pt-4 flex-wrap">
+            <div className="relative w-full md:w-[280px]">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search payee, description, Event ID..."
+                placeholder="Search payee, description..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-lg bg-background pl-8"
               />
             </div>
+
+            {/* Date filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Date:</span>
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-[170px] justify-start font-normal", !dateFilter && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFilter ? format(dateFilter, "dd MMM yyyy") : "All dates"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFilter}
+                    onSelect={(d) => { setDateFilter(d); if (d) setStockOutDate(d); setDatePickerOpen(false); }}
+                    initialFocus
+                  />
+                  {dateFilter && (
+                    <div className="p-2 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={() => { setDateFilter(undefined); setDatePickerOpen(false); }}
+                      >
+                        Clear date filter
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div className="flex items-center gap-2 w-full md:w-auto">
               <span className="text-sm text-muted-foreground whitespace-nowrap">Category:</span>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -307,6 +346,13 @@ export default function ExpensesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Active filter indicator */}
+            {dateFilter && (
+              <span className="text-xs text-amber-600 font-medium">
+                Showing: {format(dateFilter, "EEEE, dd MMMM yyyy")}
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
