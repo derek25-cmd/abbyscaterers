@@ -125,10 +125,12 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
   // Stock-in items
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [openStockPickerId, setOpenStockPickerId] = useState<string | null>(null);
+  const [stockSearchTerm, setStockSearchTerm] = useState('');
 
   // Fixed-asset items
   const [assetItems, setAssetItems] = useState<AssetItem[]>([]);
   const [openAssetPickerId, setOpenAssetPickerId] = useState<string | null>(null);
+  const [assetSearchTerm, setAssetSearchTerm] = useState('');
 
   // Remote data
   const { data: suppliers = [] } = useQuery<Supplier[]>({ queryKey: ['suppliers'], queryFn: getSuppliers, staleTime: 5 * 60 * 1000 });
@@ -179,6 +181,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
     if (!isOpen) {
       setStockItems([]); setAssetItems([]);
       setSelectedSupplierId(''); setPurchaseType('general');
+      setStockSearchTerm(''); setAssetSearchTerm('');
       return;
     }
     if (purchase) {
@@ -606,7 +609,13 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                   {stockItems.map(item => (
                     <div key={item.id} className="grid grid-cols-[1fr_70px_90px_80px_28px] gap-1.5 items-center">
                       {/* Product combobox */}
-                      <Popover open={openStockPickerId === item.id} onOpenChange={open => setOpenStockPickerId(open ? item.id : null)}>
+                      <Popover
+                        open={openStockPickerId === item.id}
+                        onOpenChange={open => {
+                          setOpenStockPickerId(open ? item.id : null);
+                          if (!open) setStockSearchTerm('');
+                        }}
+                      >
                         <PopoverTrigger asChild>
                           <Button variant="outline" className={cn('h-auto min-h-[2rem] py-1 w-full justify-between text-sm font-normal px-2', !item.productName && 'text-muted-foreground')}>
                             <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
@@ -625,25 +634,47 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[320px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search products..." />
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Search products..."
+                              value={stockSearchTerm}
+                              onValueChange={setStockSearchTerm}
+                              autoFocus
+                            />
                             <CommandList>
                               <CommandEmpty className="py-3 px-4 text-sm text-muted-foreground">
-                                No product found. Type a name and update Qty/Price manually.
+                                No product found. Type a name and use the field below.
                               </CommandEmpty>
                               <CommandGroup heading="Product Catalog">
-                                {products.map(p => (
-                                  <CommandItem key={p.id} value={p.name} onSelect={() => selectProduct(item.id, p, item.branch)} className="flex flex-col items-start gap-0.5">
-                                    <div className="flex w-full justify-between">
-                                      <span className="font-medium">{p.name}</span>
-                                      <span className="text-xs text-muted-foreground">{p.unit}</span>
-                                    </div>
-                                    <div className="flex w-full justify-between text-xs text-muted-foreground">
-                                      <span>{p.category}</span>
-                                      <span>{formatCurrency(getBranchPrice(p, item.branch))}/{p.unit}</span>
-                                    </div>
-                                  </CommandItem>
-                                ))}
+                                {products
+                                  .filter(p => {
+                                    if (!stockSearchTerm.trim()) return true;
+                                    const q = stockSearchTerm.toLowerCase();
+                                    return (
+                                      p.name.toLowerCase().includes(q) ||
+                                      (p.category || '').toLowerCase().includes(q)
+                                    );
+                                  })
+                                  .map(p => (
+                                    <CommandItem
+                                      key={p.id}
+                                      value={p.id}
+                                      onSelect={() => {
+                                        selectProduct(item.id, p, item.branch);
+                                        setStockSearchTerm('');
+                                      }}
+                                      className="flex flex-col items-start gap-0.5"
+                                    >
+                                      <div className="flex w-full justify-between">
+                                        <span className="font-medium">{p.name}</span>
+                                        <span className="text-xs text-muted-foreground">{p.unit}</span>
+                                      </div>
+                                      <div className="flex w-full justify-between text-xs text-muted-foreground">
+                                        <span>{p.category}</span>
+                                        <span>{formatCurrency(getBranchPrice(p, item.branch))}/{p.unit}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
                               </CommandGroup>
                             </CommandList>
                           </Command>
@@ -699,7 +730,13 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                   {assetItems.map(item => (
                     <div key={item.id} className="grid grid-cols-[1fr_100px_65px_90px_80px_28px] gap-1.5 items-center">
                       {/* Asset combobox */}
-                      <Popover open={openAssetPickerId === item.id} onOpenChange={open => setOpenAssetPickerId(open ? item.id : null)}>
+                      <Popover
+                        open={openAssetPickerId === item.id}
+                        onOpenChange={open => {
+                          setOpenAssetPickerId(open ? item.id : null);
+                          if (!open) setAssetSearchTerm('');
+                        }}
+                      >
                         <PopoverTrigger asChild>
                           <Button variant="outline" className={cn('h-8 w-full justify-between text-sm font-normal px-2', !item.assetName && 'text-muted-foreground')}>
                             <span className="truncate">{item.assetName || 'Search asset...'}</span>
@@ -707,25 +744,48 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[340px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Search assets..." />
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              placeholder="Search assets..."
+                              value={assetSearchTerm}
+                              onValueChange={setAssetSearchTerm}
+                              autoFocus
+                            />
                             <CommandList>
                               <CommandEmpty className="py-3 px-4 text-sm text-muted-foreground">
-                                No existing asset found — a new asset record will be created.
+                                No existing asset found — use the field below to add a new one.
                               </CommandEmpty>
                               <CommandGroup heading="Existing Assets">
-                                {assets.map(a => (
-                                  <CommandItem key={a.id} value={`${a.name} ${a.branch}`} onSelect={() => selectAsset(item.id, a)} className="flex flex-col items-start gap-0.5">
-                                    <div className="flex w-full justify-between">
-                                      <span className="font-medium">{a.name}</span>
-                                      <Badge variant="outline" className="text-[10px] h-4 px-1">{a.branch}</Badge>
-                                    </div>
-                                    <div className="flex w-full justify-between text-xs text-muted-foreground">
-                                      <span>{a.type} · Qty: {a.quantity}</span>
-                                      <span>{formatCurrency(a.unitPrice)}/{a.unit}</span>
-                                    </div>
-                                  </CommandItem>
-                                ))}
+                                {assets
+                                  .filter(a => {
+                                    if (!assetSearchTerm.trim()) return true;
+                                    const q = assetSearchTerm.toLowerCase();
+                                    return (
+                                      a.name.toLowerCase().includes(q) ||
+                                      (a.type || '').toLowerCase().includes(q) ||
+                                      (a.branch || '').toLowerCase().includes(q)
+                                    );
+                                  })
+                                  .map(a => (
+                                    <CommandItem
+                                      key={a.id}
+                                      value={a.id}
+                                      onSelect={() => {
+                                        selectAsset(item.id, a);
+                                        setAssetSearchTerm('');
+                                      }}
+                                      className="flex flex-col items-start gap-0.5"
+                                    >
+                                      <div className="flex w-full justify-between">
+                                        <span className="font-medium">{a.name}</span>
+                                        <Badge variant="outline" className="text-[10px] h-4 px-1">{a.branch}</Badge>
+                                      </div>
+                                      <div className="flex w-full justify-between text-xs text-muted-foreground">
+                                        <span>{a.type} · Qty: {a.quantity}</span>
+                                        <span>{formatCurrency(a.unitPrice)}/{a.unit}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
                               </CommandGroup>
                             </CommandList>
                           </Command>
