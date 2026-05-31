@@ -234,14 +234,14 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                         </tbody>
                     </table>
                     
-                    <div className="text-right my-2 text-base p-2 bg-white rounded">
+                    <div data-pdf-no-break="true" className="text-right my-2 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div className="text-left" style={{ fontSize: '15px' }}>
+                    <div data-pdf-no-break="true" className="text-left" style={{ fontSize: '15px' }}>
                         <p>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                     </div>
-                    <div className="flex justify-between items-end mt-4 mb-4">
+                    <div data-pdf-no-break="true" className="flex justify-between items-end mt-4 mb-4">
                         <div style={{fontSize: '14px'}}>
                             <p className="font-bold pt-2">Please remit your payment to the below Bank details:</p>
                             <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
@@ -261,7 +261,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                         </div>
                     </div>
 
-                    <div className="mt-8 mb-6 p-4 bg-gray-100/50 rounded-lg border border-gray-200 text-center">
+                    <div data-pdf-no-break="true" className="mt-8 mb-6 p-4 bg-gray-100/50 rounded-lg border border-gray-200 text-center">
                         <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                             We will issue EFD receipt once payment is received
                         </p>

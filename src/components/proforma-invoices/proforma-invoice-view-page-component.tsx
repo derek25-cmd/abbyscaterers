@@ -91,83 +91,107 @@ export function ProformaInvoiceViewPageComponent() {
     const headerElement = document.getElementById('proforma-header');
     const contentElement = document.getElementById('proforma-main-content');
     const footerElement = document.getElementById('proforma-footer');
-    
+
     if (!contentElement || !headerElement || !footerElement) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the proforma to export.' });
-        return;
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the proforma to export.' });
+      return;
     }
-    
     setExporting(true);
 
     try {
-        const pdf = new jsPDF('p', 'pt', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const marginX = 30;
-        const marginTop = 20;
-        const marginBottom = 5;
-        const usableWidth = pageWidth - (marginX * 2);
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const marginX = 30;
+      const marginTop = 20;
+      const marginBottom = 5;
+      const usableWidth = pageWidth - (marginX * 2);
 
-        // Dynamic scale pins the canvas to a fixed pixel width regardless of screen size,
-        // so text renders at the same PDF size on any viewport.
-        const pdfScale = settings.pdfScale || 2.0;
-        const scale = (1000 * pdfScale) / contentElement.scrollWidth;
-        const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
+      // ── Measure element positions BEFORE html2canvas ──────────────────────
+      const domToPdf = usableWidth / contentElement.scrollWidth;
+      const containerRect = contentElement.getBoundingClientRect();
+      const breakIntervals: Array<{ top: number; bottom: number }> = [];
+      contentElement.querySelectorAll('tr, [data-pdf-no-break]').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        const top = (rect.top - containerRect.top) * domToPdf;
+        const bottom = (rect.bottom - containerRect.top) * domToPdf;
+        if (bottom > top && top >= 0) breakIntervals.push({ top, bottom });
+      });
+      // ─────────────────────────────────────────────────────────────────────
 
-        const headerCanvas = await html2canvas(headerElement, canvasOpts);
-        const contentCanvas = await html2canvas(contentElement, canvasOpts);
-        const footerCanvas = await html2canvas(footerElement, canvasOpts);
+      // Dynamic scale pins the canvas to a fixed pixel width regardless of screen size
+      const pdfScale = settings.pdfScale || 2.0;
+      const scale = (1000 * pdfScale) / contentElement.scrollWidth;
+      const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
 
-        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-        const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+      const headerCanvas = await html2canvas(headerElement, canvasOpts);
+      const contentCanvas = await html2canvas(contentElement, canvasOpts);
+      const footerCanvas  = await html2canvas(footerElement,  canvasOpts);
 
-        const headerDataURL = headerCanvas.toDataURL('image/png');
-        const footerDataURL = footerCanvas.toDataURL('image/png');
+      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+      const footerHeight = (footerCanvas.height  * usableWidth) / footerCanvas.width;
+      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+      const contentImgHeight    = (contentCanvas.height * usableWidth) / contentCanvas.width;
+      const pxPerPt             = contentCanvas.width / usableWidth;
 
-        let yOffset = 0;
-        let pageNumber = 1;
+      const headerDataURL = headerCanvas.toDataURL('image/png');
+      const footerDataURL = footerCanvas.toDataURL('image/png');
 
-        while (yOffset < contentImgHeight) {
-          if (pageNumber > 1) pdf.addPage();
-        
-          if (showHeaders) {
-              pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+      let yOffset = 0;
+      let pageNumber = 1;
+
+      while (yOffset < contentImgHeight) {
+        if (pageNumber > 1) pdf.addPage();
+
+        if (showHeaders) pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+
+        // ── Smart slice: never cut through a tracked element ──────────────
+        const remaining = contentImgHeight - yOffset;
+        let sliceHeight = Math.min(usableContentHeight, remaining);
+
+        if (remaining > usableContentHeight) {
+          const rawCutY = yOffset + usableContentHeight;
+          let adjustedCutY = rawCutY;
+
+          for (const { top, bottom } of breakIntervals) {
+            if (top > yOffset && top < rawCutY && bottom > rawCutY) {
+              // Page break would fall inside this element — move cut to just before it
+              adjustedCutY = Math.min(adjustedCutY, top);
+            }
           }
 
-          const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
-          
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = contentCanvas.width;
-          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
-
-          const sliceCtx = sliceCanvas.getContext('2d');
-          if (sliceCtx) {
-            sliceCtx.drawImage(
-                contentCanvas,
-                0, (yOffset / usableWidth) * contentCanvas.width,
-                contentCanvas.width, sliceCanvas.height,
-                0, 0,
-                sliceCanvas.width, sliceCanvas.height
-            );
-            pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
-          }
-
-          if (showHeaders) {
-            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
-          }
-
-          yOffset += sliceHeight;
-          pageNumber++;
+          const adjusted = adjustedCutY - yOffset;
+          // Only apply if the adjustment gives us at least 20 % of the page height
+          if (adjusted >= usableContentHeight * 0.2) sliceHeight = adjusted;
         }
-      
-        pdf.save(`proforma_${invoice?.id}.pdf`);
-        toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
+        // ─────────────────────────────────────────────────────────────────
 
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width  = contentCanvas.width;
+        sliceCanvas.height = Math.ceil(sliceHeight * pxPerPt);
+        const sliceCtx = sliceCanvas.getContext('2d');
+        if (sliceCtx) {
+          sliceCtx.drawImage(
+            contentCanvas,
+            0, Math.floor(yOffset * pxPerPt),
+            contentCanvas.width, sliceCanvas.height,
+            0, 0,
+            sliceCanvas.width, sliceCanvas.height,
+          );
+          pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', marginX, marginTop + headerHeight, usableWidth, sliceHeight);
+        }
+
+        if (showHeaders) pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+
+        yOffset += sliceHeight;
+        pageNumber++;
+      }
+
+      pdf.save(`proforma_${invoice?.id}.pdf`);
+      toast({ title: 'Success', description: 'Proforma invoice exported as PDF.' });
     } catch (error) {
-        console.error("PDF Export Error:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
+      console.error('PDF Export Error:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
     }
     setExporting(false);
   };

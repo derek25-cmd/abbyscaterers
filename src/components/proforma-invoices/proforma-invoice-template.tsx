@@ -255,11 +255,11 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                         </tbody>
                     </table>
                     
-                    <div className="text-right my-2 text-base p-2 bg-white rounded">
+                    <div data-pdf-no-break="true" className="text-right my-2 text-base p-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div className="flex justify-end items-end mt-4 mb-4">
+                    <div data-pdf-no-break="true" className="flex justify-end items-end mt-4 mb-4">
                         <div className="text-center" style={{ fontSize: '14px' }}>
                         <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
                         {settings.signatureUrl && <Image alt="Signature and Seal" height={160} width={400} className="h-40 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
@@ -268,7 +268,7 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                     </div>
 
 
-                     <div className="text-sm mt-4">
+                     <div data-pdf-no-break="true" className="text-sm mt-4">
                       <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
                       <ul className="space-y-1 list-disc list-inside" style={{ fontSize: '14px' }}>
                           <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
