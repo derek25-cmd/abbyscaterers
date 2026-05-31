@@ -23,11 +23,12 @@ import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { addPurchase, updatePurchase } from "@/services/purchaseService";
 import { getSuppliers } from "@/services/supplierService";
-import { getProducts } from "@/services/productService";
+import { getProducts, updateProduct } from "@/services/productService";
 import { getAssets, addAsset, updateAsset } from "@/services/assetService";
 import { addStockLog } from "@/services/stockLogService";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { BRANCH_KEYS } from "@/types";
 import type { Purchase, Supplier, Product, Asset } from "@/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -88,6 +89,12 @@ function getBranchPrice(p: Product, branch: BranchType): number {
   if (branch === 'Dar es Salaam') return p.unitPrice_dar ?? p.unitPrice;
   if (branch === 'Arusha') return p.unitPrice_arusha ?? p.unitPrice;
   return p.unitPrice_dodoma ?? p.unitPrice;
+}
+
+function getBranchQty(p: Product, branch: BranchType): number {
+  if (branch === 'Dar es Salaam') return p.quantity_dar ?? p.quantity;
+  if (branch === 'Arusha') return p.quantity_arusha ?? p.quantity;
+  return p.quantity_dodoma ?? p.quantity;
 }
 
 function formatCurrency(n: number) {
@@ -284,22 +291,34 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
     } else {
       await addPurchase(payload);
 
-      // Stock-in side-effects: create stock logs
+      // Stock-in side-effects: create stock logs AND update product quantities
       if (purchaseType === 'stock_in' && stockItems.length > 0) {
-        await Promise.all(
-          stockItems.map(item =>
-            addStockLog({
-              productId: item.productId || crypto.randomUUID(),
-              productName: item.productName || description,
-              type: 'Stock In',
-              quantity: item.quantity,
-              price: item.quantity * item.unitPrice,
-              actual_unit_price: item.unitPrice,
-              reason: `Purchased from ${values.supplier} — Invoice ${values.invoiceNumber}`,
-              date: dateStr, status: 'Verified', branch: item.branch,
-            })
-          )
-        );
+        for (const item of stockItems) {
+          // Step 1 — write the stock log
+          await addStockLog({
+            productId: item.productId || '',
+            productName: item.productName || description,
+            type: 'Stock In',
+            quantity: item.quantity,
+            price: item.quantity * item.unitPrice,
+            actual_unit_price: item.unitPrice,
+            reason: `Purchased from ${values.supplier} — Invoice ${values.invoiceNumber}`,
+            date: dateStr, status: 'Verified', branch: item.branch,
+          });
+
+          // Step 2 — update branch quantity in the products table (only for catalog products)
+          if (item.productId) {
+            const prod = products.find(p => p.id === item.productId);
+            if (prod) {
+              const branchKey = BRANCH_KEYS[item.branch];
+              const currentQty = Number(prod[branchKey.qty as keyof Product]) || 0;
+              await updateProduct(prod.id, {
+                [branchKey.qty]: currentQty + item.quantity,
+                [branchKey.price]: item.unitPrice,
+              } as Partial<Product>);
+            }
+          }
+        }
         toast({ title: 'Stock In Recorded', description: `${stockItems.length} product(s) added to inventory.` });
       }
 
@@ -589,9 +608,20 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                       {/* Product combobox */}
                       <Popover open={openStockPickerId === item.id} onOpenChange={open => setOpenStockPickerId(open ? item.id : null)}>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className={cn('h-8 w-full justify-between text-sm font-normal px-2 truncate', !item.productName && 'text-muted-foreground')}>
-                            <span className="truncate">{item.productName || 'Search product...'}</span>
-                            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-1" />
+                          <Button variant="outline" className={cn('h-auto min-h-[2rem] py-1 w-full justify-between text-sm font-normal px-2', !item.productName && 'text-muted-foreground')}>
+                            <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
+                              <span className="truncate leading-tight w-full">{item.productName || 'Search product...'}</span>
+                              {item.productId && (() => {
+                                const prod = products.find(x => x.id === item.productId);
+                                if (!prod) return null;
+                                return (
+                                  <span className="text-[10px] text-muted-foreground leading-tight">
+                                    In stock: {getBranchQty(prod, item.branch)} {prod.unit}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50 ml-1 self-center" />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[320px] p-0" align="start">
