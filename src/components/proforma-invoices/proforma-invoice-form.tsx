@@ -902,10 +902,14 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                 <Pencil className="h-4 w-4 text-indigo-600" />
                                                                 <span className="text-sm font-black uppercase tracking-widest text-indigo-700">Custom Line Items</span>
                                                                 <Badge variant="outline" className="text-[9px] border-indigo-300 text-indigo-600 bg-white/50 ml-1">No order link</Badge>
+                                                                <Badge className="text-[9px] bg-amber-100 text-amber-800 border border-amber-300 ml-1">Hides real entries in PDF</Badge>
                                                             </div>
                                                             <span className="text-[10px] text-muted-foreground">
                                                                 {fields.filter((_, i) => !watchedFormValues.items?.[i]?.orderId).length} row(s)
                                                             </span>
+                                                        </div>
+                                                        <div className="px-4 py-2 text-[10px] text-amber-700 bg-amber-50/60 border-b border-amber-200 font-semibold tracking-wide">
+                                                            Custom entries are active — all real order entries will be hidden in the invoice PDF. Only these rows will appear.
                                                         </div>
                                                         <div className="grid grid-cols-[28px_minmax(90px,1fr)_minmax(130px,2fr)_68px_110px_100px_36px] gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b bg-muted/20">
                                                             <span>#</span><span>Event ID</span><span>Description / Particulars</span>
@@ -980,11 +984,11 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                     particularDescription: '',
                                                                 })}
                                                             >
-                                                                <Plus className="h-4 w-4 mr-2" /> Add Custom Row (No Order Link)
+                                                                <Plus className="h-4 w-4 mr-2" /> Add Custom Row (Hides Real Entries in PDF)
                                                             </Button>
                                                             {!hasOrderEntries && (
                                                                 <p className="text-[10px] text-amber-600 text-center font-semibold tracking-wide">
-                                                                    ⚠ Link at least one order entry above before adding custom rows.
+                                                                    ⚠ Link at least one order entry above before adding custom rows. Custom rows will replace all real entries in the PDF.
                                                                 </p>
                                                             )}
                                                         </div>

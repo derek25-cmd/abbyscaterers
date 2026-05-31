@@ -113,7 +113,11 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
     const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceDesc, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType } = invoiceData;
 
     const sortedItems = React.useMemo(() => {
-        return [...localItems].sort((a, b) => {
+        const hasCustomItems = localItems.some(item => item.particularType === 'custom');
+        const itemsToDisplay = hasCustomItems
+            ? localItems.filter(item => item.particularType === 'custom')
+            : localItems;
+        return [...itemsToDisplay].sort((a, b) => {
             if (!a.date || !b.date) return 0;
             return parseISO(a.date).getTime() - parseISO(b.date).getTime();
         });
