@@ -741,7 +741,8 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                     const itemType = form.watch(`items.${index}.particularType`);
                                                     const orderId = form.watch(`items.${index}.orderId`);
                                                     const isSaved = orderId?.startsWith('ORD-');
-                                                    
+                                                    if (!orderId) return null; // custom items rendered in the table below
+
                                                     return (
                                                         <div key={item.id} className={cn(
                                                             "rounded-xl border p-5 transition-all duration-200 shadow-sm",
@@ -925,21 +926,119 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                     );
                                                  })}
 
-                                                <Button 
-                                                    type="button" 
-                                                    variant="outline" 
-                                                    className="w-full py-10 border-dashed border-2 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 group h-auto rounded-xl" 
-                                                    onClick={() => append({ 
-                                                        id: `DRAFT-EVT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
-                                                        orderId: `DRAFT-ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
-                                                        particularType: 'event', 
-                                                        eventType: eventTypes[0], 
-                                                        mealType: mealTypes[0], 
-                                                        pax: 1, 
-                                                        unitPrice: 0, 
-                                                        total: 0, 
-                                                        date: format(new Date(), 'yyyy-MM-dd'), 
-                                                        vatType: 'inclusive' 
+                                                {/* ── Custom Line Items Table ──────────────────────────────── */}
+                                                {fields.some((_, i) => !watchedFormValues.items?.[i]?.orderId) && (
+                                                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/10 overflow-hidden">
+                                                        <div className="flex items-center justify-between bg-indigo-50/30 px-4 py-3 border-b border-indigo-200">
+                                                            <div className="flex items-center gap-2">
+                                                                <Pencil className="h-4 w-4 text-indigo-600" />
+                                                                <span className="text-sm font-black uppercase tracking-widest text-indigo-700">Custom Line Items</span>
+                                                                <Badge variant="outline" className="text-[9px] border-indigo-300 text-indigo-600 bg-white/50 ml-1">No order link</Badge>
+                                                            </div>
+                                                            <span className="text-[10px] text-muted-foreground">
+                                                                {fields.filter((_, i) => !watchedFormValues.items?.[i]?.orderId).length} row(s)
+                                                            </span>
+                                                        </div>
+                                                        <div className="grid grid-cols-[28px_minmax(90px,1fr)_minmax(130px,2fr)_68px_110px_100px_36px] gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b bg-muted/20">
+                                                            <span>#</span><span>Event ID</span><span>Description / Particulars</span>
+                                                            <span className="text-right">Qty</span><span className="text-right">Unit Price</span>
+                                                            <span className="text-right">Total</span><span />
+                                                        </div>
+                                                        <div className="divide-y divide-indigo-100/60">
+                                                            {fields.map((field, index) => {
+                                                                if (watchedFormValues.items?.[index]?.orderId) return null;
+                                                                const rowNum = fields.slice(0, index + 1).filter((_, i) => !watchedFormValues.items?.[i]?.orderId).length;
+                                                                return (
+                                                                    <div key={field.id} className="grid grid-cols-[28px_minmax(90px,1fr)_minmax(130px,2fr)_68px_110px_100px_36px] gap-2 px-4 py-2 items-center">
+                                                                        <span className="text-xs text-muted-foreground font-mono">{rowNum}</span>
+                                                                        <FormField control={form.control} name={`items.${index}.id`} render={({ field: f }) => (
+                                                                            <FormItem className="space-y-0"><FormControl>
+                                                                                <Input {...f} className="h-8 text-xs font-mono bg-background border-indigo-200 focus:border-indigo-400" placeholder="e.g. SVC-001" />
+                                                                            </FormControl></FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`items.${index}.particularDescription`} render={({ field: f }) => (
+                                                                            <FormItem className="space-y-0"><FormControl>
+                                                                                <Input {...f} value={f.value || ''} className="h-8 text-xs bg-background border-indigo-200 focus:border-indigo-400" placeholder="Description / Particulars" />
+                                                                            </FormControl></FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`items.${index}.pax`} render={({ field: f }) => (
+                                                                            <FormItem className="space-y-0"><FormControl>
+                                                                                <Input type="number" min={0} {...f} className="h-8 text-xs text-right bg-background border-indigo-200" onChange={e => f.onChange(Number(e.target.value) || 0)} />
+                                                                            </FormControl></FormItem>
+                                                                        )} />
+                                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: f }) => (
+                                                                            <FormItem className="space-y-0"><FormControl>
+                                                                                <Input type="number" min={0} {...f} className="h-8 text-xs text-right bg-background border-indigo-200" onChange={e => f.onChange(Number(e.target.value) || 0)} />
+                                                                            </FormControl></FormItem>
+                                                                        )} />
+                                                                        <div className="text-right text-sm font-black text-primary tabular-nums pr-1">
+                                                                            {(form.watch(`items.${index}.total`) || 0).toLocaleString()}
+                                                                        </div>
+                                                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Add Custom Row — only allowed once real order entries exist */}
+                                                {(() => {
+                                                    const hasOrderEntries = fields.some((_, i) => !!watchedFormValues.items?.[i]?.orderId);
+                                                    return (
+                                                        <div className="space-y-1.5">
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                disabled={!hasOrderEntries}
+                                                                className={cn(
+                                                                    "w-full h-10 border-dashed font-black uppercase tracking-widest text-[10px] rounded-xl transition-all",
+                                                                    hasOrderEntries
+                                                                        ? "border-indigo-300 bg-indigo-50/10 hover:bg-indigo-50/30 text-indigo-700 hover:text-indigo-800"
+                                                                        : "border-muted text-muted-foreground cursor-not-allowed opacity-50"
+                                                                )}
+                                                                onClick={() => append({
+                                                                    id: `CUST-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+                                                                    orderId: undefined,
+                                                                    particularType: 'custom',
+                                                                    eventType: 'Custom',
+                                                                    mealType: '',
+                                                                    pax: 1,
+                                                                    unitPrice: 0,
+                                                                    total: 0,
+                                                                    vatType: 'inclusive',
+                                                                    particularDescription: '',
+                                                                })}
+                                                            >
+                                                                <Plus className="h-4 w-4 mr-2" /> Add Custom Row (No Order Link)
+                                                            </Button>
+                                                            {!hasOrderEntries && (
+                                                                <p className="text-[10px] text-amber-600 text-center font-semibold tracking-wide">
+                                                                    ⚠ Link at least one order entry above before adding custom rows.
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+
+                                                {/* Add Order-Linked Entry */}
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="w-full py-10 border-dashed border-2 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 group h-auto rounded-xl"
+                                                    onClick={() => append({
+                                                        id: `DRAFT-EVT-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                                                        orderId: `DRAFT-ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                                                        particularType: 'event',
+                                                        eventType: eventTypes[0],
+                                                        mealType: mealTypes[0],
+                                                        pax: 1,
+                                                        unitPrice: 0,
+                                                        total: 0,
+                                                        date: format(new Date(), 'yyyy-MM-dd'),
+                                                        vatType: 'inclusive'
                                                     })}
                                                 >
                                                     <div className="flex flex-col items-center gap-2">
