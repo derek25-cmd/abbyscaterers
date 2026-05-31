@@ -1207,8 +1207,24 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 <DialogContent className="max-w-xl p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
                     <div className="bg-primary px-8 py-8 text-primary-foreground relative">
                         <Settings2 className="absolute -bottom-4 -right-4 h-32 w-32 opacity-10" />
-                        <DialogTitle className="text-2xl font-black italic tracking-tight">DATA SYNC HUB</DialogTitle>
-                        <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-xs mt-1">Select valid orders for proforma</DialogDescription>
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <DialogTitle className="text-2xl font-black italic tracking-tight">DATA SYNC HUB</DialogTitle>
+                                <DialogDescription className="text-primary-foreground/70 font-bold uppercase text-xs mt-1">Select valid orders for proforma</DialogDescription>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const allSelected = selectedOrderIdsForImport.length === matchingOrders.length && matchingOrders.length > 0;
+                                    setSelectedOrderIdsForImport(allSelected ? [] : matchingOrders.map(o => o.id));
+                                }}
+                                className="shrink-0 text-xs font-black uppercase tracking-widest text-primary-foreground/80 hover:text-primary-foreground border border-primary-foreground/30 hover:border-primary-foreground/70 rounded-lg px-3 py-1.5 transition-all mt-1"
+                            >
+                                {selectedOrderIdsForImport.length === matchingOrders.length && matchingOrders.length > 0
+                                    ? 'Deselect All'
+                                    : 'Select All'}
+                            </button>
+                        </div>
                     </div>
                     <div className="p-8 space-y-4 max-h-[400px] overflow-y-auto">
                         {matchingOrders.map(order => (
