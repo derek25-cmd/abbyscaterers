@@ -3,6 +3,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { format, isValid, parseISO } from 'date-fns';
 import type { Invoice, Client, InvoiceItem } from '@/types';
@@ -100,20 +101,31 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
 
     const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation, items: localItems } = invoiceData;
 
-    const hasCustomItems = React.useMemo(
-        () => localItems.some(item => item.particularType === 'custom'),
+    // canToggle = both real order-linked entries (orderId set) and custom unlinked
+    // entries (orderId undefined) exist — the user can choose which to display.
+    const canToggle = React.useMemo(
+        () => localItems.some(item => !item.orderId) && localItems.some(item => !!item.orderId),
         [localItems]
     );
 
+    // Default to custom entries view when both types are present.
+    const [useCustomView, setUseCustomView] = useState(
+        () => localItems.some(item => !item.orderId) && localItems.some(item => !!item.orderId)
+    );
+
+    // The active display mode: only filter to custom entries when the user has
+    // explicitly chosen that view AND the toggle is available.
+    const showingCustom = useCustomView && canToggle;
+
     const sortedItems = React.useMemo(() => {
-        const itemsToDisplay = hasCustomItems
-            ? localItems.filter(item => item.particularType === 'custom')
+        const itemsToDisplay = showingCustom
+            ? localItems.filter(item => !item.orderId)
             : localItems;
         return [...itemsToDisplay].sort((a, b) => {
             if (!a.date || !b.date) return 0;
             return parseISO(a.date).getTime() - parseISO(b.date).getTime();
         });
-    }, [localItems, hasCustomItems]);
+    }, [localItems, showingCustom]);
 
     const subtotal = sortedItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
@@ -178,15 +190,51 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                          <p dangerouslySetInnerHTML={{ __html: serviceDescription?.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') || '' }} />
                     </div>
 
+                    {/* ── Entry-type toggle (screen only, hidden in PDF) ─────── */}
+                    {canToggle && (
+                        <div className="print:hidden flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 mr-1">Show:</span>
+                            <button
+                                type="button"
+                                onClick={() => setUseCustomView(false)}
+                                className={cn(
+                                    'px-3 py-1 rounded text-xs font-semibold transition-colors',
+                                    !useCustomView
+                                        ? 'bg-amber-600 text-white shadow-sm'
+                                        : 'bg-white text-amber-700 border border-amber-300 hover:bg-amber-50'
+                                )}
+                            >
+                                Real Entries
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setUseCustomView(true)}
+                                className={cn(
+                                    'px-3 py-1 rounded text-xs font-semibold transition-colors',
+                                    useCustomView
+                                        ? 'bg-amber-600 text-white shadow-sm'
+                                        : 'bg-white text-amber-700 border border-amber-300 hover:bg-amber-50'
+                                )}
+                            >
+                                Custom Entries
+                            </button>
+                            <span className="text-[10px] text-amber-600 ml-1">
+                                {useCustomView
+                                    ? 'PDF will show custom entries and their totals'
+                                    : 'PDF will show all real order entries and their totals'}
+                            </span>
+                        </div>
+                    )}
+
                     <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed', borderWidth: '1px' }}>
                         <thead>
                             <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
                                 <th className="border border-gray-800 py-2 px-1" style={{ width: '5%', borderWidth: '1px' }}>S/No.</th>
                                 <th className="border border-gray-800 py-2 px-1" style={{ width: '5%', borderWidth: '1px' }}>QTY</th>
-                                {!hasCustomItems && (
+                                {!showingCustom && (
                                     <th className="border border-gray-800 py-2 px-1" style={{ width: '10%', borderWidth: '1px' }}>Order ID</th>
                                 )}
-                                <th className="border border-gray-800 py-2 px-2 text-left" style={{ width: hasCustomItems ? '50%' : '40%', borderWidth: '1px' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 py-2 px-2 text-left" style={{ width: showingCustom ? '50%' : '40%', borderWidth: '1px' }}>PARTICULARS</th>
                                 <th className="border border-gray-800 py-2 px-2 text-right" style={{ width: '25%', borderWidth: '1px' }}>UNIT PRICE (TSHS)</th>
                                 <th className="border border-gray-800 py-2 px-2 text-right" style={{ width: '15%', borderWidth: '1px' }}>TOTAL (TSHS)</th>
                             </tr>
@@ -196,7 +244,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                                 <tr key={item.id}>
                                     <td className="border border-black py-2 px-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
                                     <td className="border border-black py-2 px-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>
-                                    {!hasCustomItems && (
+                                    {!showingCustom && (
                                         <td className="border border-black py-2 px-1 text-center font-mono text-xs" style={{borderWidth: '1px'}}>{item.id}</td>
                                     )}
                                     <td className="border border-black py-2 px-2 text-left" style={{borderWidth: '1px'}}>
@@ -207,7 +255,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                                 </tr>
                             ))}
                             <tr>
-                                <td colSpan={hasCustomItems ? 3 : 4} rowSpan={8} className="p-2 align-top border" style={{borderWidth: '1px'}}>
+                                <td colSpan={showingCustom ? 3 : 4} rowSpan={8} className="p-2 align-top border" style={{borderWidth: '1px'}}>
                                     <Textarea
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
