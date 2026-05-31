@@ -213,6 +213,9 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
     setPurchaseType(t);
     if (t === 'stock_in' && stockItems.length === 0) setStockItems([newStockItem()]);
     if (t === 'fixed_asset' && assetItems.length === 0) setAssetItems([newAssetItem()]);
+    // Ensure cross-tabs search state never leaks and never leaves the other list unfiltered.
+    setStockSearchTerm('');
+    setAssetSearchTerm('');
   }, [stockItems.length, assetItems.length]);
 
   // Supplier helpers
