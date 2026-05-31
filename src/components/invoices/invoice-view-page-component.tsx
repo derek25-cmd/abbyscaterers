@@ -75,37 +75,43 @@ export function InvoiceViewPageComponent() {
       const marginBottom = 5;
       const usableWidth = pageWidth - (marginX * 2);
 
-      // ── Measure element positions as fractions of scrollHeight BEFORE html2canvas ──
-      // We store fractional positions so the conversion to PDF pts is done using
-      // the *actual* contentImgHeight after rendering, not a theoretical estimate.
-      // Using window.scrollY gives scroll-corrected absolute document positions.
-      const containerAbsTop = contentElement.getBoundingClientRect().top + window.scrollY;
-      const contentScrollH  = contentElement.scrollHeight;
+      // Measure element positions relative to the content container (viewport-relative,
+      // window.scrollY cancels when we subtract containerTop from each element's top).
+      const containerTop = contentElement.getBoundingClientRect().top;
+      const contentScrollH = contentElement.scrollHeight;
       const rawDomPositions: Array<{ top: number; bottom: number }> = [];
+
       contentElement.querySelectorAll('tr, [data-pdf-no-break]').forEach(el => {
         const rect = el.getBoundingClientRect();
-        const relTop    = (rect.top    + window.scrollY) - containerAbsTop;
-        const relBottom = (rect.bottom + window.scrollY) - containerAbsTop;
+        const relTop    = rect.top    - containerTop;
+        const relBottom = rect.bottom - containerTop;
         if (relBottom > relTop && relTop >= -5) {
           rawDomPositions.push({ top: Math.max(0, relTop), bottom: relBottom });
         }
       });
-      // ─────────────────────────────────────────────────────────────────────
 
-      const headerCanvas = await html2canvas(headerElement, { scale: 2 });
-      const contentCanvas = await html2canvas(contentElement, { scale: 2 });
-      const footerCanvas  = await html2canvas(footerElement,  { scale: 2 });
+      const canvasOpts = { scale: 2, useCORS: true, logging: false, allowTaint: true };
+      const headerCanvas = await html2canvas(headerElement, canvasOpts);
+      const contentCanvas = await html2canvas(contentElement, canvasOpts);
+      const footerCanvas  = await html2canvas(footerElement,  canvasOpts);
 
       const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
       const footerHeight = (footerCanvas.height  * usableWidth) / footerCanvas.width;
-      const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-      const contentImgHeight    = (contentCanvas.height * usableWidth) / contentCanvas.width;
-      const pxPerPt             = contentCanvas.width / usableWidth;
+      // When headers are hidden, the full page height is available for content
+      const usableContentHeight = pageHeight
+        - (showHeaders ? headerHeight + footerHeight : 0)
+        - marginTop - marginBottom;
+      const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
+      const pxPerPt          = contentCanvas.width / usableWidth;
 
-      // Convert raw DOM positions (CSS px) → PDF pts using actual contentImgHeight
+      // actualVerticalScale: canvas pixels per DOM CSS pixel (vertical axis).
+      // Using the actual rendered canvas height eliminates any fractional rounding.
+      const actualVerticalScale = contentCanvas.height / contentScrollH;
+
+      // Convert raw DOM CSS-px positions → PDF points
       const breakIntervals = rawDomPositions.map(({ top, bottom }) => ({
-        top:    (top    / contentScrollH) * contentImgHeight,
-        bottom: (bottom / contentScrollH) * contentImgHeight,
+        top:    (top    * actualVerticalScale) / pxPerPt,
+        bottom: (bottom * actualVerticalScale) / pxPerPt,
       }));
 
       const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
@@ -117,9 +123,10 @@ export function InvoiceViewPageComponent() {
       while (yOffset < contentImgHeight) {
         if (pageNumber > 1) pdf.addPage();
 
+        const contentY = marginTop + (showHeaders ? headerHeight : 0);
         if (showHeaders) pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
 
-        // ── Smart slice: never cut through a tracked element ──────────────
+        // Smart slice: pull the cut point back to just before any element that would be split.
         const remaining = contentImgHeight - yOffset;
         let sliceHeight = Math.min(usableContentHeight, remaining);
 
@@ -129,17 +136,16 @@ export function InvoiceViewPageComponent() {
 
           for (const { top, bottom } of breakIntervals) {
             if (top > yOffset && top < rawCutY && bottom > rawCutY) {
-              // Page break would fall inside this element — move cut to just before it
+              // Page break would fall inside this element — move cut to just before it.
               adjustedCutY = Math.min(adjustedCutY, top);
             }
           }
 
           const adjusted = adjustedCutY - yOffset;
-          // Only apply if the adjustment gives us at least 20 % of the page height
-          // (prevents tiny slices when a tall element is right at the top of a page)
-          if (adjusted >= usableContentHeight * 0.2) sliceHeight = adjusted;
+          // Apply if non-trivial (> 1 pt). Even a small slice is better than cutting
+          // through content. Elements taller than a full page cannot be avoided.
+          if (adjusted >= 1) sliceHeight = adjusted;
         }
-        // ─────────────────────────────────────────────────────────────────
 
         const sliceCanvas = document.createElement('canvas');
         sliceCanvas.width  = contentCanvas.width;
@@ -155,11 +161,8 @@ export function InvoiceViewPageComponent() {
           );
           pdf.addImage(
             sliceCanvas.toDataURL('image/png', 1.0),
-            'PNG',
-            marginX,
-            marginTop + (showHeaders ? headerHeight : 0),
-            usableWidth,
-            sliceHeight,
+            'PNG', marginX, contentY,
+            usableWidth, sliceHeight,
           );
         }
 

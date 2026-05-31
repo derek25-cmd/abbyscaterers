@@ -71,8 +71,19 @@ const serviceFieldsList = [
 export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceFormProps) {
     const router = useRouter();
     const { clients, getClientById: getClientDetails, isLoading: clientsLoading } = useClientStorage();
-    const { getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
+    const { proformaInvoices, getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
     const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
+
+    // Event IDs already committed to a proforma other than the one being edited.
+    // An event in this set cannot be imported into a second proforma.
+    const usedEventIds = useMemo(() => {
+        const used = new Set<string>();
+        proformaInvoices.forEach(pi => {
+            if (pi.id === invoiceId) return; // current proforma — skip
+            pi.items.forEach(item => used.add(item.id));
+        });
+        return used;
+    }, [proformaInvoices, invoiceId]);
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
     const { toast } = useToast();
 
@@ -141,9 +152,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             return;
         }
 
-        // Track order IDs already imported into the form
-        const currentOrderIds = new Set(
-            watchedFormValues.items.map(item => item.orderId).filter(Boolean)
+        // Event IDs already in the current form (by event ID, not order ID)
+        const currentItemEventIds = new Set(
+            watchedFormValues.items.map(item => item.id).filter(Boolean)
         );
 
         const matches = orders.filter(order => {
@@ -154,20 +165,18 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 (order.endDate && order.endDate >= start && order.endDate <= end);
             if (!inDateRange) return false;
 
-            // Exclude orders linked to a different proforma
-            if (order.proformaId && order.proformaId !== invoiceId) return false;
-
-            // Exclude orders already linked to THIS proforma (already in form items)
-            if (order.proformaId === invoiceId) return false;
-
-            // Exclude orders already imported as form items
-            if (currentOrderIds.has(order.id)) return false;
-
-            return true;
+            // Show the order only if it has at least one event (within the proforma's
+            // date range) that is not already used in another proforma and not already
+            // present in this form. This allows one Order to be split across proformas.
+            return order.clientEvents.some(e =>
+                e.date && e.date >= start && e.date <= end &&
+                !usedEventIds.has(e.id) &&
+                !currentItemEventIds.has(e.id)
+            );
         });
 
         setMatchingOrders(matches);
-    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, invoiceId]);
+    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, invoiceId, usedEventIds]);
 
     const handleImportSelected = (orderList: Order[]) => {
         const currentItems = form.getValues('items');
@@ -183,9 +192,16 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             return;
         }
 
+        const currentEventIds = new Set(form.getValues('items').map(i => i.id));
         orderList.forEach(order => {
             order.clientEvents.forEach(event => {
-                if (event.date && event.date >= startDate && event.date <= endDate) {
+                // Only import events within the date range that are not already used
+                // in another proforma and not already present in the current form.
+                if (
+                    event.date && event.date >= startDate && event.date <= endDate &&
+                    !usedEventIds.has(event.id) &&
+                    !currentEventIds.has(event.id)
+                ) {
                     append({
                         id: event.id,
                         orderId: order.id,
@@ -344,7 +360,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 )) as string[];
 
                 for (const oid of linkedOrderIds) {
-                    await updateOrder(oid, { proformaId: result.id } as any);
+                    const existingOrder = getOrderById(oid);
+                    // Only set proformaId if the order isn't already linked to a different
+                    // proforma. proformaId is a display field pointing to the first proforma
+                    // that touched this order; the real link lives in each proforma's items[].
+                    if (!existingOrder?.proformaId || existingOrder.proformaId === (invoiceId ?? result.id)) {
+                        await updateOrder(oid, { proformaId: result.id } as any);
+                    }
                 }
 
                 if (!isEditMode) {
