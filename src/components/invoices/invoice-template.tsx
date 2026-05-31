@@ -100,8 +100,12 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
 
     const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType, signedAtDate, signedAtLocation, items: localItems } = invoiceData;
 
+    const hasCustomItems = React.useMemo(
+        () => localItems.some(item => item.particularType === 'custom'),
+        [localItems]
+    );
+
     const sortedItems = React.useMemo(() => {
-        const hasCustomItems = localItems.some(item => item.particularType === 'custom');
         const itemsToDisplay = hasCustomItems
             ? localItems.filter(item => item.particularType === 'custom')
             : localItems;
@@ -109,7 +113,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
             if (!a.date || !b.date) return 0;
             return parseISO(a.date).getTime() - parseISO(b.date).getTime();
         });
-    }, [localItems]);
+    }, [localItems, hasCustomItems]);
 
     const subtotal = sortedItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const totalForDays = multiplyByDays ? subtotal * (numberOfDays || 1) : subtotal;
@@ -170,70 +174,81 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                         </div>
                     <hr className="border-t-2 border-gray-800" />
                     
-                    <div className="my-2 text-center text-base italic p-1" style={{minHeight: '1cm'}}>
+                    <div className="my-3 text-center text-base italic px-4 py-2" style={{minHeight: '1.5cm'}}>
                          <p dangerouslySetInnerHTML={{ __html: serviceDescription?.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') || '' }} />
                     </div>
 
                     <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed', borderWidth: '1px' }}>
                         <thead>
                             <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
-                                <th className="border border-gray-800 p-1" style={{ width: '5%', borderWidth: '1px' }}>S/No.</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '5%', borderWidth: '1px' }}>QTY</th>
-                                <th className="border border-gray-800 p-1" style={{ width: '10%', borderWidth: '1px' }}>Order ID</th>
-                                <th className="border border-gray-800 p-1 text-left" style={{ width: '40%', borderWidth: '1px' }}>PARTICULARS</th>
-                                <th className="border border-gray-800 p-1 text-right" style={{ width: '25%', borderWidth: '1px' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-gray-800 p-1 text-right" style={{ width: '15%', borderWidth: '1px' }}>TOTAL (TSHS)</th>
+                                <th className="border border-gray-800 py-2 px-1" style={{ width: '5%', borderWidth: '1px' }}>S/No.</th>
+                                <th className="border border-gray-800 py-2 px-1" style={{ width: '5%', borderWidth: '1px' }}>QTY</th>
+                                {!hasCustomItems && (
+                                    <th className="border border-gray-800 py-2 px-1" style={{ width: '10%', borderWidth: '1px' }}>Order ID</th>
+                                )}
+                                <th className="border border-gray-800 py-2 px-2 text-left" style={{ width: hasCustomItems ? '50%' : '40%', borderWidth: '1px' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 py-2 px-2 text-right" style={{ width: '25%', borderWidth: '1px' }}>UNIT PRICE (TSHS)</th>
+                                <th className="border border-gray-800 py-2 px-2 text-right" style={{ width: '15%', borderWidth: '1px' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedItems.map((item, index) => (
                                 <tr key={item.id}>
-                                    <td className="border border-black p-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
-                                    <td className="border border-black p-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>
-                                    <td className="border border-black p-1 text-center font-mono text-xs" style={{borderWidth: '1px'}}>{item.id}</td>
-                                    <td className="border border-black p-1 text-left" style={{borderWidth: '1px'}}>
-                                        <span>{item.particularDescription || getParticularText(item)}</span>
+                                    <td className="border border-black py-2 px-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
+                                    <td className="border border-black py-2 px-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>
+                                    {!hasCustomItems && (
+                                        <td className="border border-black py-2 px-1 text-center font-mono text-xs" style={{borderWidth: '1px'}}>{item.id}</td>
+                                    )}
+                                    <td className="border border-black py-2 px-2 text-left" style={{borderWidth: '1px'}}>
+                                        <span className="leading-snug">{item.particularDescription || getParticularText(item)}</span>
                                     </td>
-                                    <td className="border border-black p-1 text-right" style={{borderWidth: '1px'}}>{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
-                                    <td className="border border-black p-1 text-right" style={{borderWidth: '1px'}}>{item.total ? formatCurrency(item.total) : '{Total}'}</td>
+                                    <td className="border border-black py-2 px-2 text-right" style={{borderWidth: '1px'}}>{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
+                                    <td className="border border-black py-2 px-2 text-right" style={{borderWidth: '1px'}}>{item.total ? formatCurrency(item.total) : '{Total}'}</td>
                                 </tr>
                             ))}
                             <tr>
-                                <td colSpan={4} rowSpan={8} className="p-1 align-center border" style={{borderWidth: '1px'}}><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes concerning the order..." className="h-full w-full border-none resize-none text-center bg-transparent focus-visible:ring-0 p-1"/></td>
-                                <td className="p-1 text-right font-semibold border" style={{borderWidth: '1px'}}>Sub-Total (TSHS)</td>
-                                <td className="p-1 text-right font-semibold border" style={{borderWidth: '1px'}}>{formatCurrency(subtotal)}</td>
+                                <td colSpan={hasCustomItems ? 3 : 4} rowSpan={8} className="p-2 align-top border" style={{borderWidth: '1px'}}>
+                                    <Textarea
+                                        value={notes}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="Notes concerning the order..."
+                                        className="min-h-[100px] h-full w-full border-none resize-none bg-transparent focus-visible:ring-0 p-1 text-sm"
+                                    />
+                                </td>
+                                <td className="py-2 px-2 text-right font-semibold border" style={{borderWidth: '1px'}}>Sub-Total (TSHS)</td>
+                                <td className="py-2 px-2 text-right font-semibold border" style={{borderWidth: '1px'}}>{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
                                 <>
                                 <tr>
-                                    <td className="p-1 text-right border" style={{borderWidth: '1px'}}>No of days</td>
-                                    <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{numberOfDays || 1}</td>
+                                    <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>No of days</td>
+                                    <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{numberOfDays || 1}</td>
                                 </tr>
                                 <tr>
-                                    <td className="p-1 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>TOTAL (TSHS)</td>
-                                    <td className="p-1 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>{formatCurrency(totalForDays)}</td>
+                                    <td className="py-2 px-2 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>TOTAL (TSHS)</td>
+                                    <td className="py-2 px-2 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>{formatCurrency(totalForDays)}</td>
                                 </tr>
                                 </>
                             )}
                             <tr>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>Add Service Charge (TSHS)</td>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Add Service Charge (TSHS)</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>Add Transportation Costs (TSHS)</td>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
-                            </tr>
-                                <tr>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>Total Before VAT (TSHS)</td>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{formatCurrency(totalBeforeVat)}</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Add Transportation Costs (TSHS)</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>Add VAT 18% (TSHS)</td>
-                                <td className="p-1 text-right border" style={{borderWidth: '1px'}}>{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Total Before VAT (TSHS)</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{formatCurrency(totalBeforeVat)}</td>
                             </tr>
                             <tr>
-                                <td className="p-1 text-right font-bold bg-secondary/40 border" style={{borderWidth: '1px'}}>GRAND TOTAL (TSHS)</td>
-                                <td className="p-1 text-right font-bold bg-secondary/40 text-accent border" style={{borderWidth: '1px'}}>{formatCurrency(grandTotal)}</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Add VAT 18% (TSHS)</td>
+                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
+                            </tr>
+                            <tr>
+                                <td className="py-2 px-2 text-right font-bold bg-secondary/40 border" style={{borderWidth: '1px'}}>GRAND TOTAL (TSHS)</td>
+                                <td className="py-2 px-2 text-right font-bold bg-secondary/40 text-accent border" style={{borderWidth: '1px'}}>{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
                     </table>
