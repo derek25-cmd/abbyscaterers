@@ -75,16 +75,20 @@ export function InvoiceViewPageComponent() {
       const marginBottom = 5;
       const usableWidth = pageWidth - (marginX * 2);
 
-      // ── Measure element positions BEFORE html2canvas ──────────────────────
-      // Rows (tr) and marked no-break sections are never split across pages.
-      const domToPdf = usableWidth / contentElement.scrollWidth;
-      const containerRect = contentElement.getBoundingClientRect();
-      const breakIntervals: Array<{ top: number; bottom: number }> = [];
+      // ── Measure element positions as fractions of scrollHeight BEFORE html2canvas ──
+      // We store fractional positions so the conversion to PDF pts is done using
+      // the *actual* contentImgHeight after rendering, not a theoretical estimate.
+      // Using window.scrollY gives scroll-corrected absolute document positions.
+      const containerAbsTop = contentElement.getBoundingClientRect().top + window.scrollY;
+      const contentScrollH  = contentElement.scrollHeight;
+      const rawDomPositions: Array<{ top: number; bottom: number }> = [];
       contentElement.querySelectorAll('tr, [data-pdf-no-break]').forEach(el => {
         const rect = el.getBoundingClientRect();
-        const top = (rect.top - containerRect.top) * domToPdf;
-        const bottom = (rect.bottom - containerRect.top) * domToPdf;
-        if (bottom > top && top >= 0) breakIntervals.push({ top, bottom });
+        const relTop    = (rect.top    + window.scrollY) - containerAbsTop;
+        const relBottom = (rect.bottom + window.scrollY) - containerAbsTop;
+        if (relBottom > relTop && relTop >= -5) {
+          rawDomPositions.push({ top: Math.max(0, relTop), bottom: relBottom });
+        }
       });
       // ─────────────────────────────────────────────────────────────────────
 
@@ -97,6 +101,12 @@ export function InvoiceViewPageComponent() {
       const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
       const contentImgHeight    = (contentCanvas.height * usableWidth) / contentCanvas.width;
       const pxPerPt             = contentCanvas.width / usableWidth;
+
+      // Convert raw DOM positions (CSS px) → PDF pts using actual contentImgHeight
+      const breakIntervals = rawDomPositions.map(({ top, bottom }) => ({
+        top:    (top    / contentScrollH) * contentImgHeight,
+        bottom: (bottom / contentScrollH) * contentImgHeight,
+      }));
 
       const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
       const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
