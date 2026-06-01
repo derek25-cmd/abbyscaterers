@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format, isValid, parseISO } from 'date-fns';
@@ -113,21 +112,12 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
 
     const { id, invoiceDate, receiverName, receiverPosition, lpoNumber, serviceDesc, serviceCharge, transportCosts, multiplyByDays, numberOfDays, vatType } = invoiceData;
 
-    // canToggle = both real order-linked entries (orderId set) and custom unlinked
-    // entries (orderId undefined) exist — the user can choose which to display.
-    const canToggle = React.useMemo(
+    // Custom entries mode: when unlinked custom rows exist alongside order-linked
+    // entries, show only the custom rows (and derive totals from them).
+    const showingCustom = React.useMemo(
         () => localItems.some(item => !item.orderId) && localItems.some(item => !!item.orderId),
         [localItems]
     );
-
-    // Default to custom entries view when both types are present.
-    const [useCustomView, setUseCustomView] = useState(
-        () => localItems.some(item => !item.orderId) && localItems.some(item => !!item.orderId)
-    );
-
-    // The active display mode: only filter to custom entries when the user has
-    // explicitly chosen that view AND the toggle is available.
-    const showingCustom = useCustomView && canToggle;
 
     const sortedItems = React.useMemo(() => {
         const itemsToDisplay = showingCustom
@@ -204,42 +194,6 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                     <div className="my-3 text-center text-base italic px-4 py-2" style={{minHeight: '1.5cm'}}>
                         <p>{serviceDesc}</p>
                     </div>
-
-                    {/* ── Entry-type toggle (screen only, hidden in PDF) ─────── */}
-                    {canToggle && (
-                        <div className="print:hidden flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 mr-1">Show:</span>
-                            <button
-                                type="button"
-                                onClick={() => setUseCustomView(false)}
-                                className={cn(
-                                    'px-3 py-1 rounded text-xs font-semibold transition-colors',
-                                    !useCustomView
-                                        ? 'bg-amber-600 text-white shadow-sm'
-                                        : 'bg-white text-amber-700 border border-amber-300 hover:bg-amber-50'
-                                )}
-                            >
-                                Real Entries
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setUseCustomView(true)}
-                                className={cn(
-                                    'px-3 py-1 rounded text-xs font-semibold transition-colors',
-                                    useCustomView
-                                        ? 'bg-amber-600 text-white shadow-sm'
-                                        : 'bg-white text-amber-700 border border-amber-300 hover:bg-amber-50'
-                                )}
-                            >
-                                Custom Entries
-                            </button>
-                            <span className="text-[10px] text-amber-600 ml-1">
-                                {useCustomView
-                                    ? 'PDF will show custom entries and their totals'
-                                    : 'PDF will show all real order entries and their totals'}
-                            </span>
-                        </div>
-                    )}
 
                     <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed', borderWidth: '1px' }}>
                         <thead>

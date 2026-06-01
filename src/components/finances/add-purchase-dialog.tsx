@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { addPurchase, updatePurchase } from "@/services/purchaseService";
 import { getSuppliers } from "@/services/supplierService";
 import { getProducts, updateProduct } from "@/services/productService";
@@ -200,6 +200,7 @@ interface AddPurchaseDialogProps {
 
 export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPurchaseDialogProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Purchase type
   const [purchaseType, setPurchaseType] = useState<PurchaseType>('general');
@@ -405,6 +406,9 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
             }
           }
         }
+        // Refresh product catalog and stock logs so the UI reflects the new quantities immediately
+        await queryClient.invalidateQueries({ queryKey: ['products'] });
+        await queryClient.invalidateQueries({ queryKey: ['stock_logs'] });
         toast({ title: 'Stock In Recorded', description: `${stockItems.length} product(s) added to inventory.` });
       }
 
@@ -435,6 +439,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
             }
           })
         );
+        await queryClient.invalidateQueries({ queryKey: ['assets'] });
         toast({ title: 'Assets Updated', description: `${assetItems.length} asset(s) recorded in Fixed Assets register.` });
       }
 

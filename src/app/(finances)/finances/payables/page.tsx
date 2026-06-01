@@ -7,15 +7,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { getPurchases } from "@/services/purchaseService";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPurchases, updatePurchase } from "@/services/purchaseService";
 import { getSuppliers } from "@/services/supplierService";
 import { Purchase, Supplier } from "@/types";
 import { format } from "date-fns";
-import { Search, BookUp, TrendingDown, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, BookUp, TrendingDown, ChevronDown, ChevronRight, CreditCard, Loader2 } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(n);
@@ -23,11 +27,26 @@ const formatCurrency = (n: number) =>
 const creditOf = (p: Purchase) =>
   Math.max(0, p.totalCost - (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0)));
 
+interface PaymentDialogState {
+  open: boolean;
+  purchase: Purchase | null;
+  amount: number;
+  method: 'cash' | 'bank';
+  date: string;
+}
+
 export default function PayablesPage() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
 
-  const { data: purchases = [], isLoading } = useQuery<Purchase[]>({
+  const [paymentDialog, setPaymentDialog] = useState<PaymentDialogState>({
+    open: false, purchase: null, amount: 0, method: 'bank', date: format(new Date(), 'yyyy-MM-dd'),
+  });
+
+  const { data: purchases = [], isLoading, refetch } = useQuery<Purchase[]>({
     queryKey: ['purchases'],
     queryFn: getPurchases,
     staleTime: 5 * 60 * 1000,
@@ -39,13 +58,11 @@ export default function PayablesPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All purchases with outstanding credit (unpaid or partial)
   const outstandingPurchases = useMemo(() =>
     purchases.filter(p => p.paymentStatus !== 'paid' || creditOf(p) > 0),
     [purchases]
   );
 
-  // Group by supplier name (or supplierId if linked)
   const supplierGroups = useMemo(() => {
     const map = new Map<string, { label: string; supplierId?: string; purchases: Purchase[]; total: number }>();
 
@@ -56,16 +73,10 @@ export default function PayablesPage() {
         existing.purchases.push(p);
         existing.total += creditOf(p);
       } else {
-        map.set(key, {
-          label: p.supplier,
-          supplierId: p.supplierId,
-          purchases: [p],
-          total: creditOf(p),
-        });
+        map.set(key, { label: p.supplier, supplierId: p.supplierId, purchases: [p], total: creditOf(p) });
       }
     });
 
-    // Use canonical name from supplier DB if linked
     suppliers.forEach(s => {
       const g = map.get(s.id);
       if (g) g.label = s.name;
@@ -107,6 +118,48 @@ export default function PayablesPage() {
     });
   };
 
+  const openPaymentDialog = (p: Purchase) => {
+    setPaymentDialog({
+      open: true,
+      purchase: p,
+      amount: creditOf(p),
+      method: 'bank',
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
+  };
+
+  const handleRecordPayment = async () => {
+    if (!paymentDialog.purchase) return;
+    const p = paymentDialog.purchase;
+    const prevPaid = p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0);
+    const newAmountPaid = Math.min(prevPaid + paymentDialog.amount, p.totalCost);
+    const newStatus: Purchase['paymentStatus'] =
+      newAmountPaid >= p.totalCost ? 'paid' : newAmountPaid > 0 ? 'partial' : 'unpaid';
+
+    setIsSaving(true);
+    try {
+      await updatePurchase(p.id, {
+        amountPaid: newAmountPaid,
+        paymentStatus: newStatus,
+        paymentMethod: paymentDialog.method,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      refetch();
+      toast({
+        title: 'Payment Recorded',
+        description: `${formatCurrency(paymentDialog.amount)} paid to ${p.supplier}. Status: ${newStatus}.`,
+      });
+      setPaymentDialog(prev => ({ ...prev, open: false, purchase: null }));
+    } catch {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to record payment.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const currentCredit = paymentDialog.purchase ? creditOf(paymentDialog.purchase) : 0;
+  const newBalance = Math.max(0, currentCredit - paymentDialog.amount);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -136,7 +189,7 @@ export default function PayablesPage() {
             <div>
               <CardTitle className="flex items-center gap-2"><BookUp /> Accounts Payable Ledger</CardTitle>
               <CardDescription>
-                Outstanding supplier credit grouped by supplier. Click a row to see individual invoices.
+                Outstanding supplier credit grouped by supplier. Click a supplier to expand, then record payments.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -166,7 +219,6 @@ export default function PayablesPage() {
                 const isExpanded = expandedSuppliers.has(group.key);
                 return (
                   <div key={group.key} className="rounded-md border overflow-hidden">
-                    {/* Supplier header row */}
                     <button
                       onClick={() => toggleExpand(group.key)}
                       className="w-full flex items-center justify-between px-4 py-3 bg-muted/40 hover:bg-muted/70 transition-colors text-left"
@@ -181,7 +233,6 @@ export default function PayablesPage() {
                       <div className="font-bold text-amber-600 text-base">{formatCurrency(group.total)}</div>
                     </button>
 
-                    {/* Expanded invoice rows */}
                     {isExpanded && (
                       <Table>
                         <TableHeader>
@@ -193,6 +244,7 @@ export default function PayablesPage() {
                             <TableHead className="text-right">Amount Paid</TableHead>
                             <TableHead className="text-right">Credit Balance</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead><span className="sr-only">Pay</span></TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -214,6 +266,16 @@ export default function PayablesPage() {
                                     {p.paymentStatus}
                                   </Badge>
                                 </TableCell>
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                    onClick={() => openPaymentDialog(p)}
+                                  >
+                                    <CreditCard className="h-3 w-3 mr-1" /> Pay
+                                  </Button>
+                                </TableCell>
                               </TableRow>
                             );
                           })}
@@ -228,7 +290,7 @@ export default function PayablesPage() {
                               {formatCurrency(group.purchases.reduce((s, p) => s + (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0)), 0))}
                             </TableCell>
                             <TableCell className="text-right font-bold text-amber-600">{formatCurrency(group.total)}</TableCell>
-                            <TableCell />
+                            <TableCell colSpan={2} />
                           </TableRow>
                         </TableFooter>
                       </Table>
@@ -249,6 +311,119 @@ export default function PayablesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Record Payment Dialog ─────────────────────────────────────── */}
+      <Dialog
+        open={paymentDialog.open}
+        onOpenChange={open => !open && setPaymentDialog(prev => ({ ...prev, open: false }))}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-emerald-600" /> Record Payment
+            </DialogTitle>
+            {paymentDialog.purchase && (
+              <DialogDescription>
+                {paymentDialog.purchase.supplier} — Invoice {paymentDialog.purchase.invoiceNumber}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {paymentDialog.purchase && (
+            <div className="space-y-4 py-2">
+              {/* Summary */}
+              <div className="rounded-lg bg-muted/40 p-3 text-sm space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Invoice Total</span>
+                  <span className="font-semibold">{formatCurrency(paymentDialog.purchase.totalCost)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Already Paid</span>
+                  <span className="text-emerald-600 font-semibold">
+                    {formatCurrency(paymentDialog.purchase.amountPaid ?? (paymentDialog.purchase.paymentStatus === 'paid' ? paymentDialog.purchase.totalCost : 0))}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t pt-1.5 mt-1">
+                  <span className="font-semibold">Outstanding Balance</span>
+                  <span className="font-bold text-amber-600">{formatCurrency(currentCredit)}</span>
+                </div>
+              </div>
+
+              {/* Payment amount */}
+              <div className="space-y-1.5">
+                <Label htmlFor="payment-amount">Payment Amount (TZS)</Label>
+                <Input
+                  id="payment-amount"
+                  type="number"
+                  min={0}
+                  max={currentCredit}
+                  value={paymentDialog.amount}
+                  onChange={e => setPaymentDialog(prev => ({ ...prev, amount: Math.min(Number(e.target.value), currentCredit) }))}
+                />
+              </div>
+
+              {/* Payment method */}
+              <div className="space-y-1.5">
+                <Label>Payment Method</Label>
+                <Select
+                  value={paymentDialog.method}
+                  onValueChange={v => setPaymentDialog(prev => ({ ...prev, method: v as 'cash' | 'bank' }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bank">Bank Transfer</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment date */}
+              <div className="space-y-1.5">
+                <Label htmlFor="payment-date">Payment Date</Label>
+                <Input
+                  id="payment-date"
+                  type="date"
+                  value={paymentDialog.date}
+                  onChange={e => setPaymentDialog(prev => ({ ...prev, date: e.target.value }))}
+                />
+              </div>
+
+              {/* New balance preview */}
+              {paymentDialog.amount > 0 && (
+                <div className={cn(
+                  "rounded-lg border p-3 text-sm space-y-1",
+                  newBalance === 0 ? "border-emerald-400/50 bg-emerald-50/20" : "border-amber-400/50 bg-amber-50/20"
+                )}>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Paying now</span>
+                    <span className="font-semibold text-emerald-600">{formatCurrency(paymentDialog.amount)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1">
+                    <span className="font-semibold">Remaining balance</span>
+                    <span className={cn("font-bold", newBalance === 0 ? "text-emerald-600" : "text-amber-600")}>
+                      {newBalance === 0 ? 'Fully settled ✓' : formatCurrency(newBalance)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isSaving}>Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={handleRecordPayment}
+              disabled={isSaving || paymentDialog.amount <= 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Record Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
