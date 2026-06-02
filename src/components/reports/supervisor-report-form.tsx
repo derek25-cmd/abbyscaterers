@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import type { SupervisorReport, ReportCriterion, ReportRating } from "@/types";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayItems } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 const CRITERIA_DESCRIPTIONS = [
@@ -250,7 +250,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
   };
 
   const calculateTotal = (data: any) => {
-    const items = data.items || [];
+    const items = getDisplayItems(data.items || []);
     const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.total) || 0), 0);
     const totalForDays = data.multiplyByDays ? subtotal * (Number(data.numberOfDays) || 1) : subtotal;
     const totalBeforeVat = totalForDays + (Number(data.serviceCharge) || 0) + (Number(data.transportCosts) || 0);

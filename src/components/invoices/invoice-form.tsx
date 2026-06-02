@@ -14,7 +14,7 @@ import { CalendarIcon, Plus, PlusCircle, Trash2, Loader2, Save, ChevronsUpDown, 
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, isValid, parseISO } from 'date-fns';
-import { cn, incrementIdString } from '@/lib/utils';
+import { cn, incrementIdString, getDisplayItems } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
@@ -520,7 +520,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         });
     }
 
-    const calculateSubtotal = () => form.getValues('items').reduce((sum, item) => sum + (item.total || 0), 0);
+    const calculateSubtotal = () => getDisplayItems(form.getValues('items')).reduce((sum, item) => sum + (item.total || 0), 0);
     const calculateTotalDays = () => form.getValues('multiplyByDays') ? calculateSubtotal() * (form.getValues('numberOfDays') || 1) : calculateSubtotal();
     const calculateVAT = () => {
         const total = calculateTotalDays() + (form.getValues('serviceCharge') || 0) + (form.getValues('transportCosts') || 0);

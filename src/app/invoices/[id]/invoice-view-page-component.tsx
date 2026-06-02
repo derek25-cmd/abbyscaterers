@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { PaymentStatusDialog, PaymentStatusFormData } from "@/components/invoices/payment-status-dialog";
 import { ExportDocumentDialog } from "@/components/proforma-invoices/export-document-dialog";
 import { CheckCircle2 } from "lucide-react";
+import { calculateGrandTotal } from "@/lib/utils";
 
 export function InvoiceViewPageComponent() {
   const params = useParams();
@@ -45,14 +46,7 @@ export function InvoiceViewPageComponent() {
   const [proformaShowHeaders, setProformaShowHeaders] = useState(true);
   const [proformaPreserveSpace, setProformaPreserveSpace] = useState(false);
 
-  const calculateTotal = () => {
-      if (!invoice) return 0;
-      const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
-      const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
-      const totalBeforeVAT = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
-      const vat = invoice.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
-      return totalBeforeVAT + vat;
-  };
+  const calculateTotal = () => invoice ? calculateGrandTotal(invoice) : 0;
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   const associatedProforma = invoice?.proformaId ? getProformaById(invoice.proformaId) : undefined;

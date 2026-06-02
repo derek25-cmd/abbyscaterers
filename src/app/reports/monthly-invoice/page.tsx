@@ -20,19 +20,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, calculateGrandTotal } from "@/lib/utils";
 import { REGIONS } from "@/types";
 import { InvoiceRegistryDialog } from "@/components/reports/invoice-registry-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-const calculateTotal = (inv: Invoice) => {
-    const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-    const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-    const totalBeforeVat = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-    const vat = inv.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
-    return totalBeforeVat + vat;
-}
+const calculateTotal = (inv: Invoice) => calculateGrandTotal(inv);
 
 export default function MonthlyInvoiceReportPage() {
   const { toast } = useToast();

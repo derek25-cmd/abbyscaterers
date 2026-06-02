@@ -9,17 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { getInvoices } from "@/services/invoiceService";
 import { Invoice } from "@/types";
+import { calculateGrandTotal } from "@/lib/utils";
 import { useClientStorage } from "@/hooks/use-client-storage";
 import { format } from "date-fns";
 import { Search, BookUser, TrendingUp } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/stats-card";
 
-function calcInvoiceGrossTotal(inv: Invoice): number {
-  const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-  const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-  const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-  return inv.vatType === 'exclusive' ? totalBeforeVAT * 1.18 : totalBeforeVAT;
-}
+const calcInvoiceGrossTotal = (inv: Invoice): number => calculateGrandTotal(inv);
 
 export default function ReceivablesPage() {
   const [searchQuery, setSearchQuery] = useState("");

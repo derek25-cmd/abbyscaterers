@@ -25,6 +25,7 @@ import {
   ChartTooltipContent
 } from "@/components/ui/chart";
 import { Invoice, Client } from "@/types";
+import { calculateGrandTotal } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const chartConfig = {
@@ -47,13 +48,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount).replace('TZS', 'Tsh');
 };
 
-const calculateInvoiceTotal = (inv: Invoice): number => {
-    const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-    const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-    const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-    const vat = inv.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
-    return totalBeforeVAT + vat;
-};
+const calculateInvoiceTotal = (inv: Invoice): number => calculateGrandTotal(inv);
 
 export function RevenueByClientChart({ invoices, clients }: RevenueByClientChartProps) {
   const chartData = React.useMemo(() => {

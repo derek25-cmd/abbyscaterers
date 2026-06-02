@@ -14,6 +14,7 @@ import { getPurchases } from "@/services/purchaseService";
 import { getExpenses } from "@/services/expenseService";
 import { getPayrolls } from "@/services/payrollService";
 import { Invoice } from "@/types";
+import { calculateGrandTotal } from "@/lib/utils";
 import { format } from "date-fns";
 
 export default function CashBookPage() {
@@ -40,12 +41,7 @@ export default function CashBookPage() {
     }> = [];
 
     // 1. Paid and Partially Paid Invoices are Inflows
-    const calcGrossTotal = (inv: Invoice) => {
-      const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-      const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-      const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-      return inv.vatType === 'exclusive' ? totalBeforeVAT * 1.18 : totalBeforeVAT;
-    };
+    const calcGrossTotal = (inv: Invoice) => calculateGrandTotal(inv);
     invoices
       .filter(inv => inv.status === 'paid' || inv.status === 'partially paid')
       .forEach(inv => {

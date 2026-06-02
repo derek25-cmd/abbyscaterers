@@ -35,19 +35,14 @@ import { getAssets } from "@/services/assetService";
 import { getAttendanceRecords } from "@/services/attendanceService";
 import { getEmployees } from "@/services/employeeService";
 import { Asset, Attendance, Employee, Invoice } from "@/types";
+import { calculateGrandTotal } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { generateBusinessInsightAction } from "@/lib/actions";
 import { BusinessInsightOutput } from "@/ai/flows/business-insight-flow";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 
-const calculateInvoiceTotal = (inv: Invoice): number => {
-    const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
-    const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-    const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
-    const vat = inv.vatType === 'exclusive' ? totalBeforeVAT * 0.18 : 0;
-    return totalBeforeVAT + vat;
-};
+const calculateInvoiceTotal = (inv: Invoice): number => calculateGrandTotal(inv);
 
 export default function DashboardPage() {
   const { orders: menus, isLoading: menusLoading } = useOrderStorage();

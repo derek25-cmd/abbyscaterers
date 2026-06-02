@@ -17,10 +17,10 @@ import { getPayrolls } from "@/services/payrollService";
 import { TaxRecord, Invoice } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayItems } from "@/lib/utils";
 
 function calcInvoiceTotals(inv: Invoice) {
-  const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
+  const subtotal = getDisplayItems(inv.items).reduce((sum, item) => sum + (item.total || 0), 0);
   const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
   const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
   if (inv.vatType === 'exclusive') {

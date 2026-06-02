@@ -10,6 +10,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import type { ProformaInvoiceFormData, InvoiceItem } from '@/lib/schemas';
 import type { Client } from '@/types';
+import { getDisplayItems } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
     Dialog,
@@ -79,7 +80,7 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
         setEditState({ open: false, itemId: '', currentValue: '' });
     };
 
-    const calculateSubtotal = () => formData.items.reduce((sum, item) => sum + item.total, 0);
+    const calculateSubtotal = () => getDisplayItems(formData.items).reduce((sum, item) => sum + item.total, 0);
     const calculateTotalDays = () => formData.multiplyByDays ? calculateSubtotal() * (formData.numberOfDays || 1) : calculateSubtotal();
     const calculateVAT = () => {
         const total = calculateTotalDays() + formData.serviceCharge + formData.transportCosts;

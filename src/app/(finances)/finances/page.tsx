@@ -15,11 +15,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, FileText, ChevronRight, CalendarIcon, Receipt, ShoppingBag, Banknote, Users } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayItems } from "@/lib/utils";
 import { Invoice } from "@/types";
 
 function calcInvoiceTotals(inv: Invoice) {
-  const subtotal = inv.items.reduce((sum, item) => sum + (item.total || 0), 0);
+  const subtotal = getDisplayItems(inv.items).reduce((sum, item) => sum + (item.total || 0), 0);
   const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
   const totalBeforeVAT = totalForDays + (inv.serviceCharge || 0) + (inv.transportCosts || 0);
   if (inv.vatType === 'exclusive') {

@@ -16,18 +16,10 @@ import {
 import type { ProformaInvoice } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from "../ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, calculateGrandTotal } from "@/lib/utils";
 
 
 type ProformaInvoiceWithClientName = ProformaInvoice & { clientName: string };
-
-const calculateGrandTotal = (invoice: ProformaInvoice): number => {
-    const subtotal = invoice.items.reduce((sum, item) => sum + (item.total || 0), 0);
-    const totalForDays = invoice.multiplyByDays ? subtotal * (invoice.numberOfDays || 1) : subtotal;
-    const totalBeforeVat = totalForDays + (invoice.serviceCharge || 0) + (invoice.transportCosts || 0);
-    const vat = invoice.vatType === 'exclusive' ? totalBeforeVat * 0.18 : 0;
-    return totalBeforeVat + vat;
-};
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS', currencyDisplay: 'code' }).format(amount);
