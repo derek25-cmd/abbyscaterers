@@ -198,13 +198,13 @@ export default function MonthlyInvoiceReportPage() {
         },
         columnStyles: {
           0: { cellWidth: 10 },                            // S/N
-          1: { cellWidth: 42 },                            // Client Name (reduced to give space)
+          1: { cellWidth: 65 },                            // Client Name (reduced to give space)
           2: { cellWidth: 28 },                            // LPO Number
           3: { cellWidth: 32 },                            // Invoice Date (increased)
           4: { cellWidth: 22 },                            // Invoice No. (decreased)
           5: { halign: 'right' as const, cellWidth: 36 }, // Total Amount
           6: { halign: 'right' as const, cellWidth: 36 }, // Amount Paid
-          7: { cellWidth: 30 },                            // Status (increased)
+          7: { cellWidth: 36 },                            // Status (increased)
         },
       };
 
