@@ -155,25 +155,28 @@ export default function MonthlyInvoiceReportPage() {
       const doc = new jsPDF({ orientation: 'landscape' });
       const statementDate = format(new Date(), "do MMMM yyyy").toUpperCase();
 
-      // Shared table definition — columns as specified
+      // Columns: S/N | Client Name | LPO Number | Invoice Date | Invoice No. | Total Amount | Amount Paid | Status
       const tableColumns = [
         'S/N',
         'Client Name',
-        'Invoice Description',
         'LPO Number',
         'Invoice Date',
         'Invoice No.',
         'Total Amount (TZS)',
+        'Amount Paid (TZS)',
         'Status',
       ];
 
-      // Shared autoTable style — headings Arial 13 bold, body Arial 12
+      // Shared autoTable style — headings Arial 13 bold, body Arial 12, all black lines + text
       const sharedTableStyles = {
         theme: 'grid' as const,
         styles: {
           font: 'helvetica',
           fontSize: 12,
           cellPadding: 2.5,
+          textColor: [0, 0, 0] as [number, number, number],
+          lineColor: [0, 0, 0] as [number, number, number],
+          lineWidth: 0.3,
         },
         headStyles: {
           font: 'helvetica',
@@ -190,14 +193,17 @@ export default function MonthlyInvoiceReportPage() {
           fontStyle: 'bold' as const,
           fillColor: [240, 240, 240] as [number, number, number],
           textColor: [0, 0, 0] as [number, number, number],
+          lineColor: [0, 0, 0] as [number, number, number],
+          lineWidth: 0.3,
         },
         columnStyles: {
-          0: { cellWidth: 10 },  // S/N
-          3: { cellWidth: 28 },  // LPO Number
-          4: { cellWidth: 24 },  // Invoice Date
-          5: { cellWidth: 28 },  // Invoice No.
-          6: { halign: 'right' as const, cellWidth: 36 }, // Total Amount
-          7: { cellWidth: 22 },  // Status
+          0: { cellWidth: 10 },                            // S/N
+          2: { cellWidth: 28 },                            // LPO Number
+          3: { cellWidth: 24 },                            // Invoice Date
+          4: { cellWidth: 30 },                            // Invoice No.
+          5: { halign: 'right' as const, cellWidth: 36 }, // Total Amount
+          6: { halign: 'right' as const, cellWidth: 36 }, // Amount Paid
+          7: { cellWidth: 22 },                            // Status
         },
       };
 
@@ -228,17 +234,20 @@ export default function MonthlyInvoiceReportPage() {
           const startY = writePageTitle(clientName);
 
           let clientTotal = 0;
+          let clientPaid = 0;
           const rows = clientInvoices.map((inv, idx) => {
             const total = calculateTotal(inv);
+            const paid = inv.amountPaid || 0;
             clientTotal += total;
+            clientPaid += paid;
             return [
               idx + 1,
               clientName,
-              inv.serviceDesc || inv.description || '—',
               inv.lpoNumber || '—',
               inv.invoiceDate ? format(parseISO(inv.invoiceDate), 'dd/MM/yyyy') : '—',
               inv.id,
               formatCurrency(total),
+              formatCurrency(paid),
               inv.status.toUpperCase(),
             ];
           });
@@ -248,7 +257,7 @@ export default function MonthlyInvoiceReportPage() {
             head: [tableColumns],
             body: rows,
             startY,
-            foot: [['', '', '', '', '', 'TOTAL (TZS):', formatCurrency(clientTotal), '']],
+            foot: [['', '', '', '', 'TOTALS (TZS):', formatCurrency(clientTotal), formatCurrency(clientPaid), '']],
           });
         });
 
@@ -267,18 +276,21 @@ export default function MonthlyInvoiceReportPage() {
         const startY = writePageTitle(resolvedClientName);
 
         let grandTotal = 0;
+        let grandPaid = 0;
         const rows = filteredInvoices.map((inv, index) => {
           const client = clients.find(c => c.id === inv.clientId);
           const total = calculateTotal(inv);
+          const paid = inv.amountPaid || 0;
           grandTotal += total;
+          grandPaid += paid;
           return [
             index + 1,
             client?.companyName || '—',
-            inv.serviceDesc || inv.description || '—',
             inv.lpoNumber || '—',
             inv.invoiceDate ? format(parseISO(inv.invoiceDate), 'dd/MM/yyyy') : '—',
             inv.id,
             formatCurrency(total),
+            formatCurrency(paid),
             inv.status.toUpperCase(),
           ];
         });
@@ -288,7 +300,7 @@ export default function MonthlyInvoiceReportPage() {
           head: [tableColumns],
           body: rows,
           startY,
-          foot: [['', '', '', '', '', 'TOTAL (TZS):', formatCurrency(grandTotal), '']],
+          foot: [['', '', '', '', 'TOTALS (TZS):', formatCurrency(grandTotal), formatCurrency(grandPaid), '']],
         });
 
         if (selectedClientIds.length === 1) {

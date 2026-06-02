@@ -46,7 +46,7 @@ export default function PayablesPage() {
     open: false, purchase: null, amount: 0, method: 'bank', date: format(new Date(), 'yyyy-MM-dd'),
   });
 
-  const { data: purchases = [], isLoading, refetch } = useQuery<Purchase[]>({
+  const { data: purchases = [], isLoading } = useQuery<Purchase[]>({
     queryKey: ['purchases'],
     queryFn: getPurchases,
     staleTime: 5 * 60 * 1000,
@@ -136,16 +136,26 @@ export default function PayablesPage() {
     const newStatus: Purchase['paymentStatus'] =
       newAmountPaid >= p.totalCost ? 'paid' : newAmountPaid > 0 ? 'partial' : 'unpaid';
 
+    const updatedFields = {
+      amountPaid: newAmountPaid,
+      paymentDate: paymentDialog.date,
+      paymentStatus: newStatus,
+      paymentMethod: paymentDialog.method,
+    };
+
     setIsSaving(true);
     try {
-      await updatePurchase(p.id, {
-        amountPaid: newAmountPaid,
-        paymentDate: paymentDialog.date,
-        paymentStatus: newStatus,
-        paymentMethod: paymentDialog.method,
-      });
-      await queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      refetch();
+      await updatePurchase(p.id, updatedFields);
+
+      // Update the TanStack Query cache directly so the UI reflects the new balance
+      // immediately. Triggering a full Supabase refetch would overwrite amountPaid
+      // with null if the amount_paid column doesn't yet exist in the remote schema.
+      queryClient.setQueryData<Purchase[]>(['purchases'], (old = []) =>
+        old.map(purchase =>
+          purchase.id === p.id ? { ...purchase, ...updatedFields } : purchase
+        )
+      );
+
       toast({
         title: 'Payment Recorded',
         description: `${formatCurrency(paymentDialog.amount)} paid to ${p.supplier}. Status: ${newStatus}.`,

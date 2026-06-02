@@ -27,19 +27,37 @@ const saveLocalPurchases = (purchases: Purchase[]) => {
 
 export const getPurchases = async (): Promise<Purchase[]> => {
     const { data, error } = await supabase.from('purchases').select('*').order('date', { ascending: false });
-    
+
     if (error) {
         console.warn('Supabase fetch failed, falling back to local purchases storage:', error.message);
         return getLocalPurchases();
     }
 
-    // Map snake_case database columns to camelCase for the application
+    // Build a lookup map once — avoids multiple getLocalPurchases() calls per row.
+    const localPurchases = getLocalPurchases();
+    const localById = new Map(localPurchases.map(p => [p.id, p]));
+
+    // Map snake_case database columns to camelCase for the application.
     const mappedPurchases = data.map(p => {
         const totalCost = Number(p.totalcost || p.total_cost || 0);
         const rawStatus = p.paymentstatus || p.payment_status || 'unpaid';
-        const amountPaid = p.amount_paid !== undefined && p.amount_paid !== null
-            ? Number(p.amount_paid)
-            : rawStatus === 'paid' ? totalCost : 0;
+        const local = localById.get(p.id);
+
+        // amount_paid may not exist as a Supabase column yet (schema migration pending).
+        // Fall back to the locally recorded value so partial payments survive a refetch.
+        const amountPaid =
+            p.amount_paid !== undefined && p.amount_paid !== null
+                ? Number(p.amount_paid)
+                : local?.amountPaid !== undefined
+                ? local.amountPaid
+                : rawStatus === 'paid' ? totalCost : 0;
+
+        // Same fallback for payment_date.
+        const paymentDate =
+            p.payment_date !== undefined && p.payment_date !== null
+                ? p.payment_date as string
+                : local?.paymentDate ?? null;
+
         return {
             id: p.id,
             date: p.date,
@@ -52,26 +70,27 @@ export const getPurchases = async (): Promise<Purchase[]> => {
             totalCost,
             taxAmount: Number(p.taxamount || p.tax_amount || 0),
             amountPaid,
+            paymentDate,
             paymentMethod: p.paymentmethod || p.payment_method || 'cash',
             paymentStatus: rawStatus as 'paid' | 'unpaid' | 'partial',
             expenseCategory: p.expensecategory || p.expense_category || 'Food Ingredients',
-            event_id: p.event_id || p.eventid || getLocalPurchases().find(lp => lp.id === p.id)?.event_id || '',
-            supplier_tin: p.supplier_tin || p.suppliertin || getLocalPurchases().find(lp => lp.id === p.id)?.supplier_tin || '',
-            efd_receipt: p.efd_receipt || p.efdreceipt || getLocalPurchases().find(lp => lp.id === p.id)?.efd_receipt || '',
+            event_id: p.event_id || p.eventid || local?.event_id || '',
+            supplier_tin: p.supplier_tin || p.suppliertin || local?.supplier_tin || '',
+            efd_receipt: p.efd_receipt || p.efdreceipt || local?.efd_receipt || '',
             user_id: p.user_id,
             createdAt: p.createdat || p.created_at,
             updatedAt: p.updatedat || p.updated_at,
         };
     }) as Purchase[];
 
-    // Sync remote with local
-    const localPurchases = getLocalPurchases();
+    // Sync remote → local (mapped values already include the localStorage fallbacks
+    // so the merged record stays correct even without the Supabase column).
     const updatedLocal = [...localPurchases];
     mappedPurchases.forEach(p => {
-        if (!updatedLocal.some(lp => lp.id === p.id)) {
+        const idx = updatedLocal.findIndex(lp => lp.id === p.id);
+        if (idx === -1) {
             updatedLocal.push(p);
         } else {
-            const idx = updatedLocal.findIndex(lp => lp.id === p.id);
             updatedLocal[idx] = { ...updatedLocal[idx], ...p };
         }
     });
