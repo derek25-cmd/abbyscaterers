@@ -197,7 +197,7 @@ export default function MonthlyInvoiceReportPage() {
           lineWidth: 0.3,
         },
         columnStyles: {
-          0: { cellWidth: 10 },                            // S/N
+          0: { cellWidth: 13 },                            // S/N
           1: { cellWidth: 65 },                            // Client Name (reduced to give space)
           2: { cellWidth: 28 },                            // LPO Number
           3: { cellWidth: 32 },                            // Invoice Date (increased)

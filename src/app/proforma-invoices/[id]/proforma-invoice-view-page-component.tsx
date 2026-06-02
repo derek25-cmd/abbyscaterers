@@ -153,27 +153,54 @@ export function ProformaInvoiceViewPageComponent() {
           const headerCanvas = await html2canvas(headerElement, canvasOpts);
           const contentCanvas = await html2canvas(contentElement, canvasOpts);
           const footerCanvas = await html2canvas(footerElement, canvasOpts);
-          
+
           const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
           const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
           const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
-    
+
           const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-    
+
           const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
           const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
-          
+
+          // Pre-calculate positions of no-break elements in PDF-point space so we
+          // can avoid slicing through signature/stamp images and section headings.
+          const contentCssHeight = contentElement.getBoundingClientRect().height;
+          const contentTop = contentElement.getBoundingClientRect().top;
+          const pdfPerCssPx = contentCssHeight > 0 ? contentImgHeight / contentCssHeight : 1;
+          const noBreakRanges = Array.from(
+              contentElement.querySelectorAll('[data-pdf-no-break="true"]')
+          ).map(el => {
+              const r = (el as HTMLElement).getBoundingClientRect();
+              return {
+                  top: (r.top - contentTop) * pdfPerCssPx,
+                  bottom: (r.bottom - contentTop) * pdfPerCssPx,
+              };
+          }).sort((a, b) => a.top - b.top);
+
           let yOffset = 0;
           let pageNumber = pageNumberOffset;
-    
+
           while (yOffset < contentImgHeight) {
               if (pageNumber > 1) pdf.addPage();
-              
+
               if (layout.showHeaders) {
                   pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
               }
-              
-              const sliceHeight = Math.min(usableContentHeight, contentImgHeight - yOffset);
+
+              // Find a safe cut point: if the naive slice end falls inside a no-break
+              // element, pull the cut back to just before that element's top edge.
+              const naiveEnd = yOffset + usableContentHeight;
+              let safeEnd = naiveEnd;
+              for (const range of noBreakRanges) {
+                  if (range.top < naiveEnd && range.bottom > naiveEnd) {
+                      // Cut would slice through this element — move it earlier.
+                      if (range.top > yOffset + 20) safeEnd = range.top;
+                      break;
+                  }
+              }
+
+              const sliceHeight = Math.min(safeEnd - yOffset, contentImgHeight - yOffset);
               
               const sliceCanvas = document.createElement('canvas');
               sliceCanvas.width = contentCanvas.width;
