@@ -140,6 +140,7 @@ export default function PayablesPage() {
     try {
       await updatePurchase(p.id, {
         amountPaid: newAmountPaid,
+        paymentDate: paymentDialog.date,
         paymentStatus: newStatus,
         paymentMethod: paymentDialog.method,
       });
@@ -237,11 +238,12 @@ export default function PayablesPage() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/20">
-                            <TableHead className="pl-10">Date</TableHead>
+                            <TableHead className="pl-10">Invoice Date</TableHead>
                             <TableHead>Invoice #</TableHead>
                             <TableHead>Description</TableHead>
                             <TableHead className="text-right">Total Cost</TableHead>
                             <TableHead className="text-right">Amount Paid</TableHead>
+                            <TableHead>Last Payment</TableHead>
                             <TableHead className="text-right">Credit Balance</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead><span className="sr-only">Pay</span></TableHead>
@@ -258,6 +260,9 @@ export default function PayablesPage() {
                                 <TableCell className="text-sm max-w-[160px] truncate" title={p.description}>{p.description}</TableCell>
                                 <TableCell className="text-right text-sm">{formatCurrency(p.totalCost)}</TableCell>
                                 <TableCell className="text-right text-sm text-emerald-600">{formatCurrency(paid)}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                  {p.paymentDate ? format(new Date(p.paymentDate), "dd/MM/yyyy") : <span className="text-xs italic">Not paid</span>}
+                                </TableCell>
                                 <TableCell className="text-right font-semibold text-amber-600">{formatCurrency(credit)}</TableCell>
                                 <TableCell>
                                   <Badge className={cn("text-white text-xs capitalize",
@@ -289,6 +294,7 @@ export default function PayablesPage() {
                             <TableCell className="text-right font-semibold text-sm text-emerald-600">
                               {formatCurrency(group.purchases.reduce((s, p) => s + (p.amountPaid ?? (p.paymentStatus === 'paid' ? p.totalCost : 0)), 0))}
                             </TableCell>
+                            <TableCell />
                             <TableCell className="text-right font-bold text-amber-600">{formatCurrency(group.total)}</TableCell>
                             <TableCell colSpan={2} />
                           </TableRow>

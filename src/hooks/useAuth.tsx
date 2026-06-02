@@ -61,10 +61,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN') {
           localStorage.setItem('auth_timestamp', Date.now().toString());
       }
+
+      if (event === 'TOKEN_REFRESHED') {
+          // Extend the 20-hour window from the last successful refresh, not from login.
+          localStorage.setItem('auth_timestamp', Date.now().toString());
+      }
+
       if (event === 'SIGNED_OUT') {
+          // SIGNED_OUT can fire spuriously during token-refresh race conditions that
+          // happen when many API calls are in-flight near the 1-hour JWT expiry.
+          // Verify the session is genuinely gone before clearing auth state.
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+              // Session recovered — this was a transient race condition, not a real logout.
+              setSession(currentSession);
+              setUser(currentSession.user);
+              setLoading(false);
+              return;
+          }
           localStorage.removeItem('auth_timestamp');
       }
-      
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

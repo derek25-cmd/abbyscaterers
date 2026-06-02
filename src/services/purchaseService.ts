@@ -183,6 +183,7 @@ export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<P
     if (updatedPurchase.totalCost !== undefined) dbUpdate.totalcost = Number(updatedPurchase.totalCost);
     if (updatedPurchase.taxAmount !== undefined) dbUpdate.taxamount = Number(updatedPurchase.taxAmount);
     if (updatedPurchase.amountPaid !== undefined) dbUpdate.amount_paid = Number(updatedPurchase.amountPaid);
+    if (updatedPurchase.paymentDate !== undefined) dbUpdate.payment_date = updatedPurchase.paymentDate || null;
     if (updatedPurchase.paymentMethod !== undefined) dbUpdate.paymentmethod = updatedPurchase.paymentMethod;
     if (updatedPurchase.paymentStatus !== undefined) dbUpdate.paymentstatus = updatedPurchase.paymentStatus;
     if (updatedPurchase.expenseCategory !== undefined) dbUpdate.expensecategory = updatedPurchase.expenseCategory;
@@ -191,19 +192,32 @@ export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<P
     if (updatedPurchase.efd_receipt !== undefined) dbUpdate.efd_receipt = updatedPurchase.efd_receipt;
 
     const { error } = await supabase.from('purchases').update({ ...dbUpdate, updatedat: new Date().toISOString() }).eq('id', id);
-    
+
     if (error) {
-        console.warn('Supabase update failed, falling back to local purchases storage:', error.message);
-        
-        // Strip column-missing keys if needed
-        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt') || error.message.includes('amount_paid') || error.message.includes('supplier_id')) {
+        console.warn('Supabase update failed:', error.message);
+
+        // If a column is missing from the schema, retry without only that column —
+        // never strip payment-critical fields (amount_paid, payment_date) unless the
+        // error is specifically about them. This prevents balances from silently not saving.
+        const optionalCols: Record<string, string> = {
+            event_id: 'event_id',
+            supplier_tin: 'supplier_tin',
+            efd_receipt: 'efd_receipt',
+            supplier_id: 'supplier_id',
+            payment_date: 'payment_date',
+            amount_paid: 'amount_paid',
+        };
+        const missingCol = Object.keys(optionalCols).find(col => error.message.includes(col));
+        if (missingCol) {
             const strippedUpdate = { ...dbUpdate };
-            delete strippedUpdate.event_id;
-            delete strippedUpdate.supplier_tin;
-            delete strippedUpdate.efd_receipt;
-            delete strippedUpdate.amount_paid;
-            delete strippedUpdate.supplier_id;
-            await supabase.from('purchases').update(strippedUpdate).eq('id', id);
+            delete strippedUpdate[missingCol];
+            const { error: retryError } = await supabase
+                .from('purchases')
+                .update({ ...strippedUpdate, updatedat: new Date().toISOString() })
+                .eq('id', id);
+            if (retryError) {
+                console.warn('Retry also failed:', retryError.message);
+            }
         }
     }
 

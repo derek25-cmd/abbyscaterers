@@ -541,6 +541,7 @@ export interface Purchase {
     totalCost: number;
     taxAmount: number;
     amountPaid: number; // amount settled at time of purchase; remainder is AP credit
+    paymentDate?: string | null; // ISO date of most recent payment (null until first payment)
     paymentMethod: 'cash' | 'bank' | 'credit';
     paymentStatus: 'paid' | 'unpaid' | 'partial';
     expenseCategory: string;

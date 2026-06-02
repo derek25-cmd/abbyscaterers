@@ -22,6 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { BulkOrderLoading } from "@/components/bookings/bulk-order-loading";
+import { BulkAddFormData } from "@/components/bookings/bulk-add-orders-dialog";
+import { supabase } from "@/lib/supabase-client";
 
 
 export function BookingDetailsPageComponent() {
@@ -75,33 +77,44 @@ export function BookingDetailsPageComponent() {
     }
   }
 
-  const handleBulkAddOrders = async (bulkData: { dates: Date[], pax: number, unitPrice: number, mealType: string, vatType: 'inclusive' | 'exclusive' }) => {
+  const handleBulkAddOrders = async (bulkData: BulkAddFormData) => {
     if (!bookingId || !booking) return;
 
+    const entries = bulkData.entries;
+
+    // Proactively refresh the session before a long batch operation.
+    // This ensures the JWT is fresh and won't expire mid-loop.
+    await supabase.auth.refreshSession();
+
     setIsBulkCreating(true);
-    setBulkCreationProgress({ current: 0, total: bulkData.dates.length });
+    setBulkCreationProgress({ current: 0, total: entries.length });
     setIsBulkAddOpen(false);
 
     try {
-        for (const [index, date] of bulkData.dates.entries()) {
-            setBulkCreationProgress({ current: index + 1, total: bulkData.dates.length });
-            
+        for (const [index, entry] of entries.entries()) {
+            setBulkCreationProgress({ current: index + 1, total: entries.length });
+
             const orderData: Partial<OrderFormData> = {
                 booking_id: bookingId,
                 clientEvents: [{
                     clientId: booking.client_id,
-                    date: format(date, 'yyyy-MM-dd'),
-                    mealType: bulkData.mealType,
-                    numberOfPeople: bulkData.pax,
-                    unitPrice: bulkData.unitPrice,
-                    total: bulkData.pax * bulkData.unitPrice,
+                    date: format(entry.date, 'yyyy-MM-dd'),
+                    mealType: entry.mealType,
+                    numberOfPeople: entry.pax,
+                    unitPrice: entry.unitPrice,
+                    total: entry.pax * entry.unitPrice,
                     vatType: bulkData.vatType,
-                    recipes: [] // Recipes can be added later by editing the order
+                    recipes: [],
                 }]
             };
             await addOrder(orderData);
+
+            // Refresh the JWT every 20 orders so a large batch never runs past token expiry.
+            if ((index + 1) % 20 === 0) {
+                await supabase.auth.refreshSession();
+            }
         }
-        toast({ title: "Success", description: `${bulkData.dates.length} daily orders have been created.`});
+        toast({ title: "Success", description: `${entries.length} daily orders have been created.` });
 
         if (booking?.proforma_invoice_id) {
             await updateProformaWithLatestOrders();
