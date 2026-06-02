@@ -153,211 +153,155 @@ export default function MonthlyInvoiceReportPage() {
     setIsExporting(true);
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
-      let fileName = "Invoice_Report.pdf";
-      
+      const statementDate = format(new Date(), "do MMMM yyyy").toUpperCase();
+
+      // Shared table definition — columns as specified
+      const tableColumns = [
+        'S/N',
+        'Client Name',
+        'Invoice Description',
+        'LPO Number',
+        'Invoice Date',
+        'Invoice No.',
+        'Total Amount (TZS)',
+        'Status',
+      ];
+
+      // Shared autoTable style — headings Arial 13 bold, body Arial 12
+      const sharedTableStyles = {
+        theme: 'grid' as const,
+        styles: {
+          font: 'helvetica',
+          fontSize: 12,
+          cellPadding: 2.5,
+        },
+        headStyles: {
+          font: 'helvetica',
+          fontSize: 13,
+          fontStyle: 'bold' as const,
+          fillColor: [255, 255, 255] as [number, number, number],
+          textColor: [0, 0, 0] as [number, number, number],
+          lineColor: [0, 0, 0] as [number, number, number],
+          lineWidth: 0.3,
+        },
+        footStyles: {
+          font: 'helvetica',
+          fontSize: 12,
+          fontStyle: 'bold' as const,
+          fillColor: [240, 240, 240] as [number, number, number],
+          textColor: [0, 0, 0] as [number, number, number],
+        },
+        columnStyles: {
+          0: { cellWidth: 10 },  // S/N
+          3: { cellWidth: 28 },  // LPO Number
+          4: { cellWidth: 24 },  // Invoice Date
+          5: { cellWidth: 28 },  // Invoice No.
+          6: { halign: 'right' as const, cellWidth: 36 }, // Total Amount
+          7: { cellWidth: 22 },  // Status
+        },
+      };
+
+      // Helper: write the two-line title for a page
+      const writePageTitle = (clientName: string, yStart = 18) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text(clientName, 14, yStart);
+        doc.text(`STATEMENT OF ACCOUNTS AS PER ${statementDate}`, 14, yStart + 9);
+        return yStart + 18; // return Y position after the title block
+      };
+
+      let fileName = 'Statement_of_Accounts';
+
       if (oneClientPerPage) {
-          const groupedInvoices: Record<string, Invoice[]> = {};
-          filteredInvoices.forEach(inv => {
-              const cid = inv.clientId || 'unknown';
-              if (!groupedInvoices[cid]) groupedInvoices[cid] = [];
-              groupedInvoices[cid].push(inv);
+        const groupedInvoices: Record<string, Invoice[]> = {};
+        filteredInvoices.forEach(inv => {
+          const cid = inv.clientId || 'unknown';
+          if (!groupedInvoices[cid]) groupedInvoices[cid] = [];
+          groupedInvoices[cid].push(inv);
+        });
+
+        Object.entries(groupedInvoices).forEach(([clientId, clientInvoices], index) => {
+          if (index > 0) doc.addPage();
+          const client = clients.find(c => c.id === clientId);
+          const clientName = client?.companyName || 'Unknown Client';
+
+          const startY = writePageTitle(clientName);
+
+          let clientTotal = 0;
+          const rows = clientInvoices.map((inv, idx) => {
+            const total = calculateTotal(inv);
+            clientTotal += total;
+            return [
+              idx + 1,
+              clientName,
+              inv.serviceDesc || inv.description || '—',
+              inv.lpoNumber || '—',
+              inv.invoiceDate ? format(parseISO(inv.invoiceDate), 'dd/MM/yyyy') : '—',
+              inv.id,
+              formatCurrency(total),
+              inv.status.toUpperCase(),
+            ];
           });
 
-          const clientIds = Object.keys(groupedInvoices);
-
-          clientIds.forEach((clientId, index) => {
-              if (index > 0) {
-                  doc.addPage();
-              }
-              const client = clients.find(c => c.id === clientId);
-              const clientName = client?.companyName || "N/A";
-              
-              let title = `Invoice Report - ${clientName}`;
-              if (dateRange?.from) {
-                  title += ` from ${format(dateRange.from, 'PPP')}`;
-                  if (dateRange?.to) {
-                      title += ` to ${format(dateRange.to, 'PPP')}`;
-                  }
-              }
-              if (statusFilter !== 'all') title += ` | Status: ${statusFilter}`;
-              if (regionFilter !== 'all') title += ` | Region: ${regionFilter}`;
-              
-              doc.setFontSize(14);
-              doc.text(title, 14, 15);
-              
-              const tableColumns = ['S/N', 'Invoice No.', 'Status', 'Invoice Date', 'Total Amount', 'Paid', 'Outstanding'];
-              const clientInvoices = groupedInvoices[clientId];
-              
-              let clientTotalInvoiced = 0;
-              let clientTotalPaid = 0;
-              let clientTotalOutstanding = 0;
-
-              const tableRows = clientInvoices.map((invoice, idx) => {
-                  const totalAmount = calculateTotal(invoice);
-                  const amountPaid = invoice.amountPaid || 0;
-                  const outstandingAmount = totalAmount - amountPaid;
-                  
-                  clientTotalInvoiced += totalAmount;
-                  clientTotalPaid += amountPaid;
-                  clientTotalOutstanding += outstandingAmount;
-
-                  return [
-                    idx + 1,
-                    invoice.id,
-                    invoice.status.toUpperCase(),
-                    invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
-                    formatCurrency(totalAmount),
-                    formatCurrency(amountPaid),
-                    formatCurrency(outstandingAmount),
-                  ];
-              });
-
-              (doc as any).autoTable({
-                theme: 'grid',
-                head: [tableColumns],
-                body: tableRows,
-                startY: 25,
-                columnStyles: {
-                    4: { halign: 'right' },
-                    5: { halign: 'right' },
-                    6: { halign: 'right' },
-                },
-                foot: [
-                    ['', '', '', 'TOTAL (TZS):', formatCurrency(clientTotalInvoiced), formatCurrency(clientTotalPaid), formatCurrency(clientTotalOutstanding)],
-                ],
-                footStyles: { fontStyle: 'bold', halign: 'right' }
-              });
+          (doc as any).autoTable({
+            ...sharedTableStyles,
+            head: [tableColumns],
+            body: rows,
+            startY,
+            foot: [['', '', '', '', '', 'TOTAL (TZS):', formatCurrency(clientTotal), '']],
           });
-          
-          fileName = "Invoice_Report_Per_Client";
-          if (statusFilter !== 'all') fileName += `_${statusFilter}`;
-          fileName += ".pdf";
+        });
+
+        fileName = 'Statement_of_Accounts_Per_Client';
+        if (statusFilter !== 'all') fileName += `_${statusFilter}`;
 
       } else {
-          const reportTitle = generateDynamicTitle();
-          doc.setFontSize(14);
-          doc.text(reportTitle, 14, 15);
-          
-          const tableColumns = ['S/N', 'Client', 'Invoice No.', 'Status', 'Invoice Date', 'Total Amount', 'Paid', 'Outstanding'];
-          const tableRows = filteredInvoices.map((invoice, index) => {
-              const client = clients.find(c => c.id === invoice.clientId);
-              const totalAmount = calculateTotal(invoice);
-              const amountPaid = invoice.amountPaid || 0;
-              const outstandingAmount = totalAmount - amountPaid;
-              return [
-                index + 1,
-                client?.companyName || "N/A",
-                invoice.id,
-                invoice.status.toUpperCase(),
-                invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
-                formatCurrency(totalAmount),
-                formatCurrency(amountPaid),
-                formatCurrency(outstandingAmount),
-              ];
-            });
+        // Single document covering all filtered invoices
+        const resolvedClientName =
+          selectedClientIds.length === 1
+            ? (clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Invoice Report')
+            : selectedClientIds.length > 1
+            ? 'Multiple Clients'
+            : "Abby's Legendary Caterers Limited";
 
-          (doc as any).autoTable({
-            theme: 'grid',
-            head: [tableColumns],
-            body: tableRows,
-            startY: 25,
-            columnStyles: {
-                5: { halign: 'right' },
-                6: { halign: 'right' },
-                7: { halign: 'right' },
-            },
-            foot: [
-                ['', '', '', '', 'TOTAL (TZS):', formatCurrency(summary.totalInvoiced), formatCurrency(summary.totalPaid), formatCurrency(summary.totalOutstanding)],
-            ],
-            footStyles: { fontStyle: 'bold', halign: 'right' }
-          });
-          
-          fileName = "Invoice_Report";
-          if (selectedClientIds.length === 1) {
-              const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
-              fileName = clientName.replace(/ /g, '_');
-          }
-          fileName += `_${statusFilter}.pdf`;
+        const startY = writePageTitle(resolvedClientName);
+
+        let grandTotal = 0;
+        const rows = filteredInvoices.map((inv, index) => {
+          const client = clients.find(c => c.id === inv.clientId);
+          const total = calculateTotal(inv);
+          grandTotal += total;
+          return [
+            index + 1,
+            client?.companyName || '—',
+            inv.serviceDesc || inv.description || '—',
+            inv.lpoNumber || '—',
+            inv.invoiceDate ? format(parseISO(inv.invoiceDate), 'dd/MM/yyyy') : '—',
+            inv.id,
+            formatCurrency(total),
+            inv.status.toUpperCase(),
+          ];
+        });
+
+        (doc as any).autoTable({
+          ...sharedTableStyles,
+          head: [tableColumns],
+          body: rows,
+          startY,
+          foot: [['', '', '', '', '', 'TOTAL (TZS):', formatCurrency(grandTotal), '']],
+        });
+
+        if (selectedClientIds.length === 1) {
+          fileName = (clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client').replace(/ /g, '_');
+        }
+        if (statusFilter !== 'all') fileName += `_${statusFilter}`;
       }
 
-      // --- Add Summary Page ---
-      if (filteredInvoices.length > 0) {
-          doc.addPage();
-          doc.setFontSize(16);
-          doc.setFont("helvetica", "bold");
-          doc.text("Executive Summary", 14, 20);
-          
-          let servicePeriodText = "All Time";
-          if (dateRange?.from) {
-              servicePeriodText = format(dateRange.from, 'PPP');
-              if (dateRange?.to) {
-                  servicePeriodText += ` - ${format(dateRange.to, 'PPP')}`;
-              }
-          }
-
-          const clientSummaryData: Record<string, { name: string, invoiced: number, paid: number, outstanding: number }> = {};
-          
-          filteredInvoices.forEach(inv => {
-              const cid = inv.clientId || 'unknown';
-              if (!clientSummaryData[cid]) {
-                  const client = clients.find(c => c.id === cid);
-                  clientSummaryData[cid] = {
-                      name: client?.companyName || "Unknown Client",
-                      invoiced: 0,
-                      paid: 0,
-                      outstanding: 0
-                  };
-              }
-              const totalAmount = calculateTotal(inv);
-              const amountPaid = inv.amountPaid || 0;
-              clientSummaryData[cid].invoiced += totalAmount;
-              clientSummaryData[cid].paid += amountPaid;
-              clientSummaryData[cid].outstanding += (totalAmount - amountPaid);
-          });
-
-          const summaryTableRows = Object.values(clientSummaryData)
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((data, idx) => [
-                idx + 1,
-                data.name,
-                formatCurrency(data.invoiced),
-                formatCurrency(data.paid),
-                formatCurrency(data.outstanding)
-            ]);
-            
-          const numClients = Object.keys(clientSummaryData).length;
-
-          doc.setFontSize(11);
-          doc.setFont("helvetica", "normal");
-          doc.text(`Service Period: ${servicePeriodText}`, 14, 30);
-          doc.text(`Total Clients: ${numClients}`, 14, 37);
-          
-          const summaryTableColumns = ['S/N', 'Client Name', 'Total Invoiced (TZS)', 'Total Paid (TZS)', 'Total Outstanding (TZS)'];
-
-          (doc as any).autoTable({
-            theme: 'grid',
-            head: [summaryTableColumns],
-            body: summaryTableRows,
-            startY: 45,
-            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-            columnStyles: {
-                2: { halign: 'right' },
-                3: { halign: 'right' },
-                4: { halign: 'right', fontStyle: 'bold', textColor: [192, 57, 43] },
-            },
-            foot: [
-                ['', 'GRAND TOTAL:', formatCurrency(summary.totalInvoiced), formatCurrency(summary.totalPaid), formatCurrency(summary.totalOutstanding)],
-            ],
-            footStyles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 240, 240], textColor: [0, 0, 0] }
-          });
-      }
-      // ------------------------
-
-      doc.save(fileName);
-      toast({ title: "Export Successful", description: "Report exported to PDF." });
+      doc.save(`${fileName}.pdf`);
+      toast({ title: 'Export Successful', description: 'Statement of Accounts exported to PDF.' });
     } catch (error) {
-      console.error("Error exporting PDF:", error);
-      toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the PDF." });
+      console.error('Error exporting PDF:', error);
+      toast({ variant: 'destructive', title: 'Export Failed', description: 'An error occurred while generating the PDF.' });
     } finally {
       setIsExporting(false);
     }
