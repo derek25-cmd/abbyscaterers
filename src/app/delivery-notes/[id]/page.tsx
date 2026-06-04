@@ -69,14 +69,26 @@ export default function DeliveryNoteViewPage() {
         }
 
         const pdfScale = settings.pdfScale || 2.0;
+        const CARD_RENDER_WIDTH = 890;
+        const TARGET_CANVAS_WIDTH = CARD_RENDER_WIDTH * pdfScale;
+
+        const savedStyle = element.style.cssText;
+        element.style.width = `${CARD_RENDER_WIDTH}px`;
+        element.style.minWidth = `${CARD_RENDER_WIDTH}px`;
+        element.style.maxWidth = `${CARD_RENDER_WIDTH}px`;
+        element.style.boxSizing = 'border-box';
+        await new Promise(res => setTimeout(res, 50));
 
         try {
-            const canvas = await html2canvas(element, { 
-                scale: pdfScale, 
+            const scale = TARGET_CANVAS_WIDTH / Math.max(element.scrollWidth, 1);
+            const canvas = await html2canvas(element, {
+                scale,
                 useCORS: true,
                 logging: false,
                 allowTaint: true
             });
+            element.style.cssText = savedStyle;
+
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = 210;
@@ -86,6 +98,7 @@ export default function DeliveryNoteViewPage() {
             pdf.save(`delivery_note_${deliveryNote?.id}.pdf`);
             toast({ title: 'Success', description: 'Delivery note exported as PDF.' });
         } catch (error) {
+            element.style.cssText = savedStyle;
             console.error("PDF Export Error:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
         } finally {
