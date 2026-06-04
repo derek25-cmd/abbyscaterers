@@ -71,9 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (event === 'TOKEN_REFRESHED') {
               // Extend the 20-hour window from the last successful refresh, not from login.
               localStorage.setItem('auth_timestamp', Date.now().toString());
+              // Re-apply the session so all data hooks that may have loaded before
+              // the refresh completes will see a valid user on their next render.
+              if (currentSession) {
+                  setSession(currentSession);
+                  setUser(currentSession.user);
+                  setLoading(false);
+              }
+              return;
           }
 
           if (event === 'SIGNED_OUT') {
+              // Keep loading=true while we verify — prevents PrivateRoute from
+              // redirecting to /login during a transient token-refresh race condition.
+              if (isMounted) setLoading(true);
+              // Brief pause so any in-flight token refresh has time to complete.
+              await new Promise(res => setTimeout(res, 300));
               // SIGNED_OUT can fire spuriously during token-refresh race conditions that
               // happen when many API calls are in-flight near the 1-hour JWT expiry.
               // Verify the session is genuinely gone before clearing auth state.

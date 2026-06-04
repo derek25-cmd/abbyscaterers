@@ -84,28 +84,30 @@ export function BookingDetailsPageComponent() {
     setBulkCreationProgress({ current: 0, total: entries.length });
     setIsBulkAddOpen(false);
 
+    let createdCount = 0;
     try {
-        const ordersToCreate: Partial<OrderFormData>[] = entries.map((entry) => ({
-            booking_id: bookingId,
-            clientId: booking.client_id,
-            clientEvents: [{
+        for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+            const results = await bulkAddOrders([{
+                booking_id: bookingId,
                 clientId: booking.client_id,
-                date: format(entry.date, 'yyyy-MM-dd'),
-                mealType: entry.mealType,
-                numberOfPeople: entry.pax,
-                unitPrice: entry.unitPrice,
-                total: entry.pax * entry.unitPrice,
-                vatType: bulkData.vatType,
-                recipes: [],
-            }]
-        }));
+                clientEvents: [{
+                    clientId: booking.client_id,
+                    date: format(entry.date, 'yyyy-MM-dd'),
+                    mealType: entry.mealType,
+                    numberOfPeople: entry.pax,
+                    unitPrice: entry.unitPrice,
+                    total: entry.pax * entry.unitPrice,
+                    vatType: bulkData.vatType,
+                    recipes: [],
+                }]
+            }]);
+            if (results && results.length > 0) createdCount++;
+            setBulkCreationProgress({ current: i + 1, total: entries.length });
+        }
 
-        // Single bulk insert — avoids N refreshOrders() calls mid-loop
-        const results = await bulkAddOrders(ordersToCreate);
-        setBulkCreationProgress({ current: entries.length, total: entries.length });
-
-        if (results && results.length > 0) {
-            toast({ title: "Success", description: `${results.length} daily orders have been created.` });
+        if (createdCount > 0) {
+            toast({ title: "Success", description: `${createdCount} daily orders have been created.` });
             if (booking?.proforma_invoice_id) {
                 await updateProformaWithLatestOrders();
             }

@@ -124,14 +124,16 @@ export type RecipeFormData = z.infer<typeof RecipeSchema>;
 
 // MealType enum values
 export const MEAL_TYPES = [
-    "Breakfast only", 
-    "Lunch only", 
-    "Dinner only", 
-    "Breakfast and lunch", 
-    "Brunch", 
-    "Breakfast, lunch and evening tea", 
-    "Breakfast, lunch and dinner", 
-    "Evening tea"
+    "Breakfast only",
+    "Lunch only",
+    "Dinner only",
+    "Breakfast and lunch",
+    "Brunch",
+    "Breakfast, lunch and evening tea",
+    "Breakfast, lunch and dinner",
+    "Evening tea",
+    "Evening Snacks",
+    "Breakfast Bites",
 ] as const;
 
 // ClientEvent schema
