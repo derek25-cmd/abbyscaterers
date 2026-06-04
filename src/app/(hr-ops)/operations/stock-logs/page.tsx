@@ -19,6 +19,8 @@ import { format, parseISO } from "date-fns";
 import { StockLog, Branch, BRANCHES, BRANCH_KEYS } from "@/types";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
 import { useProductStorage } from "@/hooks/use-product-storage";
+import { addStockLog as addLogToStorage } from "@/services/stockLogService";
+import { updateProduct as updateProductInStorage } from "@/services/productService";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender, RowSelectionState, SortingState, ColumnFiltersState, VisibilityState, ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -200,28 +202,27 @@ export default function StockLogsPage() {
     }
 
     try {
-        // Always include 'status' so the Supabase insert doesn't fail on a NOT NULL column
         const logData = {
             ...movement,
             price: movement.actual_unit_price * movement.quantity,
-            status: movement.type, // 'Stock In' | 'Stock Out'
+            status: movement.type,
         };
 
-        // Step 1: write the log first — if this fails, we do NOT update quantities
-        await addStockLog(logData);
+        // Step 1: write the log — call service directly to avoid triggering
+        // refreshLogs() on every item in a batch. The caller's onDraftCompleted
+        // / success handler will do a single refresh when the whole batch is done.
+        const logResult = await addLogToStorage(logData);
+        if (!logResult) throw new Error("Failed to save stock log");
 
         // Step 2: update product quantity only after log is confirmed written
-        if (movement.type === 'Stock In') {
-            await updateProductInStore(product.id, { 
-                [branchKey.qty]: currentBranchQty + movement.quantity,
-                [branchKey.price]: movement.actual_unit_price,
-            } as any);
-        } else {
-            await updateProductInStore(product.id, { 
-                [branchKey.qty]: currentBranchQty - movement.quantity,
-                [branchKey.price]: movement.actual_unit_price,
-            } as any);
-        }
+        const newQty = movement.type === 'Stock In'
+            ? currentBranchQty + movement.quantity
+            : currentBranchQty - movement.quantity;
+
+        await updateProductInStorage(product.id, {
+            [branchKey.qty]: newQty,
+            [branchKey.price]: movement.actual_unit_price,
+        } as any);
     } catch (error: any) {
         console.error("Movement logging failed", error);
         throw new Error(error.message || "Failed to register stock log. Please check your connection.");

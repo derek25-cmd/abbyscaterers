@@ -36,59 +36,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Security Check: 20 hour force logout
-      const authTimestamp = localStorage.getItem('auth_timestamp');
-      if (session && authTimestamp) {
-          const now = Date.now();
-          if (now - parseInt(authTimestamp, 10) > SESSION_TIMEOUT) {
-              await logout();
-              setLoading(false);
-              return;
-          }
-      }
+    let isMounted = true;
+    let authListener: any = null;
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    const initializeAuth = async () => {
+      try {
+        // 1. Get the session first and let Supabase handle any initial refresh sequentially
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+
+        // Security Check: 20 hour force logout
+        const authTimestamp = localStorage.getItem('auth_timestamp');
+        if (session && authTimestamp) {
+            const now = Date.now();
+            if (now - parseInt(authTimestamp, 10) > SESSION_TIMEOUT) {
+                await logout();
+                return;
+            }
+        }
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+
+        // 2. Now that initialization is complete, subscribe to future changes safely
+        const { data } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+          if (!isMounted) return;
+
+          if (event === 'SIGNED_IN') {
+              localStorage.setItem('auth_timestamp', Date.now().toString());
+          }
+
+          if (event === 'TOKEN_REFRESHED') {
+              // Extend the 20-hour window from the last successful refresh, not from login.
+              localStorage.setItem('auth_timestamp', Date.now().toString());
+          }
+
+          if (event === 'SIGNED_OUT') {
+              // SIGNED_OUT can fire spuriously during token-refresh race conditions that
+              // happen when many API calls are in-flight near the 1-hour JWT expiry.
+              // Verify the session is genuinely gone before clearing auth state.
+              const { data: { session: verifiedSession } } = await supabase.auth.getSession();
+              if (verifiedSession) {
+                  // Session recovered — this was a transient race condition, not a real logout.
+                  setSession(verifiedSession);
+                  setUser(verifiedSession.user);
+                  setLoading(false);
+                  return;
+              }
+              localStorage.removeItem('auth_timestamp');
+          }
+
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          setLoading(false);
+        });
+
+        authListener = data;
+      } catch (error) {
+        console.error('Error during auth initialization:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
     };
 
-    getSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
-          localStorage.setItem('auth_timestamp', Date.now().toString());
-      }
-
-      if (event === 'TOKEN_REFRESHED') {
-          // Extend the 20-hour window from the last successful refresh, not from login.
-          localStorage.setItem('auth_timestamp', Date.now().toString());
-      }
-
-      if (event === 'SIGNED_OUT') {
-          // SIGNED_OUT can fire spuriously during token-refresh race conditions that
-          // happen when many API calls are in-flight near the 1-hour JWT expiry.
-          // Verify the session is genuinely gone before clearing auth state.
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (currentSession) {
-              // Session recovered — this was a transient race condition, not a real logout.
-              setSession(currentSession);
-              setUser(currentSession.user);
-              setLoading(false);
-              return;
-          }
-          localStorage.removeItem('auth_timestamp');
-      }
-
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    initializeAuth();
 
     return () => {
-      authListener.subscription.unsubscribe();
+      isMounted = false;
+      if (authListener?.subscription) {
+        authListener.subscription.unsubscribe();
+      }
     };
   }, []);
   

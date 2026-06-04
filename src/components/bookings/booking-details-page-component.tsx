@@ -23,7 +23,6 @@ import { CloseBookingDialog } from "@/components/bookings/close-booking-dialog";
 import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { BulkOrderLoading } from "@/components/bookings/bulk-order-loading";
 import { BulkAddFormData } from "@/components/bookings/bulk-add-orders-dialog";
-import { supabase } from "@/lib/supabase-client";
 
 
 export function BookingDetailsPageComponent() {
@@ -31,7 +30,7 @@ export function BookingDetailsPageComponent() {
   const router = useRouter();
   const { toast } = useToast();
   const { getBookingById, updateBooking, isLoading: bookingsLoading } = useBookingStorage();
-  const { orders, getOrdersByBookingId, addOrder, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, getOrdersByBookingId, addOrder, bulkAddOrders, deleteOrder: deleteOrderFromStore, isLoading: ordersLoading } = useOrderStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { proformaInvoices, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
 
@@ -81,43 +80,35 @@ export function BookingDetailsPageComponent() {
     if (!bookingId || !booking) return;
 
     const entries = bulkData.entries;
-
-    // Proactively refresh the session before a long batch operation.
-    // This ensures the JWT is fresh and won't expire mid-loop.
-    await supabase.auth.refreshSession();
-
     setIsBulkCreating(true);
     setBulkCreationProgress({ current: 0, total: entries.length });
     setIsBulkAddOpen(false);
 
     try {
-        for (const [index, entry] of entries.entries()) {
-            setBulkCreationProgress({ current: index + 1, total: entries.length });
+        const ordersToCreate: Partial<OrderFormData>[] = entries.map((entry) => ({
+            booking_id: bookingId,
+            clientId: booking.client_id,
+            clientEvents: [{
+                clientId: booking.client_id,
+                date: format(entry.date, 'yyyy-MM-dd'),
+                mealType: entry.mealType,
+                numberOfPeople: entry.pax,
+                unitPrice: entry.unitPrice,
+                total: entry.pax * entry.unitPrice,
+                vatType: bulkData.vatType,
+                recipes: [],
+            }]
+        }));
 
-            const orderData: Partial<OrderFormData> = {
-                booking_id: bookingId,
-                clientEvents: [{
-                    clientId: booking.client_id,
-                    date: format(entry.date, 'yyyy-MM-dd'),
-                    mealType: entry.mealType,
-                    numberOfPeople: entry.pax,
-                    unitPrice: entry.unitPrice,
-                    total: entry.pax * entry.unitPrice,
-                    vatType: bulkData.vatType,
-                    recipes: [],
-                }]
-            };
-            await addOrder(orderData);
+        // Single bulk insert — avoids N refreshOrders() calls mid-loop
+        const results = await bulkAddOrders(ordersToCreate);
+        setBulkCreationProgress({ current: entries.length, total: entries.length });
 
-            // Refresh the JWT every 20 orders so a large batch never runs past token expiry.
-            if ((index + 1) % 20 === 0) {
-                await supabase.auth.refreshSession();
+        if (results && results.length > 0) {
+            toast({ title: "Success", description: `${results.length} daily orders have been created.` });
+            if (booking?.proforma_invoice_id) {
+                await updateProformaWithLatestOrders();
             }
-        }
-        toast({ title: "Success", description: `${entries.length} daily orders have been created.` });
-
-        if (booking?.proforma_invoice_id) {
-            await updateProformaWithLatestOrders();
         }
     } catch(error) {
         console.error(error);

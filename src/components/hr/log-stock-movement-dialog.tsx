@@ -264,7 +264,6 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
         }
         
         setCurrentProgress(Math.round(((i + 1) / validItems.length) * 100));
-        await new Promise(resolve => setTimeout(resolve, 200)); 
     }
     
     // If we were resuming a draft and it succeeded, remove it

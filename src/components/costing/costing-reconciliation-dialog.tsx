@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useStockLogStorage } from "@/hooks/use-stock-log-storage";
+import { updateStockLog as updateInStorage } from "@/services/stockLogService";
 import { useProductStorage } from "@/hooks/use-product-storage";
 import { Loader2, Check, AlertTriangle, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
@@ -24,7 +25,7 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
     const [currentItemName, setCurrentItemName] = useState('');
     const { toast } = useToast();
 
-    const { logs, isLoading: logsLoading, updateStockLog, refreshLogs } = useStockLogStorage();
+    const { logs, isLoading: logsLoading, refreshLogs } = useStockLogStorage();
     const { products, isLoading: productsLoading } = useProductStorage();
 
     const dailyLogs = useMemo(() => {
@@ -92,11 +93,11 @@ export function CostingReconciliationDialog({ children }: { children: React.Reac
                 const log = dailyLogs.find(l => l.id === update.id);
                 setCurrentItemName(log?.productName || 'Unknown');
                 
-                await updateStockLog(update.id, update.data);
+                // Call service directly — avoids triggering refreshLogs() on every item
+                await updateInStorage(update.id, update.data);
                 
                 successCount++;
                 setCurrentProgress(Math.round(((i + 1) / updates.length) * 100));
-                await new Promise(resolve => setTimeout(resolve, 100));
             }
             
             setStep('success');
