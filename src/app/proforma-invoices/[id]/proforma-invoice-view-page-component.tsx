@@ -114,6 +114,12 @@ export function ProformaInvoiceViewPageComponent() {
     
     try {
       const pdfScale = settings.pdfScale || 2.0;
+      // Pinning the card to exactly A4-width (794px at 96 DPI) before capture makes
+      // font sizes independent of the viewer's screen width. Without this, html2canvas
+      // renders whatever the browser currently shows, so a wider viewport produces
+      // a wider element → lower scale ratio → smaller text in the PDF.
+      const CARD_RENDER_WIDTH = 860;
+      const TARGET_CANVAS_WIDTH = CARD_RENDER_WIDTH * pdfScale; // e.g. 1588px @ scale 2
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -122,16 +128,9 @@ export function ProformaInvoiceViewPageComponent() {
       const marginBottom = 5;
       const usableWidth = pageWidth - (marginX * 2);
 
-      const canvasOpts = { 
-          scale: pdfScale, 
-          useCORS: true,
-          logging: false,
-          allowTaint: true
-      };
-
       const generatePageGroup = async (
-        prefix: string, 
-        pageNumberOffset: number, 
+        prefix: string,
+        pageNumberOffset: number,
         layout: { showHeaders: boolean; preserveSpace: boolean }
       ) => {
           // If we are doing a bundle, we need to update the template state before capturing
@@ -150,9 +149,28 @@ export function ProformaInvoiceViewPageComponent() {
               throw new Error(`Could not find required parts for ${prefix}`);
           }
 
+          // Fix the card to CARD_RENDER_WIDTH so the canvas scale is consistent
+          // regardless of the viewer's current screen or window width.
+          const cardId = prefix === 'proforma' ? 'proforma-invoice-pdf-content' : 'invoice-pdf-content';
+          const cardElement = document.getElementById(cardId);
+          const savedCardStyle = cardElement ? cardElement.style.cssText : '';
+          if (cardElement) {
+              cardElement.style.width = `${CARD_RENDER_WIDTH}px`;
+              cardElement.style.minWidth = `${CARD_RENDER_WIDTH}px`;
+              cardElement.style.maxWidth = `${CARD_RENDER_WIDTH}px`;
+              cardElement.style.boxSizing = 'border-box';
+              await new Promise(res => setTimeout(res, 50));
+          }
+
+          const scale = TARGET_CANVAS_WIDTH / Math.max(contentElement.scrollWidth, 1);
+          const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
+
           const headerCanvas = await html2canvas(headerElement, canvasOpts);
           const contentCanvas = await html2canvas(contentElement, canvasOpts);
           const footerCanvas = await html2canvas(footerElement, canvasOpts);
+
+          // Restore the card to its original responsive style
+          if (cardElement) cardElement.style.cssText = savedCardStyle;
 
           const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
           const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
