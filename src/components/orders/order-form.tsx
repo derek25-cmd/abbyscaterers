@@ -98,9 +98,20 @@ interface ClientEventFormProps {
     nestIndex: number;
     isSubmitting: boolean;
     dateRange?: { from: Date, to: Date };
+    singleClientEvent?: boolean;
+    hideRecipes?: boolean;
+    allowCustomMealType?: boolean;
 }
 
-export const ClientEventForm = ({ form, nestIndex, isSubmitting, dateRange }: ClientEventFormProps) => {
+export const ClientEventForm = ({ 
+    form, 
+    nestIndex, 
+    isSubmitting, 
+    dateRange,
+    singleClientEvent,
+    hideRecipes,
+    allowCustomMealType
+}: ClientEventFormProps) => {
     const { control, watch, setValue } = form;
     const particularType = watch(`clientEvents.${nestIndex}.particularType`);
 
@@ -111,6 +122,18 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, dateRange }: Cl
         const total = (pax || 0) * (unitPrice || 0);
         setValue(`clientEvents.${nestIndex}.total`, total, { shouldValidate: true });
     }, [pax, unitPrice, nestIndex, setValue]);
+
+    useEffect(() => {
+        if (particularType === 'custom') {
+            const currentMealType = watch(`clientEvents.${nestIndex}.mealType`);
+            const currentDesc = watch(`clientEvents.${nestIndex}.particularDescription`);
+            if (currentDesc && !currentMealType) {
+                setValue(`clientEvents.${nestIndex}.mealType`, currentDesc, { shouldValidate: true });
+            } else if (currentMealType && !currentDesc) {
+                setValue(`clientEvents.${nestIndex}.particularDescription`, currentMealType, { shouldValidate: true });
+            }
+        }
+    }, [particularType, nestIndex, setValue, watch]);
 
 
     return (
@@ -127,12 +150,6 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, dateRange }: Cl
                     </FormControl>
                 </FormItem>
             )} />
-
-             {particularType === 'custom' ? (
-                 <FormField control={control} name={`clientEvents.${nestIndex}.particularDescription`} render={({ field }) => (
-                    <FormItem><FormLabel>Custom Particulars</FormLabel><FormControl><Input {...field} placeholder="e.g. 93 Cartons of Juice" /></FormControl></FormItem>
-                )} />
-            ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={control} name={`clientEvents.${nestIndex}.date`} render={({ field }) => {
@@ -181,18 +198,39 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, dateRange }: Cl
                         <FormMessage />
                     </FormItem>
                 )} />
-                <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )} />
+                {particularType === 'custom' ? (
+                    <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="flex items-center"><Pencil className="mr-2 h-4 w-4"/>Description</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    placeholder="e.g. 93 Cartons of Juice" 
+                                    {...field} 
+                                    value={field.value || ''} 
+                                    onChange={(e) => {
+                                        field.onChange(e.target.value);
+                                        // Also set particularDescription to the same value
+                                        setValue(`clientEvents.${nestIndex}.particularDescription`, e.target.value, { shouldValidate: true });
+                                    }}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                ) : (
+                    <FormField control={control} name={`clientEvents.${nestIndex}.mealType`} render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="flex items-center"><Utensils className="mr-2 h-4 w-4"/>Meal Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select a meal type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {MEAL_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                )}
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <FormField control={control} name={`clientEvents.${nestIndex}.unitPrice`} render={({ field }) => (
@@ -222,9 +260,12 @@ export const ClientEventForm = ({ form, nestIndex, isSubmitting, dateRange }: Cl
                     <Input type="text" readOnly disabled value={`${((watch(`clientEvents.${nestIndex}.unitPrice`) || 0) * (watch(`clientEvents.${nestIndex}.numberOfPeople`) || 0)).toFixed(2)}`} />
                  </FormItem>
              </div>
-             
-            <Separator />
-            <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
+             {!hideRecipes && (
+                <>
+                    <Separator />
+                    <ClientEventRecipeForm nestIndex={nestIndex} control={control} />
+                </>
+             )}
         </div>
     )
 }

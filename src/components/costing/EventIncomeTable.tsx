@@ -36,7 +36,7 @@ const EventIncomeTable = ({ events }: EventIncomeTableProps) => {
           </TableHeader>
           <TableBody>
             {events.length > 0 ? events.map((event, index) => {
-              const client = getClientById(event.clientId);
+              const client = event.clientId ? getClientById(event.clientId) : undefined;
               const totalPrice = event.unitPrice * event.numberOfPeople;
               return (
               <TableRow key={index}>

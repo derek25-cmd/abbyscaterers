@@ -141,6 +141,7 @@ export const ClientEventRecipeSchema = z.object({
 
 export const ClientEventSchema = z.object({
   id: z.string().optional(),
+  clientId: z.string().optional(),
   date: z.string().optional(),
   numberOfPeople: z.number().min(0, "Number of people cannot be negative.").optional(),
   mealType: z.string().optional(),
