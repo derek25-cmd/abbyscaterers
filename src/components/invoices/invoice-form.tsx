@@ -984,44 +984,26 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
                                                     </div>
                                                 )}
 
-                                                {/* Add Custom Row — only allowed once real order entries exist */}
-                                                {(() => {
-                                                    const hasOrderEntries = fields.some((_, i) => !!watchedFormValues.items?.[i]?.orderId);
-                                                    return (
-                                                        <div className="space-y-1.5">
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                disabled={!hasOrderEntries}
-                                                                className={cn(
-                                                                    "w-full h-10 border-dashed font-black uppercase tracking-widest text-[10px] rounded-xl transition-all",
-                                                                    hasOrderEntries
-                                                                        ? "border-indigo-300 bg-indigo-50/10 hover:bg-indigo-50/30 text-indigo-700 hover:text-indigo-800"
-                                                                        : "border-muted text-muted-foreground cursor-not-allowed opacity-50"
-                                                                )}
-                                                                onClick={() => append({
-                                                                    id: `CUST-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-                                                                    orderId: undefined,
-                                                                    particularType: 'custom',
-                                                                    eventType: 'Custom',
-                                                                    mealType: '',
-                                                                    pax: 1,
-                                                                    unitPrice: 0,
-                                                                    total: 0,
-                                                                    vatType: 'inclusive',
-                                                                    particularDescription: '',
-                                                                })}
-                                                            >
-                                                                <Plus className="h-4 w-4 mr-2" /> Add Custom Row (No Order Link)
-                                                            </Button>
-                                                            {!hasOrderEntries && (
-                                                                <p className="text-[10px] text-amber-600 text-center font-semibold tracking-wide">
-                                                                    ⚠ Link at least one order entry above before adding custom rows.
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
+                                                {/* Add Custom Row */}
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="w-full h-10 border-dashed font-black uppercase tracking-widest text-[10px] rounded-xl transition-all border-indigo-300 bg-indigo-50/10 hover:bg-indigo-50/30 text-indigo-700 hover:text-indigo-800"
+                                                    onClick={() => append({
+                                                        id: `CUST-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+                                                        orderId: undefined,
+                                                        particularType: 'custom',
+                                                        eventType: 'Custom',
+                                                        mealType: '',
+                                                        pax: 1,
+                                                        unitPrice: 0,
+                                                        total: 0,
+                                                        vatType: 'inclusive',
+                                                        particularDescription: '',
+                                                    })}
+                                                >
+                                                    <Plus className="h-4 w-4 mr-2" /> Add Custom Row (No Order Link)
+                                                </Button>
 
                                                 {/* Add Order-Linked Entry */}
                                                 <Button
