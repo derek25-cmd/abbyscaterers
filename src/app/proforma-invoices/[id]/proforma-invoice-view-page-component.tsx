@@ -118,7 +118,7 @@ export function ProformaInvoiceViewPageComponent() {
       // font sizes independent of the viewer's screen width. Without this, html2canvas
       // renders whatever the browser currently shows, so a wider viewport produces
       // a wider element → lower scale ratio → smaller text in the PDF.
-      const CARD_RENDER_WIDTH = 860;
+      const CARD_RENDER_WIDTH = 880;
       const TARGET_CANVAS_WIDTH = CARD_RENDER_WIDTH * pdfScale; // e.g. 1588px @ scale 2
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
