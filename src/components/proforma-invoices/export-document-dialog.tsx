@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 export interface ExportOptions {
   showHeaders: boolean;
   preserveSpace: boolean;
+  showFooterOnly: boolean;
 }
 
 interface ExportDocumentDialogProps {
@@ -36,10 +37,12 @@ export function ExportDocumentDialog({
 }: ExportDocumentDialogProps) {
   const [showHeaders, setShowHeaders] = useState(true);
   const [preserveSpace, setPreserveSpace] = useState(false);
-  
+  const [showFooterOnly, setShowFooterOnly] = useState(false);
+
   const [invoiceShowHeaders, setInvoiceShowHeaders] = useState(true);
   const [invoicePreserveSpace, setInvoicePreserveSpace] = useState(false);
-  
+  const [invoiceShowFooterOnly, setInvoiceShowFooterOnly] = useState(false);
+
   const [exportType, setExportType] = useState<'single' | 'bundle'>('single');
 
   // Reset state when opened
@@ -47,17 +50,19 @@ export function ExportDocumentDialog({
     if (isOpen) {
       setShowHeaders(true);
       setPreserveSpace(false);
+      setShowFooterOnly(false);
       setInvoiceShowHeaders(true);
       setInvoicePreserveSpace(false);
+      setInvoiceShowFooterOnly(false);
       setExportType('single');
     }
   }, [isOpen]);
 
   const handleExport = () => {
-    onExport({ 
-      proformaOptions: { showHeaders, preserveSpace }, 
-      invoiceOptions: { showHeaders: invoiceShowHeaders, preserveSpace: invoicePreserveSpace },
-      exportType 
+    onExport({
+      proformaOptions: { showHeaders, preserveSpace, showFooterOnly },
+      invoiceOptions: { showHeaders: invoiceShowHeaders, preserveSpace: invoicePreserveSpace, showFooterOnly: invoiceShowFooterOnly },
+      exportType
     });
   };
 
@@ -85,12 +90,21 @@ export function ExportDocumentDialog({
             </div>
 
             {!showHeaders && (
-              <div className="flex items-center justify-between pl-4 border-l-2 border-primary/20">
-                <Label htmlFor="export-preserve-space" className="flex flex-col space-y-1">
-                  <span>Preserve Space</span>
-                  <span className="font-normal text-xs text-muted-foreground">Leave blank space for printing on official letterhead</span>
-                </Label>
-                <Switch id="export-preserve-space" checked={preserveSpace} onCheckedChange={setPreserveSpace} />
+              <div className="space-y-3 pl-4 border-l-2 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="export-preserve-space" className="flex flex-col space-y-1">
+                    <span>Preserve Space</span>
+                    <span className="font-normal text-xs text-muted-foreground">Leave blank space for printing on official letterhead</span>
+                  </Label>
+                  <Switch id="export-preserve-space" checked={preserveSpace} onCheckedChange={(v) => { setPreserveSpace(v); if (v) setShowFooterOnly(false); }} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="export-footer-only" className="flex flex-col space-y-1">
+                    <span>Footer Only</span>
+                    <span className="font-normal text-xs text-muted-foreground">Reserve space for footer only, no header space</span>
+                  </Label>
+                  <Switch id="export-footer-only" checked={showFooterOnly} onCheckedChange={(v) => { setShowFooterOnly(v); if (v) setPreserveSpace(false); }} />
+                </div>
               </div>
             )}
           </div>
@@ -128,12 +142,21 @@ export function ExportDocumentDialog({
               </div>
 
               {!invoiceShowHeaders && (
-                <div className="flex items-center justify-between pl-4 border-l-2 border-amber-500/20">
-                  <Label htmlFor="invoice-preserve-space" className="flex flex-col space-y-1">
-                    <span>Preserve Space</span>
-                    <span className="font-normal text-xs text-muted-foreground">Space for letterhead (Invoice)</span>
-                  </Label>
-                  <Switch id="invoice-preserve-space" checked={invoicePreserveSpace} onCheckedChange={setInvoicePreserveSpace} />
+                <div className="space-y-3 pl-4 border-l-2 border-amber-500/20">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="invoice-preserve-space" className="flex flex-col space-y-1">
+                      <span>Preserve Space</span>
+                      <span className="font-normal text-xs text-muted-foreground">Space for letterhead</span>
+                    </Label>
+                    <Switch id="invoice-preserve-space" checked={invoicePreserveSpace} onCheckedChange={(v) => { setInvoicePreserveSpace(v); if (v) setInvoiceShowFooterOnly(false); }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="invoice-footer-only" className="flex flex-col space-y-1">
+                      <span>Footer Only</span>
+                      <span className="font-normal text-xs text-muted-foreground">Reserve space for footer only, no header space</span>
+                    </Label>
+                    <Switch id="invoice-footer-only" checked={invoiceShowFooterOnly} onCheckedChange={(v) => { setInvoiceShowFooterOnly(v); if (v) setInvoicePreserveSpace(false); }} />
+                  </div>
                 </div>
               )}
             </div>

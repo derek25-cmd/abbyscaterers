@@ -52,6 +52,7 @@ export function ProformaInvoiceViewPageComponent() {
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
   const [preserveSpace, setPreserveSpace] = useState(false);
+  const [showFooterOnly, setShowFooterOnly] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [suggestedInvoiceId, setSuggestedInvoiceId] = useState('');
 
@@ -91,21 +92,23 @@ export function ProformaInvoiceViewPageComponent() {
   };
 
 
-  const handleExportAction = async (options: { 
-    proformaOptions: { showHeaders: boolean; preserveSpace: boolean }; 
-    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean }; 
-    exportType: 'single' | 'bundle' 
+  const handleExportAction = async (options: {
+    proformaOptions: { showHeaders: boolean; preserveSpace: boolean; showFooterOnly: boolean };
+    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean; showFooterOnly: boolean };
+    exportType: 'single' | 'bundle'
   }) => {
     const isBundle = options.exportType === 'bundle' && associatedInvoice;
-    
+
     // We temporarily override the visual headers from the dialog options for export
     const wasHeaders = showHeaders;
     const wasSpace = preserveSpace;
-    
+    const wasFooterOnly = showFooterOnly;
+
     // For single export, we use proformaOptions
     // For bundle, we'll toggle them dynamically during generation
     setShowHeaders(options.proformaOptions.showHeaders);
     setPreserveSpace(options.proformaOptions.preserveSpace);
+    setShowFooterOnly(options.proformaOptions.showFooterOnly);
 
     // Wait a tick for react to evaluate the layout with the new toggles
     await new Promise(res => setTimeout(res, 50));
@@ -131,12 +134,13 @@ export function ProformaInvoiceViewPageComponent() {
       const generatePageGroup = async (
         prefix: string,
         pageNumberOffset: number,
-        layout: { showHeaders: boolean; preserveSpace: boolean }
+        layout: { showHeaders: boolean; preserveSpace: boolean; showFooterOnly: boolean }
       ) => {
           // If we are doing a bundle, we need to update the template state before capturing
           if (isBundle) {
             setShowHeaders(layout.showHeaders);
             setPreserveSpace(layout.preserveSpace);
+            setShowFooterOnly(layout.showFooterOnly);
             // Wait for layout to re-render
             await new Promise(res => setTimeout(res, 60));
           }
@@ -165,21 +169,25 @@ export function ProformaInvoiceViewPageComponent() {
           const scale = TARGET_CANVAS_WIDTH / Math.max(contentElement.scrollWidth, 1);
           const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
 
-          const headerCanvas = await html2canvas(headerElement, canvasOpts);
+          const headerHasHeight = headerElement.getBoundingClientRect().height > 0;
+          const footerHasHeight = footerElement.getBoundingClientRect().height > 0;
+
+          const headerCanvas = headerHasHeight ? await html2canvas(headerElement, canvasOpts) : null;
           const contentCanvas = await html2canvas(contentElement, canvasOpts);
-          const footerCanvas = await html2canvas(footerElement, canvasOpts);
+          const footerCanvas = footerHasHeight ? await html2canvas(footerElement, canvasOpts) : null;
 
           // Restore the card to its original responsive style
           if (cardElement) cardElement.style.cssText = savedCardStyle;
 
-          const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-          const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-          const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+          const headerHeight = (headerCanvas && headerCanvas.width > 0) ? (headerCanvas.height * usableWidth) / headerCanvas.width : 0;
+          const footerHeight = (footerCanvas && footerCanvas.width > 0) ? (footerCanvas.height * usableWidth) / footerCanvas.width : 0;
+          const footerOnlyTopPad = layout.showFooterOnly ? 70 : 0;
+          const usableContentHeight = Math.max(1, pageHeight - headerHeight - footerHeight - marginTop - footerOnlyTopPad - marginBottom);
 
           const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-          const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
-          const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+          const headerDataURL = (headerCanvas && headerCanvas.width > 0) ? headerCanvas.toDataURL('image/png', 1.0) : null;
+          const footerDataURL = (footerCanvas && footerCanvas.width > 0) ? footerCanvas.toDataURL('image/png', 1.0) : null;
 
           // Pre-calculate positions of no-break elements in PDF-point space so we
           // can avoid slicing through signature/stamp images and section headings.
@@ -202,7 +210,7 @@ export function ProformaInvoiceViewPageComponent() {
           while (yOffset < contentImgHeight) {
               if (pageNumber > 1) pdf.addPage();
 
-              if (layout.showHeaders) {
+              if (layout.showHeaders && headerDataURL && headerHeight > 0) {
                   pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
               }
 
@@ -219,13 +227,13 @@ export function ProformaInvoiceViewPageComponent() {
               }
 
               const sliceHeight = Math.min(safeEnd - yOffset, contentImgHeight - yOffset);
-              
+
               const sliceCanvas = document.createElement('canvas');
               sliceCanvas.width = contentCanvas.width;
-              sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+              sliceCanvas.height = Math.max(1, Math.ceil((sliceHeight / usableWidth) * contentCanvas.width));
               const sliceCtx = sliceCanvas.getContext('2d');
-              
-              if (sliceCtx) {
+
+              if (sliceCtx && sliceHeight > 0) {
                 sliceCtx.drawImage(
                   contentCanvas,
                   0, (yOffset / usableWidth) * contentCanvas.width,
@@ -233,18 +241,18 @@ export function ProformaInvoiceViewPageComponent() {
                   0, 0,
                   sliceCanvas.width, sliceCanvas.height
                 );
-                 pdf.addImage(
-                   sliceCanvas.toDataURL('image/png', 1.0), 
-                   'PNG', 
-                   marginX, 
-                   marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0), 
-                   usableWidth, 
-                   sliceHeight
-                 );
+                pdf.addImage(
+                  sliceCanvas.toDataURL('image/png', 1.0),
+                  'PNG',
+                  marginX,
+                  marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0) + footerOnlyTopPad,
+                  usableWidth,
+                  sliceHeight
+                );
               }
-    
-               if (layout.showHeaders) {
-                 pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+
+              if (layout.showHeaders && footerDataURL && footerHeight > 0) {
+                pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
                }
               
               yOffset += sliceHeight;
@@ -279,6 +287,7 @@ export function ProformaInvoiceViewPageComponent() {
        setIsExportDialogOpen(false);
        setShowHeaders(wasHeaders);
        setPreserveSpace(wasSpace);
+       setShowFooterOnly(wasFooterOnly);
     }
   };
   
@@ -467,13 +476,13 @@ export function ProformaInvoiceViewPageComponent() {
           </div>
         </div>
         <div ref={printRef}>
-          <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace}/>
+          <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} showFooterOnly={showFooterOnly}/>
         </div>
         
         {/* Hidden template for bundle export without disrupting layout */}
         {associatedInvoice && (
           <div className="absolute opacity-0 pointer-events-none" style={{ zIndex: -50, top: -10000, width: '1000px' }}>
-            <InvoiceTemplate invoiceData={associatedInvoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace}/>
+            <InvoiceTemplate invoiceData={associatedInvoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} showFooterOnly={showFooterOnly}/>
           </div>
         )}
 

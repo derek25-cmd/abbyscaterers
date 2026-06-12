@@ -40,6 +40,7 @@ export function InvoiceViewPageComponent() {
   const [exporting, setExporting] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
   const [preserveSpace, setPreserveSpace] = useState(false);
+  const [showFooterOnly, setShowFooterOnly] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
@@ -72,8 +73,8 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading, proformasLoading]);
 
   const handleExportAction = async (options: {
-    proformaOptions: { showHeaders: boolean; preserveSpace: boolean };
-    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean };
+    proformaOptions: { showHeaders: boolean; preserveSpace: boolean; showFooterOnly: boolean };
+    invoiceOptions: { showHeaders: boolean; preserveSpace: boolean; showFooterOnly: boolean };
     exportType: 'single' | 'bundle'
   }) => {
     const isBundle = options.exportType === 'bundle' && !!associatedProforma;
@@ -83,11 +84,13 @@ export function InvoiceViewPageComponent() {
 
     const wasHeaders = showHeaders;
     const wasSpace = preserveSpace;
+    const wasFooterOnly = showFooterOnly;
     const wasProformaHeaders = proformaShowHeaders;
     const wasProformaSpace = proformaPreserveSpace;
 
     setShowHeaders(invoiceLayout.showHeaders);
     setPreserveSpace(invoiceLayout.preserveSpace);
+    setShowFooterOnly(invoiceLayout.showFooterOnly);
     if (isBundle) {
       setProformaShowHeaders(proformaLayout.showHeaders);
       setProformaPreserveSpace(proformaLayout.preserveSpace);
@@ -116,12 +119,13 @@ export function InvoiceViewPageComponent() {
       const generatePageGroup = async (
         prefix: string,
         pageNumberOffset: number,
-        layout: { showHeaders: boolean; preserveSpace: boolean }
+        layout: { showHeaders: boolean; preserveSpace: boolean; showFooterOnly: boolean }
       ) => {
         if (isBundle) {
           if (prefix === 'invoice') {
             setShowHeaders(layout.showHeaders);
             setPreserveSpace(layout.preserveSpace);
+            setShowFooterOnly(layout.showFooterOnly);
           } else {
             setProformaShowHeaders(layout.showHeaders);
             setProformaPreserveSpace(layout.preserveSpace);
@@ -153,20 +157,24 @@ export function InvoiceViewPageComponent() {
         const scale = TARGET_CANVAS_WIDTH / Math.max(contentElement.scrollWidth, 1);
         const canvasOpts = { scale, useCORS: true, logging: false, allowTaint: true };
 
-        const headerCanvas = await html2canvas(headerElement, canvasOpts);
+        const headerHasHeight = headerElement.getBoundingClientRect().height > 0;
+        const footerHasHeight = footerElement.getBoundingClientRect().height > 0;
+
+        const headerCanvas = headerHasHeight ? await html2canvas(headerElement, canvasOpts) : null;
         const contentCanvas = await html2canvas(contentElement, canvasOpts);
-        const footerCanvas = await html2canvas(footerElement, canvasOpts);
+        const footerCanvas = footerHasHeight ? await html2canvas(footerElement, canvasOpts) : null;
 
         // Restore the card to its original responsive style
         if (cardElement) cardElement.style.cssText = savedCardStyle;
 
-        const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-        const footerHeight = (footerCanvas.height * usableWidth) / footerCanvas.width;
-        const usableContentHeight = pageHeight - headerHeight - footerHeight - marginTop - marginBottom;
+        const headerHeight = (headerCanvas && headerCanvas.width > 0) ? (headerCanvas.height * usableWidth) / headerCanvas.width : 0;
+        const footerHeight = (footerCanvas && footerCanvas.width > 0) ? (footerCanvas.height * usableWidth) / footerCanvas.width : 0;
+        const footerOnlyTopPad = layout.showFooterOnly ? 70 : 0;
+        const usableContentHeight = Math.max(1, pageHeight - headerHeight - footerHeight - marginTop - footerOnlyTopPad - marginBottom);
         const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-        const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
-        const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
+        const headerDataURL = (headerCanvas && headerCanvas.width > 0) ? headerCanvas.toDataURL('image/png', 1.0) : null;
+        const footerDataURL = (footerCanvas && footerCanvas.width > 0) ? footerCanvas.toDataURL('image/png', 1.0) : null;
 
         // Pre-calculate positions of no-break elements in PDF-point space so we
         // can avoid slicing through signature/stamp images and section headings.
@@ -189,7 +197,7 @@ export function InvoiceViewPageComponent() {
         while (yOffset < contentImgHeight) {
           if (pageNumber > 1) pdf.addPage();
 
-          if (layout.showHeaders) {
+          if (layout.showHeaders && headerDataURL && headerHeight > 0) {
             pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
           }
 
@@ -207,10 +215,10 @@ export function InvoiceViewPageComponent() {
           const sliceHeight = Math.min(safeEnd - yOffset, contentImgHeight - yOffset);
           const sliceCanvas = document.createElement('canvas');
           sliceCanvas.width = contentCanvas.width;
-          sliceCanvas.height = (sliceHeight / usableWidth) * contentCanvas.width;
+          sliceCanvas.height = Math.max(1, Math.ceil((sliceHeight / usableWidth) * contentCanvas.width));
           const sliceCtx = sliceCanvas.getContext('2d');
 
-          if (sliceCtx) {
+          if (sliceCtx && sliceHeight > 0) {
             sliceCtx.drawImage(
               contentCanvas,
               0, (yOffset / usableWidth) * contentCanvas.width,
@@ -222,13 +230,13 @@ export function InvoiceViewPageComponent() {
               sliceCanvas.toDataURL('image/png', 1.0),
               'PNG',
               marginX,
-              marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0),
+              marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0) + footerOnlyTopPad,
               usableWidth,
               sliceHeight
             );
           }
 
-          if (layout.showHeaders) {
+          if (layout.showHeaders && footerDataURL && footerHeight > 0) {
             pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
           }
 
@@ -258,6 +266,7 @@ export function InvoiceViewPageComponent() {
       setIsExportDialogOpen(false);
       setShowHeaders(wasHeaders);
       setPreserveSpace(wasSpace);
+      setShowFooterOnly(wasFooterOnly);
       setProformaShowHeaders(wasProformaHeaders);
       setProformaPreserveSpace(wasProformaSpace);
     }
@@ -379,7 +388,7 @@ export function InvoiceViewPageComponent() {
         )}
         
         <div ref={printRef}>
-            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} />
+            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} showFooterOnly={showFooterOnly} />
         </div>
 
         {associatedProforma && (

@@ -32,6 +32,8 @@ export function InvoiceViewPageComponent() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showHeaders, setShowHeaders] = useState(true);
+  const [preserveSpace, setPreserveSpace] = useState(false);
+  const [showFooterOnly, setShowFooterOnly] = useState(false);
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
 
@@ -56,117 +58,97 @@ export function InvoiceViewPageComponent() {
   }, [invoiceId, getInvoiceById, getClientById, invoicesLoading, clientsLoading]);
 
   const handleExportPDF = async () => {
-    const headerElement = document.getElementById('invoice-header');
-    const contentElement = document.getElementById('invoice-main-content');
-    const footerElement = document.getElementById('invoice-footer');
-
-    if (!contentElement || !headerElement || !footerElement) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not find all required parts of the invoice to export.' });
+    const cardElement = document.getElementById('invoice-pdf-content');
+    if (!cardElement) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not find invoice content to export.' });
       return;
     }
     setExporting(true);
+
+    const CARD_RENDER_WIDTH = 910;
+    const pdfScale = settings.pdfScale || 2.0;
+    const TARGET_CANVAS_WIDTH = CARD_RENDER_WIDTH * pdfScale;
+
+    const savedStyle = cardElement.style.cssText;
+    cardElement.style.width = `${CARD_RENDER_WIDTH}px`;
+    cardElement.style.minWidth = `${CARD_RENDER_WIDTH}px`;
+    cardElement.style.maxWidth = `${CARD_RENDER_WIDTH}px`;
+    cardElement.style.boxSizing = 'border-box';
+    await new Promise(res => setTimeout(res, 50));
 
     try {
       const pdf = new jsPDF('p', 'pt', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const marginX = 30;
-      const marginTop = 20;
+      const marginTop = (showHeaders || preserveSpace) ? 20 : 11;
       const marginBottom = 5;
       const usableWidth = pageWidth - (marginX * 2);
+      const usablePageHeight = pageHeight - marginTop - marginBottom;
 
-      // Measure element positions relative to the content container (viewport-relative,
-      // window.scrollY cancels when we subtract containerTop from each element's top).
-      const containerTop = contentElement.getBoundingClientRect().top;
-      const contentScrollH = contentElement.scrollHeight;
+      // Measure break positions relative to the card after resize
+      const cardTop = cardElement.getBoundingClientRect().top;
+      const cardScrollH = cardElement.scrollHeight;
       const rawDomPositions: Array<{ top: number; bottom: number }> = [];
-
-      contentElement.querySelectorAll('tr, [data-pdf-no-break]').forEach(el => {
+      cardElement.querySelectorAll('tr, [data-pdf-no-break]').forEach(el => {
         const rect = el.getBoundingClientRect();
-        const relTop    = rect.top    - containerTop;
-        const relBottom = rect.bottom - containerTop;
+        const relTop    = rect.top    - cardTop;
+        const relBottom = rect.bottom - cardTop;
         if (relBottom > relTop && relTop >= -5) {
           rawDomPositions.push({ top: Math.max(0, relTop), bottom: relBottom });
         }
       });
 
-      const canvasOpts = { scale: 2, useCORS: true, logging: false, allowTaint: true };
-      const headerCanvas = await html2canvas(headerElement, canvasOpts);
-      const contentCanvas = await html2canvas(contentElement, canvasOpts);
-      const footerCanvas  = await html2canvas(footerElement,  canvasOpts);
+      const scale = TARGET_CANVAS_WIDTH / Math.max(cardElement.scrollWidth, 1);
+      const canvas = await html2canvas(cardElement, { scale, useCORS: true, logging: false, allowTaint: true });
+      cardElement.style.cssText = savedStyle;
 
-      const headerHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
-      const footerHeight = (footerCanvas.height  * usableWidth) / footerCanvas.width;
-      // When headers are hidden, the full page height is available for content
-      const usableContentHeight = pageHeight
-        - (showHeaders ? headerHeight + footerHeight : 0)
-        - marginTop - marginBottom;
-      const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
-      const pxPerPt          = contentCanvas.width / usableWidth;
+      const cardImgHeight = (canvas.height * usableWidth) / canvas.width;
+      const pxPerPt = canvas.width / usableWidth;
+      const actualVerticalScale = canvas.height / cardScrollH;
 
-      // actualVerticalScale: canvas pixels per DOM CSS pixel (vertical axis).
-      // Using the actual rendered canvas height eliminates any fractional rounding.
-      const actualVerticalScale = contentCanvas.height / contentScrollH;
-
-      // Convert raw DOM CSS-px positions → PDF points
       const breakIntervals = rawDomPositions.map(({ top, bottom }) => ({
         top:    (top    * actualVerticalScale) / pxPerPt,
         bottom: (bottom * actualVerticalScale) / pxPerPt,
       }));
 
-      const headerDataURL = headerCanvas.toDataURL('image/png', 1.0);
-      const footerDataURL = footerCanvas.toDataURL('image/png', 1.0);
-
       let yOffset = 0;
       let pageNumber = 1;
 
-      while (yOffset < contentImgHeight) {
+      while (yOffset < cardImgHeight) {
         if (pageNumber > 1) pdf.addPage();
 
-        const contentY = marginTop + (showHeaders ? headerHeight : 0);
-        if (showHeaders) pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+        const remaining = cardImgHeight - yOffset;
+        let sliceHeight = Math.min(usablePageHeight, remaining);
 
-        // Smart slice: pull the cut point back to just before any element that would be split.
-        const remaining = contentImgHeight - yOffset;
-        let sliceHeight = Math.min(usableContentHeight, remaining);
-
-        if (remaining > usableContentHeight) {
-          const rawCutY = yOffset + usableContentHeight;
+        if (remaining > usablePageHeight) {
+          const rawCutY = yOffset + usablePageHeight;
           let adjustedCutY = rawCutY;
 
           for (const { top, bottom } of breakIntervals) {
             if (top > yOffset && top < rawCutY && bottom > rawCutY) {
-              // Page break would fall inside this element — move cut to just before it.
               adjustedCutY = Math.min(adjustedCutY, top);
             }
           }
 
           const adjusted = adjustedCutY - yOffset;
-          // Apply if non-trivial (> 1 pt). Even a small slice is better than cutting
-          // through content. Elements taller than a full page cannot be avoided.
           if (adjusted >= 1) sliceHeight = adjusted;
         }
 
         const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width  = contentCanvas.width;
+        sliceCanvas.width  = canvas.width;
         sliceCanvas.height = Math.ceil(sliceHeight * pxPerPt);
         const sliceCtx = sliceCanvas.getContext('2d');
         if (sliceCtx) {
           sliceCtx.drawImage(
-            contentCanvas,
+            canvas,
             0, Math.floor(yOffset * pxPerPt),
-            contentCanvas.width, sliceCanvas.height,
+            canvas.width, sliceCanvas.height,
             0, 0,
             sliceCanvas.width, sliceCanvas.height,
           );
-          pdf.addImage(
-            sliceCanvas.toDataURL('image/png', 1.0),
-            'PNG', marginX, contentY,
-            usableWidth, sliceHeight,
-          );
+          pdf.addImage(sliceCanvas.toDataURL('image/png', 1.0), 'PNG', marginX, marginTop, usableWidth, sliceHeight);
         }
-
-        if (showHeaders) pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
 
         yOffset += sliceHeight;
         pageNumber++;
@@ -175,6 +157,7 @@ export function InvoiceViewPageComponent() {
       pdf.save(`invoice_${invoice?.id}.pdf`);
       toast({ title: 'Success', description: 'Invoice exported as PDF.' });
     } catch (error) {
+      cardElement.style.cssText = savedStyle;
       console.error('PDF Export Error:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to export PDF.' });
     }
@@ -227,12 +210,35 @@ export function InvoiceViewPageComponent() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-primary">Invoice Preview</h1>
-            <div className="flex items-center space-x-2 mt-2">
-                <Switch id="show-headers" checked={showHeaders} onCheckedChange={setShowHeaders} />
-                <Label htmlFor="show-headers" className="text-sm text-muted-foreground flex items-center">
-                    {showHeaders ? <Eye className="w-4 h-4 mr-1"/> : <EyeOff className="w-4 h-4 mr-1"/>}
-                    Show Header &amp; Footer
-                </Label>
+            <div className="mt-2 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Document Layout</p>
+                <div className="flex items-start gap-2">
+                    <Switch id="show-headers" checked={showHeaders} onCheckedChange={(v) => { setShowHeaders(v); if (v) { setPreserveSpace(false); setShowFooterOnly(false); } }} className="mt-0.5" />
+                    <div>
+                        <Label htmlFor="show-headers" className="text-sm font-medium leading-none flex items-center gap-1">
+                            {showHeaders ? <Eye className="w-3.5 h-3.5"/> : <EyeOff className="w-3.5 h-3.5"/>} Header &amp; Footer
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">Include the standard company header and footer images</p>
+                    </div>
+                </div>
+                {!showHeaders && (
+                    <div className="ml-6 space-y-2 border-l-2 border-muted pl-3">
+                        <div className="flex items-start gap-2">
+                            <Switch id="preserve-space" checked={preserveSpace} onCheckedChange={(v) => { setPreserveSpace(v); if (v) setShowFooterOnly(false); }} className="mt-0.5" />
+                            <div>
+                                <Label htmlFor="preserve-space" className="text-sm font-medium leading-none">Preserve Space</Label>
+                                <p className="text-xs text-muted-foreground mt-0.5">Leave blank space for printing on official letterhead</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <Switch id="show-footer-only" checked={showFooterOnly} onCheckedChange={(v) => { setShowFooterOnly(v); if (v) setPreserveSpace(false); }} className="mt-0.5" />
+                            <div>
+                                <Label htmlFor="show-footer-only" className="text-sm font-medium leading-none">Footer Only</Label>
+                                <p className="text-xs text-muted-foreground mt-0.5">Include only the footer image, no header space</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
           </div>
           <div className="space-x-2 flex flex-wrap">
@@ -249,7 +255,7 @@ export function InvoiceViewPageComponent() {
           </div>
         </div>
         <div ref={printRef}>
-            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} />
+            <InvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} showFooterOnly={showFooterOnly} />
         </div>
     </>
   );

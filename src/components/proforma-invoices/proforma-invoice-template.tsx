@@ -18,6 +18,7 @@ interface ProformaInvoiceTemplateProps {
     client: Client | undefined;
     showHeaders?: boolean;
     preserveSpace?: boolean;
+    showFooterOnly?: boolean;
 }
 
 const convertToWords = (amount: number): string => {
@@ -76,7 +77,7 @@ interface EditParticularsState {
 }
 
 
-export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = true, preserveSpace = false }: ProformaInvoiceTemplateProps) {
+export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = true, preserveSpace = false, showFooterOnly = false }: ProformaInvoiceTemplateProps) {
     
     const [localItems, setLocalItems] = useState(invoiceData.items);
     const [notes, setNotes] = useState("");
@@ -145,31 +146,28 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                                 
             <Card
                 id="proforma-invoice-pdf-content"
-                className="p-8 pb-10 bg-white text-black print:shadow-none"
+                className={`${showHeaders ? 'p-8' : 'px-8 pb-10 pt-2'} bg-white text-black print:shadow-none`}
                 style={{
                     fontFamily: 'sans-serif',
                     fontSize: '15px',
                 }}
             >
-                <div id="proforma-header" style={{ 
+                <div id="proforma-header" style={{
                     display: (showHeaders || preserveSpace) ? 'block' : 'none',
                     visibility: showHeaders ? 'visible' : 'hidden'
                 }}>
-                      {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
+                    {settings.headerUrl && <Image src={settings.headerUrl} alt="Header" layout="responsive" width={700} height={100} />}
                 </div>
 
                 <div id="proforma-main-content">
-                    <div className="flex justify-between items-start mb-2" style={{ marginTop: '-30px' }}>
-                        <div className="flex-1"></div>
-                        <div className="text-right">
-                          <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
-                          <div className="mt-1 text-base space-y-0">
-                              <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
-                              <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
-                          </div>
+                    {/* Title overlaps the header by exactly 4px */}
+                    <div className="text-right relative z-10" style={{ marginTop: showHeaders ? '-4px' : '0' }}>
+                        <h2 className="font-bold text-4xl text-primary">PROFORMA INVOICE</h2>
+                        <div className="mt-1 text-base space-y-0">
+                            <p><strong>Date:</strong> {formatDate(invoiceDate)}</p>
+                            <p><strong>Pro-Forma Invoice No.:</strong> {id || '{Invoice No.}'}</p>
                         </div>
                     </div>
-
                     <div className="flex justify-between items-end mb-1">
                         <div className="flex-1">
                             <div className="text-base">
@@ -189,34 +187,34 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                             </div>
                         </div>
                     </div>
-                    <hr className="border-t-2 border-gray-800" />
-                    
-                    <div className="my-2 text-center text-base italic px-4 py-1" style={{minHeight: '1cm'}}>
+                    <hr className="border-t-2 border-gray-800" style={{ marginTop: '5px' }} />
+                    {/* No top margin/padding — content sits flush under the hr */}
+                    <div className="mb-1 text-center text-base italic px-4" style={{ marginTop: 0, paddingTop: '2px', paddingBottom: '2px' }}>
                         <p>{serviceDesc}</p>
                     </div>
 
                     <table className="w-full border-collapse border border-gray-800 text-sm" style={{ tableLayout: 'fixed', borderWidth: '1px' }}>
                         <thead>
                             <tr style={{ fontWeight: 'bold' }} className="text-center bg-gray-200">
-                                <th className="border border-gray-800 py-2 px-1" style={{ width: '5%', borderWidth: '1px' }}>S/No.</th>
-                                <th className="border border-gray-800 py-2 px-1" style={{ width: '5%', borderWidth: '1px' }}>QTY</th>
+                                <th className="border border-gray-800 py-1 px-1" style={{ width: '5%', borderWidth: '1px' }}>S/No.</th>
+                                <th className="border border-gray-800 py-1 px-1" style={{ width: '5%', borderWidth: '1px' }}>QTY</th>
                                 {!showingCustom && (
-                                    <th className="border border-gray-800 py-2 px-1" style={{ width: '10%', borderWidth: '1px' }}>Order ID</th>
+                                    <th className="border border-gray-800 py-1 px-1" style={{ width: '10%', borderWidth: '1px' }}>Order ID</th>
                                 )}
-                                <th className="border border-gray-800 py-2 px-2 text-left" style={{ width: showingCustom ? '50%' : '40%', borderWidth: '1px' }}>PARTICULARS</th>
-                                <th className="border border-gray-800 py-2 px-2 text-right" style={{ width: '25%', borderWidth: '1px' }}>UNIT PRICE (TSHS)</th>
-                                <th className="border border-gray-800 py-2 px-2 text-right" style={{ width: '15%', borderWidth: '1px' }}>TOTAL (TSHS)</th>
+                                <th className="border border-gray-800 py-1 px-2 text-left" style={{ width: showingCustom ? '50%' : '40%', borderWidth: '1px' }}>PARTICULARS</th>
+                                <th className="border border-gray-800 py-1 px-2 text-right" style={{ width: '25%', borderWidth: '1px' }}>UNIT PRICE (TSHS)</th>
+                                <th className="border border-gray-800 py-1 px-2 text-right" style={{ width: '15%', borderWidth: '1px' }}>TOTAL (TSHS)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {sortedItems.map((item, index) => (
                                 <tr key={item.id}>
-                                    <td className="border border-black py-2 px-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
-                                    <td className="border border-black py-2 px-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>
+                                    <td className="border border-black py-1 px-1 text-center" style={{borderWidth: '1px'}}>{index + 1}</td>
+                                    <td className="border border-black py-1 px-1 text-center" style={{borderWidth: '1px'}}>{item.pax || '{pax}'}</td>
                                     {!showingCustom && (
-                                        <td className="border border-black py-2 px-1 text-center font-mono text-xs" style={{borderWidth: '1px'}}>{item.id}</td>
+                                        <td className="border border-black py-1 px-1 text-center font-mono text-xs" style={{borderWidth: '1px'}}>{item.id}</td>
                                     )}
-                                    <td className="border border-black py-2 px-2 text-left" style={{borderWidth: '1px'}}>
+                                    <td className="border border-black py-1 px-2 text-left" style={{borderWidth: '1px'}}>
                                         <div className="flex justify-between items-start gap-1">
                                             <span className="leading-snug">{item.particularDescription || getParticularText(item)}</span>
                                             <button onClick={() => handleOpenEditDialog(item)} className="p-1 text-muted-foreground hover:text-primary print:hidden shrink-0">
@@ -224,8 +222,8 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                                             </button>
                                         </div>
                                     </td>
-                                    <td className="border border-black py-2 px-2 text-right" style={{borderWidth: '1px'}}>{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
-                                    <td className="border border-black py-2 px-2 text-right" style={{borderWidth: '1px'}}>{item.total ? formatCurrency(item.total) : '{Total}'}</td>
+                                    <td className="border border-black py-1 px-2 text-right" style={{borderWidth: '1px'}}>{item.unitPrice ? formatCurrency(item.unitPrice) : '{UnitPrice}'}</td>
+                                    <td className="border border-black py-1 px-2 text-right" style={{borderWidth: '1px'}}>{item.total ? formatCurrency(item.total) : '{Total}'}</td>
                                 </tr>
                             ))}
                             {/* Summary Rows Start Here */}
@@ -238,40 +236,40 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                                         className="min-h-[100px] h-full w-full border-none resize-none bg-transparent focus-visible:ring-0 p-1 text-sm"
                                     />
                                 </td>
-                                <td className="py-2 px-2 text-right font-semibold border" style={{borderWidth: '1px'}}>Sub-Total (TSHS)</td>
-                                <td className="py-2 px-2 text-right font-semibold border" style={{borderWidth: '1px'}}>{formatCurrency(subtotal)}</td>
+                                <td className="py-1 px-2 text-right font-semibold border" style={{borderWidth: '1px'}}>Sub-Total (TSHS)</td>
+                                <td className="py-1 px-2 text-right font-semibold border" style={{borderWidth: '1px'}}>{formatCurrency(subtotal)}</td>
                             </tr>
                             {multiplyByDays && (
                                 <>
                                 <tr>
-                                    <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>No of days</td>
-                                    <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{numberOfDays || 1}</td>
+                                    <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>No of days</td>
+                                    <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>{numberOfDays || 1}</td>
                                 </tr>
                                 <tr>
-                                    <td className="py-2 px-2 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>TOTAL (TSHS)</td>
-                                    <td className="py-2 px-2 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>{formatCurrency(totalForDays)}</td>
+                                    <td className="py-1 px-2 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>TOTAL (TSHS)</td>
+                                    <td className="py-1 px-2 text-right font-bold bg-secondary/20 border" style={{borderWidth: '1px'}}>{formatCurrency(totalForDays)}</td>
                                 </tr>
                                 </>
                             )}
                             <tr>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Add Service Charge (TSHS)</td>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>Add Service Charge (TSHS)</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>{serviceCharge > 0 ? formatCurrency(serviceCharge) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Add Transportation Costs (TSHS)</td>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>Add Transportation Costs (TSHS)</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>{transportCosts > 0 ? formatCurrency(transportCosts) : '0.00'}</td>
                             </tr>
                             <tr>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Total Before VAT (TSHS)</td>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{formatCurrency(totalBeforeVAT)}</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>Total Before VAT (TSHS)</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>{formatCurrency(totalBeforeVAT)}</td>
                             </tr>
                             <tr>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>Add VAT 18% (TSHS)</td>
-                                <td className="py-2 px-2 text-right border" style={{borderWidth: '1px'}}>{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>Add VAT 18% (TSHS)</td>
+                                <td className="py-1 px-2 text-right border" style={{borderWidth: '1px'}}>{vat > 0 ? formatCurrency(vat) : 'Inclusive'}</td>
                             </tr>
                             <tr>
-                                <td className="py-2 px-2 text-right font-bold bg-secondary/40 border" style={{borderWidth: '1px'}}>GRAND TOTAL (TSHS)</td>
-                                <td className="py-2 px-2 text-right font-bold bg-secondary/40 text-accent border" style={{borderWidth: '1px'}}>{formatCurrency(grandTotal)}</td>
+                                <td className="py-1 px-2 text-right font-bold bg-secondary/40 border" style={{borderWidth: '1px'}}>GRAND TOTAL (TSHS)</td>
+                                <td className="py-1 px-2 text-right font-bold bg-secondary/40 text-accent border" style={{borderWidth: '1px'}}>{formatCurrency(grandTotal)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -280,28 +278,29 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div data-pdf-no-break="true" className="flex justify-end items-end mt-4 mb-4">
-                        <div className="text-center" style={{ fontSize: '14px' }}>
-                        <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
-                        {settings.signatureUrl && <Image alt="Signature and Seal" height={160} width={400} className="h-40 w-auto block mx-auto mb-2" src={settings.signatureUrl}/>}
-                        <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                    <div data-pdf-no-break="true" className="flex gap-4 mt-4 mb-4 items-stretch">
+                        <div className="flex-1 border border-gray-800 p-3" style={{ fontSize: '14px' }}>
+                            <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms &amp; Conditions:</p>
+                            <ul style={{ fontSize: '14px', paddingLeft: '1.25rem', listStyleType: 'disc', listStylePosition: 'outside', margin: 0 }}>
+                                <li style={{ marginBottom: '4px' }}>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
+                                <li style={{ marginBottom: '4px' }}>Payments shall be by Bank transfer or by Cheque.</li>
+                                <li style={{ marginBottom: '4px' }}>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
+                                <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
+                            </ul>
                         </div>
-                    </div>
-
-
-                     <div data-pdf-no-break="true" className="text-sm mt-4">
-                      <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms & Conditions:</p>
-                      <ul className="space-y-1 list-disc list-inside" style={{ fontSize: '14px' }}>
-                          <li>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
-                          <li>Payments shall be by Bank transfer or by Cheque.</li>
-                          <li>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
-                          <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
-                      </ul>
+                        <div className="border border-gray-800 p-3 text-center overflow-hidden" style={{ fontSize: '14px', minWidth: '220px' }}>
+                            <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
+                            {settings.signatureUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img alt="Signature and Seal" src={settings.signatureUrl} className="block mx-auto mb-2" style={{ maxWidth: '100%', maxHeight: '130px', width: 'auto', height: 'auto' }} />
+                            )}
+                            <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                        </div>
                     </div>
                 </div>
                 
-                 <div id="proforma-footer" className="pb-6" style={{ 
-                    display: (showHeaders || preserveSpace) ? 'block' : 'none',
+                 <div id="proforma-footer" className="pb-6" style={{
+                    display: (showHeaders || preserveSpace || showFooterOnly) ? 'block' : 'none',
                     visibility: showHeaders ? 'visible' : 'hidden'
                  }}>
                       {settings.footerUrl && (
