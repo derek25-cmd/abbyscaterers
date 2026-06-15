@@ -89,12 +89,12 @@ export default function DeliveryNoteViewPage() {
             });
             element.style.cssText = savedStyle;
 
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = 210;
             const imgProps = pdf.getImageProperties(imgData);
             const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight);
             pdf.save(`delivery_note_${deliveryNote?.id}.pdf`);
             toast({ title: 'Success', description: 'Delivery note exported as PDF.' });
         } catch (error) {

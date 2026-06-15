@@ -178,8 +178,8 @@ export function InvoiceViewPageComponent() {
         const usableContentHeight = Math.max(1, pageHeight - contentTopY - footerHeight - marginBottom);
         const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
-        const headerDataURL = (headerCanvas && headerCanvas.width > 0) ? headerCanvas.toDataURL('image/png', 1.0) : null;
-        const footerDataURL = (footerCanvas && footerCanvas.width > 0) ? footerCanvas.toDataURL('image/png', 1.0) : null;
+        const headerDataURL = (headerCanvas && headerCanvas.width > 0) ? headerCanvas.toDataURL('image/jpeg', 0.92) : null;
+        const footerDataURL = (footerCanvas && footerCanvas.width > 0) ? footerCanvas.toDataURL('image/jpeg', 0.92) : null;
 
         // Pre-calculate positions of no-break elements in PDF-point space so we
         // can avoid slicing through signature/stamp images and section headings.
@@ -203,7 +203,7 @@ export function InvoiceViewPageComponent() {
           if (pageNumber > 1) pdf.addPage();
 
           if (layout.showHeaders && headerDataURL && headerHeight > 0) {
-            pdf.addImage(headerDataURL, 'PNG', marginX, headerTopY, usableWidth, headerHeight);
+            pdf.addImage(headerDataURL, 'JPEG', marginX, headerTopY, usableWidth, headerHeight);
           }
 
           // Find a safe cut point: if the naive slice end falls inside a no-break
@@ -232,8 +232,8 @@ export function InvoiceViewPageComponent() {
               sliceCanvas.width, sliceCanvas.height
             );
             pdf.addImage(
-              sliceCanvas.toDataURL('image/png', 1.0),
-              'PNG',
+              sliceCanvas.toDataURL('image/jpeg', 0.92),
+              'JPEG',
               marginX,
               contentTopY,
               usableWidth,
@@ -242,7 +242,7 @@ export function InvoiceViewPageComponent() {
           }
 
           if (layout.showHeaders && footerDataURL && footerHeight > 0) {
-            pdf.addImage(footerDataURL, 'PNG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
+            pdf.addImage(footerDataURL, 'JPEG', marginX, pageHeight - footerHeight - marginBottom, usableWidth, footerHeight);
           }
 
           yOffset += sliceHeight;
