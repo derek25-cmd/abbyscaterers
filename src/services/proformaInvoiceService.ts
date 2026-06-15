@@ -1,7 +1,8 @@
 
 import { supabase } from '@/lib/supabase-client';
 import type { ProformaInvoice } from '@/types';
-import type { ProformaInvoiceFormData } from '@/lib/schemas';
+import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from '@/lib/schemas';
+import { validate } from '@/lib/service-validation';
 
 export const getProformaInvoices = async (): Promise<ProformaInvoice[]> => {
     const { data, error } = await supabase.from('proforma_invoices').select('*');
@@ -22,96 +23,59 @@ export const getProformaInvoiceById = async (id: string): Promise<ProformaInvoic
 }
 
 export const addProformaInvoice = async (invoiceData: ProformaInvoiceFormData): Promise<ProformaInvoice | null> => {
-    try {
-        const now = new Date().toISOString();
-        const { signedAtDate, signedAtLocation, ...validInvoiceData } = invoiceData;
-        const newInvoiceData = { ...validInvoiceData, createdAt: now, updatedAt: now };
-        const { data, error } = await supabase.from('proforma_invoices').insert([newInvoiceData]).select().single();
-        if (error) {
-            console.error('Error adding proforma invoice:', JSON.stringify(error, null, 2));
-            return null;
-        }
-        return data as ProformaInvoice;
-    } catch (err) {
-        console.error('Unexpected error adding proforma invoice:', err);
-        return null;
-    }
+    const validated = validate(ProformaInvoiceSchema, invoiceData);
+    const now = new Date().toISOString();
+    const { signedAtDate, signedAtLocation, ...validInvoiceData } = validated;
+    const newInvoiceData = { ...validInvoiceData, createdAt: now, updatedAt: now };
+    const { data, error } = await supabase.from('proforma_invoices').insert([newInvoiceData]).select().single();
+    if (error) throw new Error(error.message);
+    return data as ProformaInvoice;
 };
 
 export const updateProformaInvoice = async (id: string, updates: Partial<ProformaInvoiceFormData>): Promise<ProformaInvoice | null> => {
-    try {
-        const { id: newId, signedAtDate, signedAtLocation, ...updatePayload } = updates;
-        const oldId = id;
-        const idChanged = newId && newId !== oldId;
+    const { id: newId, signedAtDate, signedAtLocation, ...updatePayload } = updates;
+    const oldId = id;
+    const idChanged = newId && newId !== oldId;
 
-        // Perform the update. If id changed, it will target by oldId and set the new ID.
-        const actualPayload = idChanged ? { ...updatePayload, id: newId } : updatePayload;
+    const actualPayload = idChanged ? { ...updatePayload, id: newId } : updatePayload;
 
-        const { data, error } = await supabase
-            .from('proforma_invoices')
-            .update({ ...actualPayload, updatedAt: new Date().toISOString() })
-            .eq('id', oldId)
-            .select()
-            .single();
+    const { data, error } = await supabase
+        .from('proforma_invoices')
+        .update({ ...actualPayload, updatedAt: new Date().toISOString() })
+        .eq('id', oldId)
+        .select()
+        .single();
 
-        if (error) {
-            console.error('Error updating proforma invoice:', JSON.stringify(error, null, 2));
-            return null;
+    if (error) throw new Error(error.message);
+
+    if (idChanged && data) {
+        const finalId = data.id;
+        await supabase.from('orders').update({ proformaId: finalId }).eq('proformaId', oldId);
+        await supabase.from('bookings').update({ proforma_invoice_id: finalId }).eq('proforma_invoice_id', oldId);
+        await supabase.from('invoices').update({ proformaId: finalId }).eq('proformaId', oldId);
+    } else if (data) {
+        const { data: finalInvoice } = await supabase.from('invoices').select('id').eq('proformaId', id).single();
+        if (finalInvoice) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { id: _id, invoiceDate: _invoiceDate, signedAtDate: _signedAtDate, signedAtLocation: _signedAtLocation, ...finalInvoiceUpdatePayload } = updates;
+            await supabase.from('invoices').update({ ...finalInvoiceUpdatePayload, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
         }
-
-        if (idChanged && data) {
-            // Cascade update to related tables
-            const finalId = data.id;
-            
-            // 1. Update Orders
-            await supabase.from('orders').update({ proformaId: finalId }).eq('proformaId', oldId);
-            
-            // 2. Update Bookings
-            await supabase.from('bookings').update({ proforma_invoice_id: finalId }).eq('proforma_invoice_id', oldId);
-            
-            // 3. Update Final Invoices
-            await supabase.from('invoices').update({ proformaId: finalId }).eq('proformaId', oldId);
-        } else if (data) {
-            // Sync content changes to the final invoice, excluding fields that belong
-            // exclusively to the invoice and must never be overwritten by the proforma.
-            const { data: finalInvoice } = await supabase.from('invoices').select('id').eq('proformaId', id).single();
-            if (finalInvoice) {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { id: _id, invoiceDate: _invoiceDate, signedAtDate: _signedAtDate, signedAtLocation: _signedAtLocation, ...finalInvoiceUpdatePayload } = updates;
-                await supabase.from('invoices').update({ ...finalInvoiceUpdatePayload, updatedAt: new Date().toISOString() }).eq('id', finalInvoice.id);
-            }
-        }
-        
-        return data as ProformaInvoice | null;
-    } catch (err) {
-        console.error('Unexpected error updating proforma invoice:', err);
-        return null;
     }
+
+    return data as ProformaInvoice | null;
 };
 
 export const deleteProformaInvoice = async (id: string): Promise<boolean> => {
-    try {
-        // Unlink associated orders first
-        const { error: unlinkError } = await supabase
-            .from('orders')
-            .update({ proforma_id: null })
-            .eq('proforma_id', id);
+    // Unlink associated orders (non-critical — log but continue)
+    const { error: unlinkError } = await supabase
+        .from('orders')
+        .update({ proforma_id: null })
+        .eq('proforma_id', id);
+    if (unlinkError) console.error('Error unlinking orders from proforma:', unlinkError.message);
 
-        if (unlinkError) {
-            console.error('Error unlinking orders from proforma:', unlinkError);
-            // We continue even if unlinking fails as the foreign key might not be strict,
-            // or the user still wants to delete the proforma.
-        }
-
-        const { error } = await supabase.from('proforma_invoices').delete().eq('id', id);
-        if (error) {
-            console.error('Error deleting proforma invoice:', error);
-        }
-        return !error;
-    } catch (err) {
-        console.error('Unexpected error deleting proforma invoice:', err);
-        return false;
-    }
+    const { error } = await supabase.from('proforma_invoices').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
 };
 
 export const getLatestProformaNumber = async (): Promise<number> => {

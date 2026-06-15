@@ -5,6 +5,7 @@ import './globals.css';
 import { Providers } from './providers';
 import { MainLayout } from '@/components/layout/main-layout';
 import { AuthProvider } from '@/hooks/useAuth';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -24,13 +25,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased font-sans bg-background`}>
-        <Providers>
-          <AuthProvider>
-            <MainLayout>
-              {children}
-            </MainLayout>
-          </AuthProvider>
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <AuthProvider>
+              <MainLayout>
+                {children}
+              </MainLayout>
+            </AuthProvider>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

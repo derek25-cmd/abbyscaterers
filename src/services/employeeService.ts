@@ -1,6 +1,8 @@
 
 import { supabase } from '@/lib/supabase-client';
 import { Employee } from '@/types';
+import { EmployeeSchema } from '@/lib/schemas';
+import { validate } from '@/lib/service-validation';
 
 export const getEmployees = async (): Promise<Employee[]> => {
     const { data, error } = await supabase.from('employees').select('*');
@@ -12,7 +14,8 @@ export const getEmployees = async (): Promise<Employee[]> => {
 };
 
 export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee | null> => {
-    const { data, error } = await supabase.from('employees').insert([employee]).select();
+    const validated = validate(EmployeeSchema, employee);
+    const { data, error } = await supabase.from('employees').insert([validated]).select();
     if (error) {
         console.error('Error adding employee:', error);
         return null;

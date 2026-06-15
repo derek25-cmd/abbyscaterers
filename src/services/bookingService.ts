@@ -3,7 +3,8 @@
 
 import { supabase } from '@/lib/supabase-client';
 import type { Booking, DailyOrder } from '@/types';
-import type { BookingFormData, DailyOrderFormData } from "@/lib/schemas";
+import { BookingSchema, type BookingFormData, type DailyOrderFormData } from "@/lib/schemas";
+import { validate } from '@/lib/service-validation';
 
 // -------- Bookings --------
 
@@ -19,60 +20,41 @@ export const getBookings = async (): Promise<Booking[]> => {
 };
 
 export const addBooking = async (bookingData: BookingFormData): Promise<Booking | null> => {
+    const validated = validate(BookingSchema, bookingData);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         throw new Error("User must be logged in to create a booking.");
     }
-    
+
     const now = new Date().toISOString();
 
     const bookingPayload = {
       id: `BK-${Date.now()}`,
-      client_id: bookingData.clientId,
+      client_id: validated.clientId,
       user_id: user.id,
-      name: bookingData.name,
-      start_date: bookingData.start_date,
-      end_date: bookingData.end_date,
-      status: bookingData.status,
+      name: validated.name,
+      start_date: validated.start_date,
+      end_date: validated.end_date,
+      status: validated.status,
       created_at: now,
       updated_at: now,
     };
 
-    try {
-        const { data, error } = await supabase.from('bookings').insert([bookingPayload]).select();
-        if (error) throw error;
-        return data?.[0] as Booking;
-    } catch (error) {
-        console.error("Error adding booking:", JSON.stringify(error, null, 2));
-        return null;
-    }
+    const { data, error } = await supabase.from('bookings').insert([bookingPayload]).select();
+    if (error) throw new Error(error.message);
+    return data?.[0] as Booking;
 };
 
 export const updateBooking = async (id: string, updates: Partial<Booking>): Promise<boolean> => {
-    const updatePayload = {
-        ...updates,
-        updated_at: new Date().toISOString()
-    };
-    
-    try {
-        const { error } = await supabase.from('bookings').update(updatePayload).eq('id', id);
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error("Error updating booking:", JSON.stringify(error, null, 2));
-        return false;
-    }
+    const { error } = await supabase.from('bookings').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
 };
 
 export const deleteBooking = async (id: string): Promise<boolean> => {
-    try {
-        const { error } = await supabase.from('bookings').delete().eq('id', id);
-        if (error) throw error;
-        return true;
-    } catch (error) {
-        console.error("Error deleting booking:", JSON.stringify(error, null, 2));
-        return false;
-    }
+    const { error } = await supabase.from('bookings').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
 };
 
 

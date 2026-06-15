@@ -3,44 +3,42 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { StockLog } from "@/types";
-import { 
+import {
   getStockLogs as getAllFromStorage,
   addStockLog as addToStorage,
   updateStockLog as updateInStorage,
   deleteStockLog as deleteFromStorage,
   deleteStockLogs as deleteBulkFromStorage,
 } from '@/services/stockLogService';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorDescription } from '@/lib/service-validation';
 
 export function useStockLogStorage() {
   const [logs, setLogs] = useState<StockLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const refreshLogs = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
-    console.log('[DEBUG StockLogs] Fetching from Supabase...');
     const { data: storedLogs, error } = await getAllFromStorage();
-    
+
     if (error) {
-      console.error('[DEBUG StockLogs] Supabase fetch error:', JSON.stringify(error, null, 2));
       setFetchError(`Failed to load stock logs: ${error.message}`);
       setIsLoading(false);
       return;
     }
 
-    console.log('[DEBUG StockLogs] Raw data from Supabase:', storedLogs);
-    
     const sanitizedLogs = (storedLogs || []).map((log: StockLog) => ({
       ...log,
       quantity: Number(log.quantity) || 0,
       price: Number(log.price) || 0,
     }));
-    
-    const sortedLogs = sanitizedLogs.sort((a: StockLog, b: StockLog) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    console.log('[DEBUG StockLogs] Sanitized & Sorted logs count:', sortedLogs.length);
-    
-    setLogs(sortedLogs);
+
+    setLogs(sanitizedLogs.sort((a: StockLog, b: StockLog) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    ));
     setIsLoading(false);
   }, []);
 
@@ -49,54 +47,70 @@ export function useStockLogStorage() {
   }, [refreshLogs]);
 
   const addStockLog = useCallback(async (data: Omit<StockLog, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const result = await addToStorage(data);
-    if (!result) {
-      throw new Error('Failed to save stock log to database.');
+    try {
+      const result = await addToStorage(data);
+      if (!result) throw new Error('No data returned from database.');
+      refreshLogs();
+      return result;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to save stock log', description: getErrorDescription(err) });
+      return null;
     }
-    refreshLogs();
-    return result;
-  }, [refreshLogs]);
+  }, [refreshLogs, toast]);
 
   const updateStockLog = useCallback(async (id: string, updates: Partial<StockLog>) => {
-    const updatedItem = await updateInStorage(id, updates);
-    if (updatedItem) {
-      refreshLogs(); // Refresh after updating
+    try {
+      const updatedItem = await updateInStorage(id, updates);
+      if (updatedItem) refreshLogs();
+      return updatedItem;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to update stock log', description: getErrorDescription(err) });
+      return null;
     }
-    return updatedItem;
-  }, [refreshLogs]);
+  }, [refreshLogs, toast]);
 
   const deleteStockLog = useCallback(async (id: string) => {
-    const success = await deleteFromStorage(id);
-    if (success) {
-      refreshLogs();
+    try {
+      const success = await deleteFromStorage(id);
+      if (success) refreshLogs();
+      return success;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to delete stock log', description: getErrorDescription(err) });
+      return false;
     }
-    return success;
-  }, [refreshLogs]);
+  }, [refreshLogs, toast]);
 
   const deleteStockLogs = useCallback(async (ids: string[]) => {
-    const success = await deleteBulkFromStorage(ids);
-    if (success) {
-      refreshLogs();
+    try {
+      const success = await deleteBulkFromStorage(ids);
+      if (success) refreshLogs();
+      return success;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to delete stock logs', description: getErrorDescription(err) });
+      return false;
     }
-    return success;
-  }, [refreshLogs]);
+  }, [refreshLogs, toast]);
 
   const bulkUpdateStockLogs = useCallback(async (updates: { id: string, data: Partial<StockLog> }[]) => {
-    for (const update of updates) {
-      await updateInStorage(update.id, update.data);
+    try {
+      for (const update of updates) {
+        await updateInStorage(update.id, update.data);
+      }
+      refreshLogs();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to update stock logs', description: getErrorDescription(err) });
     }
-    refreshLogs();
-  }, [refreshLogs]);
-  
+  }, [refreshLogs, toast]);
+
   const getStockLogById = useCallback((id: string) => {
-     return logs.find(l => l.id === id);
+    return logs.find(l => l.id === id);
   }, [logs]);
 
-  return { 
-    logs, 
+  return {
+    logs,
     isLoading,
     fetchError,
-    addStockLog, 
+    addStockLog,
     updateStockLog,
     bulkUpdateStockLogs,
     deleteStockLog,

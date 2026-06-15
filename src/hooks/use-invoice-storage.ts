@@ -12,10 +12,13 @@ import {
   deleteInvoice as deleteFromStorage,
   getLatestInvoiceNumber
 } from '@/services/invoiceService';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorDescription } from '@/lib/service-validation';
 
 export function useInvoiceStorage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   const refreshInvoices = useCallback(async () => {
     setIsLoading(true);
@@ -29,33 +32,42 @@ export function useInvoiceStorage() {
   }, [refreshInvoices]);
 
   const addInvoice = useCallback(async (data: FinalInvoiceFormData) => {
-    const newItem = await addToStorage(data);
-    if(newItem) {
-        refreshInvoices();
+    try {
+      const newItem = await addToStorage(data);
+      if (newItem) refreshInvoices();
+      return newItem;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to save invoice', description: getErrorDescription(err) });
+      return null;
     }
-    return newItem;
-  }, [refreshInvoices]);
+  }, [refreshInvoices, toast]);
 
   const updateInvoice = useCallback(async (originalId: string, updates: Partial<FinalInvoiceFormData>) => {
-    const success = await updateInStorage(originalId, updates);
-    if (success) {
-      refreshInvoices();
+    try {
+      const result = await updateInStorage(originalId, updates);
+      if (result) refreshInvoices();
+      return result;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to update invoice', description: getErrorDescription(err) });
+      return null;
     }
-    return success;
-  }, [refreshInvoices]);
+  }, [refreshInvoices, toast]);
 
   const deleteInvoice = useCallback(async (id: string) => {
-    const success = await deleteFromStorage(id);
-    if (success) {
-      refreshInvoices();
+    try {
+      const success = await deleteFromStorage(id);
+      if (success) refreshInvoices();
+      return success;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to delete invoice', description: getErrorDescription(err) });
+      return false;
     }
-    return success;
-  }, [refreshInvoices]);
-  
+  }, [refreshInvoices, toast]);
+
   const getInvoiceById = useCallback((id: string) => {
     return invoices.find(i => i.id === id);
   }, [invoices]);
-  
+
   const getInvoiceByProformaId = useCallback((proformaId: string) => {
     return invoices.find(invoice => invoice.proformaId === proformaId);
   }, [invoices]);

@@ -128,7 +128,30 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
     const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "items" });
     
-    const watchedFormValues = form.watch();
+    // Watch only the specific fields rendered in the JSX or used in effects.
+    // form.watch() (no args) subscribes to ALL fields and re-renders on every keystroke,
+    // which freezes the browser when the item list is large.
+    const [
+        wItems, wMultiplyByDays, wNumberOfDays, wServiceCharge, wTransportCosts,
+        wVatType, wStartDate, wEndDate, wServiceFields, wLocation, wSelectedEventType, wCustomEventType
+    ] = form.watch([
+        'items', 'multiplyByDays', 'numberOfDays', 'serviceCharge', 'transportCosts',
+        'vatType', 'startDate', 'endDate', 'serviceFields', 'location', 'selectedEventType', 'customEventType'
+    ]);
+    const watchedFormValues = {
+        items: wItems,
+        multiplyByDays: wMultiplyByDays,
+        numberOfDays: wNumberOfDays,
+        serviceCharge: wServiceCharge,
+        transportCosts: wTransportCosts,
+        vatType: wVatType,
+        startDate: wStartDate,
+        endDate: wEndDate,
+        serviceFields: wServiceFields,
+        location: wLocation,
+        selectedEventType: wSelectedEventType,
+        customEventType: wCustomEventType,
+    };
     const selectedClientId = form.watch('clientId');
     const selectedClient = useMemo(() => selectedClientId ? getClientDetails(selectedClientId) : null, [selectedClientId, getClientDetails]);
     const invoiceStatus = form.watch('status');

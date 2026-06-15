@@ -20,11 +20,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // 20 hours in milliseconds
 const SESSION_TIMEOUT = 72000000;
 
-// If loading hasn't resolved after this many ms, force it to false
-const LOADING_HARD_TIMEOUT = 8000;
-
-// How long to wait after SIGNED_OUT before confirming — covers slow token refreshes
-const SIGNED_OUT_DEBOUNCE = 1200;
+// If the INITIAL_SESSION event hasn't fired within this many ms, unblock the UI anyway.
+// Set high enough for slow networks; PrivateRoute shows a spinner while loading=true.
+const LOADING_HARD_TIMEOUT = 15000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -47,25 +45,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isMounted.current = true;
     let authListener: any = null;
 
-    // Hard timeout: if something hangs, never leave the user stuck on the loading screen.
+    // Safety net: if INITIAL_SESSION never fires (network down, slow device),
+    // unblock the UI so the user isn't stuck on the loading screen forever.
     const hardTimeout = setTimeout(() => {
-      if (isMounted.current && loading) {
-        console.warn('[Auth] Hard timeout reached — clearing loading state.');
+      if (isMounted.current) {
+        console.warn('[Auth] Hard timeout — clearing loading state.');
         setLoading(false);
       }
     }, LOADING_HARD_TIMEOUT);
 
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+    // Use onAuthStateChange as the single source of truth.
+    // Supabase fires INITIAL_SESSION synchronously on subscribe with whatever
+    // session is in localStorage, so there is no race between getSession() and
+    // the listener's first event (the old pattern that caused logout-on-refresh).
+    const { data } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      if (!isMounted.current) return;
 
-        if (!isMounted.current) return;
-
-        // 20-hour force logout — skip calling the full logout() here to avoid
-        // router.push firing before the listener is stable.
-        const authTimestamp = localStorage.getItem('auth_timestamp');
-        if (initialSession && authTimestamp) {
-          if (Date.now() - parseInt(authTimestamp, 10) > SESSION_TIMEOUT) {
+      // ── Initial load ──────────────────────────────────────────────────────
+      if (event === 'INITIAL_SESSION') {
+        if (currentSession) {
+          const authTimestamp = localStorage.getItem('auth_timestamp');
+          if (!authTimestamp) {
+            // First load after this timestamp system was introduced — start the clock.
+            localStorage.setItem('auth_timestamp', Date.now().toString());
+          } else if (Date.now() - parseInt(authTimestamp, 10) > SESSION_TIMEOUT) {
+            // 20-hour window elapsed — force logout.
             localStorage.removeItem('auth_timestamp');
             await supabase.auth.signOut();
             if (isMounted.current) {
@@ -77,82 +81,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             router.push('/login');
             return;
           }
+          setSession(currentSession);
+          setUser(currentSession.user);
+        } else {
+          setSession(null);
+          setUser(null);
         }
-
-        if (isMounted.current) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          setLoading(false);
-        }
+        setLoading(false);
         clearTimeout(hardTimeout);
+        return;
+      }
 
-        // Subscribe to future auth state changes only after init is complete.
-        const { data } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      // ── Sign-in ────────────────────────────────────────────────────────────
+      if (event === 'SIGNED_IN') {
+        localStorage.setItem('auth_timestamp', Date.now().toString());
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setLoading(false);
+        return;
+      }
+
+      // ── Token refresh — extend the 20-hour window ─────────────────────────
+      if (event === 'TOKEN_REFRESHED') {
+        localStorage.setItem('auth_timestamp', Date.now().toString());
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+        }
+        return;
+      }
+
+      // ── Sign-out — verify before acting ──────────────────────────────────
+      // When the browser is under heavy load (large forms, many items) the JS
+      // event loop can delay Supabase's background token refresh past the
+      // refresh deadline, causing a spurious SIGNED_OUT event.  We retry the
+      // session check several times with increasing back-off before committing
+      // to a real logout (total wait: ~3.5 s).
+      if (event === 'SIGNED_OUT') {
+        // Show the loading spinner so PrivateRoute doesn't redirect mid-check.
+        setLoading(true);
+
+        const delays = [500, 1000, 2000];
+        for (const delay of delays) {
+          await new Promise(res => setTimeout(res, delay));
           if (!isMounted.current) return;
 
-          if (event === 'SIGNED_IN') {
-            localStorage.setItem('auth_timestamp', Date.now().toString());
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-            setLoading(false);
-            return;
-          }
-
-          if (event === 'TOKEN_REFRESHED') {
-            // Extend the 20-hour window from the last successful refresh.
-            localStorage.setItem('auth_timestamp', Date.now().toString());
-            if (currentSession) {
-              setSession(currentSession);
-              setUser(currentSession.user);
-              setLoading(false);
-            }
-            return;
-          }
-
-          if (event === 'SIGNED_OUT') {
-            // Hold loading=true during verification to prevent PrivateRoute from
-            // redirecting while a token refresh is completing in the background.
-            setLoading(true);
-
-            // Wait for any in-flight token refresh before concluding the session is gone.
-            await new Promise(res => setTimeout(res, SIGNED_OUT_DEBOUNCE));
-            if (!isMounted.current) return;
-
+          try {
             const { data: { session: verified } } = await supabase.auth.getSession();
             if (verified) {
-              // Race condition — session recovered, this was not a real logout.
+              // Session recovered — this was a token-refresh race, not a real logout.
               setSession(verified);
               setUser(verified.user);
               setLoading(false);
               return;
             }
-
-            // Genuine logout.
-            localStorage.removeItem('auth_timestamp');
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            return;
+          } catch {
+            // Network error during verification — keep retrying.
           }
+        }
 
-          // Catch-all for other events (USER_UPDATED, etc.)
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          setLoading(false);
-        });
-
-        authListener = data;
-      } catch (error) {
-        console.error('[Auth] Initialization error:', error);
-        if (isMounted.current) setLoading(false);
-        clearTimeout(hardTimeout);
+        // All retries exhausted with no session found — genuine logout.
+        if (!isMounted.current) return;
+        localStorage.removeItem('auth_timestamp');
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
       }
-    };
 
-    initializeAuth();
+      // ── Catch-all (USER_UPDATED, PASSWORD_RECOVERY, etc.) ─────────────────
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+      }
+      setLoading(false);
+    });
 
-    // Re-check the session whenever the user returns to the tab.
-    // This catches cases where the token expired while the tab was in the background.
+    authListener = data;
+
+    // Re-check the session when the user switches back to the tab.
+    // This catches tokens that expired while the tab was backgrounded.
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible' || !isMounted.current) return;
       try {
@@ -162,12 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(freshSession);
           setUser(freshSession.user);
         } else {
-          // Only clear if we currently think we're logged in, to avoid
-          // overwriting a login-in-progress.
+          // Only clear if we currently believe the user is logged in, to avoid
+          // overwriting a login that is still in progress.
           setSession(prev => {
-            if (prev) {
-              setUser(null);
-            }
+            if (prev) setUser(null);
             return prev ? null : prev;
           });
         }

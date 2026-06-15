@@ -8,10 +8,13 @@ import {
   createDeliveryNoteFromOrder as createDeliveryNoteInService,
   deleteDeliveryNote as deleteDeliveryNoteFromService,
 } from '@/services/deliveryNoteService';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorDescription } from '@/lib/service-validation';
 
 export function useDeliveryNoteStorage() {
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   const refreshDeliveryNotes = useCallback(async () => {
     setIsLoading(true);
@@ -24,40 +27,46 @@ export function useDeliveryNoteStorage() {
     refreshDeliveryNotes();
   }, [refreshDeliveryNotes]);
 
-  const addDeliveryNote = useCallback(async (order: Order, details: { 
-    vehicleRegNo?: string; 
-    deliveredBy: string; 
+  const addDeliveryNote = useCallback(async (order: Order, details: {
+    vehicleRegNo?: string;
+    deliveredBy: string;
     location: string;
     eventIndex: number;
     items: { qty: number; itemCode: string; description: string; }[];
     is_narration?: boolean;
     narration_text?: string;
   }) => {
-    const newDeliveryNotes = await createDeliveryNoteInService(order, details);
-    if(newDeliveryNotes && newDeliveryNotes.length > 0) {
-      await refreshDeliveryNotes();
+    try {
+      const newDeliveryNotes = await createDeliveryNoteInService(order, details);
+      if (newDeliveryNotes && newDeliveryNotes.length > 0) await refreshDeliveryNotes();
+      return newDeliveryNotes;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to create delivery note', description: getErrorDescription(err) });
+      return null;
     }
-    return newDeliveryNotes;
-  }, [refreshDeliveryNotes]);
+  }, [refreshDeliveryNotes, toast]);
 
   const deleteDeliveryNote = useCallback(async (id: string) => {
-    const success = await deleteDeliveryNoteFromService(id);
-    if (success) {
-      await refreshDeliveryNotes();
+    try {
+      const success = await deleteDeliveryNoteFromService(id);
+      if (success) await refreshDeliveryNotes();
+      return success;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to delete delivery note', description: getErrorDescription(err) });
+      return false;
     }
-    return success;
-  }, [refreshDeliveryNotes]);
-  
+  }, [refreshDeliveryNotes, toast]);
+
   const getDeliveryNoteById = useCallback((id: string) => {
     return deliveryNotes.find(dn => dn.id === id);
   }, [deliveryNotes]);
 
-  return { 
+  return {
     deliveryNotes,
-    isLoading, 
+    isLoading,
     addDeliveryNote,
-    deleteDeliveryNote, 
+    deleteDeliveryNote,
     getDeliveryNoteById,
-    refreshDeliveryNotes 
+    refreshDeliveryNotes
   };
 }

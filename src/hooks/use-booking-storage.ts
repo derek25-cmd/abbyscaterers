@@ -9,10 +9,13 @@ import {
   updateBooking as updateBookingInService,
   deleteBooking as deleteBookingFromService,
 } from '@/services/bookingService';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorDescription } from '@/lib/service-validation';
 
 export function useBookingStorage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   const refreshBookings = useCallback(async () => {
     setIsLoading(true);
@@ -26,40 +29,49 @@ export function useBookingStorage() {
   }, [refreshBookings]);
 
   const addBooking = useCallback(async (bookingData: BookingFormData) => {
-    const newBooking = await addBookingToService(bookingData);
-    if(newBooking) {
-      await refreshBookings();
+    try {
+      const newBooking = await addBookingToService(bookingData);
+      if (newBooking) await refreshBookings();
+      return newBooking;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to save booking', description: getErrorDescription(err) });
+      return null;
     }
-    return newBooking;
-  }, [refreshBookings]);
+  }, [refreshBookings, toast]);
 
   const updateBooking = useCallback(async (id: string, updates: Partial<BookingFormData>) => {
-    const success = await updateBookingInService(id, updates);
-    if (success) {
-      await refreshBookings();
+    try {
+      const success = await updateBookingInService(id, updates);
+      if (success) await refreshBookings();
+      return success;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to update booking', description: getErrorDescription(err) });
+      return false;
     }
-    return success;
-  }, [refreshBookings]);
+  }, [refreshBookings, toast]);
 
   const deleteBooking = useCallback(async (id: string) => {
-    const success = await deleteBookingFromService(id);
-    if (success) {
-      await refreshBookings();
+    try {
+      const success = await deleteBookingFromService(id);
+      if (success) await refreshBookings();
+      return success;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to delete booking', description: getErrorDescription(err) });
+      return false;
     }
-    return success;
-  }, [refreshBookings]);
-  
+  }, [refreshBookings, toast]);
+
   const getBookingById = useCallback((id: string) => {
     return bookings.find(b => b.id === id);
   }, [bookings]);
 
-  return { 
+  return {
     bookings,
-    isLoading, 
-    addBooking, 
-    updateBooking, 
-    deleteBooking, 
+    isLoading,
+    addBooking,
+    updateBooking,
+    deleteBooking,
     getBookingById,
-    refreshBookings 
+    refreshBookings
   };
 }
