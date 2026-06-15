@@ -5,15 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { 
-    Home, 
-    BookOpen, 
-    ClipboardSignature, 
-    ClipboardList, 
-    ChefHat, 
+    Home,
+    BookOpen,
+    ClipboardSignature,
+    ClipboardList,
+    ChefHat,
     FileText,
     Users,
     Settings,
-    Bell,
     DollarSign,
     Calculator,
     Briefcase,
@@ -61,7 +60,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/colla
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { PrivateRoute } from "./private-route";
-import { UpdateBanner } from "./update-banner";
+import { NotificationCenter } from "./notification-center";
 
 
 const navItems = [
@@ -216,7 +215,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden">
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
              <div className="flex items-center gap-2.5 p-2">
@@ -263,10 +262,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="relative">
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full animate-pulse"></span>
-                  </Button>
+                  <NotificationCenter />
                   <UserProfile />
                 </div>
               </div>
@@ -283,15 +279,10 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      <UpdateBanner />
-      <div className="flex-1 overflow-hidden">
-        <SidebarProvider defaultOpen>
-          <LayoutContentWrapper>
-            {children}
-          </LayoutContentWrapper>
-        </SidebarProvider>
-      </div>
-    </div>
+    <SidebarProvider defaultOpen>
+      <LayoutContentWrapper>
+        {children}
+      </LayoutContentWrapper>
+    </SidebarProvider>
   );
 }
