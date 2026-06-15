@@ -16,7 +16,7 @@ import { getLatestProformaNumber } from "@/services/proformaInvoiceService";
 import { getLatestInvoiceNumber } from "@/services/invoiceService";
 import { Slider } from "@/components/ui/slider";
 
-type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
+type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl' | 'proformaStampUrl' | 'invoiceStampUrl';
 type SequenceKey = 'nextOrderNumber' | 'nextProformaNumber' | 'nextInvoiceNumber';
 
 export function SettingsPageComponent() {
@@ -38,6 +38,8 @@ export function SettingsPageComponent() {
         headerUrl: useRef<HTMLInputElement>(null),
         footerUrl: useRef<HTMLInputElement>(null),
         signatureUrl: useRef<HTMLInputElement>(null),
+        proformaStampUrl: useRef<HTMLInputElement>(null),
+        invoiceStampUrl: useRef<HTMLInputElement>(null),
     };
 
     const handleFileChange = async (event: ChangeEvent<HTMLInputElement>, imageKey: ImageKey) => {
@@ -229,10 +231,22 @@ export function SettingsPageComponent() {
                     <CardTitle>Invoice & Proforma Customization</CardTitle>
                     <CardDescription>Upload images to be displayed on your generated PDF documents.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ImageUploader imageKey="headerUrl" label="Header Image" />
-                    <ImageUploader imageKey="footerUrl" label="Footer Image" />
-                    <ImageUploader imageKey="signatureUrl" label="Signature Image" />
+                <CardContent className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <ImageUploader imageKey="headerUrl" label="Header Image" />
+                        <ImageUploader imageKey="footerUrl" label="Footer Image" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold mb-1">Signatures & Stamps</h3>
+                        <p className="text-xs text-muted-foreground mb-4">
+                            Upload PNG images with transparent backgrounds so they layer naturally over document text and lines. A transparent background lets the signature appear as if physically signed on the document.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <ImageUploader imageKey="signatureUrl" label="Signature (shared)" />
+                            <ImageUploader imageKey="proformaStampUrl" label="Proforma Invoice Stamp" />
+                            <ImageUploader imageKey="invoiceStampUrl" label="Invoice Stamp" />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 

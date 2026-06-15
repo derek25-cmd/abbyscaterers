@@ -274,27 +274,39 @@ export function ProformaInvoiceTemplate({ invoiceData, client, showHeaders = tru
                         </tbody>
                     </table>
                     
-                    <div data-pdf-no-break="true" className="text-right my-2 text-base p-2 bg-white rounded">
+                    <div data-pdf-no-break="true" className="text-right mb-2 text-base px-2 pb-2 bg-white rounded">
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div data-pdf-no-break="true" className="flex gap-4 mt-4 mb-4 items-stretch">
+                    <div data-pdf-no-break="true" className="flex gap-4 mt-6 mb-4 items-stretch">
                         <div className="flex-1 border border-gray-800 p-3" style={{ fontSize: '14px' }}>
                             <p className="font-bold mb-1" style={{ fontSize: '14px' }}>Terms &amp; Conditions:</p>
-                            <ul style={{ fontSize: '14px', paddingLeft: '1.25rem', listStyleType: 'disc', listStylePosition: 'outside', margin: 0 }}>
-                                <li style={{ marginBottom: '4px' }}>Purchaser's LPO or Company Purchase Order Letter must be issued.</li>
-                                <li style={{ marginBottom: '4px' }}>Payments shall be by Bank transfer or by Cheque.</li>
-                                <li style={{ marginBottom: '4px' }}>Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.</li>
-                                <li>This Quote/Pro-Forma Invoice is Valid for 30days only.</li>
-                            </ul>
+                            <div style={{ fontSize: '14px', margin: 0 }}>
+                                {[
+                                    "Purchaser's LPO or Company Purchase Order Letter must be issued.",
+                                    "Payments shall be by Bank transfer or by Cheque.",
+                                    "Unless otherwise agreed in writing, payments shall be made within 14 days after the invoice date.",
+                                    "This Quote/Pro-Forma Invoice is Valid for 30days only.",
+                                ].map((text, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: i < 3 ? '4px' : 0 }}>
+                                        <span style={{ flexShrink: 0, lineHeight: '1.4' }}>•</span>
+                                        <span style={{ lineHeight: '1.4' }}>{text}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="border border-gray-800 p-3 text-center overflow-hidden" style={{ fontSize: '14px', minWidth: '220px' }}>
-                            <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
+                        <div className="border border-gray-800 p-3 text-center" style={{ fontSize: '14px', minWidth: '220px', position: 'relative' }}>
+                            {settings.proformaStampUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img alt="Stamp" src={settings.proformaStampUrl} style={{ position: 'absolute', bottom: '18px', right: '4px', width: '120px', height: '120px', objectFit: 'contain', mixBlendMode: 'multiply', zIndex: 10 }} />
+                            )}
+                            <p className="mb-1">For and on behalf of:-</p>
+                            <p className="mb-1 font-semibold" style={{ fontSize: '14px' }}>Abby&apos;s Legendary Caterers Limited</p>
                             {settings.signatureUrl && (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img alt="Signature and Seal" src={settings.signatureUrl} className="block mx-auto mb-2" style={{ maxWidth: '100%', maxHeight: '130px', width: 'auto', height: 'auto' }} />
+                                <img alt="Signature" src={settings.signatureUrl} className="block mx-auto" style={{ maxWidth: '100%', maxHeight: '65px', width: 'auto', height: 'auto', mixBlendMode: 'multiply', position: 'relative', zIndex: 2 }} />
                             )}
-                            <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                            <p style={{ marginTop: settings.signatureUrl ? '-10px' : '30px', fontSize: '14px', position: 'relative', zIndex: 1 }}>Signature: ___________________</p>
                         </div>
                     </div>
                 </div>

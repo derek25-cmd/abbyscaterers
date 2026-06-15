@@ -256,7 +256,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                         <span className="font-bold">Amount in Words:</span> <span className="italic">Tanzania Shillings {convertToWords(grandTotal)} only.</span>
                     </div>
 
-                    <div data-pdf-no-break="true" className="flex gap-4 mt-4 mb-4 items-stretch">
+                    <div data-pdf-no-break="true" className="flex gap-4 mt-6 mb-4 items-stretch">
                         <div className="flex-1 border border-gray-800 p-3" style={{fontSize: '14px'}}>
                             <p className="font-bold mb-1">Please remit your payment to the below Bank details:</p>
                             <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
@@ -269,15 +269,19 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                             </div>
                             <p className="font-bold mt-3 pt-2 text-center uppercase tracking-wide border-t border-gray-400" style={{ fontSize: '10px' }}>We will issue EFD receipt once payment is received</p>
                         </div>
-                        <div className="border border-gray-800 p-3 text-center overflow-hidden" style={{ fontSize: '14px', minWidth: '220px' }}>
+                        <div className="border border-gray-800 p-3 text-center" style={{ fontSize: '14px', minWidth: '220px', position: 'relative' }}>
+                            {settings.invoiceStampUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img alt="Stamp" src={settings.invoiceStampUrl} style={{ position: 'absolute', bottom: '18px', right: '4px', width: '120px', height: '120px', objectFit: 'contain', mixBlendMode: 'multiply', zIndex: 10 }} />
+                            )}
                             <p className="mb-2 text-left" style={{ fontSize: '13px' }}>Signed at {signedAtLocation || 'Dar es Salaam'} on this {signedAtDate ? format(parseISO(signedAtDate), 'do') : '___'} day of {signedAtDate ? format(parseISO(signedAtDate), 'MMMM yyyy') : '_________ ________'}</p>
                             <p className="mb-1">For and on behalf of:-</p>
-                            <p className="mb-2 font-semibold" style={{ fontSize: '14px' }}>Abby's Legendary Caterers Limited</p>
+                            <p className="mb-1 font-semibold" style={{ fontSize: '14px' }}>Abby&apos;s Legendary Caterers Limited</p>
                             {settings.signatureUrl && (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img alt="Signature and Seal" src={settings.signatureUrl} className="block mx-auto mb-0" style={{ maxWidth: '100%', maxHeight: '130px', width: 'auto', height: 'auto' }} />
+                                <img alt="Signature" src={settings.signatureUrl} className="block mx-auto" style={{ maxWidth: '100%', maxHeight: '65px', width: 'auto', height: 'auto', mixBlendMode: 'multiply', position: 'relative', zIndex: 2 }} />
                             )}
-                            <p className="mb-1" style={{ fontSize: '14px' }}>Signature: ___________________</p>
+                            <p style={{ marginTop: settings.signatureUrl ? '-10px' : '30px', fontSize: '14px', position: 'relative', zIndex: 1 }}>Signature: ___________________</p>
                         </div>
                     </div>
                 </div>

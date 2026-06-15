@@ -179,10 +179,15 @@ export function ProformaInvoiceViewPageComponent() {
           // Restore the card to its original responsive style
           if (cardElement) cardElement.style.cssText = savedCardStyle;
 
-          const headerHeight = (headerCanvas && headerCanvas.width > 0) ? (headerCanvas.height * usableWidth) / headerCanvas.width : 0;
+          const headerTopY = 8;
+          const headerGap = 1;
+          const headerHeight = (headerCanvas && headerCanvas.width > 0) ? 96 : 0;
           const footerHeight = (footerCanvas && footerCanvas.width > 0) ? (footerCanvas.height * usableWidth) / footerCanvas.width : 0;
           const footerOnlyTopPad = layout.showFooterOnly ? 70 : 0;
-          const usableContentHeight = Math.max(1, pageHeight - headerHeight - footerHeight - marginTop - footerOnlyTopPad - marginBottom);
+          const contentTopY = (layout.showHeaders || layout.preserveSpace)
+            ? headerTopY + headerHeight + headerGap
+            : marginTop + footerOnlyTopPad;
+          const usableContentHeight = Math.max(1, pageHeight - contentTopY - footerHeight - marginBottom);
 
           const contentImgHeight = (contentCanvas.height * usableWidth) / contentCanvas.width;
 
@@ -211,7 +216,7 @@ export function ProformaInvoiceViewPageComponent() {
               if (pageNumber > 1) pdf.addPage();
 
               if (layout.showHeaders && headerDataURL && headerHeight > 0) {
-                  pdf.addImage(headerDataURL, 'PNG', marginX, marginTop, usableWidth, headerHeight);
+                  pdf.addImage(headerDataURL, 'PNG', marginX, headerTopY, usableWidth, headerHeight);
               }
 
               // Find a safe cut point: if the naive slice end falls inside a no-break
@@ -245,7 +250,7 @@ export function ProformaInvoiceViewPageComponent() {
                   sliceCanvas.toDataURL('image/png', 1.0),
                   'PNG',
                   marginX,
-                  marginTop + ((layout.showHeaders || layout.preserveSpace) ? headerHeight : 0) + footerOnlyTopPad,
+                  contentTopY,
                   usableWidth,
                   sliceHeight
                 );
