@@ -61,6 +61,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/colla
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { PrivateRoute } from "./private-route";
+import { UpdateBanner } from "./update-banner";
 
 
 const navItems = [
@@ -215,7 +216,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
              <div className="flex items-center gap-2.5 p-2">
@@ -282,10 +283,15 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen> 
-      <LayoutContentWrapper> 
-        {children}
-      </LayoutContentWrapper>
-    </SidebarProvider>
+    <div className="flex flex-col h-screen overflow-hidden">
+      <UpdateBanner />
+      <div className="flex-1 overflow-hidden">
+        <SidebarProvider defaultOpen>
+          <LayoutContentWrapper>
+            {children}
+          </LayoutContentWrapper>
+        </SidebarProvider>
+      </div>
+    </div>
   );
 }
