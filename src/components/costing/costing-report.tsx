@@ -260,7 +260,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         ["Total Income from Events", `${incomeFromEvents.toLocaleString()} TZS`],
         ["Miscellaneous Income", `${miscIncome.toLocaleString()} TZS`],
         ["Total Revenue", `${totalIncome.toLocaleString()} TZS`],
-        ["Net Profit/Loss", `${netProfitLoss.toLocaleString()} TZS`],
+        ["Gross Profit/Loss", `${netProfitLoss.toLocaleString()} TZS`],
         ["Costing Margin", `${costingMargin.toFixed(2)}%`],
     ];
     (doc as any).autoTable({
@@ -303,7 +303,7 @@ export const CostingReport = ({ request, onBack, clients, orders, isLoading: par
         doc.text("Regional Performance Breakdown", 14, lastY + 15);
         (doc as any).autoTable({
             theme: 'grid',
-            head: [['Region', 'Revenue', 'Expenses', 'Net Profit/Loss', 'Margin']],
+            head: [['Region', 'Revenue', 'Expenses', 'Gross Profit/Loss', 'Margin']],
             body: Object.values(regionalData).sort((a: any, b: any) => b.revenue - a.revenue).map((r: any) => [
                 r.region,
                 r.revenue.toLocaleString(),

@@ -69,10 +69,10 @@ const CostingSummary = ({ totalIngredientCost, totalIncome, netProfitLoss, forec
         </CardContent>
       </Card>
 
-      {/* Net Profit/Loss */}
+      {/* Gross Profit/Loss */}
       <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Net Profit/Loss</CardTitle>
+          <CardTitle className="text-sm font-medium">Gross Profit/Loss</CardTitle>
           {isProfit ? 
             <TrendingUp className="h-4 w-4 text-green-500" /> : 
             <TrendingDown className="h-4 w-4 text-red-500" />

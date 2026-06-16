@@ -47,7 +47,7 @@ const RegionalComparisonTable = ({ data }: RegionalComparisonTableProps) => {
               <TableHead className="font-bold">Region</TableHead>
               <TableHead className="text-right font-bold">Revenue</TableHead>
               <TableHead className="text-right font-bold">Expenses</TableHead>
-              <TableHead className="text-right font-bold">Net Profit/Loss</TableHead>
+              <TableHead className="text-right font-bold">Gross Profit/Loss</TableHead>
               <TableHead className="text-right font-bold">Margin</TableHead>
             </TableRow>
           </TableHeader>
