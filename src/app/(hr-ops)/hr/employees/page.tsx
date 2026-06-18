@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2, FileDown, FileSpreadsheet } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
@@ -13,6 +13,10 @@ import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeSe
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS } from "@/lib/schemas";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import { format } from "date-fns";
+
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -80,12 +84,123 @@ export default function EmployeesPage() {
     setIsViewEmployeeDialogOpen(true);
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("ABBY'S CATERERS — FULL STAFF DIRECTORY", 14, 18);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
+    doc.text(`Total Employees: ${employees.length}`, 14, 30);
+
+    (doc as any).autoTable({
+      startY: 36,
+      theme: 'grid',
+      head: [['ID', 'Name', 'Department', 'Role', 'Status', 'Email', 'Phone', 'Monthly Salary']],
+      body: employees.map(emp => [
+        emp.id,
+        getFullName(emp),
+        emp.department,
+        emp.role,
+        emp.status,
+        emp.email || '-',
+        emp.phone || '-',
+        emp.monthlySalary ? emp.monthlySalary.toLocaleString() : '-'
+      ]),
+      styles: {
+        font: 'helvetica',
+        fontSize: 12
+      },
+      headStyles: {
+        font: 'helvetica',
+        fontSize: 12,
+        fillColor: [15, 23, 42],
+        textColor: 255
+      }
+    });
+
+    doc.save(`employee-directory-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Employees');
+
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 15 },
+        { header: 'Name', key: 'name', width: 25 },
+        { header: 'Department', key: 'department', width: 15 },
+        { header: 'Role', key: 'role', width: 20 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Email', key: 'email', width: 25 },
+        { header: 'Phone', key: 'phone', width: 15 },
+        { header: 'Monthly Salary', key: 'salary', width: 18 }
+      ];
+
+      employees.forEach(emp => {
+        worksheet.addRow({
+          id: emp.id,
+          name: getFullName(emp),
+          department: emp.department,
+          role: emp.role,
+          status: emp.status,
+          email: emp.email || '-',
+          phone: emp.phone || '-',
+          salary: emp.monthlySalary || 0
+        });
+      });
+
+      // Style all cells to Arial 12
+      worksheet.eachRow((row, rowNumber) => {
+        row.eachCell((cell) => {
+          cell.font = { name: 'Arial', size: 12, bold: rowNumber === 1 };
+          if (rowNumber === 1) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFE2E8F0' } // slate/gray header background
+            };
+            cell.border = {
+              bottom: { style: 'thin' }
+            };
+          }
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employee-directory-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating Excel export:', error);
+    }
+  };
+
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
             <h1 className="font-headline text-2xl font-bold">Employee Records</h1>
             <div className="ml-auto flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExportPDF}>
+                    <FileDown className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Export PDF
+                    </span>
+                </Button>
+                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExportExcel}>
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Export Excel
+                    </span>
+                </Button>
                 <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddEmployeeDialogOpen(true)}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">

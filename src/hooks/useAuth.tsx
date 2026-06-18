@@ -30,15 +30,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const isMounted = useRef(true);
+  const isCheckingSignedOut = useRef(false);
+  const isIntentionalLogout = useRef(false);
 
   const logout = async () => {
+    isIntentionalLogout.current = true;
     localStorage.removeItem('auth_timestamp');
-    await supabase.auth.signOut();
-    if (isMounted.current) {
-      setUser(null);
-      setSession(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('[Auth] Error signing out:', e);
+    } finally {
+      if (isMounted.current) {
+        setUser(null);
+        setSession(null);
+        setLoading(false);
+      }
+      isIntentionalLogout.current = false;
+      router.push('/login');
     }
-    router.push('/login');
   };
 
   useEffect(() => {
@@ -70,15 +80,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('auth_timestamp', Date.now().toString());
           } else if (Date.now() - parseInt(authTimestamp, 10) > SESSION_TIMEOUT) {
             // 20-hour window elapsed — force logout.
+            isIntentionalLogout.current = true;
             localStorage.removeItem('auth_timestamp');
-            await supabase.auth.signOut();
-            if (isMounted.current) {
-              setUser(null);
-              setSession(null);
-              setLoading(false);
+            try {
+              await supabase.auth.signOut();
+            } catch (e) {
+              console.error('[Auth] Error during force logout:', e);
+            } finally {
+              if (isMounted.current) {
+                setUser(null);
+                setSession(null);
+                setLoading(false);
+              }
+              isIntentionalLogout.current = false;
+              clearTimeout(hardTimeout);
+              router.push('/login');
             }
-            clearTimeout(hardTimeout);
-            router.push('/login');
             return;
           }
           setSession(currentSession);
@@ -108,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
         }
+        setLoading(false);
         return;
       }
 
@@ -118,34 +136,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // session check several times with increasing back-off before committing
       // to a real logout (total wait: ~3.5 s).
       if (event === 'SIGNED_OUT') {
-        // Show the loading spinner so PrivateRoute doesn't redirect mid-check.
+        if (isIntentionalLogout.current) {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        if (isCheckingSignedOut.current) {
+          console.log('[Auth] Already checking SIGNED_OUT event, ignoring duplicate event.');
+          return;
+        }
+
+        isCheckingSignedOut.current = true;
         setLoading(true);
 
         const delays = [500, 1000, 2000];
-        for (const delay of delays) {
-          await new Promise(res => setTimeout(res, delay));
-          if (!isMounted.current) return;
+        try {
+          for (const delay of delays) {
+            await new Promise(res => setTimeout(res, delay));
+            if (!isMounted.current) return;
 
-          try {
-            const { data: { session: verified } } = await supabase.auth.getSession();
-            if (verified) {
-              // Session recovered — this was a token-refresh race, not a real logout.
-              setSession(verified);
-              setUser(verified.user);
-              setLoading(false);
-              return;
+            try {
+              const { data: { session: verified } } = await supabase.auth.getSession();
+              if (verified) {
+                // Session recovered — this was a token-refresh race, not a real logout.
+                setSession(verified);
+                setUser(verified.user);
+                setLoading(false);
+                return;
+              }
+            } catch {
+              // Network error during verification — keep retrying.
             }
-          } catch {
-            // Network error during verification — keep retrying.
           }
-        }
 
-        // All retries exhausted with no session found — genuine logout.
-        if (!isMounted.current) return;
-        localStorage.removeItem('auth_timestamp');
-        setSession(null);
-        setUser(null);
-        setLoading(false);
+          // All retries exhausted with no session found — genuine logout.
+          if (!isMounted.current) return;
+          localStorage.removeItem('auth_timestamp');
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+        } finally {
+          isCheckingSignedOut.current = false;
+        }
         return;
       }
 
