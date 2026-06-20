@@ -30,8 +30,9 @@ import {
     Banknote,
     ArrowLeft,
     RefreshCw,
-    GraduationCap
-} from "lucide-react"; 
+    GraduationCap,
+    TrendingUp
+} from "lucide-react";
 import {
   SidebarProvider,
   Sidebar,
@@ -94,6 +95,7 @@ const navItems = [
         { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
         { href: "/operations/assets", label: "Asset Management", icon: Truck },
         { href: "/operations/issuance", label: "Daily Issuance", icon: ClipboardList },
+        { href: "/marketing/dashboard", label: "Marketing & CRM", icon: TrendingUp },
     ]
   },
 ];
