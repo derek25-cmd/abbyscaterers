@@ -290,6 +290,52 @@ export interface MonthlyReportData {
   topCompanies: Company[];
 }
 
+export interface AIFollowUpDraft {
+  draft: string;
+  type: string;
+  language: "english" | "swahili";
+}
+
+export interface AILeadAnalysis {
+  recommendation: "PURSUE" | "PAUSE" | "ABANDON";
+  reasoning: string;
+  nextAction: string;
+}
+
+/** Unified shape for the company Documents tab grid — merges company_documents and visit_documents rows. */
+export interface DocumentRow {
+  id: string;
+  name: string;
+  type: string;
+  path: string;
+  bucket: "visit-photos" | "voice-notes" | "company-documents";
+  uploadedBy: string;
+  createdAt: string;
+}
+
+export interface CompanyImportRowError {
+  row: number;
+  companyName: string;
+  reason: string;
+}
+
+export interface CompanyImportRowWarning {
+  row: number;
+  companyName: string;
+  field: string;
+  message: string;
+}
+
+export interface CompanyImportResult {
+  totalRows: number;
+  imported: number;
+  duplicates: number;
+  skipped: number;
+  warnings: number;
+  errors: CompanyImportRowError[];
+  warningDetails: CompanyImportRowWarning[];
+}
+
 export const SERVICE_OPTIONS = [
   'Corporate Catering',
   'Wedding Catering',

@@ -25,6 +25,7 @@ import { useCreateVisit, useCreateFollowUp, useMarketersList } from "../../hooks
 import { calculateLeadScore, getTierFromScore } from "../../utils/lead-score";
 import { titleCase } from "../../utils/format";
 import { SERVICE_OPTIONS, type FollowUpType, type InterestLevel, type VisitOutcome, type VisitPurpose } from "../../types";
+import { FileUpload } from "../ui/FileUpload";
 
 const VISIT_PURPOSES: VisitPurpose[] = [
   "INTRODUCTION", "FOLLOW_UP", "PROPOSAL_DELIVERY", "QUOTATION_FOLLOW_UP",
@@ -98,6 +99,7 @@ export function VisitForm({
   const createVisit = useCreateVisit();
   const createFollowUp = useCreateFollowUp();
   const [tab, setTab] = useState("details");
+  const [savedVisitId, setSavedVisitId] = useState<string | null>(null);
 
   const form = useForm<VisitFormValues>({
     resolver: zodResolver(visitSchema),
@@ -108,6 +110,7 @@ export function VisitForm({
     if (open) {
       form.reset(DEFAULT_VALUES);
       setTab("details");
+      setSavedVisitId(null);
     }
   }, [open, form]);
 
@@ -138,6 +141,10 @@ export function VisitForm({
   const isSubmitting = createVisit.isPending || createFollowUp.isPending;
 
   const onSubmit = async (values: VisitFormValues) => {
+    if (savedVisitId) {
+      onOpenChange(false);
+      return;
+    }
     try {
       const result = await createVisit.mutateAsync({
         companyId,
@@ -167,8 +174,13 @@ export function VisitForm({
         });
       }
 
-      toast({ title: "Visit logged", description: `Lead score updated to ${result.leadScore}/100.` });
-      onOpenChange(false);
+      toast({ title: "Visit logged", description: `Lead score updated to ${result.leadScore}/100. You can now attach photos or a voice note.` });
+      if (visitId) {
+        setSavedVisitId(visitId);
+        setTab("media");
+      } else {
+        onOpenChange(false);
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Could not log visit", description: error instanceof Error ? error.message : "Please try again." });
     }
@@ -193,10 +205,11 @@ export function VisitForm({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger type="button" value="details">Visit Details</TabsTrigger>
                 <TabsTrigger type="button" value="scoring">Scoring Inputs</TabsTrigger>
                 <TabsTrigger type="button" value="followup">Follow-up</TabsTrigger>
+                <TabsTrigger type="button" value="media" disabled={!savedVisitId}>Media</TabsTrigger>
               </TabsList>
 
               <TabsContent value="details" className="space-y-4 pt-4">
@@ -384,14 +397,59 @@ export function VisitForm({
                   </>
                 )}
               </TabsContent>
+
+              <TabsContent value="media" className="space-y-4 pt-4">
+                {savedVisitId ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">Attach a selfie, gate photo, or voice note for this visit.</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <FileUpload
+                        bucket="visit-photos"
+                        entityType="visit"
+                        entityId={savedVisitId}
+                        documentType="SELFIE"
+                        uploadedBy={form.getValues("marketerId")}
+                        accept="image/jpeg,image/png,image/webp,image/heic"
+                        label="Selfie"
+                      />
+                      <FileUpload
+                        bucket="visit-photos"
+                        entityType="visit"
+                        entityId={savedVisitId}
+                        documentType="GATE_PHOTO"
+                        uploadedBy={form.getValues("marketerId")}
+                        accept="image/jpeg,image/png,image/webp,image/heic"
+                        label="Gate Photo"
+                      />
+                    </div>
+                    <FileUpload
+                      bucket="voice-notes"
+                      entityType="visit"
+                      entityId={savedVisitId}
+                      documentType="VOICE_NOTE"
+                      uploadedBy={form.getValues("marketerId")}
+                      accept="audio/webm,audio/mp4,audio/mpeg,audio/ogg,audio/wav"
+                      label="Voice Note"
+                    />
+                  </>
+                ) : (
+                  <p className="py-8 text-center text-sm text-muted-foreground">Save the visit first to attach media.</p>
+                )}
+              </TabsContent>
             </Tabs>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Log Visit
-              </Button>
+              {savedVisitId ? (
+                <Button type="button" onClick={() => onOpenChange(false)}>Done</Button>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Log Visit
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </form>
         </Form>

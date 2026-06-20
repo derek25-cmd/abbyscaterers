@@ -19,6 +19,7 @@ import { useCreateFollowUp, useMarketersList } from "../../hooks/useMarketingQue
 import { titleCase } from "../../utils/format";
 import type { FollowUpType } from "../../types";
 import { CompanyCombobox } from "./CompanyCombobox";
+import { FollowUpDrafter } from "../ai/FollowUpDrafter";
 
 const FOLLOW_UP_TYPES: FollowUpType[] = [
   "CALL", "EMAIL", "WHATSAPP", "IN_PERSON_VISIT", "SEND_QUOTATION",
@@ -170,6 +171,12 @@ export function FollowUpForm({
                 <FormMessage />
               </FormItem>
             )} />
+
+            <FollowUpDrafter
+              companyId={form.watch("companyId") || undefined}
+              followUpType={form.watch("type")}
+              onUseDraft={(draft) => form.setValue("notes", draft)}
+            />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

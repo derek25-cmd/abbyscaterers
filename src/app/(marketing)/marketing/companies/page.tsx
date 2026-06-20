@@ -8,7 +8,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Building2, Download, Pencil, PlusCircle, Search, SlidersHorizontal, ArrowUpRight } from "lucide-react";
+import { Building2, Download, Pencil, PlusCircle, Search, SlidersHorizontal, ArrowUpRight, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -243,6 +243,11 @@ export default function CompaniesPage() {
           <Badge variant="secondary">{total}</Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/marketing/companies/import">
+              <Upload className="mr-2 h-4 w-4" /> Import CSV
+            </Link>
+          </Button>
           <Button variant="outline" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" /> Export
           </Button>

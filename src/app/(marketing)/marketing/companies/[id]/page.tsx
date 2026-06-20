@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ChevronRight, Pencil, MapPin, Phone, Mail, Briefcase, Building2, FileText, Image as ImageIcon,
-  Mic, Pin, Plus, Loader2, CheckCircle2, Clock, AlertCircle,
+  Mic, Pin, Plus, Loader2, CheckCircle2, Clock, AlertCircle, Sparkles, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,15 +17,18 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/hooks/useAuth";
-import { useCompany, useCompleteFollowUp } from "@/features/marketing/hooks/useMarketingQuery";
+import {
+  useCompany, useCompleteFollowUp, useCompanyDocuments, useSignedUrl, useGenerateVisitSummary, useLeadAnalysis,
+} from "@/features/marketing/hooks/useMarketingQuery";
 import { CompanyForm } from "@/features/marketing/components/forms/CompanyForm";
 import { VisitForm } from "@/features/marketing/components/forms/VisitForm";
 import { FollowUpForm } from "@/features/marketing/components/forms/FollowUpForm";
+import { FileUpload } from "@/features/marketing/components/ui/FileUpload";
 import { getStageMeta } from "@/features/marketing/utils/pipeline";
 import { getTierFromScore } from "@/features/marketing/utils/lead-score";
 import { formatDate, formatDateTime, formatTZS, gpsVerificationTag, isDueToday, isOverdue, titleCase } from "@/features/marketing/utils/format";
 import { useQueryClient } from "@tanstack/react-query";
-import type { FollowUp } from "@/features/marketing/types";
+import type { AILeadAnalysis, DocumentRow, FollowUp } from "@/features/marketing/types";
 
 function ScoreRing({ score }: { score: number }) {
   const tier = getTierFromScore(score);
@@ -49,9 +52,26 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 function DocumentIcon({ type }: { type: string }) {
-  if (type.includes("image") || type.includes("photo") || type.includes("selfie")) return <ImageIcon className="h-5 w-5" />;
-  if (type.includes("audio") || type.includes("voice")) return <Mic className="h-5 w-5" />;
+  const lower = type.toLowerCase();
+  if (lower.includes("voice") || lower.includes("audio")) return <Mic className="h-5 w-5" />;
+  if (lower.includes("photo") || lower.includes("selfie") || lower.includes("image")) return <ImageIcon className="h-5 w-5" />;
   return <FileText className="h-5 w-5" />;
+}
+
+function DocumentCard({ doc }: { doc: DocumentRow }) {
+  const { data: url, isLoading } = useSignedUrl(doc.bucket, doc.path);
+  return (
+    <a
+      href={url ?? undefined}
+      target="_blank"
+      rel="noreferrer"
+      className={`flex flex-col items-center gap-2 rounded-md border p-3 text-center hover:bg-accent ${!url ? "pointer-events-none opacity-60" : ""}`}
+    >
+      <DocumentIcon type={doc.type} />
+      <span className="truncate text-xs">{doc.name}</span>
+      {isLoading ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : <Download className="h-3 w-3 text-muted-foreground" />}
+    </a>
+  );
 }
 
 export default function CompanyDetailPage() {
@@ -60,6 +80,7 @@ export default function CompanyDetailPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: company, isLoading } = useCompany(params.id);
+  const { data: documents } = useCompanyDocuments(params.id);
   const completeFollowUp = useCompleteFollowUp();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -67,6 +88,12 @@ export default function CompanyDetailPage() {
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [visitSummaries, setVisitSummaries] = useState<Record<string, string>>({});
+  const [leadAnalysis, setLeadAnalysis] = useState<AILeadAnalysis | null>(null);
+  const [analysisUnavailable, setAnalysisUnavailable] = useState(false);
+
+  const generateSummary = useGenerateVisitSummary();
+  const leadAnalysisMutation = useLeadAnalysis();
 
   if (isLoading) {
     return (
@@ -107,6 +134,25 @@ export default function CompanyDetailPage() {
       toast({ title: "Follow-up completed" });
     } catch (error) {
       toast({ variant: "destructive", title: "Could not complete follow-up", description: error instanceof Error ? error.message : undefined });
+    }
+  };
+
+  const summariseVisit = async (visitId: string) => {
+    try {
+      const summary = await generateSummary.mutateAsync(visitId);
+      setVisitSummaries((prev) => ({ ...prev, [visitId]: summary }));
+    } catch (error) {
+      toast({ variant: "destructive", title: "AI summary unavailable", description: error instanceof Error ? error.message : "Please try again later." });
+    }
+  };
+
+  const analyseLead = async () => {
+    setAnalysisUnavailable(false);
+    try {
+      const result = await leadAnalysisMutation.mutateAsync(company.id);
+      setLeadAnalysis(result);
+    } catch {
+      setAnalysisUnavailable(true);
     }
   };
 
@@ -211,6 +257,37 @@ export default function CompanyDetailPage() {
           )}
 
           <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="flex items-center gap-1.5 text-sm"><Sparkles className="h-4 w-4 text-primary" /> AI Lead Analysis</CardTitle>
+              <Button size="sm" variant="outline" disabled={leadAnalysisMutation.isPending} onClick={analyseLead}>
+                {leadAnalysisMutation.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+                {leadAnalysis ? "Re-analyse" : "Analyse"}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {analysisUnavailable ? (
+                <p className="text-sm text-muted-foreground">AI analysis is currently unavailable.</p>
+              ) : leadAnalysis ? (
+                <div className="space-y-2 text-sm">
+                  <Badge
+                    className={
+                      leadAnalysis.recommendation === "PURSUE" ? "bg-success/15 text-success"
+                        : leadAnalysis.recommendation === "PAUSE" ? "bg-warning/15 text-warning"
+                        : "bg-destructive/15 text-destructive"
+                    }
+                  >
+                    {leadAnalysis.recommendation}
+                  </Badge>
+                  <p>{leadAnalysis.reasoning}</p>
+                  <p className="font-medium">Next: {leadAnalysis.nextAction}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Get an AI-generated recommendation on whether to pursue this lead.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Competitor Intel</CardTitle></CardHeader>
             <CardContent className="space-y-1 text-sm">
               <p><span className="font-medium">Current caterer:</span> {company.current_caterer ?? "Unknown"}</p>
@@ -253,6 +330,7 @@ export default function CompanyDetailPage() {
           ) : (
             company.visits.map((visit) => {
               const gpsTag = gpsVerificationTag(visit.gps_accuracy_tag);
+              const aiSummary = visitSummaries[visit.id];
               return (
                 <Card key={visit.id}>
                   <CardContent className="space-y-2 p-4">
@@ -267,7 +345,23 @@ export default function CompanyDetailPage() {
                     <p className="text-xs text-muted-foreground">
                       Interest: {visit.interest_level ? titleCase(visit.interest_level) : "—"} · Score: {visit.lead_score ?? "—"}
                     </p>
-                    {visit.notes && <p className="text-sm">{visit.notes}</p>}
+                    {aiSummary ? (
+                      <p className="text-sm">
+                        <Sparkles className="mr-1 inline h-3 w-3 text-primary" />
+                        {aiSummary}
+                      </p>
+                    ) : visit.notes ? (
+                      <p className="text-sm">{visit.notes}</p>
+                    ) : null}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={generateSummary.isPending}
+                      onClick={() => summariseVisit(visit.id)}
+                    >
+                      {generateSummary.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+                      {aiSummary ? "Re-summarise" : "Summarise ✨"}
+                    </Button>
                   </CardContent>
                 </Card>
               );
@@ -287,20 +381,22 @@ export default function CompanyDetailPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="documents" className="space-y-3 pt-4">
-          <div className="flex justify-end">
-            <Button size="sm" variant="outline" disabled title="Coming in Phase 3">Upload Document</Button>
-          </div>
-          {company.documents.length === 0 && company.visitDocuments.length === 0 ? (
+        <TabsContent value="documents" className="space-y-4 pt-4">
+          <FileUpload
+            bucket="company-documents"
+            entityType="company"
+            entityId={company.id}
+            documentType="DOCUMENT"
+            uploadedBy={user?.id ?? company.id}
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            label="Upload a document"
+            onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["marketing", "company-documents", company.id] })}
+          />
+          {!documents || documents.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No documents uploaded yet.</p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[...company.documents, ...company.visitDocuments].map((doc) => (
-                <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 rounded-md border p-3 text-center hover:bg-accent">
-                  <DocumentIcon type={doc.type} />
-                  <span className="truncate text-xs">{doc.name}</span>
-                </a>
-              ))}
+              {documents.map((doc) => <DocumentCard key={doc.id} doc={doc} />)}
             </div>
           )}
         </TabsContent>

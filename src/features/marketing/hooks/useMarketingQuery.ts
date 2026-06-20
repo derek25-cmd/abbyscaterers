@@ -2,10 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authedFetch } from "../api/authed-fetch";
+import type { FollowUpDraftInput } from "../utils/ai";
+import type { UploadBucket } from "../utils/upload";
 import type {
+  AIFollowUpDraft,
+  AILeadAnalysis,
   Company,
   CompanyDetail,
   CompanyFilters,
+  CompanyImportResult,
+  DocumentRow,
   FollowUp,
   MarketerPerformanceRow,
   MarketerLeaderboardRow,
@@ -111,6 +117,24 @@ export function useDashboardData() {
   });
 }
 
+export function useCompanyDocuments(companyId: string | undefined) {
+  return useQuery({
+    queryKey: ["marketing", "company-documents", companyId],
+    queryFn: () => fetchJson<{ data: DocumentRow[] }>(`/api/marketing/companies/${companyId}/documents`).then((r) => r.data),
+    enabled: Boolean(companyId),
+    staleTime: 30_000,
+  });
+}
+
+export function useSignedUrl(bucket: UploadBucket | undefined, path: string | undefined) {
+  return useQuery({
+    queryKey: ["marketing", "signed-url", bucket, path],
+    queryFn: () => fetchJson<{ url: string }>(`/api/marketing/uploads/signed-url?bucket=${bucket}&path=${encodeURIComponent(path!)}`).then((r) => r.url),
+    enabled: Boolean(bucket && path),
+    staleTime: 50 * 60_000, // signed URLs are valid 1 hour server-side; refetch well before they expire
+  });
+}
+
 // ---- Mutations ----
 
 export function useCreateCompany() {
@@ -204,5 +228,73 @@ export function useCreateMarketer() {
       queryClient.invalidateQueries({ queryKey: ["marketing", "marketers"] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "marketers-list"] });
     },
+  });
+}
+
+export function useUploadFile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (formData: FormData) =>
+      fetchJson<{ success: true; data: { id: string; path: string; url: string } }>(`/api/marketing/uploads`, {
+        method: "POST",
+        body: formData,
+      }),
+    onSuccess: (_data, formData) => {
+      const entityType = formData.get("entityType");
+      const entityId = formData.get("entityId");
+      if (entityType === "company") {
+        queryClient.invalidateQueries({ queryKey: ["marketing", "company-documents", entityId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["marketing", "company"] });
+    },
+  });
+}
+
+export function useImportCompanies() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      return fetchJson<{ success: true; data: CompanyImportResult }>(`/api/marketing/companies/import`, {
+        method: "POST",
+        body: formData,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "companies"] });
+    },
+  });
+}
+
+// ---- AI mutations (always optional — callers should degrade gracefully on error) ----
+
+export function useDraftFollowUp() {
+  return useMutation({
+    mutationFn: (input: FollowUpDraftInput) =>
+      fetchJson<{ success: true; data: AIFollowUpDraft }>(`/api/marketing/ai/followup-draft`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }).then((r) => r.data),
+  });
+}
+
+export function useGenerateVisitSummary() {
+  return useMutation({
+    mutationFn: (visitId: string) =>
+      fetchJson<{ success: true; data: { summary: string } }>(`/api/marketing/ai/visit-summary`, {
+        method: "POST",
+        body: JSON.stringify({ visitId }),
+      }).then((r) => r.data.summary),
+  });
+}
+
+export function useLeadAnalysis() {
+  return useMutation({
+    mutationFn: (companyId: string) =>
+      fetchJson<{ success: true; data: AILeadAnalysis }>(`/api/marketing/ai/lead-analysis`, {
+        method: "POST",
+        body: JSON.stringify({ companyId }),
+      }).then((r) => r.data),
   });
 }
