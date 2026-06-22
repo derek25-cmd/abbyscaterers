@@ -234,6 +234,7 @@ export interface CompanyFilters {
   industry?: string;
   visitedFrom?: string;
   visitedTo?: string;
+  isClient?: boolean;
   page?: number;
   limit?: number;
   sort?: string;
@@ -288,6 +289,7 @@ export interface MonthlyReportData {
   lostThisMonth: number;
   teamPerformance: MarketerPerformanceRow[];
   topCompanies: Company[];
+  revenueByIndustry: RevenueByIndustryRow[];
 }
 
 export interface AIFollowUpDraft {
@@ -334,6 +336,215 @@ export interface CompanyImportResult {
   warnings: number;
   errors: CompanyImportRowError[];
   warningDetails: CompanyImportRowWarning[];
+}
+
+export type NotificationType =
+  | 'HOT_LEAD'
+  | 'DEAL_WON'
+  | 'FOLLOWUP_OVERDUE'
+  | 'FOLLOWUP_DUE_TODAY'
+  | 'QUOTATION_REQUESTED'
+  | 'STAGE_CHANGE'
+  | 'MARKETER_INACTIVE';
+
+export interface MarketingNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  companyId?: string;
+  companyName?: string;
+  marketerId?: string;
+  marketerName?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface MarketerLiveLocation {
+  id: string;
+  full_name: string;
+  email: string;
+  last_latitude: number | null;
+  last_longitude: number | null;
+  last_seen_at: string | null;
+  region_id: string | null;
+  region_name: string | null;
+  visits_today: number;
+  last_check_in: string | null;
+}
+
+export interface CompanyMapPin {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  pipeline_stage: PipelineStage;
+  lead_score: number;
+  last_visited_at: string | null;
+  assigned_marketer_id: string | null;
+  marketer_name: string | null;
+  visit_recency: 'visited_today' | 'visited_week' | 'never_visited' | 'not_recent';
+}
+
+export interface HeatmapPoint {
+  lat: number;
+  lng: number;
+  weight: number;
+}
+
+export interface TerritoryCoverage {
+  regionId: string;
+  regionName: string;
+  assigned: number;
+  visitedToday: number;
+  coveragePercent: number;
+}
+
+export interface LiveActivityItem {
+  id: string;
+  marketerName: string;
+  companyName: string;
+  checkInTime: string;
+  gpsVerified: boolean;
+}
+
+export interface MarketingLiveData {
+  marketers: MarketerLiveLocation[];
+  todaysActivity: LiveActivityItem[];
+  territoryCoverage: TerritoryCoverage[];
+}
+
+export interface QuotationPrompt {
+  companyId: string;
+  companyName: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  estimatedValue: number | null;
+  services: string[];
+  createQuotationUrl: string;
+}
+
+export interface WonAlert {
+  companyName: string;
+  estimatedMonthlyValue: number | null;
+  viewBookingsUrl: string;
+}
+
+export interface CacResult {
+  newClients: number;
+  totalExpenses: number | null;
+  cac: number | null;
+  previousMonthCAC: number | null;
+}
+
+export interface RevenueByMarketerRow {
+  marketerName: string;
+  revenue: number;
+}
+
+export interface RevenueByRegionRow {
+  regionName: string;
+  revenue: number;
+}
+
+export interface RevenueByIndustryRow {
+  industry: string;
+  companyCount: number;
+  totalValue: number;
+  avgDealSize: number;
+}
+
+export interface CompetitorRow {
+  name: string;
+  companyCount: number;
+  totalEstimatedValue: number;
+  avgLeadScore: number;
+  industries: string[];
+  recentlyMentioned: number;
+}
+
+export interface MarketingPerformanceSnapshot {
+  id: string;
+  marketer_id: string;
+  month: number;
+  year: number;
+  total_visits: number;
+  verified_visits: number;
+  new_leads: number;
+  hot_leads: number;
+  quotations_requested: number;
+  deals_won: number;
+  follow_ups_completed: number;
+  follow_ups_missed: number;
+  revenue_generated: number;
+  avg_lead_score: number;
+  avg_interest_level: number;
+}
+
+export interface RoiResult {
+  revenueGenerated: number;
+  marketingExpenses: number | null;
+  roiPercent: number | null;
+  paybackMonths: number | null;
+}
+
+export type ApprovalStatus = 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+
+export type DocumentType =
+  | 'NIDA_FRONT'
+  | 'NIDA_BACK'
+  | 'TIN_CERTIFICATE'
+  | 'PROFILE_PHOTO'
+  | 'SUPPORTING_DOCUMENT';
+
+export interface PendingApplication {
+  id: string;
+  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  /** Sourced from google_email in the view. */
+  email: string;
+  google_avatar_url: string | null;
+  phone: string | null;
+  nida_number: string | null;
+  tin_number: string | null;
+  region_id: string | null;
+  region_name: string | null;
+  employment_type: string | null;
+  submitted_at: string;
+  approval_status: ApprovalStatus;
+  onboarding_step: number;
+  document_count: number;
+}
+
+export interface MarketerDocument {
+  id: string;
+  marketer_id: string;
+  document_type: DocumentType;
+  storage_path: string;
+  file_name: string;
+  file_size: number | null;
+  mime_type: string | null;
+  uploaded_at: string;
+  verified: boolean;
+  verified_by: string | null;
+  verified_at: string | null;
+  notes: string | null;
+}
+
+export interface MarketerApprovalLogEntry {
+  id: string;
+  marketer_id: string;
+  action: 'REGISTERED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'REINSTATED';
+  performed_by: string;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface ApplicationDetail {
+  marketer: MarketingUser & Record<string, unknown>;
+  documents: MarketerDocument[];
+  auditLog: MarketerApprovalLogEntry[];
 }
 
 export const SERVICE_OPTIONS = [

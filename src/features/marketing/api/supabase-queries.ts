@@ -11,6 +11,7 @@ import type {
   MonthlyReportData,
   PaginatedResult,
   PipelineMovementRow,
+  RevenueByIndustryRow,
   Visit,
 } from '../types';
 import { buildPipelineFunnel, FUNNEL_STAGES } from '../utils/pipeline';
@@ -128,6 +129,7 @@ export async function getCompanies(client: SupabaseClient, filters: CompanyFilte
   if (filters.industry) query = query.ilike('industry', `%${sanitizeSearchTerm(filters.industry)}%`);
   if (filters.visitedFrom) query = query.gte('last_visited_at', filters.visitedFrom);
   if (filters.visitedTo) query = query.lte('last_visited_at', filters.visitedTo);
+  if (filters.isClient) query = query.eq('pipeline_stage', 'WON');
 
   const { data, error, count } = await query.order(sort, { ascending: order === 'asc' }).range(from, to);
 
@@ -260,7 +262,7 @@ export async function getMonthlyReportData(client: SupabaseClient, month: number
     await Promise.all([
       client.from('visits').select('gps_verified, outcome, company_id').gte('check_in_time', start.toISOString()).lte('check_in_time', end.toISOString()),
       client.from('visits').select('gps_verified, outcome, company_id').gte('check_in_time', prevStart.toISOString()).lte('check_in_time', prevEnd.toISOString()),
-      client.from('companies').select('id, pipeline_stage, estimated_value, created_at, updated_at').gte('updated_at', start.toISOString()).lte('updated_at', end.toISOString()),
+      client.from('companies').select('id, pipeline_stage, estimated_value, industry, created_at, updated_at').gte('updated_at', start.toISOString()).lte('updated_at', end.toISOString()),
       client.from('companies').select('id, pipeline_stage, estimated_value, created_at, updated_at').gte('updated_at', prevStart.toISOString()).lte('updated_at', prevEnd.toISOString()),
       client.from('companies').select('id', { count: 'exact', head: true }).gte('lead_score', 70).is('deleted_at', null),
       client
@@ -297,6 +299,23 @@ export async function getMonthlyReportData(client: SupabaseClient, month: number
   const revenueGenerated = wonCompanies.reduce((sum, c) => sum + (Number(c.estimated_value) || 0), 0);
   const prevRevenueGenerated = prevWonCompanies.reduce((sum, c) => sum + (Number(c.estimated_value) || 0), 0);
 
+  const industryTotals = new Map<string, { companyCount: number; totalValue: number }>();
+  for (const company of wonCompanies as Array<{ industry?: string | null; estimated_value: number | null }>) {
+    const industry = company.industry?.trim() || 'Uncategorised';
+    const entry = industryTotals.get(industry) ?? { companyCount: 0, totalValue: 0 };
+    entry.companyCount += 1;
+    entry.totalValue += Number(company.estimated_value) || 0;
+    industryTotals.set(industry, entry);
+  }
+  const revenueByIndustry: RevenueByIndustryRow[] = Array.from(industryTotals.entries())
+    .map(([industry, { companyCount, totalValue }]) => ({
+      industry,
+      companyCount,
+      totalValue,
+      avgDealSize: companyCount ? Math.round(totalValue / companyCount) : 0,
+    }))
+    .sort((a, b) => b.totalValue - a.totalValue);
+
   return {
     month,
     year,
@@ -322,5 +341,6 @@ export async function getMonthlyReportData(client: SupabaseClient, month: number
     lostThisMonth,
     teamPerformance,
     topCompanies: (topCompaniesRes.data ?? []) as unknown as Company[],
+    revenueByIndustry,
   };
 }

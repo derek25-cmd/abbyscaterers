@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getCompanies } from '@/features/marketing/api/supabase-queries';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 import type { CompanyFilters, PipelineStage } from '@/features/marketing/types';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const client = getRouteClient(request.headers.get('authorization'));
+  const session = await getMarketingSession(request);
   const params = request.nextUrl.searchParams;
   const stageParam = params.get('stage');
 
@@ -14,12 +16,14 @@ export async function GET(request: NextRequest) {
     search: params.get('search') ?? undefined,
     stage: stageParam ? (stageParam.split(',') as PipelineStage[]) : undefined,
     regionId: params.get('regionId') ?? undefined,
-    assignedMarketerId: params.get('assignedMarketerId') ?? undefined,
+    // A marketer only sees companies assigned to them — managers/admins see everything.
+    assignedMarketerId: session?.role === 'MARKETER' ? session.marketerId : params.get('assignedMarketerId') ?? undefined,
     minLeadScore: params.has('minLeadScore') ? Number(params.get('minLeadScore')) : undefined,
     maxLeadScore: params.has('maxLeadScore') ? Number(params.get('maxLeadScore')) : undefined,
     industry: params.get('industry') ?? undefined,
     visitedFrom: params.get('visitedFrom') ?? undefined,
     visitedTo: params.get('visitedTo') ?? undefined,
+    isClient: params.get('isClient') === 'true' ? true : undefined,
     page: params.has('page') ? Number(params.get('page')) : undefined,
     limit: params.has('limit') ? Number(params.get('limit')) : undefined,
     sort: params.get('sort') ?? undefined,

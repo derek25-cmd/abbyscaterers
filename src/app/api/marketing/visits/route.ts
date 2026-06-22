@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 import { calculateLeadScore } from '@/features/marketing/utils/lead-score';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const client = getRouteClient(request.headers.get('authorization'));
+  const session = await getMarketingSession(request);
   const params = request.nextUrl.searchParams;
   const companyId = params.get('companyId');
-  const marketerId = params.get('marketerId');
+  // A marketer can only see their own visits — managers/admins (and callers
+  // not registered in marketing_users) see everything, unrestricted.
+  const marketerId = session?.role === 'MARKETER' ? session.marketerId : params.get('marketerId');
   const page = Math.max(1, Number(params.get('page') ?? '1'));
   const limit = Math.min(100, Math.max(1, Number(params.get('limit') ?? '20')));
   const from = (page - 1) * limit;

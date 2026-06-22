@@ -181,3 +181,62 @@ Abby's Legendary Caterers against them. Return ONLY the summary.`;
   const user = `Competitor: ${competitorName}\nField notes: ${notes}`;
   return callClaude(system, user, 200);
 }
+
+// ── Feature 5: Competitive landscape analysis (across all competitors) ──
+export interface CompetitorInsightInput {
+  name: string;
+  companyCount: number;
+  totalEstimatedValue: number;
+  avgLeadScore: number;
+  industries: string[];
+}
+
+export async function generateCompetitorInsight(competitors: CompetitorInsightInput[]): Promise<string> {
+  const system = `You are a competitive strategy advisor for Abby's Legendary
+Caterers in Dar es Salaam, Tanzania. Analyse the competitive landscape data
+and write one paragraph (3-4 sentences) identifying which competitor poses
+the biggest threat to revenue and a concrete strategic recommendation.
+Return ONLY the paragraph.`;
+
+  const user = competitors
+    .map((c, i) => `${i + 1}. ${c.name} — ${c.companyCount} clients, TZS ${c.totalEstimatedValue.toLocaleString()} at stake, avg lead score ${c.avgLeadScore}, industries: ${c.industries.join(", ") || "unknown"}`)
+    .join("\n");
+
+  return callClaude(system, user, 300);
+}
+
+// ── Feature 6: Monthly report narrative ──────────────────────
+export interface ReportNarrativeInput {
+  month: string;
+  totalVisits: number;
+  newClients: number;
+  revenueGenerated: number;
+  topMarketer: string;
+  topMarketerRevenue: number;
+  topRegion: string;
+  conversionRate: number;
+  cac: number | null;
+  competitorCount: number;
+  vsLastMonth: { visits: number; revenue: number };
+}
+
+export async function generateMonthlyReportNarrative(input: ReportNarrativeInput): Promise<string> {
+  const system = `You are writing a monthly marketing performance summary
+for Abby's Legendary Caterers management in Dar es Salaam, Tanzania.
+Write in professional English. 3-4 sentences. Be specific with numbers.
+Note what went well and what needs attention. End with one recommendation.
+Return only the paragraph, nothing else.`;
+
+  const user = `Month: ${input.month}
+Total field visits: ${input.totalVisits}
+New clients acquired: ${input.newClients}
+Revenue from new clients: TZS ${input.revenueGenerated.toLocaleString()}
+Top performer: ${input.topMarketer} (TZS ${input.topMarketerRevenue.toLocaleString()})
+Best region: ${input.topRegion}
+Pipeline conversion rate: ${input.conversionRate.toFixed(1)}%
+Customer acquisition cost: ${input.cac ? "TZS " + input.cac.toLocaleString() : "not calculated"}
+Active competitors tracked: ${input.competitorCount}
+vs last month: visits ${input.vsLastMonth.visits > 0 ? "+" : ""}${input.vsLastMonth.visits}%, revenue ${input.vsLastMonth.revenue > 0 ? "+" : ""}${input.vsLastMonth.revenue}%`;
+
+  return callClaude(system, user, 300);
+}

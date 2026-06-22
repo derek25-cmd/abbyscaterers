@@ -39,5 +39,45 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (nextStage === 'QUOTATION_REQUESTED') {
+    const { data: latestVisit } = await client
+      .from('visits')
+      .select('services_presented')
+      .eq('company_id', params.id)
+      .order('check_in_time', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return NextResponse.json({
+      data,
+      quotationPrompt: {
+        companyId: data.id,
+        companyName: data.name,
+        contactName: data.contact_name,
+        contactEmail: data.contact_email,
+        estimatedValue: data.estimated_value,
+        services: latestVisit?.services_presented ?? [],
+        // No Quotation module exists in this app — "quotations" are Proforma Invoices,
+        // which key off the separate `clients` table (not `companies`). There is no
+        // FK linking the two, so we link to the creation page without a fake prefill.
+        createQuotationUrl: `/proforma-invoices/new`,
+      },
+    });
+  }
+
+  if (nextStage === 'WON') {
+    return NextResponse.json({
+      data,
+      wonAlert: {
+        companyName: data.name,
+        estimatedMonthlyValue: data.estimated_value,
+        // Bookings also key off the separate `clients` table — no FK to companies exists,
+        // so this links to the bookings list rather than a fabricated prefilled URL.
+        viewBookingsUrl: `/bookings`,
+      },
+    });
+  }
+
   return NextResponse.json({ data });
 }

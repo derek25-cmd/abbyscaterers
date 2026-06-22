@@ -46,6 +46,24 @@ export function getStageMeta(stage: PipelineStage): StageMeta {
   return STAGE_MAP[stage];
 }
 
+/** CSS variable backing each stage's marker colour — resolved at runtime, never hardcoded hex. */
+export const STAGE_COLOR_VAR: Record<PipelineStage, string> = {
+  IDENTIFIED: '--muted-foreground',
+  VISITED: '--secondary-foreground',
+  INTERESTED: '--primary',
+  QUOTATION_REQUESTED: '--warning',
+  NEGOTIATING: '--warning',
+  WON: '--success',
+  LOST: '--destructive',
+};
+
+/** Resolves a `--token` CSS variable (defined as an HSL triplet, e.g. "43 74% 49%") to an `hsl(...)` string Mapbox GL can render. Browser-only — falls back to a neutral grey during SSR. */
+export function resolveStageMapColor(stage: PipelineStage): string {
+  if (typeof document === 'undefined') return 'hsl(0 0% 60%)';
+  const value = getComputedStyle(document.documentElement).getPropertyValue(STAGE_COLOR_VAR[stage]).trim();
+  return value ? `hsl(${value})` : 'hsl(0 0% 60%)';
+}
+
 export function canTransitionTo(current: PipelineStage, next: PipelineStage): boolean {
   if (current === next) return false;
   return VALID_TRANSITIONS[current].includes(next);

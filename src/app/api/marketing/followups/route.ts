@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const client = getRouteClient(request.headers.get('authorization'));
+  const session = await getMarketingSession(request);
   const status = request.nextUrl.searchParams.get('status');
-  const assignedTo = request.nextUrl.searchParams.get('assignedTo');
+  // A marketer can only see their own follow-ups — managers/admins see everything.
+  const assignedTo = session?.role === 'MARKETER' ? session.marketerId : request.nextUrl.searchParams.get('assignedTo');
 
   let query = client
     .from('follow_ups')

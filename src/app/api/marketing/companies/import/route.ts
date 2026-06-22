@@ -60,7 +60,11 @@ export async function POST(request: NextRequest) {
     if (isCsv) {
       await workbook.csv.read(Readable.from(buffer));
     } else {
-      await workbook.xlsx.load(buffer as Buffer);
+      // exceljs's bundled .d.ts declares a stray ambient `interface Buffer extends ArrayBuffer {}`,
+      // which merges into and corrupts the global Buffer type, making it structurally incompatible
+      // with itself at this call site (a known exceljs typings bug). `.load()` accepts a real
+      // Node Buffer at runtime regardless — escape to `any` only for this call to work around it.
+      await (workbook.xlsx as any).load(buffer);
     }
   } catch (error) {
     return NextResponse.json({ error: `Could not parse file: ${error instanceof Error ? error.message : 'unknown error'}` }, { status: 400 });

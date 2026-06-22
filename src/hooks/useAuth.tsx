@@ -12,6 +12,7 @@ interface AuthContextType {
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<any>;
   signUpWithEmail: (email: string, password: string) => Promise<any>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -243,8 +244,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
+  // Redirects to Google, then back to /auth/callback, which exchanges the
+  // PKCE code for a session using this same supabase client instance —
+  // the code_verifier it needs lives in this client's own localStorage.
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) throw error;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithEmail, signUpWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, session, loading, signInWithEmail, signUpWithEmail, signInWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

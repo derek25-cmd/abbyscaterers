@@ -106,3 +106,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Marketing module — Reports page print styles.
+   Scoped with :has() to body:has(.reports-content) so printing elsewhere
+   in the app (invoices, proforma documents, etc.) is unaffected. */
+@media print {
+  body:has(.reports-content) nav,
+  body:has(.reports-content) .MarketingNav,
+  body:has(.reports-content) .NotificationBell,
+  body:has(.reports-content) button {
+    display: none;
+  }
+  body:has(.reports-content) .reports-content {
+    padding: 0;
+  }
+  @page {
+    margin: 2cm;
+  }
+}

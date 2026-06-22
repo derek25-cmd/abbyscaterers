@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, MoveRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, MoveRight, PartyPopper } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,19 +15,23 @@ import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanies, useRegions, useMarketersList, useUpdateStage } from "@/features/marketing/hooks/useMarketingQuery";
 import { FUNNEL_STAGES, getStageMeta, VALID_TRANSITIONS } from "@/features/marketing/utils/pipeline";
 import { getTierFromScore } from "@/features/marketing/utils/lead-score";
 import { formatDate, formatTZS, initials } from "@/features/marketing/utils/format";
-import type { Company, PipelineStage } from "@/features/marketing/types";
+import type { Company, PipelineStage, QuotationPrompt, WonAlert } from "@/features/marketing/types";
 
 export default function PipelinePage() {
   const { toast } = useToast();
+  const router = useRouter();
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [assignedMarketerId, setAssignedMarketerId] = useState<string | undefined>();
   const [regionId, setRegionId] = useState<string | undefined>();
   const [industry, setIndustry] = useState("");
+  const [quotationPrompt, setQuotationPrompt] = useState<QuotationPrompt | null>(null);
+  const [wonAlert, setWonAlert] = useState<WonAlert | null>(null);
 
   const { data: regions } = useRegions();
   const { data: marketers } = useMarketersList();
@@ -51,8 +56,15 @@ export default function PipelinePage() {
 
   const handleMoveStage = async (companyId: string, stage: PipelineStage) => {
     try {
-      await updateStage.mutateAsync({ id: companyId, stage });
-      toast({ title: "Stage updated" });
+      const result = await updateStage.mutateAsync({ id: companyId, stage });
+      if (result.quotationPrompt) {
+        setQuotationPrompt(result.quotationPrompt);
+      } else if (result.wonAlert) {
+        setWonAlert(result.wonAlert);
+        toast({ title: "🎉 New client won!", description: `${result.wonAlert.companyName} is now a client.`, duration: 10_000 });
+      } else {
+        toast({ title: "Stage updated" });
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Invalid stage transition", description: error instanceof Error ? error.message : undefined });
     }
@@ -212,6 +224,55 @@ export default function PipelinePage() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      <Dialog open={Boolean(quotationPrompt)} onOpenChange={(open) => !open && setQuotationPrompt(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create a Quotation?</DialogTitle>
+            <DialogDescription>
+              {quotationPrompt?.companyName} has requested a quotation
+              {quotationPrompt?.estimatedValue ? ` — estimated value ${formatTZS(quotationPrompt.estimatedValue, { compact: true })}` : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This app tracks quotations as Proforma Invoices in a separate client list, so their details aren't
+            linked automatically. Open a new proforma invoice and enter {quotationPrompt?.companyName}'s details
+            below to continue.
+          </p>
+          {quotationPrompt && (
+            <div className="rounded-md border p-3 text-sm">
+              {quotationPrompt.contactName && <p>Contact: {quotationPrompt.contactName}</p>}
+              {quotationPrompt.contactEmail && <p>Email: {quotationPrompt.contactEmail}</p>}
+              {quotationPrompt.services.length > 0 && <p>Services discussed: {quotationPrompt.services.join(", ")}</p>}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuotationPrompt(null)}>Later</Button>
+            <Button onClick={() => { router.push(quotationPrompt!.createQuotationUrl); setQuotationPrompt(null); }}>
+              Create Quotation →
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(wonAlert)} onOpenChange={(open) => !open && setWonAlert(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><PartyPopper className="h-5 w-5 text-primary" /> New Client Won!</DialogTitle>
+            <DialogDescription>
+              {wonAlert?.companyName} is now a client.
+              {wonAlert?.estimatedMonthlyValue ? ` Estimated monthly value: ${formatTZS(wonAlert.estimatedMonthlyValue)}.` : ""}
+              {" "}Set up their first booking?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWonAlert(null)}>Stay in Pipeline</Button>
+            <Button onClick={() => { router.push(wonAlert!.viewBookingsUrl); setWonAlert(null); }}>
+              Go to Bookings →
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

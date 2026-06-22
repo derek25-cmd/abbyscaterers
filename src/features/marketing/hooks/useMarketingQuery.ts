@@ -1,25 +1,42 @@
 "use client";
 
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authedFetch } from "../api/authed-fetch";
-import type { FollowUpDraftInput } from "../utils/ai";
+import { supabase } from "@/lib/supabase-client";
+import { useToast } from "@/hooks/use-toast";
+import type { CompetitorInsightInput, FollowUpDraftInput, ReportNarrativeInput } from "../utils/ai";
 import type { UploadBucket } from "../utils/upload";
 import type {
   AIFollowUpDraft,
   AILeadAnalysis,
+  ApplicationDetail,
+  CacResult,
   Company,
   CompanyDetail,
   CompanyFilters,
   CompanyImportResult,
+  CompanyMapPin,
+  CompetitorRow,
   DocumentRow,
+  PendingApplication,
   FollowUp,
+  HeatmapPoint,
+  MarketerLiveLocation,
   MarketerPerformanceRow,
   MarketerLeaderboardRow,
   MarketingKpis,
+  MarketingLiveData,
+  MarketingNotification,
+  MarketingPerformanceSnapshot,
+  MarketingUserRole,
   MonthlyReportData,
   PaginatedResult,
   PipelineFunnelStage,
   PipelineStage,
+  QuotationPrompt,
+  RoiResult,
+  WonAlert,
 } from "../types";
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -107,6 +124,8 @@ export interface DashboardData {
   pipeline: PipelineFunnelStage[];
   followUps: FollowUp[];
   leaderboard: MarketerLeaderboardRow[];
+  role: MarketingUserRole | null;
+  myPerformance: MarketingPerformanceSnapshot | null;
 }
 
 export function useDashboardData() {
@@ -164,7 +183,10 @@ export function useUpdateStage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, stage }: { id: string; stage: PipelineStage }) =>
-      fetchJson<{ data: Company }>(`/api/marketing/companies/${id}/stage`, { method: "PUT", body: JSON.stringify({ stage }) }),
+      fetchJson<{ data: Company; quotationPrompt?: QuotationPrompt; wonAlert?: WonAlert }>(
+        `/api/marketing/companies/${id}/stage`,
+        { method: "PUT", body: JSON.stringify({ stage }) }
+      ),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["marketing", "companies"] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "company", variables.id] });
@@ -296,5 +318,242 @@ export function useLeadAnalysis() {
         method: "POST",
         body: JSON.stringify({ companyId }),
       }).then((r) => r.data),
+  });
+}
+
+// ---- Live map ----
+
+export function useMarketerLocations() {
+  return useQuery({
+    queryKey: ["marketing", "locations"],
+    queryFn: () => fetchJson<{ data: MarketerLiveLocation[] }>(`/api/marketing/marketers/locations`).then((r) => r.data),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useCompanyMapPins() {
+  return useQuery({
+    queryKey: ["marketing", "map-pins"],
+    queryFn: () => fetchJson<{ data: CompanyMapPin[] }>(`/api/marketing/analytics/map-pins`).then((r) => r.data),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useHeatmapPoints(month: number, year: number, enabled = true) {
+  return useQuery({
+    queryKey: ["marketing", "heatmap", month, year],
+    queryFn: () => fetchJson<{ data: HeatmapPoint[] }>(`/api/marketing/analytics/heatmap?month=${month}&year=${year}`).then((r) => r.data),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLiveData() {
+  return useQuery({
+    queryKey: ["marketing", "live"],
+    queryFn: () => fetchJson<{ data: MarketingLiveData }>(`/api/marketing/analytics/live`).then((r) => r.data),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+}
+
+// ---- Notifications ----
+
+export function useNotifications(includeAll = false) {
+  return useQuery({
+    queryKey: ["marketing", "notifications", includeAll],
+    queryFn: () => fetchJson<{ data: MarketingNotification[] }>(`/api/marketing/notifications?all=${includeAll}`).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useMarkNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { ids?: string[]; all?: boolean }) =>
+      fetchJson<{ success: true }>(`/api/marketing/notifications/read`, { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "notifications"] });
+    },
+  });
+}
+
+// ---- Realtime ----
+
+/** Subscribes to live database changes for the marketing module and keeps React Query caches fresh. Mount once near the top of the marketing route tree. */
+export function useMarketingRealtime() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("marketing-live")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "visits" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["marketing", "dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["marketing", "live"] });
+        queryClient.invalidateQueries({ queryKey: ["marketing", "locations"] });
+        queryClient.invalidateQueries({ queryKey: ["marketing", "company"] });
+      })
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "marketing_users" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["marketing", "locations"] });
+          queryClient.invalidateQueries({ queryKey: ["marketing", "live"] });
+        }
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "companies" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["marketing", "dashboard"] });
+        queryClient.invalidateQueries({ queryKey: ["marketing", "companies"] });
+        queryClient.invalidateQueries({ queryKey: ["marketing", "company"] });
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "follow_ups" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["marketing", "followups"] });
+        queryClient.invalidateQueries({ queryKey: ["marketing", "dashboard"] });
+      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "marketing_notifications" },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: ["marketing", "notifications"] });
+          const notif = payload.new as { type: string; title: string; message: string };
+          if (notif.type === "HOT_LEAD" || notif.type === "DEAL_WON") {
+            toast({ title: notif.title, description: notif.message });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, toast]);
+}
+
+// ---- Phase 5: reports analytics ----
+
+export function useCac(month: number, year: number) {
+  return useQuery({
+    queryKey: ["marketing", "cac", month, year],
+    queryFn: () => fetchJson<{ data: CacResult }>(`/api/marketing/analytics/cac?month=${month}&year=${year}`).then((r) => r.data),
+    staleTime: 60_000,
+  });
+}
+
+export function useSaveExpenses() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { month: number; year: number; totalExpenses: number; notes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/analytics/cac`, { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "cac", variables.month, variables.year] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "roi", variables.month, variables.year] });
+    },
+  });
+}
+
+export function useCompetitors() {
+  return useQuery({
+    queryKey: ["marketing", "competitors"],
+    queryFn: () => fetchJson<{ data: CompetitorRow[] }>(`/api/marketing/analytics/competitors`).then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useRoi(month: number, year: number) {
+  return useQuery({
+    queryKey: ["marketing", "roi", month, year],
+    queryFn: () => fetchJson<{ data: RoiResult }>(`/api/marketing/analytics/roi?month=${month}&year=${year}`).then((r) => r.data),
+    staleTime: 60_000,
+  });
+}
+
+export function useGenerateReportNarrative() {
+  return useMutation({
+    mutationFn: (input: ReportNarrativeInput) =>
+      fetchJson<{ success: true; data: { narrative: string } }>(`/api/marketing/ai/report-narrative`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }).then((r) => r.data.narrative),
+  });
+}
+
+export function useGenerateCompetitorInsight() {
+  return useMutation({
+    mutationFn: (competitors: CompetitorInsightInput[]) =>
+      fetchJson<{ success: true; data: { insight: string } }>(`/api/marketing/ai/competitor-insight`, {
+        method: "POST",
+        body: JSON.stringify({ competitors }),
+      }).then((r) => r.data.insight),
+  });
+}
+
+// ---- Marketer applications (approval workflow) ----
+
+export function usePendingApplications() {
+  return useQuery({
+    queryKey: ["marketing", "applications"],
+    queryFn: () => fetchJson<{ success: true; data: PendingApplication[] }>(`/api/marketing/applications`).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useApplicationDetail(id: string | undefined) {
+  return useQuery({
+    queryKey: ["marketing", "applications", id],
+    queryFn: () => fetchJson<{ success: true; data: ApplicationDetail }>(`/api/marketing/applications/${id}`).then((r) => r.data),
+    enabled: Boolean(id),
+    staleTime: 15_000,
+  });
+}
+
+export function useApplicationDocumentUrl(applicationId: string | undefined, bucket: string, path: string | undefined) {
+  return useQuery({
+    queryKey: ["marketing", "applications", applicationId, "signed-url", bucket, path],
+    queryFn: () =>
+      fetchJson<{ success: true; data: { url: string } }>(
+        `/api/marketing/applications/${applicationId}/documents/signed-url?bucket=${bucket}&path=${encodeURIComponent(path!)}`
+      ).then((r) => r.data.url),
+    enabled: Boolean(applicationId && path),
+    staleTime: 50 * 60_000,
+  });
+}
+
+export function useApproveApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/applications/${id}/approve`, { method: "POST", body: JSON.stringify({ role }) }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "applications"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "applications", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketers-list"] });
+    },
+  });
+}
+
+export function useRejectApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/applications/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "applications"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "applications", variables.id] });
+    },
+  });
+}
+
+export function useRecalculatePerformance() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => fetchJson<{ success: true; timestamp: string }>(`/api/marketing/reports/recalculate`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketers"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "report"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "dashboard"] });
+    },
   });
 }

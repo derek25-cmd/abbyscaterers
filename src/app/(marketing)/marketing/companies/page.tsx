@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanies, useRegions, useMarketersList } from "@/features/marketing/hooks/useMarketingQuery";
 import { CompanyForm } from "@/features/marketing/components/forms/CompanyForm";
@@ -94,6 +95,12 @@ export default function CompaniesPage() {
       header: "Last Visited",
       cell: ({ row }) => row.original.last_visited_at ? formatDate(row.original.last_visited_at, "relative") : <span className="text-muted-foreground">Never</span>,
     },
+    ...(filters.isClient ? [{
+      id: "client_since",
+      header: "Client Since",
+      cell: ({ row }: { row: { original: Company } }) =>
+        row.original.client_since ? formatDate(row.original.client_since, "long") : <span className="text-muted-foreground">—</span>,
+    } as ColumnDef<Company>] : []),
     {
       id: "actions",
       header: "",
@@ -110,7 +117,7 @@ export default function CompaniesPage() {
         </div>
       ),
     },
-  ], []);
+  ], [filters.isClient]);
 
   const table = useReactTable({
     data: companies,
@@ -158,6 +165,14 @@ export default function CompaniesPage() {
 
   const filterPanel = (
     <div className="space-y-4">
+      <div className="flex items-center justify-between rounded-md border p-3">
+        <p className="text-sm font-medium">Clients only</p>
+        <Switch
+          checked={Boolean(filters.isClient)}
+          onCheckedChange={(checked) => { setPage(1); setFilters((p) => ({ ...p, isClient: checked || undefined })); }}
+        />
+      </div>
+
       <div>
         <p className="mb-2 text-sm font-medium">Pipeline stage</p>
         <div className="flex flex-wrap gap-1.5">
