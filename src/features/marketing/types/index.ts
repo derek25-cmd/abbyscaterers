@@ -569,43 +569,43 @@ export const SERVICE_OPTIONS = [
 
 export interface AccountAction {
   id: string;
-  marketerId: string;
+  marketer_id: string;
   action: string;
-  performedBy: string;
-  performedByUser?: { id: string; fullName: string; role: string };
+  performed_by: string;
+  performed_by_user?: { id: string; full_name: string; role: string };
   reason: string | null;
-  internalNotes: string | null;
-  visibleToMarketer: boolean;
-  effectiveFrom: string;
-  effectiveUntil: string | null;
-  revertedAt: string | null;
-  createdAt: string;
+  internal_notes: string | null;
+  visible_to_marketer: boolean;
+  effective_from: string;
+  effective_until: string | null;
+  reverted_at: string | null;
+  created_at: string;
 }
 
 export interface MarketerAccountOverview {
   id: string;
-  fullName: string;
+  full_name: string;
   email: string;
-  googleEmail: string | null;
+  google_email: string | null;
   phone: string | null;
   role: MarketingUserRole;
-  isActive: boolean;
-  approvalStatus: ApprovalStatus;
-  cautionCount: number;
-  lastCautionAt: string | null;
-  disabledReason: string | null;
-  disabledAt: string | null;
-  suspendedUntil: string | null;
-  suspensionReason: string | null;
-  deletedAt: string | null;
-  regionName: string | null;
-  regionId: string | null;
-  visitsThisMonth: number | null;
-  dealsThisMonth: number | null;
-  avgLeadScore: number | null;
-  lastSeenAt: string | null;
-  totalCautions: number;
-  totalDisables: number;
+  is_active: boolean;
+  approval_status: ApprovalStatus;
+  caution_count: number;
+  last_caution_at: string | null;
+  disabled_reason: string | null;
+  disabled_at: string | null;
+  suspended_until: string | null;
+  suspension_reason: string | null;
+  deleted_at: string | null;
+  region_name: string | null;
+  region_id: string | null;
+  visits_this_month: number | null;
+  deals_this_month: number | null;
+  avg_lead_score: number | null;
+  last_seen_at: string | null;
+  total_cautions: number;
+  total_disables: number;
 }
 
 export type AccountActionKey =

@@ -144,16 +144,16 @@ export default function MarketerDetailPage() {
                         <div className={`flex items-center gap-2 font-medium ${color}`}>
                           <Icon className="h-4 w-4" /> {titleCase(entry.action)}
                         </div>
-                        <span className="text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</span>
+                        <span className="text-xs text-muted-foreground">{formatDateTime(entry.created_at)}</span>
                       </div>
-                      {entry.performedByUser && (
-                        <p className="text-xs text-muted-foreground">By {entry.performedByUser.fullName}</p>
+                      {entry.performed_by_user && (
+                        <p className="text-xs text-muted-foreground">By {entry.performed_by_user.full_name}</p>
                       )}
                       {entry.reason && <p className="text-sm">{entry.reason}</p>}
-                      {isManagerViewing && entry.internalNotes && (
+                      {isManagerViewing && entry.internal_notes && (
                         <div className="rounded-md border bg-muted/30 p-2 text-xs">
                           <p className="font-medium text-muted-foreground">Internal notes (visible to managers only)</p>
-                          <p>{entry.internalNotes}</p>
+                          <p>{entry.internal_notes}</p>
                         </div>
                       )}
                     </CardContent>

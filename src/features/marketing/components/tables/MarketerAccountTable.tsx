@@ -27,6 +27,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const STATUS_FILTERS: { value: ApprovalStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "All" },
+  { value: "INCOMPLETE", label: "Incomplete" },
+  { value: "PENDING", label: "Pending" },
   { value: "APPROVED", label: "Active" },
   { value: "CAUTIONED", label: "Cautioned" },
   { value: "RESTRICTED", label: "Restricted" },
@@ -56,10 +58,10 @@ export function MarketerAccountTable() {
 
   const filtered = useMemo(() => {
     return (rows ?? []).filter((row) => {
-      if (statusFilter !== "ALL" && row.approvalStatus !== statusFilter) return false;
+      if (statusFilter !== "ALL" && row.approval_status !== statusFilter) return false;
       if (search) {
         const term = search.toLowerCase();
-        if (!row.fullName.toLowerCase().includes(term) && !row.email.toLowerCase().includes(term)) return false;
+        if (!row.full_name.toLowerCase().includes(term) && !row.email.toLowerCase().includes(term)) return false;
       }
       return true;
     });
@@ -116,31 +118,37 @@ export function MarketerAccountTable() {
             </TableHeader>
             <TableBody>
               {filtered.map((row) => {
-                const statusMeta = ACCOUNT_STATUS_CONFIG[row.approvalStatus];
+                // Defensive fallback — never let an unexpected status value crash the table.
+                const statusMeta = ACCOUNT_STATUS_CONFIG[row.approval_status] ?? ACCOUNT_STATUS_CONFIG.INCOMPLETE;
                 return (
                   <TableRow key={row.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{initials(row.fullName)}</AvatarFallback></Avatar>
+                        <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{initials(row.full_name)}</AvatarFallback></Avatar>
                         <div>
-                          <Link href={`/marketing/marketers/${row.id}`} className="font-medium hover:underline">{row.fullName}</Link>
+                          <Link href={`/marketing/marketers/${row.id}`} className="font-medium hover:underline">{row.full_name}</Link>
                           <p className="text-xs text-muted-foreground">{row.email}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge className={statusMeta.badgeClass}>{statusMeta.label}</Badge>
-                      {row.approvalStatus === "SUSPENDED" && row.suspendedUntil && (
-                        <p className="mt-1 text-xs text-muted-foreground">until {formatDate(row.suspendedUntil, "long")}</p>
+                      {row.approval_status === "SUSPENDED" && row.suspended_until && (
+                        <p className="mt-1 text-xs text-muted-foreground">until {formatDate(row.suspended_until, "long")}</p>
+                      )}
+                      {row.approval_status === "PENDING" && (
+                        <Link href={`/marketing/applications/${row.id}`} className="mt-1 block text-xs text-primary hover:underline">
+                          Review application →
+                        </Link>
                       )}
                     </TableCell>
-                    <TableCell>{row.regionName ?? "—"}</TableCell>
+                    <TableCell>{row.region_name ?? "—"}</TableCell>
                     <TableCell className="text-right text-sm">
-                      {row.visitsThisMonth ?? 0} visits · {row.dealsThisMonth ?? 0} deals
+                      {row.visits_this_month ?? 0} visits · {row.deals_this_month ?? 0} deals
                     </TableCell>
-                    <TableCell className="text-right">{row.cautionCount}</TableCell>
+                    <TableCell className="text-right">{row.caution_count}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {row.lastSeenAt ? formatDate(row.lastSeenAt, "relative") : "Never"}
+                      {row.last_seen_at ? formatDate(row.last_seen_at, "relative") : "Never"}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -180,32 +188,32 @@ export function MarketerAccountTable() {
         <CautionDialog
           open
           onOpenChange={() => setActiveDialog(null)}
-          marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.fullName }}
-          cautionCount={activeDialog.marketer.cautionCount}
+          marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }}
+          cautionCount={activeDialog.marketer.caution_count}
         />
       )}
       {activeDialog?.action === "restrict" && (
-        <RestrictDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.fullName }} />
+        <RestrictDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }} />
       )}
       {activeDialog?.action === "disable" && (
-        <DisableDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.fullName }} />
+        <DisableDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }} />
       )}
       {activeDialog?.action === "suspend" && (
-        <SuspendDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.fullName }} />
+        <SuspendDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }} />
       )}
       {activeDialog?.action === "reinstate" && (
         <ReinstateDialog
           open
           onOpenChange={() => setActiveDialog(null)}
-          marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.fullName }}
-          disabledReason={activeDialog.marketer.disabledReason}
-          disabledAt={activeDialog.marketer.disabledAt}
-          suspensionReason={activeDialog.marketer.suspensionReason}
-          suspendedUntil={activeDialog.marketer.suspendedUntil}
+          marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }}
+          disabledReason={activeDialog.marketer.disabled_reason}
+          disabledAt={activeDialog.marketer.disabled_at}
+          suspensionReason={activeDialog.marketer.suspension_reason}
+          suspendedUntil={activeDialog.marketer.suspended_until}
         />
       )}
       {activeDialog?.action === "delete" && (
-        <DeleteDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.fullName }} />
+        <DeleteDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }} />
       )}
     </div>
   );

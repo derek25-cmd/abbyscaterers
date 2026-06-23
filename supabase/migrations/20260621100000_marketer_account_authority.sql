@@ -382,6 +382,15 @@ LEFT JOIN marketing_performance mp
   ON mp.marketer_id = mu.id
   AND mp.month = EXTRACT(MONTH FROM NOW())::INTEGER
   AND mp.year  = EXTRACT(YEAR FROM NOW())::INTEGER
-WHERE mu.approval_status != 'INCOMPLETE'
-  AND mu.approval_status != 'PENDING'
-ORDER BY mu.full_name ASC;
+-- Intentionally no status filter — this is the comprehensive roster the
+-- web CMS uses to see and monitor every account ever created via the
+-- marketer app, regardless of where it is in the onboarding/approval
+-- funnel. PENDING applications are still reviewed via the dedicated
+-- /marketing/applications flow; they also appear here for visibility.
+ORDER BY
+  CASE mu.approval_status
+    WHEN 'PENDING' THEN 0
+    WHEN 'INCOMPLETE' THEN 1
+    ELSE 2
+  END,
+  mu.full_name ASC;
