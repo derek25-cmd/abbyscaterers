@@ -3,7 +3,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -36,6 +36,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
+import { supabase } from "@/lib/supabase-client";
+import { authedFetch } from "@/features/marketing/api/authed-fetch";
 
 interface ClientFormProps {
   client?: Client; // For editing existing client
@@ -43,6 +45,8 @@ interface ClientFormProps {
 
 export function ClientForm({ client }: ClientFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromCompanyId = searchParams.get("fromCompany");
   const { addClient, updateClient, deleteClient } = useClientStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,6 +89,27 @@ export function ClientForm({ client }: ClientFormProps) {
     }
   }, [client, form]);
 
+  // Prefill from a WON marketing company a manager is approving for the clients database.
+  useEffect(() => {
+    if (client || !fromCompanyId) return;
+    supabase
+      .from("companies")
+      .select("name, contact_name, contact_email, contact_phone, address")
+      .eq("id", fromCompanyId)
+      .maybeSingle()
+      .then(({ data: company }) => {
+        if (!company) return;
+        form.reset({
+          ...form.getValues(),
+          companyName: company.name,
+          companyEmail: company.contact_email ?? "",
+          phoneNumber: company.contact_phone ?? "",
+          address1: company.address ?? "",
+          contacts: company.contact_name ? [{ name: company.contact_name, email: company.contact_email ?? "", phone: company.contact_phone ?? "" }] : [],
+        });
+      });
+  }, [client, fromCompanyId, form]);
+
 
   async function onSubmit(data: ClientFormData) {
     setIsSubmitting(true);
@@ -105,6 +130,16 @@ export function ClientForm({ client }: ClientFormProps) {
       } else {
         const newClientData = await addClient(payload);
         if (newClientData) {
+            if (fromCompanyId) {
+              const linkRes = await authedFetch(`/api/marketing/companies/${fromCompanyId}/link-client`, {
+                method: "POST",
+                body: JSON.stringify({ clientId: newClientData.id }),
+              });
+              if (!linkRes.ok) {
+                const body = await linkRes.json().catch(() => ({}));
+                toast({ variant: "destructive", title: "Client added, but linking to the company failed", description: body.error });
+              }
+            }
             toast({ title: "Client Added", description: `${newClientData.companyName} (ID: ${newClientData.id}) has been added.` });
             router.push("/clients");
         }

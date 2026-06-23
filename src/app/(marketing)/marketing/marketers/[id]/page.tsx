@@ -83,7 +83,10 @@ export default function MarketerDetailPage() {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold">{marketer.full_name}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold">{marketer.full_name}</h2>
+          {marketer.marketer_code && <Badge variant="secondary">{marketer.marketer_code}</Badge>}
+        </div>
         <p className="text-sm text-muted-foreground">{marketer.email} · {marketer.region?.name ?? "No region"}</p>
       </div>
 

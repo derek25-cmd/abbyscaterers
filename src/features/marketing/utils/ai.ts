@@ -240,3 +240,59 @@ vs last month: visits ${input.vsLastMonth.visits > 0 ? "+" : ""}${input.vsLastMo
 
   return callClaude(system, user, 300);
 }
+
+// ── Feature 7: Target performance analysis ───────────────────
+export interface TargetAnalysisInput {
+  subjectName: string; // marketer's full name, or "the whole team" for an OVERALL target
+  periodType: string;
+  startDate: string;
+  endDate: string;
+  daysRemaining: number; // negative if the period has already ended
+  metricGoals: Record<string, number>;
+  metricActuals: Record<string, number>;
+  metricPercentAchieved: Record<string, number>;
+  score: number; // 0-100, computed deterministically before calling this
+  status: "NOT_STARTED" | "IN_PROGRESS" | "ACHIEVED" | "PARTIALLY_ACHIEVED" | "MISSED";
+}
+
+export interface TargetAnalysisResult {
+  narrative: string;
+  recommendation: string;
+}
+
+export async function analyseTargetPerformance(input: TargetAnalysisInput): Promise<TargetAnalysisResult> {
+  const system = `You are a sales performance coach for Abby's Legendary
+Caterers in Dar es Salaam, Tanzania. You are given a target period, the
+goals set, the actual results, and a score that has already been computed
+for you — do not recompute or second-guess the score. Return a JSON object
+only — no markdown, no explanation outside the JSON. The JSON must have
+exactly two fields:
+"narrative" (2-4 sentences explaining performance against each metric,
+specific with numbers),
+"recommendation" (one specific, actionable next step, max 25 words).`;
+
+  const metricLines = Object.keys(input.metricGoals)
+    .map((key) => `- ${key}: goal ${input.metricGoals[key]}, actual ${input.metricActuals[key] ?? 0} (${input.metricPercentAchieved[key] ?? 0}% achieved)`)
+    .join("\n");
+
+  const user = `Subject: ${input.subjectName}
+Period: ${input.periodType} (${input.startDate} to ${input.endDate})
+Days remaining in period: ${input.daysRemaining}
+Computed score: ${input.score}/100
+Computed status: ${input.status}
+
+Metrics:
+${metricLines}`;
+
+  const raw = await callClaude(system, user, 350);
+
+  try {
+    const clean = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch {
+    return {
+      narrative: "Could not generate AI narrative. Please review the metrics above manually.",
+      recommendation: "Review progress against each metric and follow up with the marketer directly.",
+    };
+  }
+}

@@ -60,6 +60,7 @@ export interface MarketingUser {
   email: string;
   phone: string | null;
   role: MarketingUserRole;
+  marketer_code: string | null;
   is_active: boolean;
   region_id: string | null;
   last_latitude: number | null;
@@ -92,6 +93,11 @@ export interface Company {
   qr_code: string | null;
   last_visited_at: string | null;
   client_since: string | null;
+  client_id: string | null;
+  landed_at: string | null;
+  onboarding_requested: boolean;
+  onboarding_requested_at: string | null;
+  onboarding_requested_by: string | null;
   is_active: boolean;
   deleted_at: string | null;
   created_at: string;
@@ -214,14 +220,24 @@ export interface VisitDocument {
   created_at: string;
 }
 
+export interface CompanyCollaborator {
+  id: string;
+  company_id: string;
+  marketer_id: string;
+  added_by: string;
+  created_at: string;
+  marketer?: Pick<MarketingUser, 'id' | 'full_name' | 'marketer_code'> | null;
+}
+
 export interface CompanyDetail extends Company {
   region?: Pick<Region, 'id' | 'name'> | null;
-  marketer?: Pick<MarketingUser, 'id' | 'full_name'> | null;
+  marketer?: Pick<MarketingUser, 'id' | 'full_name' | 'marketer_code'> | null;
   visits: Visit[];
   followUps: FollowUp[];
   notes: CompanyNote[];
   documents: CompanyDocument[];
   visitDocuments: VisitDocument[];
+  collaborators: CompanyCollaborator[];
 }
 
 export interface CompanyFilters {
@@ -608,9 +624,88 @@ export interface MarketerAccountOverview {
   total_disables: number;
 }
 
+export interface DailyReport {
+  id: string;
+  marketer_id: string;
+  report_date: string;
+  narrative: string;
+  visits_count: number;
+  prospects_count: number;
+  quotations_requested_count: number;
+  submitted_at: string;
+  marketer?: { id: string; full_name: string } | null;
+}
+
+export interface DailyReportDraft {
+  date: string;
+  visits: Array<{
+    id: string;
+    interest_level: InterestLevel | null;
+    outcome: VisitOutcome | null;
+    company: { id: string; name: string; pipeline_stage: PipelineStage } | null;
+  }>;
+  visitsCount: number;
+  prospectsCount: number;
+  quotationsRequestedCount: number;
+  existingReport: DailyReport | null;
+}
+
+export type CommissionStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+
+export interface MarketerCommission {
+  id: string;
+  company_id: string | null;
+  marketer_id: string;
+  client_id: string;
+  invoice_id: string;
+  invoice_total: number;
+  commission_rate: number;
+  commission_amount: number;
+  split_count: number;
+  status: CommissionStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  company: { id: string; name: string } | null;
+  marketer: { id: string; full_name: string } | null;
+}
+
+export type TargetScope = 'MARKETER' | 'OVERALL';
+export type TargetPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+export type TargetAnalysisStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'ACHIEVED' | 'PARTIALLY_ACHIEVED' | 'MISSED';
+
+export interface MarketingTarget {
+  id: string;
+  scope: TargetScope;
+  marketer_id: string | null;
+  period_type: TargetPeriodType;
+  start_date: string;
+  end_date: string;
+  metrics: Record<string, number>;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  marketer?: { id: string; full_name: string } | null;
+  latestAnalysis?: TargetAnalysis | null;
+}
+
+export interface TargetAnalysis {
+  id: string;
+  target_id: string;
+  actuals: Record<string, number>;
+  score: number;
+  status: TargetAnalysisStatus;
+  narrative: string | null;
+  recommendation: string | null;
+  analysed_by: string | null;
+  created_at: string;
+}
+
 export type AccountActionKey =
   | 'caution' | 'restrict' | 'lift_restriction' | 'suspend'
-  | 'disable' | 'reinstate' | 'delete';
+  | 'disable' | 'reinstate' | 'delete' | 'purge';
 
 export const ACCOUNT_STATUS_CONFIG: Record<ApprovalStatus, {
   label: string;
@@ -680,6 +775,9 @@ export const ACCOUNT_STATUS_CONFIG: Record<ApprovalStatus, {
     description: 'Account permanently removed',
     badgeClass: 'bg-muted text-muted-foreground',
     dotClass: 'bg-muted-foreground',
-    canPerform: [],
+    // 'purge' is further restricted to role === 'MARKETER' in the UI —
+    // hard-deleting a MANAGER/ADMIN risks destroying other accounts'
+    // audit trails (see permanently_delete_marketer()).
+    canPerform: ['purge'],
   },
 };

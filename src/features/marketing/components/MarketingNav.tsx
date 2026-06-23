@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Building2, GitBranch, ClipboardList, Users, Map, BarChart2, UserCheck } from "lucide-react";
+import { LayoutDashboard, Building2, GitBranch, ClipboardList, Users, Map, BarChart2, UserCheck, FileText, Wallet, NotebookPen, Target } from "lucide-react";
 import { NotificationBell } from "./ui/NotificationBell";
 import { usePendingApplications } from "../hooks/useMarketingQuery";
 
@@ -12,7 +12,11 @@ const marketingNavItems = [
   { href: "/marketing/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/marketing/companies", label: "Companies", icon: Building2 },
   { href: "/marketing/pipeline", label: "Pipeline", icon: GitBranch },
+  { href: "/marketing/quotations", label: "Quotations", icon: FileText },
   { href: "/marketing/followups", label: "Follow-ups", icon: ClipboardList },
+  { href: "/marketing/daily-reports", label: "Daily Reports", icon: NotebookPen },
+  { href: "/marketing/commissions", label: "Commissions", icon: Wallet },
+  { href: "/marketing/targets", label: "Targets", icon: Target },
   { href: "/marketing/marketers", label: "Marketers", icon: Users },
   { href: "/marketing/applications", label: "Applications", icon: UserCheck },
   { href: "/marketing/map", label: "Map", icon: Map },

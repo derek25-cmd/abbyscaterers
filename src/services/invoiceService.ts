@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase-client';
 import type { Invoice } from '@/types';
 import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
 import { validate } from '@/lib/service-validation';
+import { resyncCommissionForInvoice, voidCommissionForInvoice, renameInvoiceIdForCommission, recordCommissionForInvoice } from '@/features/marketing/utils/commission';
 
 export const getInvoices = async (): Promise<Invoice[]> => {
     const { data, error } = await supabase.from('invoices').select('*');
@@ -39,6 +40,9 @@ export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Inv
         if (proformaError) console.error("Error marking proforma as invoiced:", proformaError.message);
     }
 
+    // Marketer commission (non-critical — log but don't block invoice creation)
+    recordCommissionForInvoice(data as Invoice).catch((err) => console.error('Error recording commission:', err));
+
     return data as Invoice;
 };
 
@@ -57,6 +61,13 @@ export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFor
         .single();
 
     if (error) throw new Error(error.message);
+
+    // Marketer commission (non-critical — log but don't block invoice update)
+    (async () => {
+        if (idChanged) await renameInvoiceIdForCommission(oldId, newId as string);
+        await resyncCommissionForInvoice(data as Invoice);
+    })().catch((err) => console.error('Error resyncing commission:', err));
+
     return data as Invoice;
 };
 
@@ -75,6 +86,10 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
 
     const { error: deleteError } = await supabase.from('invoices').delete().eq('id', id);
     if (deleteError) throw new Error(deleteError.message);
+
+    // Marketer commission (non-critical — log but don't block invoice deletion)
+    voidCommissionForInvoice(id).catch((err) => console.error('Error voiding commission:', err));
+
     return true;
 };
 

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ChevronRight, Pencil, MapPin, Phone, Mail, Briefcase, Building2, FileText, Image as ImageIcon,
-  Mic, Pin, Plus, Loader2, CheckCircle2, Clock, AlertCircle, Sparkles, Download,
+  Mic, Pin, Plus, Loader2, CheckCircle2, Clock, AlertCircle, Sparkles, Download, Users, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +14,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase-client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useCompany, useCompleteFollowUp, useCompanyDocuments, useSignedUrl, useGenerateVisitSummary, useLeadAnalysis,
+  useMyMarketingProfile, useAddCollaborator, useRemoveCollaborator,
 } from "@/features/marketing/hooks/useMarketingQuery";
+import { isManager } from "@/features/marketing/utils/auth";
 import { CompanyForm } from "@/features/marketing/components/forms/CompanyForm";
 import { VisitForm } from "@/features/marketing/components/forms/VisitForm";
 import { FollowUpForm } from "@/features/marketing/components/forms/FollowUpForm";
@@ -76,10 +80,12 @@ function DocumentCard({ doc }: { doc: DocumentRow }) {
 
 export default function CompanyDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: company, isLoading } = useCompany(params.id);
+  const { data: myProfile } = useMyMarketingProfile();
   const { data: documents } = useCompanyDocuments(params.id);
   const completeFollowUp = useCompleteFollowUp();
 
@@ -94,6 +100,8 @@ export default function CompanyDetailPage() {
 
   const generateSummary = useGenerateVisitSummary();
   const leadAnalysisMutation = useLeadAnalysis();
+  const addCollaborator = useAddCollaborator();
+  const removeCollaborator = useRemoveCollaborator();
 
   if (isLoading) {
     return (
@@ -134,6 +142,25 @@ export default function CompanyDetailPage() {
       toast({ title: "Follow-up completed" });
     } catch (error) {
       toast({ variant: "destructive", title: "Could not complete follow-up", description: error instanceof Error ? error.message : undefined });
+    }
+  };
+
+  const addCollaboratorTo = async (marketerCode: string) => {
+    try {
+      const result = await addCollaborator.mutateAsync({ companyId: company.id, marketerCode });
+      const addedName = (result as { data?: { marketer?: { full_name?: string } } })?.data?.marketer?.full_name;
+      toast({ title: addedName ? `${addedName} added as a collaborator` : "Collaborator added" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Could not add collaborator", description: error instanceof Error ? error.message : undefined });
+    }
+  };
+
+  const removeCollaboratorFrom = async (marketerId: string) => {
+    try {
+      await removeCollaborator.mutateAsync({ companyId: company.id, marketerId });
+      toast({ title: "Collaborator removed" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Could not remove collaborator", description: error instanceof Error ? error.message : undefined });
     }
   };
 
@@ -193,8 +220,29 @@ export default function CompanyDetailPage() {
             <Pencil className="mr-2 h-4 w-4" /> Edit
           </Button>
           <Button onClick={() => setVisitOpen(true)}>Log Visit</Button>
+          {myProfile && isManager(myProfile.role) && company.pipeline_stage === "WON" && !company.client_id && (
+            <Button variant="secondary" onClick={() => router.push(`/clients/new?fromCompany=${company.id}`)}>
+              Approve as Client
+            </Button>
+          )}
         </div>
       </div>
+
+      {company.onboarding_requested && !company.client_id && (
+        <p className="text-sm text-warning">
+          ⚑ The marketer has flagged this company as ready to be onboarded into the client database
+          {company.onboarding_requested_at ? ` (${formatDate(company.onboarding_requested_at)})` : ""}.
+          {myProfile && isManager(myProfile.role) && company.pipeline_stage === "WON" ? " Use \"Approve as Client\" above to start commissions." : ""}
+        </p>
+      )}
+
+      {company.pipeline_stage === "WON" && company.client_id && (
+        <p className="text-sm text-success">
+          ✓ Linked to client <Link href={`/clients/${company.client_id}`} className="font-medium hover:underline">{company.client_id}</Link>
+          {company.landed_at ? ` since ${formatDate(company.landed_at)}` : ""} — commission tracking is active for{" "}
+          {company.assigned_marketer_id ? "the assigned marketer" : "no marketer (none assigned)"}.
+        </p>
+      )}
 
       {scoreFactors.length > 0 && (
         <Card>
@@ -243,6 +291,15 @@ export default function CompanyDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          <CollaboratorsCard
+            company={company}
+            myProfile={myProfile}
+            onAdd={addCollaboratorTo}
+            onRemove={removeCollaboratorFrom}
+            adding={addCollaborator.isPending}
+            removing={removeCollaborator.isPending}
+          />
 
           {company.latitude && company.longitude && (
             <Card>
@@ -406,6 +463,69 @@ export default function CompanyDetailPage() {
       <VisitForm open={visitOpen} onOpenChange={setVisitOpen} companyId={company.id} companyName={company.name} />
       <FollowUpForm open={followUpOpen} onOpenChange={setFollowUpOpen} companyId={company.id} companyName={company.name} />
     </div>
+  );
+}
+
+function CollaboratorsCard({
+  company, myProfile, onAdd, onRemove, adding, removing,
+}: {
+  company: import("@/features/marketing/types").CompanyDetail;
+  myProfile: { id: string; role: import("@/features/marketing/types").MarketingUserRole } | null | undefined;
+  onAdd: (marketerCode: string) => void;
+  onRemove: (marketerId: string) => void;
+  adding: boolean;
+  removing: boolean;
+}) {
+  const [code, setCode] = useState("");
+  const canManage = Boolean(myProfile && (isManager(myProfile.role) || myProfile.id === company.assigned_marketer_id));
+
+  return (
+    <Card className="sm:col-span-2">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-1.5 text-sm"><Users className="h-4 w-4" /> Collaborators</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          {company.marketer?.full_name ?? "Unassigned"} ({company.marketer?.marketer_code ?? "—"}) landed this company.
+          {company.collaborators.length > 0 && " Commission is split equally among everyone listed here."}
+        </p>
+        {company.collaborators.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No collaborators added — full commission goes to the assigned marketer.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2">
+            {company.collaborators.map((c) => (
+              <li key={c.id}>
+                <Badge variant="secondary" className="gap-1.5 pr-1">
+                  {c.marketer?.full_name ?? "Unknown"} {c.marketer?.marketer_code ? <span className="text-muted-foreground">· {c.marketer.marketer_code}</span> : null}
+                  {canManage && (
+                    <button onClick={() => onRemove(c.marketer_id)} disabled={removing} className="rounded-full hover:bg-background/50">
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+        {canManage && (
+          <div className="flex gap-2">
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Collaborator ID (e.g. MKT-0001)"
+              className="h-9 flex-1"
+            />
+            <Button
+              size="sm"
+              disabled={!code.trim() || adding}
+              onClick={() => { onAdd(code.trim()); setCode(""); }}
+            >
+              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

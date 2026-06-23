@@ -19,11 +19,14 @@ import type {
   CompanyImportResult,
   CompanyMapPin,
   CompetitorRow,
+  DailyReport,
+  DailyReportDraft,
   DocumentRow,
   PendingApplication,
   FollowUp,
   HeatmapPoint,
   MarketerAccountOverview,
+  MarketerCommission,
   MarketerLiveLocation,
   MarketerPerformanceRow,
   MarketerLeaderboardRow,
@@ -32,12 +35,14 @@ import type {
   MarketingNotification,
   MarketingPerformanceSnapshot,
   MarketingUserRole,
+  MarketingTarget,
   MonthlyReportData,
   PaginatedResult,
   PipelineFunnelStage,
   PipelineStage,
   QuotationPrompt,
   RoiResult,
+  TargetAnalysis,
   WonAlert,
 } from "../types";
 
@@ -75,6 +80,24 @@ export function useCompany(id: string | undefined) {
     queryFn: () => fetchJson<{ data: CompanyDetail }>(`/api/marketing/companies/${id}`).then((r) => r.data),
     enabled: Boolean(id),
     staleTime: 15_000,
+  });
+}
+
+export function useAddCollaborator() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ companyId, marketerCode }: { companyId: string; marketerCode: string }) =>
+      fetchJson(`/api/marketing/companies/${companyId}/collaborators`, { method: "POST", body: JSON.stringify({ marketerCode }) }),
+    onSuccess: (_data, variables) => queryClient.invalidateQueries({ queryKey: ["marketing", "company", variables.companyId] }),
+  });
+}
+
+export function useRemoveCollaborator() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ companyId, marketerId }: { companyId: string; marketerId: string }) =>
+      fetchJson(`/api/marketing/companies/${companyId}/collaborators/${marketerId}`, { method: "DELETE" }),
+    onSuccess: (_data, variables) => queryClient.invalidateQueries({ queryKey: ["marketing", "company", variables.companyId] }),
   });
 }
 
@@ -189,6 +212,23 @@ export function useUpdateStage() {
         `/api/marketing/companies/${id}/stage`,
         { method: "PUT", body: JSON.stringify({ stage }) }
       ),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "companies"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "company", variables.id] });
+    },
+  });
+}
+
+/** Links a WON company to a real `clients` row so commission tracking has
+ * a landed_at date to measure the 1%/0.5% rate step from. */
+export function useLinkCompanyToClient() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, clientId }: { id: string; clientId: string }) =>
+      fetchJson<{ data: Company }>(`/api/marketing/companies/${id}/link-client`, {
+        method: "POST",
+        body: JSON.stringify({ clientId }),
+      }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["marketing", "companies"] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "company", variables.id] });
@@ -665,5 +705,132 @@ export function useDeleteMarketer() {
         body: JSON.stringify({ reason, internalNotes, confirmName }),
       }),
     onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+/** Permanently removes an already soft-deleted marketer: the marketing_users
+ * row, every linked visit/follow-up/performance/notification/audit record,
+ * and the Supabase Auth login. Irreversible — only callable once an account
+ * is already in the DELETED state. */
+export function usePurgeMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, confirmPhrase }: { id: string; reason: string; confirmPhrase: string }) =>
+      fetchJson<{ success: true; warnings?: string[] }>(`/api/marketing/marketers/${id}/purge`, {
+        method: "POST",
+        body: JSON.stringify({ reason, confirmPhrase }),
+      }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+// ---- Commissions ----
+
+export function useCommissions(status?: string) {
+  return useQuery({
+    queryKey: ["marketing", "commissions", status],
+    queryFn: () => fetchJson<{ data: MarketerCommission[] }>(`/api/marketing/commissions${status ? `?status=${status}` : ""}`).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useApproveCommission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetchJson<{ data: MarketerCommission }>(`/api/marketing/commissions/${id}/approve`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "commissions"] }),
+  });
+}
+
+export function useRejectCommission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      fetchJson<{ data: MarketerCommission }>(`/api/marketing/commissions/${id}/reject`, { method: "POST", body: JSON.stringify({ notes }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "commissions"] }),
+  });
+}
+
+// ---- Daily reports ----
+
+/** Auto-compiled visit summary for the calling marketer on a given date,
+ * plus the report already submitted for that date (if any). */
+export function useDailyReportDraft(date?: string) {
+  return useQuery({
+    queryKey: ["marketing", "daily-report-draft", date],
+    queryFn: () => fetchJson<DailyReportDraft>(`/api/marketing/daily-reports/draft${date ? `?date=${date}` : ""}`),
+    staleTime: 30_000,
+  });
+}
+
+export function useDailyReports(filters: { marketerId?: string; dateFrom?: string; dateTo?: string } = {}) {
+  return useQuery({
+    queryKey: ["marketing", "daily-reports", filters],
+    queryFn: () => fetchJson<{ data: DailyReport[] }>(`/api/marketing/daily-reports?${buildParams(filters)}`).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useSubmitDailyReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportDate, narrative }: { reportDate: string; narrative: string }) =>
+      fetchJson<{ data: DailyReport }>(`/api/marketing/daily-reports`, { method: "POST", body: JSON.stringify({ reportDate, narrative }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "daily-report-draft"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "daily-reports"] });
+    },
+  });
+}
+
+// ---- Targets ----
+
+export function useTargets(filters: { marketerId?: string; scope?: string; periodType?: string; active?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["marketing", "targets", filters],
+    queryFn: () => fetchJson<{ data: MarketingTarget[] }>(`/api/marketing/targets?${buildParams(filters)}`).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateTarget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      scope: "MARKETER" | "OVERALL";
+      marketerId?: string;
+      periodType: string;
+      startDate: string;
+      endDate: string;
+      metrics: Record<string, number>;
+      notes?: string;
+    }) => fetchJson<{ data: MarketingTarget }>(`/api/marketing/targets`, { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "targets"] }),
+  });
+}
+
+export function useUpdateTarget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...updates }: { id: string; startDate?: string; endDate?: string; metrics?: Record<string, number>; notes?: string }) =>
+      fetchJson<{ data: MarketingTarget }>(`/api/marketing/targets/${id}`, { method: "PATCH", body: JSON.stringify(updates) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "targets"] }),
+  });
+}
+
+export function useDeleteTarget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetchJson<{ success: boolean }>(`/api/marketing/targets/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "targets"] }),
+  });
+}
+
+export function useAnalyseTarget() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targetId: string) =>
+      fetchJson<{ data: TargetAnalysis }>(`/api/marketing/targets/${targetId}/analyse`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "targets"] }),
   });
 }

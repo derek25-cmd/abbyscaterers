@@ -144,7 +144,7 @@ export async function getCompanies(client: SupabaseClient, filters: CompanyFilte
 export async function getCompanyDetail(client: SupabaseClient, id: string): Promise<CompanyDetail | null> {
   const { data: company, error } = await client
     .from('companies')
-    .select('*, region:regions(id, name), marketer:marketing_users(id, full_name)')
+    .select('*, region:regions(id, name), marketer:marketing_users(id, full_name, marketer_code)')
     .eq('id', id)
     .maybeSingle();
 
@@ -153,7 +153,7 @@ export async function getCompanyDetail(client: SupabaseClient, id: string): Prom
     return null;
   }
 
-  const [visitsRes, followUpsRes, notesRes, documentsRes] = await Promise.all([
+  const [visitsRes, followUpsRes, notesRes, documentsRes, collaboratorsRes] = await Promise.all([
     client.from('visits').select('*').eq('company_id', id).order('check_in_time', { ascending: false }),
     client
       .from('follow_ups')
@@ -167,6 +167,11 @@ export async function getCompanyDetail(client: SupabaseClient, id: string): Prom
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false }),
     client.from('company_documents').select('*').eq('company_id', id).order('created_at', { ascending: false }),
+    client
+      .from('company_collaborators')
+      .select('*, marketer:marketing_users(id, full_name, marketer_code)')
+      .eq('company_id', id)
+      .order('created_at', { ascending: true }),
   ]);
 
   const visits = visitsRes.data ?? [];
@@ -185,6 +190,7 @@ export async function getCompanyDetail(client: SupabaseClient, id: string): Prom
     notes: notesRes.data ?? [],
     documents: documentsRes.data ?? [],
     visitDocuments: visitDocumentsRes.data ?? [],
+    collaborators: (collaboratorsRes.data ?? []) as unknown as CompanyDetail['collaborators'],
   };
 }
 

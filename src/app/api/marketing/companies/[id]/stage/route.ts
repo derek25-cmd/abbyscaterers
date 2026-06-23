@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 import { canTransitionTo } from '@/features/marketing/utils/pipeline';
 import type { PipelineStage } from '@/features/marketing/types';
 
 export const dynamic = 'force-dynamic';
 
+const ONBOARDING_ELIGIBLE_STAGES: PipelineStage[] = ['QUOTATION_REQUESTED', 'NEGOTIATING', 'WON'];
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const body = await request.json();
   const nextStage = body.stage as PipelineStage | undefined;
+  const requestOnboarding = Boolean(body.requestOnboarding);
 
   if (!nextStage) {
     return NextResponse.json({ error: 'stage is required' }, { status: 400 });
@@ -24,7 +33,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Company not found' }, { status: 404 });
   }
 
-  if (!canTransitionTo(company.pipeline_stage, nextStage)) {
+  if (company.pipeline_stage !== nextStage && !canTransitionTo(company.pipeline_stage, nextStage)) {
     return NextResponse.json({ error: 'Invalid stage transition' }, { status: 400 });
   }
 
@@ -33,6 +42,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     updated_at: new Date().toISOString(),
   };
   if (nextStage === 'WON') update.client_since = new Date().toISOString();
+
+  if (requestOnboarding && ONBOARDING_ELIGIBLE_STAGES.includes(nextStage)) {
+    update.onboarding_requested = true;
+    update.onboarding_requested_at = new Date().toISOString();
+    update.onboarding_requested_by = session.marketerId;
+  }
 
   const { data, error } = await client.from('companies').update(update).eq('id', params.id).select().single();
 
