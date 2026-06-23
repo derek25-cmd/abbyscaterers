@@ -9,8 +9,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMarketers } from "@/features/marketing/hooks/useMarketingQuery";
 import { MarketerForm } from "@/features/marketing/components/forms/MarketerForm";
+import { MarketerAccountTable } from "@/features/marketing/components/tables/MarketerAccountTable";
 import { getTierFromScore } from "@/features/marketing/utils/lead-score";
 import { formatTZS, initials } from "@/features/marketing/utils/format";
 
@@ -31,22 +33,30 @@ export default function MarketersPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Marketing Team</h2>
-        <div className="flex items-center gap-2">
-          <input
-            type="month"
-            value={monthValue}
-            onChange={(e) => {
-              const [y, m] = e.target.value.split("-").map(Number);
-              setYear(y);
-              setMonth(m);
-            }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          />
-          <Button onClick={() => setFormOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Marketer</Button>
-        </div>
+        <Button onClick={() => setFormOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Marketer</Button>
       </div>
 
-      {isLoading ? (
+      <Tabs defaultValue="team">
+        <TabsList>
+          <TabsTrigger value="team">Team</TabsTrigger>
+          <TabsTrigger value="accounts">Account Management</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="team" className="space-y-4 pt-4">
+          <div className="flex justify-end">
+            <input
+              type="month"
+              value={monthValue}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split("-").map(Number);
+                setYear(y);
+                setMonth(m);
+              }}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            />
+          </div>
+
+          {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-48" />)}</div>
       ) : rows.length === 0 ? (
         <p className="py-16 text-center text-sm text-muted-foreground">No marketer data yet.</p>
@@ -106,6 +116,12 @@ export default function MarketersPage() {
           })}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="accounts" className="pt-4">
+          <MarketerAccountTable />
+        </TabsContent>
+      </Tabs>
 
       <MarketerForm open={formOpen} onOpenChange={setFormOpen} />
     </div>

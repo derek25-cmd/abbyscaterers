@@ -9,8 +9,8 @@ export async function GET(request: Request) {
   }
 
   // No user session exists for a cron-triggered request, so this uses the anon-key
-  // client; aggregate_marketing_performance() is SECURITY DEFINER so it runs
-  // regardless of the caller's RLS role.
+  // client; both RPCs are SECURITY DEFINER so they run regardless of the
+  // caller's RLS role.
   const client = getRouteClient(null);
   const { error } = await client.rpc('aggregate_marketing_performance');
 
@@ -19,9 +19,18 @@ export async function GET(request: Request) {
     return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 
+  const { data: reinstatedCount, error: reinstateError } = await client.rpc('auto_reinstate_expired_suspensions');
+
+  if (reinstateError) {
+    console.error('[cron] auto-reinstate failed:', reinstateError);
+  } else {
+    console.log(`[cron] Auto-reinstated ${reinstatedCount} suspended marketers`);
+  }
+
   return Response.json({
     success: true,
     message: 'Performance aggregated',
+    reinstated: reinstatedCount ?? 0,
     timestamp: new Date().toISOString(),
   });
 }

@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CompetitorInsightInput, FollowUpDraftInput, ReportNarrativeInput } from "../utils/ai";
 import type { UploadBucket } from "../utils/upload";
 import type {
+  AccountAction,
   AIFollowUpDraft,
   AILeadAnalysis,
   ApplicationDetail,
@@ -22,6 +23,7 @@ import type {
   PendingApplication,
   FollowUp,
   HeatmapPoint,
+  MarketerAccountOverview,
   MarketerLiveLocation,
   MarketerPerformanceRow,
   MarketerLeaderboardRow,
@@ -555,5 +557,113 @@ export function useRecalculatePerformance() {
       queryClient.invalidateQueries({ queryKey: ["marketing", "report"] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "dashboard"] });
     },
+  });
+}
+
+// ---- Marketer account authority ----
+
+function invalidateAccountQueries(queryClient: ReturnType<typeof useQueryClient>, marketerId: string) {
+  queryClient.invalidateQueries({ queryKey: ["marketing", "account-overview"] });
+  queryClient.invalidateQueries({ queryKey: ["marketing", "marketer-history", marketerId] });
+}
+
+export function useMarketerOverview() {
+  return useQuery({
+    queryKey: ["marketing", "account-overview"],
+    queryFn: () => fetchJson<{ success: true; data: MarketerAccountOverview[] }>(`/api/marketing/marketers/overview`).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useMarketerHistory(marketerId: string | undefined) {
+  return useQuery({
+    queryKey: ["marketing", "marketer-history", marketerId],
+    queryFn: () => fetchJson<{ success: true; data: AccountAction[] }>(`/api/marketing/marketers/${marketerId}/history`).then((r) => r.data),
+    enabled: Boolean(marketerId),
+    staleTime: 15_000,
+  });
+}
+
+export function useCautionMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, internalNotes }: { id: string; reason: string; internalNotes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/caution`, { method: "POST", body: JSON.stringify({ reason, internalNotes }) }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+export function useRestrictMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, internalNotes }: { id: string; reason: string; internalNotes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/restrict`, { method: "POST", body: JSON.stringify({ reason, internalNotes }) }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+export function useLiftRestriction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/restrict`, { method: "DELETE", body: JSON.stringify({ notes }) }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+export function useDisableMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, internalNotes }: { id: string; reason: string; internalNotes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/disable`, { method: "POST", body: JSON.stringify({ reason, internalNotes }) }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+export function useReinstateMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/reinstate`, { method: "POST", body: JSON.stringify({ notes }) }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+export function useSuspendMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, suspendedUntil, internalNotes }: { id: string; reason: string; suspendedUntil: string; internalNotes?: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/suspend`, {
+        method: "POST",
+        body: JSON.stringify({ reason, suspendedUntil, internalNotes }),
+      }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+/** The calling user's own marketing_users row — used client-side to gate UI
+ * (e.g. internal notes) by role without needing a server round trip. */
+export function useMyMarketingProfile() {
+  return useQuery({
+    queryKey: ["marketing", "my-profile"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user.email) return null;
+      const { data } = await supabase.from("marketing_users").select("id, role").eq("email", session.user.email).maybeSingle();
+      return data as { id: string; role: MarketingUserRole } | null;
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useDeleteMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, internalNotes, confirmName }: { id: string; reason: string; internalNotes?: string; confirmName: string }) =>
+      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/delete`, {
+        method: "POST",
+        body: JSON.stringify({ reason, internalNotes, confirmName }),
+      }),
+    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
   });
 }

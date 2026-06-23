@@ -488,7 +488,9 @@ export interface RoiResult {
   paybackMonths: number | null;
 }
 
-export type ApprovalStatus = 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+export type ApprovalStatus =
+  | 'INCOMPLETE' | 'PENDING' | 'APPROVED' | 'REJECTED'
+  | 'CAUTIONED' | 'RESTRICTED' | 'DISABLED' | 'SUSPENDED' | 'DELETED';
 
 export type DocumentType =
   | 'NIDA_FRONT'
@@ -535,7 +537,11 @@ export interface MarketerDocument {
 export interface MarketerApprovalLogEntry {
   id: string;
   marketer_id: string;
-  action: 'REGISTERED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'REINSTATED';
+  action:
+    | 'REGISTERED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+    | 'CAUTIONED' | 'RESTRICTED' | 'RESTRICTION_LIFTED'
+    | 'DISABLED' | 'REINSTATED' | 'SUSPENDED' | 'SUSPENSION_LIFTED'
+    | 'DELETED' | 'PROFILE_UPDATED_BY_MANAGER';
   performed_by: string;
   reason: string | null;
   created_at: string;
@@ -560,3 +566,120 @@ export const SERVICE_OPTIONS = [
   'Photography',
   'Event Planning',
 ] as const;
+
+export interface AccountAction {
+  id: string;
+  marketerId: string;
+  action: string;
+  performedBy: string;
+  performedByUser?: { id: string; fullName: string; role: string };
+  reason: string | null;
+  internalNotes: string | null;
+  visibleToMarketer: boolean;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+  revertedAt: string | null;
+  createdAt: string;
+}
+
+export interface MarketerAccountOverview {
+  id: string;
+  fullName: string;
+  email: string;
+  googleEmail: string | null;
+  phone: string | null;
+  role: MarketingUserRole;
+  isActive: boolean;
+  approvalStatus: ApprovalStatus;
+  cautionCount: number;
+  lastCautionAt: string | null;
+  disabledReason: string | null;
+  disabledAt: string | null;
+  suspendedUntil: string | null;
+  suspensionReason: string | null;
+  deletedAt: string | null;
+  regionName: string | null;
+  regionId: string | null;
+  visitsThisMonth: number | null;
+  dealsThisMonth: number | null;
+  avgLeadScore: number | null;
+  lastSeenAt: string | null;
+  totalCautions: number;
+  totalDisables: number;
+}
+
+export type AccountActionKey =
+  | 'caution' | 'restrict' | 'lift_restriction' | 'suspend'
+  | 'disable' | 'reinstate' | 'delete';
+
+export const ACCOUNT_STATUS_CONFIG: Record<ApprovalStatus, {
+  label: string;
+  description: string;
+  badgeClass: string;
+  dotClass: string;
+  canPerform: AccountActionKey[];
+}> = {
+  INCOMPLETE: {
+    label: 'Incomplete',
+    description: 'Onboarding not finished',
+    badgeClass: 'bg-muted text-muted-foreground',
+    dotClass: 'bg-muted-foreground',
+    canPerform: [],
+  },
+  PENDING: {
+    label: 'Pending',
+    description: 'Awaiting manager approval',
+    badgeClass: 'bg-warning/15 text-warning',
+    dotClass: 'bg-warning',
+    canPerform: [],
+  },
+  APPROVED: {
+    label: 'Active',
+    description: 'Account in good standing',
+    badgeClass: 'bg-success/15 text-success',
+    dotClass: 'bg-success',
+    canPerform: ['caution', 'restrict', 'suspend', 'disable', 'delete'],
+  },
+  REJECTED: {
+    label: 'Rejected',
+    description: 'Application was rejected',
+    badgeClass: 'bg-destructive/15 text-destructive',
+    dotClass: 'bg-destructive',
+    canPerform: ['delete'],
+  },
+  CAUTIONED: {
+    label: 'Cautioned',
+    description: 'Formal warning issued',
+    badgeClass: 'bg-warning/15 text-warning',
+    dotClass: 'bg-warning',
+    canPerform: ['restrict', 'suspend', 'disable', 'delete', 'reinstate'],
+  },
+  RESTRICTED: {
+    label: 'Restricted',
+    description: 'Read-only access',
+    badgeClass: 'bg-secondary text-secondary-foreground',
+    dotClass: 'bg-secondary-foreground',
+    canPerform: ['lift_restriction', 'disable', 'suspend', 'delete'],
+  },
+  DISABLED: {
+    label: 'Disabled',
+    description: 'Access blocked by manager',
+    badgeClass: 'bg-destructive/15 text-destructive',
+    dotClass: 'bg-destructive',
+    canPerform: ['reinstate', 'delete'],
+  },
+  SUSPENDED: {
+    label: 'Suspended',
+    description: 'Temporary access block',
+    badgeClass: 'bg-destructive/10 text-destructive',
+    dotClass: 'bg-destructive',
+    canPerform: ['reinstate', 'disable', 'delete'],
+  },
+  DELETED: {
+    label: 'Deleted',
+    description: 'Account permanently removed',
+    badgeClass: 'bg-muted text-muted-foreground',
+    dotClass: 'bg-muted-foreground',
+    canPerform: [],
+  },
+};
