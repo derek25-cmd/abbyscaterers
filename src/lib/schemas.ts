@@ -355,16 +355,27 @@ export const DEPARTMENTS = ["Kitchen", "Service", "Management", "Logistics", "Sa
 export const EMPLOYMENT_TYPES = ["Full-time", "Part-time", "Contract", "Intern"] as const;
 
 export const EmployeeSchema = z.object({
-  employeeId: z.string().min(1, "Employee ID is required"),
-  fullName: z.string().min(1, "Full name is required"),
-  position: z.string().min(1, "Position is required"),
-  department: z.enum(DEPARTMENTS),
-  employmentType: z.enum(EMPLOYMENT_TYPES),
-  dateOfBirth: z.string().optional(),
-  hireDate: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Invalid hire date" }),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(1, "Phone number is required"),
+  firstName: z.string().min(1, "First name is required"),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, "Last name is required"),
+  dob: z.string().optional(),
+  gender: z.string().optional(),
+  nationality: z.string().optional(),
+  nationalId: z.string().optional(),
+  tin: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().optional().refine(
+    (v) => !v || /\S+@\S+\.\S+/.test(v),
+    { message: "Invalid email address" }
+  ),
   address: z.string().optional(),
+  emergencyContactName: z.string().optional(),
+  emergencyContactRelationship: z.string().optional(),
+  emergencyContactPhone: z.string().optional(),
+  role: z.string().min(1, "Role is required"),
+  department: z.enum(DEPARTMENTS),
+  status: z.enum(["Active", "Inactive"]).default("Active"),
+  monthlySalary: z.number().min(0, "Monthly salary cannot be negative").optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
 

@@ -13,12 +13,15 @@ import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeSe
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS } from "@/lib/schemas";
+import { getErrorDescription } from "@/lib/service-validation";
+import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { format } from "date-fns";
 
 
 export default function EmployeesPage() {
+  const { toast } = useToast();
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
@@ -61,8 +64,18 @@ export default function EmployeesPage() {
   }, [employees]);
 
   const handleAddEmployee = async (newEmployee: any) => {
-    const result = await addEmployee(newEmployee);
-    if(result) setEmployees(prevEmployees => [result, ...prevEmployees]);
+    try {
+      const result = await addEmployee(newEmployee);
+      setEmployees(prevEmployees => [result, ...prevEmployees]);
+      toast({ title: "Employee added", description: `${getFullName(result)} has been added.` });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Could not add employee",
+        description: getErrorDescription(err),
+      });
+      throw err;
+    }
   };
   
   const handleEditEmployee = async (updatedEmployee: any) => {

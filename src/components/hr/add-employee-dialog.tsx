@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DEPARTMENTS } from "@/lib/schemas";
 
 export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     middleName: '',
@@ -71,16 +72,24 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
     setFormData(prev => ({ ...prev, [id]: value }));
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if(!formData.firstName || !formData.lastName || !formData.role || !formData.department) {
         alert("Please fill all required fields");
         return;
     }
 
-    onAddEmployee({...formData, monthlySalary: Number(formData.monthlySalary)});
-    resetForm();
-    setIsOpen(false);
+    setSubmitting(true);
+    try {
+      await onAddEmployee({...formData, monthlySalary: Number(formData.monthlySalary)});
+      resetForm();
+      setIsOpen(false);
+    } catch {
+      // Error is already surfaced via toast by the caller — keep the
+      // dialog open with the entered data so the user can retry.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -218,7 +227,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
             <DialogClose asChild>
               <Button type="button" variant="outline" onClick={() => resetForm()}>Cancel</Button>
             </DialogClose>
-            <Button type="submit">Add Employee</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? "Adding..." : "Add Employee"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
