@@ -279,17 +279,26 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Column names below match the actual marketing_users schema
 -- (google_name / google_avatar_url / profile_photo_path — not
 -- google_display_name / profile_photo_url, which don't exist).
+-- Deletes the marketer's ACCOUNT only: anonymises PII, blocks app access,
+-- and detaches the Supabase Auth login so the same Google identity must
+-- sign up again as a brand-new applicant. All business data this marketer
+-- generated (visits, performance, commissions, documents, audit trail) is
+-- deliberately left untouched — the management system still needs it for
+-- reporting and historical continuity. Returns the auth_user_id so the API
+-- route can remove the Supabase Auth login outside the database.
 CREATE OR REPLACE FUNCTION delete_marketer(
   p_marketer_id UUID,
   p_manager_id  UUID,
   p_reason      TEXT,
   p_notes       TEXT DEFAULT NULL
 )
-RETURNS void AS $$
+RETURNS JSONB AS $$
 DECLARE
   v_email TEXT;
+  v_auth_user_id UUID;
 BEGIN
-  SELECT email INTO v_email FROM marketing_users WHERE id = p_marketer_id;
+  SELECT email, auth_user_id INTO v_email, v_auth_user_id
+  FROM marketing_users WHERE id = p_marketer_id;
 
   UPDATE marketing_users SET
     is_active           = false,
@@ -310,6 +319,7 @@ BEGIN
     emergency_phone       = NULL,
     emergency_address     = NULL,
     profile_photo_path    = NULL,
+    auth_user_id          = NULL,
     deleted_at            = NOW(),
     deleted_by            = p_manager_id
   WHERE id = p_marketer_id;
@@ -324,6 +334,8 @@ BEGIN
 
   INSERT INTO marketer_approval_log (marketer_id, action, performed_by, reason)
   VALUES (p_marketer_id, 'DELETED', p_manager_id, p_reason);
+
+  RETURN jsonb_build_object('auth_user_id', v_auth_user_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

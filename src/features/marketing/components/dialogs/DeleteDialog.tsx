@@ -31,13 +31,17 @@ export function DeleteDialog({
     if (!canSubmit) return;
     setError("");
     try {
-      await deleteMarketer.mutateAsync({
+      const result = await deleteMarketer.mutateAsync({
         id: marketer.id,
         reason: reason.trim(),
         internalNotes: internalNotes.trim() || undefined,
         confirmName: confirmName.trim(),
       });
-      toast({ title: "Account deleted" });
+      if (result.warnings?.length) {
+        toast({ variant: "destructive", title: "Account deleted with warnings", description: result.warnings.join(" ") });
+      } else {
+        toast({ title: "Account deleted" });
+      }
       setReason("");
       setInternalNotes("");
       setConfirmName("");
@@ -59,12 +63,12 @@ export function DeleteDialog({
             <p className="font-semibold">THIS ACTION CANNOT BE UNDONE</p>
             <p className="mt-2">Deleting this account will:</p>
             <ul className="ml-4 list-disc">
-              <li>Permanently block all app access</li>
+              <li>Revoke their login — they must sign up again from scratch to rejoin</li>
               <li>Anonymise all personal information (name, email, phone, NIDA, TIN)</li>
-              <li>Preserve visit and performance history for reporting</li>
+              <li>Preserve all visit, performance, and commission history for reporting</li>
               <li>Remove this marketer from all active assignments</li>
             </ul>
-            <p className="mt-2">Consider Disable if you may need to reinstate this account.</p>
+            <p className="mt-2">Consider Disable if you may need to reinstate this account instead.</p>
           </div>
 
           <div className="space-y-1.5">

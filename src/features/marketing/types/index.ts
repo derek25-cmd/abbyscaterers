@@ -705,7 +705,7 @@ export interface TargetAnalysis {
 
 export type AccountActionKey =
   | 'caution' | 'restrict' | 'lift_restriction' | 'suspend'
-  | 'disable' | 'reinstate' | 'delete' | 'purge';
+  | 'disable' | 'reinstate' | 'delete';
 
 export const ACCOUNT_STATUS_CONFIG: Record<ApprovalStatus, {
   label: string;
@@ -772,12 +772,9 @@ export const ACCOUNT_STATUS_CONFIG: Record<ApprovalStatus, {
   },
   DELETED: {
     label: 'Deleted',
-    description: 'Account permanently removed',
+    description: 'Account removed — login revoked, data preserved',
     badgeClass: 'bg-muted text-muted-foreground',
     dotClass: 'bg-muted-foreground',
-    // 'purge' is further restricted to role === 'MARKETER' in the UI —
-    // hard-deleting a MANAGER/ADMIN risks destroying other accounts'
-    // audit trails (see permanently_delete_marketer()).
-    canPerform: ['purge'],
+    canPerform: [],
   },
 };

@@ -696,29 +696,17 @@ export function useMyMarketingProfile() {
   });
 }
 
+/** Deletes the marketer's account: revokes their Supabase Auth login (so
+ * the same Google identity must sign up again as a new applicant) and
+ * anonymises their PII. Visits, performance, commissions, and audit
+ * history are preserved — the management system still needs them. */
 export function useDeleteMarketer() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, reason, internalNotes, confirmName }: { id: string; reason: string; internalNotes?: string; confirmName: string }) =>
-      fetchJson<{ success: true }>(`/api/marketing/marketers/${id}/delete`, {
+      fetchJson<{ success: true; warnings?: string[] }>(`/api/marketing/marketers/${id}/delete`, {
         method: "POST",
         body: JSON.stringify({ reason, internalNotes, confirmName }),
-      }),
-    onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
-  });
-}
-
-/** Permanently removes an already soft-deleted marketer: the marketing_users
- * row, every linked visit/follow-up/performance/notification/audit record,
- * and the Supabase Auth login. Irreversible — only callable once an account
- * is already in the DELETED state. */
-export function usePurgeMarketer() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, reason, confirmPhrase }: { id: string; reason: string; confirmPhrase: string }) =>
-      fetchJson<{ success: true; warnings?: string[] }>(`/api/marketing/marketers/${id}/purge`, {
-        method: "POST",
-        body: JSON.stringify({ reason, confirmPhrase }),
       }),
     onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
   });

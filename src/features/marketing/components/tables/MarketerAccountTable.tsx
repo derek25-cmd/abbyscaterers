@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle, Ban, History, Lock, MoreHorizontal, Search, Trash2, Unlock, UserCheck, Flame,
+  AlertTriangle, Ban, History, Lock, MoreHorizontal, Search, Trash2, Unlock, UserCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,6 @@ import { DisableDialog } from "../dialogs/DisableDialog";
 import { SuspendDialog } from "../dialogs/SuspendDialog";
 import { ReinstateDialog } from "../dialogs/ReinstateDialog";
 import { DeleteDialog } from "../dialogs/DeleteDialog";
-import { PurgeDialog } from "../dialogs/PurgeDialog";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_FILTERS: { value: ApprovalStatus | "ALL"; label: string }[] = [
@@ -46,7 +45,6 @@ const ACTION_LABELS: Record<AccountActionKey, { label: string; icon: typeof Lock
   disable: { label: "Disable Account", icon: Ban, destructive: true },
   reinstate: { label: "Reinstate Account", icon: UserCheck },
   delete: { label: "Delete Account", icon: Trash2, destructive: true },
-  purge: { label: "Permanently Delete", icon: Flame, destructive: true },
 };
 
 export function MarketerAccountTable() {
@@ -158,9 +156,7 @@ export function MarketerAccountTable() {
                           <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {statusMeta.canPerform
-                            .filter((action) => action !== "purge" || row.role === "MARKETER")
-                            .map((action) => {
+                          {statusMeta.canPerform.map((action) => {
                             const meta = ACTION_LABELS[action];
                             return (
                               <DropdownMenuItem
@@ -218,9 +214,6 @@ export function MarketerAccountTable() {
       )}
       {activeDialog?.action === "delete" && (
         <DeleteDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }} />
-      )}
-      {activeDialog?.action === "purge" && (
-        <PurgeDialog open onOpenChange={() => setActiveDialog(null)} marketer={{ id: activeDialog.marketer.id, fullName: activeDialog.marketer.full_name }} />
       )}
     </div>
   );

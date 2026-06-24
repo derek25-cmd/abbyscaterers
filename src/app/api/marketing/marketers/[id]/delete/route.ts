@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
+import { getAdminClient } from '@/lib/supabase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     );
   }
 
-  const { error } = await client.rpc('delete_marketer', {
+  const { data, error } = await client.rpc('delete_marketer', {
     p_marketer_id: params.id,
     p_manager_id: session.marketerId,
     p_reason: reason,
@@ -56,5 +57,19 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ success: true });
+
+  const warnings: string[] = [];
+  const authUserId = data?.auth_user_id as string | null;
+
+  if (authUserId) {
+    try {
+      const adminClient = getAdminClient();
+      const { error: authError } = await adminClient.auth.admin.deleteUser(authUserId);
+      if (authError) warnings.push(`Account deleted, but the Auth login could not be revoked: ${authError.message}`);
+    } catch {
+      warnings.push('Account deleted, but SUPABASE_SERVICE_ROLE_KEY is not configured — the Auth login was not revoked, so this person may still be able to sign in.');
+    }
+  }
+
+  return NextResponse.json({ success: true, warnings: warnings.length > 0 ? warnings : undefined });
 }
