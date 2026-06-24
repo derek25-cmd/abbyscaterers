@@ -11,6 +11,86 @@ export const TARGET_METRIC_KEYS = [
 
 export type TargetMetricKey = typeof TARGET_METRIC_KEYS[number];
 
+export const TARGET_PERIOD_TYPES = ['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL'] as const;
+
+export type TargetPeriodType = typeof TARGET_PERIOD_TYPES[number];
+
+export const TARGET_PERIOD_LABELS: Record<TargetPeriodType, string> = {
+  DAILY: 'Daily',
+  WEEKLY: 'Weekly',
+  MONTHLY: 'Monthly',
+  QUARTERLY: 'Quarterly',
+  SEMI_ANNUAL: '6 Months',
+  ANNUAL: 'Annual',
+};
+
+/** Default end date for a period type anchored at `startDate` (e.g. QUARTERLY -> +3 months - 1 day). */
+export function computePeriodEndDate(periodType: TargetPeriodType, startDate: string): string {
+  const end = new Date(`${startDate}T00:00:00.000Z`);
+  switch (periodType) {
+    case 'DAILY':
+      break;
+    case 'WEEKLY':
+      end.setUTCDate(end.getUTCDate() + 6);
+      break;
+    case 'MONTHLY':
+      end.setUTCMonth(end.getUTCMonth() + 1);
+      end.setUTCDate(end.getUTCDate() - 1);
+      break;
+    case 'QUARTERLY':
+      end.setUTCMonth(end.getUTCMonth() + 3);
+      end.setUTCDate(end.getUTCDate() - 1);
+      break;
+    case 'SEMI_ANNUAL':
+      end.setUTCMonth(end.getUTCMonth() + 6);
+      end.setUTCDate(end.getUTCDate() - 1);
+      break;
+    case 'ANNUAL':
+      end.setUTCFullYear(end.getUTCFullYear() + 1);
+      end.setUTCDate(end.getUTCDate() - 1);
+      break;
+  }
+  return end.toISOString().slice(0, 10);
+}
+
+/**
+ * Inserts a TARGET_SET notification for whoever a newly created/updated
+ * target applies to. Always sets marketer_id — the mobile app's realtime
+ * stream filters on it, so a notification without one reaches nobody.
+ */
+export async function notifyTargetSet(
+  client: SupabaseClient,
+  target: { scope: string; marketer_id: string | null }
+): Promise<void> {
+  if (target.scope === 'MARKETER') {
+    if (!target.marketer_id) return;
+    await client.from('marketing_notifications').insert([{
+      type: 'TARGET_SET',
+      title: 'New Target Set',
+      message: 'A new performance target has been set for you.',
+      marketer_id: target.marketer_id,
+    }]);
+    return;
+  }
+
+  const { data: marketers } = await client
+    .from('marketing_users')
+    .select('id')
+    .eq('role', 'MARKETER')
+    .eq('is_active', true);
+
+  if (marketers && marketers.length > 0) {
+    await client.from('marketing_notifications').insert(
+      marketers.map((m: { id: string }) => ({
+        type: 'TARGET_SET' as const,
+        title: 'New Team Target Set',
+        message: 'A new team-wide performance target has been set.',
+        marketer_id: m.id,
+      }))
+    );
+  }
+}
+
 /**
  * Computes actuals for one or more marketers (all of them, for an OVERALL
  * target) over [startDate, endDate], for whichever metric keys appear in

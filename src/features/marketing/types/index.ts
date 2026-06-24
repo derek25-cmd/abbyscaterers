@@ -361,7 +361,12 @@ export type NotificationType =
   | 'FOLLOWUP_DUE_TODAY'
   | 'QUOTATION_REQUESTED'
   | 'STAGE_CHANGE'
-  | 'MARKETER_INACTIVE';
+  | 'MARKETER_INACTIVE'
+  | 'TARGET_SET'
+  | 'TARGET_DUE'
+  | 'FOLLOW_UP_DUE'
+  | 'APPROVAL'
+  | 'MESSAGE';
 
 export interface MarketingNotification {
   id: string;
@@ -672,7 +677,7 @@ export interface MarketerCommission {
 }
 
 export type TargetScope = 'MARKETER' | 'OVERALL';
-export type TargetPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+export type TargetPeriodType = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL';
 export type TargetAnalysisStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'ACHIEVED' | 'PARTIALLY_ACHIEVED' | 'MISSED';
 
 export interface MarketingTarget {

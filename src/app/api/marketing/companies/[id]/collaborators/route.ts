@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
+import { resyncCommissionsForCompany } from '@/features/marketing/utils/commission';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,5 +61,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  resyncCommissionsForCompany(params.id).catch((err) => console.error('Error resyncing commissions after collaborator add:', err));
+
   return NextResponse.json({ data });
 }

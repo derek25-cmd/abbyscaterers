@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
+import { notifyTargetSet } from '@/features/marketing/utils/targets';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  if (body.metrics || body.startDate || body.endDate) {
+    try {
+      await notifyTargetSet(client, data);
+    } catch (notifyError) {
+      console.error('[targets] TARGET_SET notification failed:', notifyError);
+    }
+  }
+
   return NextResponse.json({ data });
 }
 

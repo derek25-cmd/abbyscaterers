@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const { data: company } = await client
     .from('companies')
-    .select('pipeline_stage, client_id')
+    .select('pipeline_stage, client_id, landed_at')
     .eq('id', params.id)
     .maybeSingle();
 
@@ -40,9 +40,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: 'This company is already linked to a client' }, { status: 400 });
   }
 
+  // The mobile app may have already set landed_at when the marketer
+  // onboarded this company — preserve that as the commission start date
+  // rather than resetting the clock to whenever a manager gets to this.
   const { data, error } = await client
     .from('companies')
-    .update({ client_id: clientId, landed_at: new Date().toISOString() })
+    .update({ client_id: clientId, landed_at: company.landed_at ?? new Date().toISOString() })
     .eq('id', params.id)
     .select()
     .single();

@@ -21,11 +21,11 @@ import {
   useMyMarketingProfile, useTargets,
 } from "@/features/marketing/hooks/useMarketingQuery";
 import { isManager } from "@/features/marketing/utils/auth";
-import { TARGET_METRIC_KEYS } from "@/features/marketing/utils/targets";
+import { computePeriodEndDate, TARGET_METRIC_KEYS, TARGET_PERIOD_LABELS, TARGET_PERIOD_TYPES } from "@/features/marketing/utils/targets";
 import { formatDate, titleCase } from "@/features/marketing/utils/format";
 import type { MarketingTarget, TargetPeriodType } from "@/features/marketing/types";
 
-const PERIOD_TYPES: TargetPeriodType[] = ["DAILY", "WEEKLY", "MONTHLY", "QUARTERLY", "ANNUAL"];
+const PERIOD_TYPES: TargetPeriodType[] = [...TARGET_PERIOD_TYPES];
 
 const STATUS_BADGE: Record<string, string> = {
   NOT_STARTED: "bg-muted text-muted-foreground",
@@ -120,7 +120,7 @@ function TargetCard({
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm">
             {target.scope === "OVERALL" ? "Team-wide" : target.marketer?.full_name ?? "Marketer"}
-            <span className="ml-2 text-xs font-normal text-muted-foreground">{titleCase(target.period_type)}</span>
+            <span className="ml-2 text-xs font-normal text-muted-foreground">{TARGET_PERIOD_LABELS[target.period_type]}</span>
           </CardTitle>
           {latest && <Badge className={STATUS_BADGE[latest.status]}>{titleCase(latest.status)}</Badge>}
         </div>
@@ -174,11 +174,21 @@ function CreateTargetDialog({ onDone }: { onDone: () => void }) {
   const [marketerId, setMarketerId] = useState<string>("");
   const [periodType, setPeriodType] = useState<TargetPeriodType>("MONTHLY");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
-  const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState(computePeriodEndDate("MONTHLY", new Date().toISOString().slice(0, 10)));
   const [metricGoals, setMetricGoals] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
 
   const setMetric = (key: string, value: string) => setMetricGoals((prev) => ({ ...prev, [key]: value }));
+
+  const handlePeriodChange = (value: TargetPeriodType) => {
+    setPeriodType(value);
+    setEndDate(computePeriodEndDate(value, startDate));
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setEndDate(computePeriodEndDate(periodType, value));
+  };
 
   const handleSubmit = async () => {
     const metrics: Record<string, number> = {};
@@ -233,10 +243,10 @@ function CreateTargetDialog({ onDone }: { onDone: () => void }) {
           </div>
           <div className="space-y-1.5">
             <Label>Period</Label>
-            <Select value={periodType} onValueChange={(v) => setPeriodType(v as TargetPeriodType)}>
+            <Select value={periodType} onValueChange={(v) => handlePeriodChange(v as TargetPeriodType)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {PERIOD_TYPES.map((p) => <SelectItem key={p} value={p}>{titleCase(p)}</SelectItem>)}
+                {PERIOD_TYPES.map((p) => <SelectItem key={p} value={p}>{TARGET_PERIOD_LABELS[p]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -257,7 +267,7 @@ function CreateTargetDialog({ onDone }: { onDone: () => void }) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Start date</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input type="date" value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>End date</Label>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
-import { TARGET_METRIC_KEYS } from '@/features/marketing/utils/targets';
+import { notifyTargetSet, TARGET_METRIC_KEYS, TARGET_PERIOD_TYPES } from '@/features/marketing/utils/targets';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   if (scope === 'MARKETER' && !marketerId) {
     return NextResponse.json({ error: 'marketerId is required for a MARKETER-scoped target' }, { status: 400 });
   }
-  if (!['DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'].includes(periodType)) {
+  if (!TARGET_PERIOD_TYPES.includes(periodType)) {
     return NextResponse.json({ error: 'Invalid periodType' }, { status: 400 });
   }
   if (!startDate || !endDate || new Date(endDate) < new Date(startDate)) {
@@ -106,5 +106,12 @@ export async function POST(request: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  try {
+    await notifyTargetSet(client, data);
+  } catch (notifyError) {
+    console.error('[targets] TARGET_SET notification failed:', notifyError);
+  }
+
   return NextResponse.json({ data });
 }

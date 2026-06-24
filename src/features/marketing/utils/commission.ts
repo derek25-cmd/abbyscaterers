@@ -161,6 +161,31 @@ export async function resyncCommissionForInvoice(invoice: Invoice): Promise<void
   }
 }
 
+/**
+ * Re-splits every invoice's commission for a company after its collaborator
+ * list changes — the split is amount / number_of_marketers, so adding or
+ * removing a collaborator must re-run resyncCommissionForInvoice() for each
+ * affected invoice, not just the next one issued.
+ */
+export async function resyncCommissionsForCompany(companyId: string): Promise<void> {
+  const { data: company } = await supabase
+    .from('companies')
+    .select('client_id')
+    .eq('id', companyId)
+    .maybeSingle();
+
+  if (!company?.client_id) return;
+
+  const { data: invoices } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('clientId', company.client_id);
+
+  for (const invoice of invoices ?? []) {
+    await resyncCommissionForInvoice(invoice as Invoice);
+  }
+}
+
 /** Keeps commission rows' invoice_id in sync if the invoice's own id is edited. */
 export async function renameInvoiceIdForCommission(oldId: string, newId: string): Promise<void> {
   if (oldId === newId) return;

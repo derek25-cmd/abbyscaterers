@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Bell, CalendarX, Flame, TrendingUp, Trophy } from "lucide-react";
+import { Bell, CalendarX, Flame, MessageSquare, ShieldCheck, Target, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -17,6 +17,11 @@ const TYPE_ICON: Record<NotificationType, typeof Bell> = {
   QUOTATION_REQUESTED: TrendingUp,
   STAGE_CHANGE: TrendingUp,
   MARKETER_INACTIVE: Bell,
+  TARGET_SET: Target,
+  TARGET_DUE: Target,
+  FOLLOW_UP_DUE: CalendarX,
+  APPROVAL: ShieldCheck,
+  MESSAGE: MessageSquare,
 };
 
 function isToday(iso: string): boolean {
