@@ -435,6 +435,27 @@ export interface MarketingLiveData {
   territoryCoverage: TerritoryCoverage[];
 }
 
+export interface DailyMapStop {
+  companyId: string;
+  companyName: string;
+  checkInTime: string;
+  checkOutTime: string | null;
+  durationMinutes: number | null;
+  gpsVerified: boolean;
+}
+
+export interface DailyMapMarketerTimeline {
+  marketerId: string;
+  marketerName: string;
+  stops: DailyMapStop[];
+}
+
+export interface DailyMapOverview {
+  date: string;
+  narrative: string;
+  marketers: DailyMapMarketerTimeline[];
+}
+
 export interface QuotationPrompt {
   companyId: string;
   companyName: string;

@@ -4,18 +4,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type mapboxgl from "mapbox-gl";
-import { AlertTriangle, Flame, MapPin, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, Flame, MapPin, RefreshCw, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
-  useCompanyMapPins, useHeatmapPoints, useLiveData, useMarketerLocations,
+  useCompanyMapPins, useGenerateDailyMapOverview, useHeatmapPoints, useLiveData, useMarketerLocations,
 } from "@/features/marketing/hooks/useMarketingQuery";
+import { useToast } from "@/hooks/use-toast";
 import { getStageMeta, resolveStageMapColor } from "@/features/marketing/utils/pipeline";
-import { formatDate, initials } from "@/features/marketing/utils/format";
-import type { CompanyMapPin, MarketerLiveLocation } from "@/features/marketing/types";
+import { formatDate, formatTime, initials } from "@/features/marketing/utils/format";
+import type { CompanyMapPin, DailyMapOverview, MarketerLiveLocation } from "@/features/marketing/types";
 
 const DAR_ES_SALAAM: [number, number] = [39.2083, -6.7924];
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -51,6 +52,18 @@ export default function LiveMapPage() {
   const { data: companyPins, refetch: refetchPins } = useCompanyMapPins();
   const { data: heatmapPoints } = useHeatmapPoints(heatmapMonth, heatmapYear, showHeatmap);
   const { data: live, refetch: refetchLive, dataUpdatedAt } = useLiveData();
+
+  const { toast } = useToast();
+  const [dailyOverview, setDailyOverview] = useState<DailyMapOverview | null>(null);
+  const generateDailyOverview = useGenerateDailyMapOverview();
+
+  const handleGenerateDailyOverview = () => {
+    generateDailyOverview.mutate(undefined, {
+      onSuccess: (data) => setDailyOverview(data),
+      onError: (error: Error) =>
+        toast({ variant: "destructive", title: "Could not generate daily overview", description: error.message }),
+    });
+  };
 
   // Mount the map once — Mapbox GL needs browser APIs, so it's dynamically imported client-side only.
   useEffect(() => {
@@ -297,6 +310,55 @@ export default function LiveMapPage() {
               </Button>
             </div>
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm">Daily AI Overview</CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={generateDailyOverview.isPending}
+                onClick={handleGenerateDailyOverview}
+              >
+                {generateDailyOverview.isPending ? (
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {dailyOverview ? "Regenerate" : "Generate ✨"}
+              </Button>
+            </CardHeader>
+            {dailyOverview && (
+              <CardContent className="space-y-3">
+                <p className="text-sm italic text-muted-foreground">{dailyOverview.narrative}</p>
+                {dailyOverview.marketers.length > 0 && (
+                  <div className="space-y-2">
+                    {dailyOverview.marketers.map((marketer) => (
+                      <div key={marketer.marketerId} className="rounded-md border p-2 text-xs">
+                        <p className="mb-1 font-medium">{marketer.marketerName}</p>
+                        {marketer.stops.length === 0 ? (
+                          <p className="text-muted-foreground">No visits logged today.</p>
+                        ) : (
+                          <ul className="space-y-1">
+                            {marketer.stops.map((stop, i) => (
+                              <li key={i} className="flex items-center justify-between gap-2 text-muted-foreground">
+                                <span className="truncate">{stop.companyName}</span>
+                                <span className="shrink-0">
+                                  {formatTime(stop.checkInTime)}
+                                  {stop.checkOutTime ? ` – ${formatTime(stop.checkOutTime)}` : " – ongoing"}
+                                  {stop.durationMinutes != null ? ` (${stop.durationMinutes}m)` : ""}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            )}
+          </Card>
 
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Active Marketers</CardTitle></CardHeader>

@@ -241,6 +241,48 @@ vs last month: visits ${input.vsLastMonth.visits > 0 ? "+" : ""}${input.vsLastMo
   return callClaude(system, user, 300);
 }
 
+// ── Feature 7b: Daily map overview (where each marketer went today) ──
+export interface DailyMapOverviewStopInput {
+  companyName: string;
+  checkInTime: string;
+  checkOutTime: string | null;
+  durationMinutes: number | null;
+}
+
+export interface DailyMapOverviewMarketerInput {
+  marketerName: string;
+  stops: DailyMapOverviewStopInput[];
+}
+
+export async function generateDailyMapOverview(date: string, marketers: DailyMapOverviewMarketerInput[]): Promise<string> {
+  const system = `You are a field-operations assistant for Abby's Legendary
+Caterers in Dar es Salaam, Tanzania. You are given each marketer's visits
+for a single day, with the company visited and the time spent there.
+Write a short daily overview (4-6 sentences) describing where each marketer
+went and how long they stayed, calling out anything notable: marketers with
+no visits, unusually long or short stops, or overlapping coverage of the
+same area. Use the marketer's name and company names directly. Do not
+invent visits or times not present in the data. Return ONLY the overview
+text, nothing else.`;
+
+  const user = `Date: ${date}\n\n${marketers
+    .map((m) => {
+      if (m.stops.length === 0) return `${m.marketerName}: no visits logged today.`;
+      const stopLines = m.stops
+        .map((s) => {
+          const checkOut = s.checkOutTime ? new Date(s.checkOutTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "still checked in";
+          const checkIn = new Date(s.checkInTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+          const duration = s.durationMinutes != null ? `${s.durationMinutes} min` : "duration unknown";
+          return `  - ${s.companyName}: ${checkIn} to ${checkOut} (${duration})`;
+        })
+        .join("\n");
+      return `${m.marketerName}:\n${stopLines}`;
+    })
+    .join("\n\n")}`;
+
+  return callClaude(system, user, 500);
+}
+
 // ── Feature 7: Target performance analysis ───────────────────
 export interface TargetAnalysisInput {
   subjectName: string; // marketer's full name, or "the whole team" for an OVERALL target

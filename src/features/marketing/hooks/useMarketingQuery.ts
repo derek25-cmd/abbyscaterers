@@ -19,6 +19,7 @@ import type {
   CompanyImportResult,
   CompanyMapPin,
   CompetitorRow,
+  DailyMapOverview,
   DailyReport,
   DailyReportDraft,
   DocumentRow,
@@ -529,6 +530,15 @@ export function useGenerateCompetitorInsight() {
         method: "POST",
         body: JSON.stringify({ competitors }),
       }).then((r) => r.data.insight),
+  });
+}
+
+export function useGenerateDailyMapOverview() {
+  return useMutation({
+    mutationFn: () =>
+      fetchJson<{ success: true; data: DailyMapOverview }>(`/api/marketing/ai/daily-map-overview`, {
+        method: "POST",
+      }).then((r) => r.data),
   });
 }
 
