@@ -394,83 +394,84 @@ export default function MonthlyInvoiceReportPage() {
     }
   };
 
-  const handleExcelExport = () => {
+  const handleExcelExport = async () => {
     try {
-      const headers = ["S/N", "Client Name", "Invoice Date", "LPO No. (if available)", "Invoice No.", "Amount Outstanding", "Status"];
-      const rows = filteredInvoices.map((invoice, index) => {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("Invoice Report");
+
+      sheet.columns = [
+        { header: "S/N", key: "sn", width: 6 },
+        { header: "Client Name", key: "client", width: 32 },
+        { header: "Invoice Date", key: "date", width: 14 },
+        { header: "LPO No. (if available)", key: "lpo", width: 18 },
+        { header: "Invoice No.", key: "invoiceNo", width: 16 },
+        { header: "Amount (TZS)", key: "amount", width: 18 },
+        { header: "Amount Paid (TZS)", key: "amountPaid", width: 18 },
+        { header: "Amount Outstanding (TZS)", key: "outstanding", width: 22 },
+        { header: "Status", key: "status", width: 14 },
+      ];
+      sheet.getRow(1).font = { bold: true };
+
+      let grandAmount = 0;
+      let grandPaid = 0;
+      let grandOutstanding = 0;
+
+      filteredInvoices.forEach((invoice, index) => {
         const client = clients.find((c) => c.id === invoice.clientId);
         const totalAmount = calculateTotal(invoice);
-        const outstandingAmount = totalAmount - (invoice.amountPaid || 0);
-        return [
-          index + 1,
-          client?.companyName || "N/A",
-          invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
-          invoice.lpoNumber || "-",
-          invoice.id,
-          formatCurrency(outstandingAmount),
-          invoice.status.toUpperCase()
-        ];
-      });
+        const amountPaid = invoice.amountPaid || 0;
+        const outstandingAmount = totalAmount - amountPaid;
+        grandAmount += totalAmount;
+        grandPaid += amountPaid;
+        grandOutstanding += outstandingAmount;
 
-      let excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`;
-      excelHtml += `<head><meta charset="utf-8" />`;
-      excelHtml += `<style>`;
-      excelHtml += `table { font-family: Arial, sans-serif; font-size: 12pt; border-collapse: collapse; }`;
-      excelHtml += `th { font-family: Arial, sans-serif; font-size: 12pt; font-weight: bold; background-color: #f2f2f2; border: 1px solid #cccccc; padding: 6px; text-align: left; }`;
-      excelHtml += `td { font-family: Arial, sans-serif; font-size: 12pt; border: 1px solid #cccccc; padding: 6px; }`;
-      excelHtml += `.text-right { text-align: right; }`;
-      excelHtml += `</style>`;
-      excelHtml += `</head><body>`;
-      excelHtml += `<table>`;
-      
-      // Header row
-      excelHtml += `<tr>`;
-      headers.forEach(h => {
-        excelHtml += `<th>${h}</th>`;
-      });
-      excelHtml += `</tr>`;
-
-      // Data rows
-      rows.forEach(row => {
-        excelHtml += `<tr>`;
-        row.forEach((val, idx) => {
-          if (idx === 5) {
-            excelHtml += `<td class="text-right">${val}</td>`;
-          } else {
-            excelHtml += `<td>${val}</td>`;
-          }
+        sheet.addRow({
+          sn: index + 1,
+          client: client?.companyName || "N/A",
+          date: invoice.invoiceDate ? format(parseISO(invoice.invoiceDate), 'dd/MM/yyyy') : "N/A",
+          lpo: invoice.lpoNumber || "-",
+          invoiceNo: invoice.id,
+          amount: totalAmount,
+          amountPaid: amountPaid,
+          outstanding: outstandingAmount,
+          status: invoice.status.toUpperCase(),
         });
-        excelHtml += `</tr>`;
       });
 
-      // Total row
-      excelHtml += `<tr>`;
-      excelHtml += `<td colspan="5" style="font-weight: bold; text-align: right; font-family: Arial, sans-serif; font-size: 12pt;">Total Outstanding (TZS):</td>`;
-      excelHtml += `<td style="font-weight: bold; text-align: right; color: #d97706; font-family: Arial, sans-serif; font-size: 12pt;">${formatCurrency(summary.totalOutstanding)}</td>`;
-      excelHtml += `<td></td>`;
-      excelHtml += `</tr>`;
+      const totalRow = sheet.addRow({
+        client: "TOTALS:",
+        amount: grandAmount,
+        amountPaid: grandPaid,
+        outstanding: grandOutstanding,
+      });
+      totalRow.font = { bold: true };
 
-      excelHtml += `</table></body></html>`;
+      ["amount", "amountPaid", "outstanding"].forEach((key) => {
+        sheet.getColumn(key).numFmt = '#,##0.00';
+        sheet.getColumn(key).alignment = { horizontal: 'right' };
+      });
 
-      const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      
       let fileName = "Invoice_Report";
       if (selectedClientIds.length === 1) {
         const clientName = clients.find(c => c.id === selectedClientIds[0])?.companyName || 'Client';
         fileName = clientName.replace(/ /g, '_');
       }
-      fileName += `_${statusFilter}.xls`;
+      fileName += `_${statusFilter}.xlsx`;
 
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
       link.setAttribute("href", url);
       link.setAttribute("download", fileName);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-      toast({ title: "Export Successful", description: "Report exported to Excel (Arial 12pt)." });
+      toast({ title: "Export Successful", description: "Report exported to Excel (.xlsx)." });
     } catch (error) {
       console.error("Error exporting Excel:", error);
       toast({ variant: "destructive", title: "Export Failed", description: "An error occurred while generating the Excel export." });
