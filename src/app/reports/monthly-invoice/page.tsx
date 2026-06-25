@@ -124,6 +124,26 @@ export default function MonthlyInvoiceReportPage() {
     };
   }, [filteredInvoices]);
 
+  // Ranks clients by how many invoices they have within the current filtered period,
+  // most recurring first, so repeat business stands out from one-off clients.
+  const recurringClients = useMemo(() => {
+    const counts = new Map<string, { clientId: string; invoiceCount: number; totalAmount: number }>();
+    filteredInvoices.forEach((inv) => {
+      const cid = inv.clientId || 'unknown';
+      const entry = counts.get(cid) || { clientId: cid, invoiceCount: 0, totalAmount: 0 };
+      entry.invoiceCount += 1;
+      entry.totalAmount += calculateTotal(inv);
+      counts.set(cid, entry);
+    });
+
+    return Array.from(counts.values())
+      .map((entry) => ({
+        ...entry,
+        companyName: clients.find((c) => c.id === entry.clientId)?.companyName || 'Unknown Client',
+      }))
+      .sort((a, b) => b.invoiceCount - a.invoiceCount || b.totalAmount - a.totalAmount);
+  }, [filteredInvoices, clients]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   }
@@ -478,6 +498,39 @@ export default function MonthlyInvoiceReportPage() {
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Paid (TZS)</CardTitle><CheckCircle className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid)}</div></CardContent></Card>
           <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Outstanding (TZS)</CardTitle><AlertCircle className="h-4 w-4 text-orange-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalOutstanding)}</div></CardContent></Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Most Recurring Clients</CardTitle>
+          <p className="text-sm text-muted-foreground">Clients ranked by number of invoices in the selected period, most to least recurring.</p>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Rank</TableHead>
+                <TableHead>Client Name</TableHead>
+                <TableHead className="text-right">No. of Invoices</TableHead>
+                <TableHead className="text-right">Total Invoiced (TZS)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={4} className="text-center h-16"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+              ) : recurringClients.length > 0 ? recurringClients.map((entry, index) => (
+                <TableRow key={entry.clientId}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell className="font-medium">{entry.companyName}</TableCell>
+                  <TableCell className="text-right">{entry.invoiceCount}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(entry.totalAmount)}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow><TableCell colSpan={4} className="text-center h-16">No invoices found for the selected criteria.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card>
           <CardHeader>
