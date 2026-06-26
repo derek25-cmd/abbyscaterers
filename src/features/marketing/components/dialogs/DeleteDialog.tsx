@@ -26,9 +26,16 @@ export function DeleteDialog({
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
+  // Stored names can have stray double-spaces etc. that the browser visually
+  // collapses in the "Type X to confirm" label, so what's shown and what's
+  // actually stored can differ even though they look identical on screen —
+  // collapse internal whitespace on both sides so the comparison matches
+  // what the manager can actually see and type.
+  const normalize = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+
   const isSelf = myProfile?.id === marketer.id;
   const reasonOk = reason.trim().length >= 20;
-  const nameOk = confirmName.trim().toLowerCase() === marketer.fullName.trim().toLowerCase();
+  const nameOk = normalize(confirmName) === normalize(marketer.fullName);
   const canSubmit = reasonOk && nameOk && !isSelf;
 
   const handleSubmit = async () => {
