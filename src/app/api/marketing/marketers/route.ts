@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getMarketerPerformance } from '@/features/marketing/api/supabase-queries';
+import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+  if (!isManager(session.role)) {
+    return NextResponse.json({ error: 'Only managers or admins can add a marketer account' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const body = await request.json();
 

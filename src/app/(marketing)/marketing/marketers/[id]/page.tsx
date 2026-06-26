@@ -4,16 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ChevronRight, AlertTriangle, Lock, Unlock, Ban, CheckCircle2, Trash2, UserPlus, History as HistoryIcon,
+  ChevronRight, AlertTriangle, Lock, Unlock, Ban, CheckCircle2, Trash2, UserPlus, History as HistoryIcon, Pencil,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getStageMeta } from "@/features/marketing/utils/pipeline";
 import { formatDate, formatDateTime, titleCase } from "@/features/marketing/utils/format";
 import { authedFetch } from "@/features/marketing/api/authed-fetch";
 import { useMarketerHistory, useMyMarketingProfile } from "@/features/marketing/hooks/useMarketingQuery";
+import { EditMarketerForm } from "@/features/marketing/components/forms/EditMarketerForm";
 import type { Company, MarketingUser, Visit } from "@/features/marketing/types";
 
 const ACTION_ICONS: Record<string, typeof HistoryIcon> = {
@@ -52,6 +54,8 @@ export default function MarketerDetailPage() {
   const params = useParams<{ id: string }>();
   const [marketer, setMarketer] = useState<MarketerDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [editOpen, setEditOpen] = useState(false);
   const { data: history } = useMarketerHistory(params.id);
   const { data: myProfile } = useMyMarketingProfile();
   const isManagerViewing = myProfile?.role === "MARKETING_MANAGER" || myProfile?.role === "ADMIN";
@@ -64,7 +68,7 @@ export default function MarketerDetailPage() {
       .then((body) => { if (active) setMarketer(body.data ?? null); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [params.id]);
+  }, [params.id, refreshKey]);
 
   if (loading) {
     return <div className="space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-64 w-full" /></div>;
@@ -82,12 +86,19 @@ export default function MarketerDetailPage() {
         <span className="text-foreground">{marketer.full_name}</span>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2">
-          <h2 className="text-2xl font-bold">{marketer.full_name}</h2>
-          {marketer.marketer_code && <Badge variant="secondary">{marketer.marketer_code}</Badge>}
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">{marketer.full_name}</h2>
+            {marketer.marketer_code && <Badge variant="secondary">{marketer.marketer_code}</Badge>}
+          </div>
+          <p className="text-sm text-muted-foreground">{marketer.email} · {marketer.region?.name ?? "No region"}</p>
         </div>
-        <p className="text-sm text-muted-foreground">{marketer.email} · {marketer.region?.name ?? "No region"}</p>
+        {isManagerViewing && (
+          <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+            <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Profile
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="overview">
@@ -167,6 +178,23 @@ export default function MarketerDetailPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {isManagerViewing && (
+        <EditMarketerForm
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) setRefreshKey((k) => k + 1);
+          }}
+          marketer={{
+            id: marketer.id,
+            fullName: marketer.full_name,
+            phone: marketer.phone ?? null,
+            role: marketer.role,
+            regionId: marketer.region?.id ?? null,
+          }}
+        />
+      )}
     </div>
   );
 }

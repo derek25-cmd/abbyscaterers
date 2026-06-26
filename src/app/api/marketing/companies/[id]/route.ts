@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getCompanyDetail } from '@/features/marketing/api/supabase-queries';
+import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const body = await request.json();
+
+  // Reassigning a lead to a different marketer affects commission attribution
+  // — only managers/admins can do that. Everything else (contact details,
+  // pipeline notes, etc.) stays editable by any registered marketing user.
+  if (!isManager(session.role) && Object.prototype.hasOwnProperty.call(body, 'assignedMarketerId')) {
+    return NextResponse.json({ error: 'Only managers or admins can reassign a company to a different marketer' }, { status: 403 });
+  }
 
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const [key, column] of Object.entries(FIELD_MAP)) {
@@ -52,6 +65,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+  if (!isManager(session.role)) {
+    return NextResponse.json({ error: 'Only managers or admins can delete a company' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const { error } = await client
     .from('companies')

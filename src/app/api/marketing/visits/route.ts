@@ -40,6 +40,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const body = await request.json();
 

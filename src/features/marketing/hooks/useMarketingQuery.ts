@@ -410,6 +410,27 @@ export function useVisits(filters: VisitFilters) {
   });
 }
 
+export function useUpdateVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Record<string, unknown> }) =>
+      fetchJson<{ data: Visit }>(`/api/marketing/visits/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "visits"] });
+    },
+  });
+}
+
+export function useDeleteVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetchJson<{ success: true }>(`/api/marketing/visits/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "visits"] });
+    },
+  });
+}
+
 export function useLiveData() {
   return useQuery({
     queryKey: ["marketing", "live"],
@@ -736,6 +757,20 @@ export function useDeleteMarketer() {
         body: JSON.stringify({ reason, internalNotes, confirmName }),
       }),
     onSuccess: (_data, variables) => invalidateAccountQueries(queryClient, variables.id),
+  });
+}
+
+export function useUpdateMarketer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Record<string, unknown> }) =>
+      fetchJson<{ data: unknown }>(`/api/marketing/marketers/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketers"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketers-list"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketer", variables.id] });
+      invalidateAccountQueries(queryClient, variables.id);
+    },
   });
 }
 

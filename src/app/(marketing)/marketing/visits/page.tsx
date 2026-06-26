@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, MapPin, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import {
 import { isManager } from "@/features/marketing/utils/auth";
 import { getStageMeta } from "@/features/marketing/utils/pipeline";
 import { formatTime, gpsVerificationTag, initials, titleCase } from "@/features/marketing/utils/format";
+import { DeleteVisitDialog } from "@/features/marketing/components/dialogs/DeleteVisitDialog";
 import type { Visit } from "@/features/marketing/types";
 
 function todayIso(): string {
@@ -43,6 +44,7 @@ export default function DailyVisitsPage() {
 
   const [date, setDate] = useState(todayIso());
   const [marketerId, setMarketerId] = useState<string>("all");
+  const [visitToDelete, setVisitToDelete] = useState<{ id: string; companyName: string } | null>(null);
 
   const { data, isLoading } = useVisits({
     date,
@@ -148,6 +150,16 @@ export default function DailyVisitsPage() {
                           {visit.lead_score != null && (
                             <span className="shrink-0 text-xs text-muted-foreground">Score {visit.lead_score}</span>
                           )}
+                          {manager && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => setVisitToDelete({ id: visit.id, companyName: visit.company?.name ?? "this company" })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       );
                     })}
@@ -190,6 +202,12 @@ export default function DailyVisitsPage() {
           </div>
         </div>
       )}
+
+      <DeleteVisitDialog
+        open={visitToDelete != null}
+        onOpenChange={(open) => { if (!open) setVisitToDelete(null); }}
+        visit={visitToDelete}
+      />
     </div>
   );
 }

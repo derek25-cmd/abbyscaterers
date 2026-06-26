@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getCompanies } from '@/features/marketing/api/supabase-queries';
-import { getMarketingSession } from '@/features/marketing/utils/auth';
+import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
 import type { CompanyFilters, PipelineStage } from '@/features/marketing/types';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+  if (!isManager(session.role)) {
+    return NextResponse.json({ error: 'Only managers or admins can add a company directly — marketers register companies from a field visit' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const body = await request.json();
 
