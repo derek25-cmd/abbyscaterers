@@ -44,8 +44,17 @@ import type {
   QuotationPrompt,
   RoiResult,
   TargetAnalysis,
+  Visit,
   WonAlert,
 } from "../types";
+
+export interface VisitFilters {
+  companyId?: string;
+  marketerId?: string;
+  date?: string;
+  page?: number;
+  limit?: number;
+}
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await authedFetch(url, init);
@@ -390,6 +399,14 @@ export function useHeatmapPoints(month: number, year: number, enabled = true) {
     queryFn: () => fetchJson<{ data: HeatmapPoint[] }>(`/api/marketing/analytics/heatmap?month=${month}&year=${year}`).then((r) => r.data),
     enabled,
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useVisits(filters: VisitFilters) {
+  return useQuery({
+    queryKey: ["marketing", "visits", filters],
+    queryFn: () => fetchJson<{ data: Visit[]; total: number; page: number; limit: number }>(`/api/marketing/visits?${buildParams(filters)}`),
+    staleTime: 30_000,
   });
 }
 

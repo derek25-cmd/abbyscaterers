@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
-import { notifyTargetSet, TARGET_METRIC_KEYS, TARGET_PERIOD_TYPES } from '@/features/marketing/utils/targets';
+import { computeTargetActuals, notifyTargetSet, scoreTarget, TARGET_METRIC_KEYS, TARGET_PERIOD_TYPES } from '@/features/marketing/utils/targets';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +51,24 @@ export async function GET(request: NextRequest) {
       : row.latestAnalysis,
   }));
 
-  return NextResponse.json({ data: normalised });
+  // liveProgress is always computed fresh from visits/companies/commissions —
+  // unlike latestAnalysis (a manually-triggered, point-in-time AI snapshot),
+  // this is what the progress board renders so it never looks stale.
+  const withProgress = await Promise.all(
+    normalised.map(async (target: any) => {
+      const actuals = await computeTargetActuals(
+        client,
+        target.marketer_id,
+        target.start_date,
+        target.end_date,
+        Object.keys(target.metrics)
+      );
+      const { percentAchieved, score, status } = scoreTarget(target.metrics, actuals, target.end_date);
+      return { ...target, liveProgress: { actuals, percentAchieved, score, status } };
+    })
+  );
+
+  return NextResponse.json({ data: withProgress });
 }
 
 export async function POST(request: NextRequest) {

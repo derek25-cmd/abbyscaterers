@@ -5,6 +5,7 @@ import { Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -34,6 +35,11 @@ const STATUS_BADGE: Record<string, string> = {
   PARTIALLY_ACHIEVED: "bg-warning/15 text-warning",
   MISSED: "bg-destructive/15 text-destructive",
 };
+
+function isActiveTarget(target: MarketingTarget): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  return target.start_date <= today && target.end_date >= today;
+}
 
 export default function TargetsPage() {
   const { toast } = useToast();
@@ -84,22 +90,114 @@ export default function TargetsPage() {
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}</div>
-      ) : !targets || targets.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">No targets set yet.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {targets.map((target) => (
-            <TargetCard
-              key={target.id}
-              target={target}
-              manager={manager}
-              onAnalyse={() => handleAnalyse(target)}
-              onDelete={() => handleDelete(target)}
-              analysing={analyse.isPending}
-            />
-          ))}
-        </div>
+        <>
+          <ProgressBoard targets={targets ?? []} manager={manager} />
+
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-muted-foreground">All Targets</h3>
+            {!targets || targets.length === 0 ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">No targets set yet.</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {targets.map((target) => (
+                  <TargetCard
+                    key={target.id}
+                    target={target}
+                    manager={manager}
+                    onAnalyse={() => handleAnalyse(target)}
+                    onDelete={() => handleDelete(target)}
+                    analysing={analyse.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function ProgressBoard({ targets, manager }: { targets: MarketingTarget[]; manager: boolean }) {
+  const active = targets.filter(isActiveTarget);
+
+  if (active.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          No targets are active for the current period.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const groups = new Map<string, { label: string; targets: MarketingTarget[] }>();
+  for (const target of active) {
+    const key = target.scope === "OVERALL" ? "OVERALL" : target.marketer_id ?? "unknown";
+    const label = target.scope === "OVERALL" ? "Team-wide" : target.marketer?.full_name ?? "Marketer";
+    if (!groups.has(key)) groups.set(key, { label, targets: [] });
+    groups.get(key)!.targets.push(target);
+  }
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-medium text-muted-foreground">
+        {manager ? "Team Progress Board — current period" : "Your Progress — current period"}
+      </h3>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from(groups.entries()).map(([key, group]) => (
+          <Card key={key}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">{group.label}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {group.targets.map((target) => {
+                const progress = target.liveProgress;
+                const overallPercent = Math.min(progress?.score ?? 0, 100);
+                return (
+                  <div key={target.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium">{TARGET_PERIOD_LABELS[target.period_type]}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(target.start_date, "short")} – {formatDate(target.end_date, "short")}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Overall</span>
+                        <span className="font-medium">{progress?.score ?? 0}%</span>
+                      </div>
+                      <Progress value={overallPercent} />
+                    </div>
+
+                    <ul className="space-y-1.5">
+                      {Object.entries(target.metrics).map(([key, goal]) => {
+                        const percent = progress?.percentAchieved[key] ?? 0;
+                        const actual = progress?.actuals[key] ?? 0;
+                        return (
+                          <li key={key} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">{titleCase(key)}</span>
+                              <span>{actual} / {goal}</span>
+                            </div>
+                            <Progress value={Math.min(percent, 100)} className="h-2" />
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    {progress && (
+                      <Badge className={STATUS_BADGE[progress.status]}>{titleCase(progress.status)}</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -127,13 +225,18 @@ function TargetCard({
         <p className="text-xs text-muted-foreground">{formatDate(target.start_date, "long")} – {formatDate(target.end_date, "long")}</p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <ul className="space-y-1 text-sm">
+        <ul className="space-y-1.5">
           {Object.entries(target.metrics).map(([key, goal]) => {
-            const actual = latest?.actuals[key];
+            const live = target.liveProgress;
+            const actual = live?.actuals[key] ?? latest?.actuals[key] ?? 0;
+            const percent = live?.percentAchieved[key] ?? (goal > 0 ? Math.round((actual / goal) * 100) : 0);
             return (
-              <li key={key} className="flex items-center justify-between">
-                <span className="text-muted-foreground">{titleCase(key)}</span>
-                <span className="font-medium">{actual !== undefined ? `${actual} / ${goal}` : `Goal: ${goal}`}</span>
+              <li key={key} className="space-y-1 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{titleCase(key)}</span>
+                  <span className="font-medium">{actual} / {goal}</span>
+                </div>
+                <Progress value={Math.min(percent, 100)} className="h-2" />
               </li>
             );
           })}

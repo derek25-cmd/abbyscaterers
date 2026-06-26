@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   // A marketer can only see their own visits — managers/admins (and callers
   // not registered in marketing_users) see everything, unrestricted.
   const marketerId = session?.role === 'MARKETER' ? session.marketerId : params.get('marketerId');
+  const date = params.get('date'); // YYYY-MM-DD — restricts to that single day's check-ins
   const page = Math.max(1, Number(params.get('page') ?? '1'));
   const limit = Math.min(100, Math.max(1, Number(params.get('limit') ?? '20')));
   const from = (page - 1) * limit;
@@ -20,12 +21,15 @@ export async function GET(request: NextRequest) {
 
   let query = client
     .from('visits')
-    .select('*, company:companies(id, name), marketer:marketing_users(id, full_name)', { count: 'exact' })
+    .select('*, company:companies(id, name, latitude, longitude, pipeline_stage), marketer:marketing_users(id, full_name)', { count: 'exact' })
     .order('check_in_time', { ascending: false })
     .range(from, to);
 
   if (companyId) query = query.eq('company_id', companyId);
   if (marketerId) query = query.eq('marketer_id', marketerId);
+  if (date) {
+    query = query.gte('check_in_time', `${date}T00:00:00.000Z`).lte('check_in_time', `${date}T23:59:59.999Z`);
+  }
 
   const { data, error, count } = await query;
 

@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Building2, GitBranch, ClipboardList, Users, Map, BarChart2, UserCheck, FileText, Wallet, NotebookPen, Target } from "lucide-react";
+import { LayoutDashboard, Building2, GitBranch, ClipboardList, Users, Map, BarChart2, UserCheck, FileText, Wallet, NotebookPen, Target, Footprints } from "lucide-react";
 import { NotificationBell } from "./ui/NotificationBell";
 import { usePendingApplications } from "../hooks/useMarketingQuery";
 
 const marketingNavItems = [
   { href: "/marketing/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/marketing/companies", label: "Companies", icon: Building2 },
+  { href: "/marketing/visits", label: "Daily Visits", icon: Footprints },
   { href: "/marketing/pipeline", label: "Pipeline", icon: GitBranch },
   { href: "/marketing/quotations", label: "Quotations", icon: FileText },
   { href: "/marketing/followups", label: "Follow-ups", icon: ClipboardList },

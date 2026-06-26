@@ -128,6 +128,8 @@ export interface Visit {
   voice_note_url: string | null;
   created_at: string;
   updated_at: string;
+  company?: { id: string; name: string; latitude?: number | null; longitude?: number | null; pipeline_stage?: PipelineStage } | null;
+  marketer?: { id: string; full_name: string } | null;
 }
 
 export interface FollowUp {
@@ -715,6 +717,13 @@ export interface MarketingTarget {
   updated_at: string;
   marketer?: { id: string; full_name: string } | null;
   latestAnalysis?: TargetAnalysis | null;
+  /** Computed live from visits/companies/commissions on every fetch — always current, unlike latestAnalysis which is a point-in-time snapshot. */
+  liveProgress?: {
+    actuals: Record<string, number>;
+    percentAchieved: Record<string, number>;
+    score: number;
+    status: TargetAnalysisStatus;
+  };
 }
 
 export interface TargetAnalysis {
