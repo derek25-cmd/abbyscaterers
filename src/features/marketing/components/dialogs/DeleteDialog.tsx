@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useDeleteMarketer } from "../../hooks/useMarketingQuery";
+import { useDeleteMarketer, useMyMarketingProfile } from "../../hooks/useMarketingQuery";
 
 export function DeleteDialog({
   open,
@@ -20,12 +20,16 @@ export function DeleteDialog({
 }) {
   const { toast } = useToast();
   const deleteMarketer = useDeleteMarketer();
+  const { data: myProfile } = useMyMarketingProfile();
   const [reason, setReason] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [confirmName, setConfirmName] = useState("");
   const [error, setError] = useState("");
 
-  const canSubmit = reason.trim().length >= 20 && confirmName.trim().toLowerCase() === marketer.fullName.toLowerCase();
+  const isSelf = myProfile?.id === marketer.id;
+  const reasonOk = reason.trim().length >= 20;
+  const nameOk = confirmName.trim().toLowerCase() === marketer.fullName.trim().toLowerCase();
+  const canSubmit = reasonOk && nameOk && !isSelf;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -71,9 +75,18 @@ export function DeleteDialog({
             <p className="mt-2">Consider Disable if you may need to reinstate this account instead.</p>
           </div>
 
+          {isSelf && (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              You can&apos;t delete your own account. Ask another manager or admin to do this.
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Reason for deletion *</label>
             <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <p className={`text-xs ${reasonOk ? "text-success" : "text-muted-foreground"}`}>
+              {reason.trim().length}/20 characters minimum
+            </p>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Internal notes (optional)</label>
@@ -82,6 +95,11 @@ export function DeleteDialog({
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Type "{marketer.fullName}" to confirm *</label>
             <Input value={confirmName} onChange={(e) => setConfirmName(e.target.value)} />
+            {confirmName.length > 0 && (
+              <p className={`text-xs ${nameOk ? "text-success" : "text-destructive"}`}>
+                {nameOk ? "Name matches" : "Doesn't match the marketer's full name exactly"}
+              </p>
+            )}
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
