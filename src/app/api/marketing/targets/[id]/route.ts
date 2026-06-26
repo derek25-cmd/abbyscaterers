@@ -26,7 +26,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     .from('marketing_targets')
     .update(updates)
     .eq('id', params.id)
-    .select('*, marketer:marketing_users(id, full_name)')
+    .select('*, marketer:marketing_users!marketing_targets_marketer_id_fkey(id, full_name)')
     .single();
 
   if (error) {

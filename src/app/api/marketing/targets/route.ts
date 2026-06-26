@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   let query = client
     .from('marketing_targets')
-    .select('*, marketer:marketing_users(id, full_name), latestAnalysis:marketing_target_analyses(id, target_id, actuals, score, status, narrative, recommendation, analysed_by, created_at)')
+    .select('*, marketer:marketing_users!marketing_targets_marketer_id_fkey(id, full_name), latestAnalysis:marketing_target_analyses(id, target_id, actuals, score, status, narrative, recommendation, analysed_by, created_at)')
     .order('start_date', { ascending: false });
 
   // A marketer sees their own targets plus every OVERALL (team-wide) target.
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
       notes: notes ?? null,
       created_by: session.marketerId,
     }])
-    .select('*, marketer:marketing_users(id, full_name)')
+    .select('*, marketer:marketing_users!marketing_targets_marketer_id_fkey(id, full_name)')
     .single();
 
   if (error) {

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   const client = getRouteClient(request.headers.get('authorization'));
   const { data: target, error: targetError } = await client
     .from('marketing_targets')
-    .select('*, marketer:marketing_users(id, full_name)')
+    .select('*, marketer:marketing_users!marketing_targets_marketer_id_fkey(id, full_name)')
     .eq('id', params.id)
     .maybeSingle();
 
