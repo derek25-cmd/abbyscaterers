@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useClientStorage } from "@/hooks/use-client-storage";
+import { useProformaInvoiceStorage } from "@/hooks/use-proforma-invoice-storage";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function OrderListTable() {
   
   const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore, bulkDeleteOrders } = useOrderStorage();
   const { clients, isLoading: clientsLoading, getClientById } = useClientStorage();
+  const { proformaInvoices } = useProformaInvoiceStorage();
   const { toast } = useToast();
   
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -62,6 +64,31 @@ export function OrderListTable() {
   const [filterType, setFilterType] = React.useState("customerName");
   const [searchQuery, setSearchQuery] = React.useState("");
 
+
+  // Build a map: orderId → all proforma IDs that reference any of its events.
+  // The Order.proformaId field is a single legacy pointer; the real source of
+  // truth is proformaInvoice.items[].orderId which captures the many-proforma case.
+  const orderProformaMap = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+    proformaInvoices.forEach(pi => {
+      const orderIds = new Set(
+        (pi.items || []).map((item: any) => item.orderId).filter(Boolean) as string[]
+      );
+      orderIds.forEach(orderId => {
+        const existing = map.get(orderId) ?? [];
+        if (!existing.includes(pi.id)) map.set(orderId, [...existing, pi.id]);
+      });
+    });
+    return map;
+  }, [proformaInvoices]);
+
+  const getLinkedProformas = React.useCallback((orderId: string, fallbackProformaId?: string | null) => {
+    const fromItems = orderProformaMap.get(orderId) ?? [];
+    // Fall back to order.proformaId for orders created before the item-level
+    // linkage was tracked (so they still show something rather than "Not Linked").
+    if (fromItems.length === 0 && fallbackProformaId) return [fallbackProformaId];
+    return fromItems;
+  }, [orderProformaMap]);
 
   const getClientName = React.useCallback((clientId: string | null) => {
     if (!clientId) return 'N/A';
@@ -95,7 +122,8 @@ export function OrderListTable() {
                   case 'id':
                       return order.id.toLowerCase().includes(lowercasedQuery);
                   case 'proformaId':
-                      return order.proformaId?.toLowerCase().includes(lowercasedQuery);
+                      return getLinkedProformas(order.id, order.proformaId)
+                          .some(pid => pid.toLowerCase().includes(lowercasedQuery));
                   case 'customerName':
                   default:
                       return clientName.includes(lowercasedQuery);
@@ -136,7 +164,10 @@ export function OrderListTable() {
     }
   }, [itemsToDelete, deleteOrderFromStore, bulkDeleteOrders, toast]);
   
-  const columns = React.useMemo(() => getOrderColumns(handleDeleteRequest, getClientById), [handleDeleteRequest, getClientById]);
+  const columns = React.useMemo(
+    () => getOrderColumns(handleDeleteRequest, getClientById, getLinkedProformas),
+    [handleDeleteRequest, getClientById, getLinkedProformas]
+  );
 
   const table = useReactTable({
     data: tableData,

@@ -77,7 +77,7 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const router = useRouter();
     const { clients, getClientById: getClientDetails, isLoading: clientsLoading } = useClientStorage();
     const { getProformaById } = useProformaInvoiceStorage();
-    const { getInvoiceById, addInvoice, updateInvoice } = useInvoiceStorage();
+    const { getInvoiceById, getInvoiceByProformaId, addInvoice, updateInvoice } = useInvoiceStorage();
     const { orders, addOrder, updateOrder, getOrderById, getOrdersByBookingId } = useOrderStorage();
     const { getBookingById } = useBookingStorage();
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
@@ -313,6 +313,22 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
         } else if (proformaId) {
             const proforma = getProformaById(proformaId);
             if (proforma) {
+                // A proforma can only produce one final invoice. If one already
+                // exists, redirect there instead of opening a blank new form.
+                const existingInvoice = getInvoiceByProformaId(proformaId);
+                if (existingInvoice) {
+                    router.replace(`/invoices/${existingInvoice.id}`);
+                    return;
+                }
+                if (proforma.isInvoiced) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Already Invoiced',
+                        description: 'This proforma invoice has already been converted to a final invoice.',
+                    });
+                    router.replace(`/proforma-invoices/${proformaId}`);
+                    return;
+                }
                 dataToLoad = {
                     ...proforma,
                     proformaId: proforma.id,

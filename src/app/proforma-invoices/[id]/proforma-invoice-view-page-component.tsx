@@ -474,10 +474,15 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={handleOpenCreateInvoiceDialog} disabled={!!invoice.isInvoiced || isCreatingInvoice}>
+             <Button onClick={handleOpenCreateInvoiceDialog} disabled={!!invoice.isInvoiced || !!associatedInvoice || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
-                {invoice.isInvoiced ? "Already Invoiced" : "Create Final Invoice"}
+                {(invoice.isInvoiced || associatedInvoice) ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
+            {associatedInvoice && (
+              <a href={`/invoices/${associatedInvoice.id}`} className="text-xs text-primary underline">
+                View Invoice {associatedInvoice.id} →
+              </a>
+            )}
           </div>
         </div>
         <div ref={printRef}>

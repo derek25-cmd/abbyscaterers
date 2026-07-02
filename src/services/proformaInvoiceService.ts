@@ -89,13 +89,34 @@ export const deleteProformaInvoice = async (id: string): Promise<boolean> => {
 };
 
 export const getLatestProformaNumber = async (): Promise<number> => {
-    const { data, error } = await supabase.rpc('claim_ids', {
-        counter_name: 'proforma_id',
-        count: 1,
-    });
-    if (error) {
-        console.error('Error in getLatestProformaNumber:', error);
+    // Scan-based: used only to SUGGEST the next number in the UI picker.
+    // claim_ids() is intentionally not used here — opening the proforma form
+    // must never permanently consume a counter slot.
+    try {
+        const PAGE = 1000;
+        let maxNum = 0;
+        let page = 0;
+        while (true) {
+            const { data, error } = await supabase
+                .from('proforma_invoices')
+                .select('id')
+                .order('createdAt', { ascending: false })
+                .range(page * PAGE, (page + 1) * PAGE - 1);
+            if (error || !data || data.length === 0) break;
+            for (const row of data) {
+                let match = row.id.match(/PI-(\d+)$/);
+                if (!match) match = row.id.match(/^(\d+)$/);
+                if (match?.[1]) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNum) maxNum = num;
+                }
+            }
+            if (data.length < PAGE) break;
+            page++;
+        }
+        return maxNum > 0 ? maxNum + 1 : 1;
+    } catch (err) {
+        console.error('Error in getLatestProformaNumber:', err);
         return 1;
     }
-    return Number(data);
 }

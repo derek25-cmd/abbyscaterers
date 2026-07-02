@@ -21,7 +21,8 @@ type OrderWithClientName = Order & { customerName: string };
 
 export const getOrderColumns = (
   onDelete: (orderId: string) => void,
-  getClientById: (id: string) => Client | undefined
+  getClientById: (id: string) => Client | undefined,
+  getLinkedProformas: (orderId: string, fallback?: string | null) => string[]
 ): ColumnDef<OrderWithClientName>[] => {
   return [
     {
@@ -83,15 +84,26 @@ export const getOrderColumns = (
     },
     {
       accessorKey: "proformaId",
-      header: "Proforma",
+      header: "Proforma(s)",
       cell: ({ row }: { row: any }) => {
-        const proformaId = row.getValue("proformaId") as string;
-        return proformaId ? (
-            <Badge variant="outline" className="font-mono bg-primary/5 text-primary border-primary/20 text-[10px]">
-                {proformaId}
-            </Badge>
-        ) : (
-            <span className="text-muted-foreground text-[10px] italic">Not Linked</span>
+        const order = row.original;
+        const proformaIds = getLinkedProformas(order.id, order.proformaId);
+        if (proformaIds.length === 0) {
+          return <span className="text-muted-foreground text-[10px] italic">Not Linked</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            {proformaIds.map(pid => (
+              <Link key={pid} href={`/proforma-invoices/${pid}`}>
+                <Badge
+                  variant="outline"
+                  className="font-mono bg-primary/5 text-primary border-primary/20 text-[10px] cursor-pointer hover:bg-primary/15 transition-colors"
+                >
+                  {pid}
+                </Badge>
+              </Link>
+            ))}
+          </div>
         );
       },
     },

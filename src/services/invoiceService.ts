@@ -34,6 +34,22 @@ export const getInvoiceById = async (id: string): Promise<Invoice | null> => {
 }
 
 export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Invoice | null> => {
+    // Server-side guard: a proforma can only ever have one final invoice.
+    // This catches races and direct-URL bypasses where the client-side
+    // isInvoiced flag might be stale.
+    if (invoiceData.proformaId) {
+        const { data: existing } = await supabase
+            .from('invoices')
+            .select('id')
+            .eq('proformaId', invoiceData.proformaId)
+            .maybeSingle();
+        if (existing) {
+            throw new Error(
+                `A final invoice (${existing.id}) already exists for this proforma. Open that invoice instead of creating a new one.`
+            );
+        }
+    }
+
     const validated = validate(FinalInvoiceSchema, invoiceData);
     const now = new Date().toISOString();
     const newInvoiceData = { ...validated, createdAt: now, updatedAt: now };
@@ -104,13 +120,35 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
 };
 
 export const getLatestInvoiceNumber = async (): Promise<number> => {
-    const { data, error } = await supabase.rpc('claim_ids', {
-        counter_name: 'invoice_id',
-        count: 1,
-    });
-    if (error) {
-        console.error('Error in getLatestInvoiceNumber:', error);
+    // Scan-based: used only to SUGGEST the next number in the UI picker.
+    // Actual uniqueness is enforced by the server-side duplicate check in
+    // addInvoice() — claim_ids() is not used here so that opening the form
+    // never permanently consumes a counter slot.
+    try {
+        const PAGE = 1000;
+        let maxNum = 0;
+        let page = 0;
+        while (true) {
+            const { data, error } = await supabase
+                .from('invoices')
+                .select('id')
+                .order('createdAt', { ascending: false })
+                .range(page * PAGE, (page + 1) * PAGE - 1);
+            if (error || !data || data.length === 0) break;
+            for (const row of data) {
+                let match = row.id.match(/INV-(\d{5,})$/);
+                if (!match) match = row.id.match(/^(\d+)$/);
+                if (match?.[1]) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNum) maxNum = num;
+                }
+            }
+            if (data.length < PAGE) break;
+            page++;
+        }
+        return maxNum > 0 ? maxNum + 1 : 1;
+    } catch (err) {
+        console.error('Error in getLatestInvoiceNumber:', err);
         return 1;
     }
-    return Number(data);
 }
