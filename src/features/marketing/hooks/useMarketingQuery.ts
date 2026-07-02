@@ -620,6 +620,11 @@ export function useApproveApplication() {
       queryClient.invalidateQueries({ queryKey: ["marketing", "applications"] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "applications", variables.id] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "marketers-list"] });
+      // The Account Management tab (status badge) and that marketer's own
+      // history tab both read from separate queries — without these, an
+      // approval wouldn't show as "Approved" there until staleTime lapsed.
+      queryClient.invalidateQueries({ queryKey: ["marketing", "account-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketer-history", variables.id] });
     },
   });
 }
@@ -632,6 +637,8 @@ export function useRejectApplication() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["marketing", "applications"] });
       queryClient.invalidateQueries({ queryKey: ["marketing", "applications", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "account-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["marketing", "marketer-history", variables.id] });
     },
   });
 }

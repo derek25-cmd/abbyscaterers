@@ -21,13 +21,32 @@ const mapDbToOrder = (dbOrder: any): Order => {
 };
 
 export const getOrders = async (): Promise<Order[]> => {
-    const { data, error } = await supabase.from('orders').select('*').order('createdAt', { ascending: false });
-    if (error) {
-        console.error('Error fetching orders:', JSON.stringify(error, null, 2));
-        return [];
+    // Supabase's default page size is 1 000 rows. With 1 000+ orders in the
+    // database the un-paginated select silently truncates, causing the oldest
+    // entries to vanish from the Sync Orders dialog. Paginate until exhausted.
+    const PAGE = 1000;
+    const all: Order[] = [];
+    let page = 0;
+
+    while (true) {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('createdAt', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+
+        if (error) {
+            console.error('Error fetching orders:', JSON.stringify(error, null, 2));
+            break;
+        }
+
+        if (!data || data.length === 0) break;
+        all.push(...(data as any[]).map(mapDbToOrder));
+        if (data.length < PAGE) break; // last page
+        page++;
     }
-    const orders = data as any[];
-    return orders.map(mapDbToOrder);
+
+    return all;
 };
 
 export const getOrderById = async (id: string): Promise<Order | null> => {
@@ -162,24 +181,31 @@ export const bulkDeleteOrders = async (ids: string[]): Promise<boolean> => {
 
 export const getLatestOrderNumber = async (): Promise<number> => {
     try {
-        const { data, error } = await supabase
-            .from('orders')
-            .select('id')
-            .order('createdAt', { ascending: false })
-            .limit(500);
-        
-        if (error || !data || data.length === 0) {
-            return 1;
-        }
-        
+        // Scan ALL orders — the old .limit(500) caused ORD-ID collisions once
+        // the database grew beyond 500 entries.
+        const PAGE = 1000;
         let maxNum = 0;
-        for (const row of data) {
-            // First try matching ORD-XXXXX (numeric only)
-            const match = row.id.match(/ORD-(\d{5})$/);
-            if (match && match[1]) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) maxNum = num;
+        let page = 0;
+
+        while (true) {
+            const { data, error } = await supabase
+                .from('orders')
+                .select('id')
+                .order('createdAt', { ascending: false })
+                .range(page * PAGE, (page + 1) * PAGE - 1);
+
+            if (error || !data || data.length === 0) break;
+
+            for (const row of data) {
+                const match = row.id.match(/ORD-(\d{5})$/);
+                if (match && match[1]) {
+                    const num = parseInt(match[1], 10);
+                    if (num > maxNum) maxNum = num;
+                }
             }
+
+            if (data.length < PAGE) break;
+            page++;
         }
 
         return maxNum > 0 ? maxNum + 1 : 1;
@@ -191,26 +217,35 @@ export const getLatestOrderNumber = async (): Promise<number> => {
 
 export const getLatestEventNumber = async (): Promise<number> => {
     try {
-        // Fetch recent orders to find the latest EVT-ID
-        const { data, error } = await supabase
-            .from('orders')
-            .select('clientEvents')
-            .order('createdAt', { ascending: false })
-            .limit(100);
-        
-        if (error || !data) return 1;
-
+        // Scan ALL orders for the highest EVT-XXXXX sequence number so we
+        // never generate a duplicate. The old .limit(100) caused duplicate IDs
+        // once the database exceeded 100 orders.
+        const PAGE = 1000;
         let maxNum = 0;
-        data.forEach((order: any) => {
-            const events = order.clientEvents || [];
-            events.forEach((evt: any) => {
-                const match = evt.id?.match(/EVT-(\d+)/);
-                if (match && match[1]) {
-                    const num = parseInt(match[1], 10);
-                    if (num > maxNum) maxNum = num;
-                }
+        let page = 0;
+
+        while (true) {
+            const { data, error } = await supabase
+                .from('orders')
+                .select('clientEvents')
+                .order('createdAt', { ascending: false })
+                .range(page * PAGE, (page + 1) * PAGE - 1);
+
+            if (error || !data) break;
+
+            data.forEach((order: any) => {
+                (order.clientEvents || []).forEach((evt: any) => {
+                    const match = evt.id?.match(/EVT-(\d+)/);
+                    if (match) {
+                        const num = parseInt(match[1], 10);
+                        if (num > maxNum) maxNum = num;
+                    }
+                });
             });
-        });
+
+            if (data.length < PAGE) break;
+            page++;
+        }
 
         return maxNum + 1;
     } catch (err) {

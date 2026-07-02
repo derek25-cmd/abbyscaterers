@@ -20,7 +20,8 @@ import {
   useApplicationDetail, useApplicationDocumentUrl, useApproveApplication, useRejectApplication,
 } from "@/features/marketing/hooks/useMarketingQuery";
 import { formatDate, formatDateTime, titleCase } from "@/features/marketing/utils/format";
-import type { MarketerDocument } from "@/features/marketing/types";
+import { ACCOUNT_STATUS_CONFIG } from "@/features/marketing/types";
+import type { ApprovalStatus, MarketerDocument } from "@/features/marketing/types";
 
 const DOCUMENT_LABELS: Record<string, string> = {
   NIDA_FRONT: "NIDA Card — Front",
@@ -108,7 +109,12 @@ export default function ApplicationDetailPage() {
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-lg font-semibold">?</div>
           )}
           <div>
-            <h2 className="text-2xl font-bold">{marketer.full_name as string}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold">{marketer.full_name as string}</h2>
+              <Badge className={ACCOUNT_STATUS_CONFIG[marketer.approval_status as ApprovalStatus]?.badgeClass}>
+                {ACCOUNT_STATUS_CONFIG[marketer.approval_status as ApprovalStatus]?.label ?? titleCase(marketer.approval_status as string)}
+              </Badge>
+            </div>
             <p className="text-sm text-muted-foreground">{marketer.email as string} · Submitted {formatDate(marketer.submitted_at as string, "long")}</p>
           </div>
         </div>

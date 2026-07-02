@@ -183,9 +183,12 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         const matches = orders.filter(order => {
             if (order.clientId !== selectedClientId) return false;
 
-            const inDateRange =
-                (order.startDate && order.startDate >= start && order.startDate <= end) ||
-                (order.endDate && order.endDate >= start && order.endDate <= end);
+            // Standard interval overlap: order [startDate, endDate] overlaps
+            // proforma [start, end] if the order ends on/after the proforma
+            // starts AND the order starts on/before the proforma ends.
+            // The old check missed orders that fully span the proforma period
+            // (e.g. a June–August order against a July proforma).
+            const inDateRange = order.startDate <= end && order.endDate >= start;
             if (!inDateRange) return false;
 
             // Show the order only if it has at least one event (within the proforma's
