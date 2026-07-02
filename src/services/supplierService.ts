@@ -27,17 +27,26 @@ const mapRow = (r: any): Supplier => ({
 });
 
 export const getSuppliers = async (): Promise<Supplier[]> => {
-    const { data, error } = await supabase
-        .from('suppliers')
-        .select('*')
-        .order('name', { ascending: true });
-
-    if (error) {
-        console.warn('Supabase suppliers fetch failed, using local:', error.message);
-        return getLocal();
+    const PAGE = 1000;
+    const raw: any[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('suppliers')
+            .select('*')
+            .order('name', { ascending: true })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) {
+            console.warn('Supabase suppliers fetch failed, using local:', error.message);
+            return getLocal();
+        }
+        if (!data || data.length === 0) break;
+        raw.push(...data);
+        if (data.length < PAGE) break;
+        page++;
     }
 
-    const mapped = (data || []).map(mapRow);
+    const mapped = raw.map(mapRow);
 
     const local = getLocal();
     const merged = [...local];

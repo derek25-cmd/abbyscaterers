@@ -20,6 +20,7 @@ import { useClientStorage } from '@/hooks/use-client-storage';
 import { useProformaInvoiceStorage } from '@/hooks/use-proforma-invoice-storage';
 import { useOrderStorage } from '@/hooks/use-order-storage';
 import { useSettingsStorage } from '@/hooks/use-settings-storage';
+import { getLatestProformaNumber } from '@/services/proformaInvoiceService';
 import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from '@/lib/schemas';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -156,14 +157,17 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const selectedClient = useMemo(() => selectedClientId ? getClientDetails(selectedClientId) : null, [selectedClientId, getClientDetails]);
 
     useEffect(() => {
-        if (!settingsLoading && !isEditMode) {
+        if (!isEditMode) {
             const currentId = form.getValues('id');
-            // If the ID is the default PI-timestamp, replace it with our configured value.
-            if (currentId && currentId.startsWith('PI-17')) {
-                form.setValue('id', settings.nextProformaNumber || '');
+            // Replace the temporary timestamp-based placeholder with a real
+            // number derived live from the database — same method as invoices.
+            if (currentId && currentId.startsWith('PI-')) {
+                getLatestProformaNumber().then(num => {
+                    form.setValue('id', String(num).padStart(7, '0'));
+                });
             }
         }
-    }, [settingsLoading, settings.nextProformaNumber, isEditMode, form]);
+    }, [isEditMode, form]);
 
     // Check for matching orders (works in both create and edit mode)
     useEffect(() => {
@@ -393,11 +397,6 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     if (!existingOrder?.proformaId || existingOrder.proformaId === (invoiceId ?? result.id)) {
                         await updateOrder(oid, { proformaId: result.id } as any);
                     }
-                }
-
-                if (!isEditMode) {
-                    const nextId = incrementIdString(freshData.id || '');
-                    updateSettings({ nextProformaNumber: nextId });
                 }
 
                 toast({ title: 'Success', description: `Proforma ${isEditMode ? 'updated' : 'created'} successfully and source orders processed.` });

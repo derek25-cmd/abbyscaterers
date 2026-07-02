@@ -18,10 +18,15 @@ export async function GET(request: NextRequest) {
   const periodType = params.get('periodType');
   const active = params.get('active'); // "true" => start_date <= today <= end_date
 
+  const page  = Math.max(1, Number(params.get('page')  ?? '1'));
+  const limit = Math.min(500, Math.max(1, Number(params.get('limit') ?? '200')));
+  const from  = (page - 1) * limit;
+
   let query = client
     .from('marketing_targets')
-    .select('*, marketer:marketing_users!marketing_targets_marketer_id_fkey(id, full_name), latestAnalysis:marketing_target_analyses(id, target_id, actuals, score, status, narrative, recommendation, analysed_by, created_at)')
-    .order('start_date', { ascending: false });
+    .select('*, marketer:marketing_users!marketing_targets_marketer_id_fkey(id, full_name), latestAnalysis:marketing_target_analyses(id, target_id, actuals, score, status, narrative, recommendation, analysed_by, created_at)', { count: 'exact' })
+    .order('start_date', { ascending: false })
+    .range(from, from + limit - 1);
 
   // A marketer sees their own targets plus every OVERALL (team-wide) target.
   // Managers/admins can browse anyone's.
@@ -38,7 +43,7 @@ export async function GET(request: NextRequest) {
     query = query.lte('start_date', today).gte('end_date', today);
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -68,7 +73,7 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  return NextResponse.json({ data: withProgress });
+  return NextResponse.json({ data: withProgress, total: count ?? 0, page, limit });
 }
 
 export async function POST(request: NextRequest) {

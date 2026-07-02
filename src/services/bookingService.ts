@@ -2,7 +2,9 @@
 "use client";
 
 import { supabase } from '@/lib/supabase-client';
-import type { Booking, DailyOrder } from '@/types';
+import type { Booking } from '@/types';
+// DailyOrder is not yet exported from @/types — use a local shape until it is.
+type DailyOrder = Record<string, unknown>;
 import { BookingSchema, type BookingFormData, type DailyOrderFormData } from "@/lib/schemas";
 import { validate } from '@/lib/service-validation';
 
@@ -10,9 +12,22 @@ import { validate } from '@/lib/service-validation';
 
 export const getBookings = async (): Promise<Booking[]> => {
     try {
-        const { data, error } = await supabase.from("bookings").select("*");
-        if (error) throw error;
-        return data as Booking[];
+        const PAGE = 1000;
+        const all: Booking[] = [];
+        let page = 0;
+        while (true) {
+            const { data, error } = await supabase
+                .from("bookings")
+                .select("*")
+                .order('created_at', { ascending: false })
+                .range(page * PAGE, (page + 1) * PAGE - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            all.push(...(data as Booking[]));
+            if (data.length < PAGE) break;
+            page++;
+        }
+        return all;
     } catch (error) {
         console.error("Error fetching bookings:", JSON.stringify(error, null, 2));
         return [];
@@ -62,9 +77,22 @@ export const deleteBooking = async (id: string): Promise<boolean> => {
 
 export const getDailyOrders = async (): Promise<DailyOrder[]> => {
     try {
-        const { data, error } = await supabase.from("daily_orders").select("*");
-        if (error) throw error;
-        return data as DailyOrder[];
+        const PAGE = 1000;
+        const all: DailyOrder[] = [];
+        let page = 0;
+        while (true) {
+            const { data, error } = await supabase
+                .from("daily_orders")
+                .select("*")
+                .order('order_date', { ascending: false })
+                .range(page * PAGE, (page + 1) * PAGE - 1);
+            if (error) throw error;
+            if (!data || data.length === 0) break;
+            all.push(...(data as DailyOrder[]));
+            if (data.length < PAGE) break;
+            page++;
+        }
+        return all;
     } catch (error) {
         console.error("Error fetching daily orders:", JSON.stringify(error, null, 2));
         return [];

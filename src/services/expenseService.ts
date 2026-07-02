@@ -24,12 +24,25 @@ const saveLocalExpenses = (expenses: Expense[]) => {
 };
 
 export const getExpenses = async (): Promise<Expense[]> => {
-    const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
-    
-    if (error) {
-        console.warn('Supabase fetch failed for expenses, falling back to localStorage:', error.message);
-        return getLocalExpenses();
+    const PAGE = 1000;
+    const raw: any[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('expenses')
+            .select('*')
+            .order('date', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) {
+            console.warn('Supabase fetch failed for expenses, falling back to localStorage:', error.message);
+            return getLocalExpenses();
+        }
+        if (!data || data.length === 0) break;
+        raw.push(...data);
+        if (data.length < PAGE) break;
+        page++;
     }
+    const data = raw;
 
     const mappedExpenses = data.map(e => ({
         id: e.id,

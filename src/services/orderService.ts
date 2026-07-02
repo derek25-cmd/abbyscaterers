@@ -60,19 +60,36 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
     return mapDbToOrder(data);
 };
 
+// ── ID counter helper ──────────────────────────────────────────────────────
+// Calls the DB-side claim_ids() function which atomically increments a
+// named counter and returns the first ID in the claimed range.  Because the
+// counter only ever increases, IDs are never reused after deletion.
+async function claimIds(counterName: string, count: number = 1): Promise<number> {
+    const { data, error } = await supabase.rpc('claim_ids', {
+        counter_name: counterName,
+        count,
+    });
+    if (error) throw new Error(`Could not claim ${counterName} IDs: ${error.message}`);
+    return Number(data);
+}
+
 export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order | null> => {
     try {
         const now = new Date().toISOString();
         const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
 
+        // Use the DB counter for order IDs so deleted IDs are never reissued.
         let orderId = orderData.id;
-        if (!orderId || orderId.startsWith('ORD-17')) { // Ensure timestamp-based IDs are replaced
-            let nextNum = await getLatestOrderNumber();
+        if (!orderId || orderId.startsWith('ORD-17')) {
+            const nextNum = await claimIds('order_id');
             orderId = `ORD-${String(nextNum).padStart(5, '0')}`;
         }
 
-        // Ensure every client event has a unique ID (EVT-XXXXX)
-        let nextEvtNum = await getLatestEventNumber();
+        // Claim exactly as many event IDs as there are events that need one.
+        const eventsNeedingId = (orderData.clientEvents || []).filter(
+            e => !e.id || e.id.startsWith('EVT-17')
+        ).length;
+        let nextEvtNum = eventsNeedingId > 0 ? await claimIds('event_id', eventsNeedingId) : 0;
         const processedEvents = (orderData.clientEvents || []).map(event => {
             if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
                 return event;
@@ -126,9 +143,12 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
         if (updates.booking_id !== undefined) payload.booking_id = updates.booking_id;
         
         if (updates.clientEvents !== undefined) {
-             let nextEvtNum = await getLatestEventNumber();
-             payload.clientEvents = (updates.clientEvents || []).map(event => {
-                 if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
+            const eventsNeedingId = (updates.clientEvents || []).filter(
+                (e: any) => !e.id || e.id.startsWith('EVT-17')
+            ).length;
+            let nextEvtNum = eventsNeedingId > 0 ? await claimIds('event_id', eventsNeedingId) : 0;
+            payload.clientEvents = (updates.clientEvents || []).map((event: any) => {
+                if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
                     return event;
                 }
                 return {
@@ -179,95 +199,32 @@ export const bulkDeleteOrders = async (ids: string[]): Promise<boolean> => {
     }
 };
 
-export const getLatestOrderNumber = async (): Promise<number> => {
-    try {
-        // Scan ALL orders — the old .limit(500) caused ORD-ID collisions once
-        // the database grew beyond 500 entries.
-        const PAGE = 1000;
-        let maxNum = 0;
-        let page = 0;
-
-        while (true) {
-            const { data, error } = await supabase
-                .from('orders')
-                .select('id')
-                .order('createdAt', { ascending: false })
-                .range(page * PAGE, (page + 1) * PAGE - 1);
-
-            if (error || !data || data.length === 0) break;
-
-            for (const row of data) {
-                const match = row.id.match(/ORD-(\d{5})$/);
-                if (match && match[1]) {
-                    const num = parseInt(match[1], 10);
-                    if (num > maxNum) maxNum = num;
-                }
-            }
-
-            if (data.length < PAGE) break;
-            page++;
-        }
-
-        return maxNum > 0 ? maxNum + 1 : 1;
-    } catch (err) {
-        console.error('Error in getLatestOrderNumber:', err);
-        return 1;
-    }
-}
-
-export const getLatestEventNumber = async (): Promise<number> => {
-    try {
-        // Scan ALL orders for the highest EVT-XXXXX sequence number so we
-        // never generate a duplicate. The old .limit(100) caused duplicate IDs
-        // once the database exceeded 100 orders.
-        const PAGE = 1000;
-        let maxNum = 0;
-        let page = 0;
-
-        while (true) {
-            const { data, error } = await supabase
-                .from('orders')
-                .select('clientEvents')
-                .order('createdAt', { ascending: false })
-                .range(page * PAGE, (page + 1) * PAGE - 1);
-
-            if (error || !data) break;
-
-            data.forEach((order: any) => {
-                (order.clientEvents || []).forEach((evt: any) => {
-                    const match = evt.id?.match(/EVT-(\d+)/);
-                    if (match) {
-                        const num = parseInt(match[1], 10);
-                        if (num > maxNum) maxNum = num;
-                    }
-                });
-            });
-
-            if (data.length < PAGE) break;
-            page++;
-        }
-
-        return maxNum + 1;
-    } catch (err) {
-        console.error('Error in getLatestEventNumber:', err);
-        return 1;
-    }
-}
+// getLatestOrderNumber / getLatestEventNumber are intentionally removed.
+// All ID generation now goes through claimIds() → claim_ids() DB function.
 
 export const bulkAddOrders = async (ordersData: Partial<OrderFormData>[]): Promise<Order[]> => {
     if (ordersData.length === 0) return [];
 
     try {
         const now = new Date().toISOString();
-        let nextNum = await getLatestOrderNumber();
-        let nextEvtNum = await getLatestEventNumber();
+
+        // Claim all order IDs and event IDs atomically in two round-trips.
+        let nextNum = await claimIds('order_id', ordersData.length);
+        const totalEventsNeedingId = ordersData.reduce((sum, od) => {
+            return sum + (od.clientEvents || []).filter(
+                (e: any) => !e.id || e.id.startsWith('EVT-17')
+            ).length;
+        }, 0);
+        let nextEvtNum = totalEventsNeedingId > 0
+            ? await claimIds('event_id', totalEventsNeedingId)
+            : 0;
 
         const payloads = ordersData.map((orderData) => {
             const orderId = `ORD-${String(nextNum++).padStart(5, '0')}`;
             const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
 
             const processedEvents = (orderData.clientEvents || []).map(event => {
-                 if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
+                if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
                     return event;
                 }
                 return {

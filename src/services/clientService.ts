@@ -5,12 +5,21 @@ import { ClientSchema, type ClientFormData } from '@/lib/schemas';
 import { validate } from '@/lib/service-validation';
 
 export const getClients = async (): Promise<Client[]> => {
-    const { data, error } = await supabase.from('clients').select('*');
-    if (error) {
-        console.error('Error fetching clients:', error);
-        return [];
+    const PAGE = 1000;
+    const all: Client[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) { console.error('Error fetching clients:', error); break; }
+        if (!data || data.length === 0) break;
+        all.push(...(data as Client[]));
+        if (data.length < PAGE) break;
+        page++;
     }
-    return data as Client[];
+    return all;
 };
 
 export const getClientById = async (id: string): Promise<Client | null> => {

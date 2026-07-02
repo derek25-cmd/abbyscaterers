@@ -24,7 +24,7 @@ import { baseInvoiceSchema, type ProformaInvoiceFormData } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { Textarea } from "../ui/textarea";
-import { useSettingsStorage } from "@/hooks/use-settings-storage";
+import { getLatestProformaNumber } from "@/services/proformaInvoiceService";
 import { REGIONS, Region } from "@/types";
 
 interface CloseBookingDialogProps {
@@ -64,16 +64,16 @@ export function CloseBookingDialog({ isOpen, setIsOpen, onSubmit }: CloseBooking
     },
   });
 
-  const { settings, isLoading: settingsLoading } = useSettingsStorage();
-
   useEffect(() => {
-      if (!settingsLoading && isOpen) {
+      if (isOpen) {
           const currentId = form.getValues('id');
           if (currentId && currentId.startsWith('PI-17')) {
-              form.setValue('id', settings.nextProformaNumber || '');
+              getLatestProformaNumber().then(num =>
+                  form.setValue('id', String(num).padStart(7, '0'))
+              );
           }
       }
-  }, [settingsLoading, settings.nextProformaNumber, isOpen, form]);
+  }, [isOpen, form]);
 
   const { isSubmitting } = form.formState;
 

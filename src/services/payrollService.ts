@@ -24,12 +24,25 @@ const saveLocalPayrolls = (records: Payroll[]) => {
 };
 
 export const getPayrolls = async (): Promise<Payroll[]> => {
-    const { data, error } = await supabase.from('payroll').select('*').order('payPeriodStart', { ascending: false });
-    
-    if (error) {
-        console.warn('Supabase fetch failed for payroll, falling back to localStorage:', error.message);
-        return getLocalPayrolls();
+    const PAGE = 1000;
+    const raw: any[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('payroll')
+            .select('*')
+            .order('payPeriodStart', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) {
+            console.warn('Supabase fetch failed for payroll, falling back to localStorage:', error.message);
+            return getLocalPayrolls();
+        }
+        if (!data || data.length === 0) break;
+        raw.push(...data);
+        if (data.length < PAGE) break;
+        page++;
     }
+    const data = raw;
 
     const mapped = data.map(p => ({
         id: p.id,

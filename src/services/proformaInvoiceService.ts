@@ -5,12 +5,22 @@ import { ProformaInvoiceSchema, type ProformaInvoiceFormData } from '@/lib/schem
 import { validate } from '@/lib/service-validation';
 
 export const getProformaInvoices = async (): Promise<ProformaInvoice[]> => {
-    const { data, error } = await supabase.from('proforma_invoices').select('*');
-    if (error) {
-        console.error('Error fetching proforma invoices:', error);
-        return [];
+    const PAGE = 1000;
+    const all: ProformaInvoice[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('proforma_invoices')
+            .select('*')
+            .order('createdAt', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) { console.error('Error fetching proforma invoices:', error); break; }
+        if (!data || data.length === 0) break;
+        all.push(...(data as ProformaInvoice[]));
+        if (data.length < PAGE) break;
+        page++;
     }
-    return data as ProformaInvoice[];
+    return all;
 };
 
 export const getProformaInvoiceById = async (id: string): Promise<ProformaInvoice | null> => {
@@ -79,35 +89,13 @@ export const deleteProformaInvoice = async (id: string): Promise<boolean> => {
 };
 
 export const getLatestProformaNumber = async (): Promise<number> => {
-    try {
-        const { data, error } = await supabase
-            .from('proforma_invoices')
-            .select('id')
-            .order('createdAt', { ascending: false })
-            .limit(500);
-        
-        if (error || !data || data.length === 0) {
-            return 1;
-        }
-        
-        let maxNum = 0;
-        for (const row of data) {
-            // First try matching PI-0012837
-            let match = row.id.match(/PI-(\d{5,})$/);
-            // If they are purely numbers like 0012837
-            if (!match) {
-                match = row.id.match(/^(\d{5,})$/);
-            }
-
-            if (match && match[1]) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) maxNum = num;
-            }
-        }
-
-        return maxNum > 0 ? maxNum + 1 : 1;
-    } catch (err) {
-        console.error('Error in getLatestProformaNumber:', err);
+    const { data, error } = await supabase.rpc('claim_ids', {
+        counter_name: 'proforma_id',
+        count: 1,
+    });
+    if (error) {
+        console.error('Error in getLatestProformaNumber:', error);
         return 1;
     }
+    return Number(data);
 }

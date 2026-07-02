@@ -26,12 +26,25 @@ const saveLocalPurchases = (purchases: Purchase[]) => {
 };
 
 export const getPurchases = async (): Promise<Purchase[]> => {
-    const { data, error } = await supabase.from('purchases').select('*').order('date', { ascending: false });
-
-    if (error) {
-        console.warn('Supabase fetch failed, falling back to local purchases storage:', error.message);
-        return getLocalPurchases();
+    const PAGE = 1000;
+    const raw: any[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('purchases')
+            .select('*')
+            .order('date', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) {
+            console.warn('Supabase fetch failed, falling back to local purchases storage:', error.message);
+            return getLocalPurchases();
+        }
+        if (!data || data.length === 0) break;
+        raw.push(...data);
+        if (data.length < PAGE) break;
+        page++;
     }
+    const data = raw;
 
     // Build a lookup map once — avoids multiple getLocalPurchases() calls per row.
     const localPurchases = getLocalPurchases();

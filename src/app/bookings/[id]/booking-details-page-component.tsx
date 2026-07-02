@@ -255,7 +255,6 @@ export function BookingDetailsPageComponent() {
                     await updateOrder(oid, { proformaId: newProforma.id } as any);
                 }
 
-             updateSettings({ nextProformaNumber: incrementIdString(settings.nextProformaNumber || "00001") });
              toast({ title: 'Success', description: `Proforma Invoice ${newProforma.id} created and linked to ${orderIds.length} orders.` });
              router.push(`/proforma-invoices/${newProforma.id}`);
         } else {

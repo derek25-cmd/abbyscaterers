@@ -33,6 +33,7 @@ import { REGIONS, type Order } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/hr/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { getLatestInvoiceNumber } from '@/services/invoiceService';
 
 interface InvoiceFormProps {
     invoiceId?: string;
@@ -157,14 +158,15 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
     const invoiceStatus = form.watch('status');
 
     useEffect(() => {
-        if (!settingsLoading && !isEditMode) {
+        if (!isEditMode) {
             const currentId = form.getValues('id');
-            // If the ID is the default INV-timestamp, replace it with our configured value.
             if (currentId && currentId.startsWith('INV-17')) {
-                form.setValue('id', settings.nextInvoiceNumber || '');
+                getLatestInvoiceNumber().then(num =>
+                    form.setValue('id', String(num).padStart(7, '0'))
+                );
             }
         }
-    }, [settingsLoading, settings.nextInvoiceNumber, isEditMode, form]);
+    }, [isEditMode, form]);
 
     // Check for matching orders
     useEffect(() => {
@@ -409,11 +411,6 @@ export function InvoiceForm({ invoiceId, proformaId, clientId, bookingId }: Invo
 
                 for (const oid of linkedOrderIds) {
                     await updateOrder(oid, { proformaId: freshData.proformaId || '' } as any);
-                }
-
-                if (!isEditMode) {
-                    const nextId = incrementIdString(data.id || '');
-                    updateSettings({ nextInvoiceNumber: nextId });
                 }
 
                 toast({ title: 'Success', description: `Invoice ${isEditMode ? 'updated' : 'created'} successfully and source orders processed.` });

@@ -11,9 +11,9 @@ import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { Loader2, UploadCloud, Hash, RefreshCw, FileType, Trash2 } from "lucide-react";
-import { getLatestOrderNumber } from "@/services/orderService";
 import { getLatestProformaNumber } from "@/services/proformaInvoiceService";
 import { getLatestInvoiceNumber } from "@/services/invoiceService";
+// getLatestOrderNumber removed — order IDs are now managed by the DB counter (claim_ids).
 import { Slider } from "@/components/ui/slider";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl' | 'proformaStampUrl' | 'invoiceStampUrl';
@@ -100,7 +100,9 @@ export function SettingsPageComponent() {
         try {
             let nextVal: string | number | undefined;
             if (sequenceKey === 'nextOrderNumber') {
-                nextVal = await getLatestOrderNumber();
+                // Order IDs are now managed by the database counter (claim_ids) —
+                // no settings sync needed. Show the current counter value for info only.
+                toast({ title: "Not needed", description: "Order IDs are now auto-sequenced by the database and cannot be reset from settings." });
             } else if (sequenceKey === 'nextProformaNumber') {
                 const num = await getLatestProformaNumber();
                 nextVal = String(num).padStart(5, '0');

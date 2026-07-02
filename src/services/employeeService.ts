@@ -5,12 +5,21 @@ import { EmployeeSchema } from '@/lib/schemas';
 import { validate } from '@/lib/service-validation';
 
 export const getEmployees = async (): Promise<Employee[]> => {
-    const { data, error } = await supabase.from('employees').select('*');
-    if (error) {
-        console.error('Error fetching employees:', error);
-        return [];
+    const PAGE = 1000;
+    const all: Employee[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('employees')
+            .select('*')
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) { console.error('Error fetching employees:', error); break; }
+        if (!data || data.length === 0) break;
+        all.push(...(data as Employee[]));
+        if (data.length < PAGE) break;
+        page++;
     }
-    return data as Employee[];
+    return all;
 };
 
 export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee> => {

@@ -6,12 +6,22 @@ import { validate } from '@/lib/service-validation';
 import { resyncCommissionForInvoice, voidCommissionForInvoice, renameInvoiceIdForCommission, recordCommissionForInvoice } from '@/features/marketing/utils/commission';
 
 export const getInvoices = async (): Promise<Invoice[]> => {
-    const { data, error } = await supabase.from('invoices').select('*');
-    if (error) {
-        console.error('Error fetching invoices:', error);
-        return [];
+    const PAGE = 1000;
+    const all: Invoice[] = [];
+    let page = 0;
+    while (true) {
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('*')
+            .order('createdAt', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+        if (error) { console.error('Error fetching invoices:', error); break; }
+        if (!data || data.length === 0) break;
+        all.push(...(data as Invoice[]));
+        if (data.length < PAGE) break;
+        page++;
     }
-    return data as Invoice[];
+    return all;
 };
 
 export const getInvoiceById = async (id: string): Promise<Invoice | null> => {
@@ -94,33 +104,13 @@ export const deleteInvoice = async (id: string): Promise<boolean> => {
 };
 
 export const getLatestInvoiceNumber = async (): Promise<number> => {
-    try {
-        const { data, error } = await supabase
-            .from('invoices')
-            .select('id')
-            .order('createdAt', { ascending: false })
-            .limit(20);
-        
-        if (error || !data || data.length === 0) {
-            return 1;
-        }
-        
-        let maxNum = 0;
-        for (const row of data) {
-            let match = row.id.match(/INV-(\d{5,})$/);
-            if (!match) {
-                match = row.id.match(/^(\d{5,})$/);
-            }
-
-            if (match && match[1]) {
-                const num = parseInt(match[1], 10);
-                if (num > maxNum) maxNum = num;
-            }
-        }
-
-        return maxNum > 0 ? maxNum + 1 : 1;
-    } catch (err) {
-        console.error('Error in getLatestInvoiceNumber:', err);
+    const { data, error } = await supabase.rpc('claim_ids', {
+        counter_name: 'invoice_id',
+        count: 1,
+    });
+    if (error) {
+        console.error('Error in getLatestInvoiceNumber:', error);
         return 1;
     }
+    return Number(data);
 }

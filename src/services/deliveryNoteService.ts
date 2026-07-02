@@ -30,27 +30,14 @@ export const createDeliveryNoteFromOrder = async (
       throw new Error("Order details are incomplete.");
     }
 
-    // Fetch recent delivery note IDs to securely calculate the next increment regardless of string padding
-    const { data: recentNotes, error: recentNotesError } = await supabase
-      .from('delivery_notes')
-      .select('id')
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (recentNotesError) {
-        throw new Error(`Could not fetch recent delivery note IDs: ${recentNotesError.message}`);
-    }
-
-    let nextIdNumber = 8892; // Default starting number if no notes exist
-    if (recentNotes && recentNotes.length > 0) {
-        const idNumbers = recentNotes
-            .map((n: { id: string }) => parseInt(n.id, 10))
-            .filter((n: number) => !isNaN(n));
-            
-        if (idNumbers.length > 0) {
-            nextIdNumber = Math.max(...idNumbers) + 1;
-        }
-    }
+    // Claim the next delivery note ID from the monotonic counter — never reuses
+    // a number even if previous delivery notes were deleted.
+    const { data: claimedId, error: claimError } = await supabase.rpc('claim_ids', {
+        counter_name: 'delivery_note_id',
+        count: 1,
+    });
+    if (claimError) throw new Error(`Could not claim delivery note ID: ${claimError.message}`);
+    const nextIdNumber = Number(claimedId);
     
     // Fetch recipes for mapping names
     const recipeIds = order.clientEvents.flatMap(event => event.recipes?.map(r => r.recipeId) || []);
