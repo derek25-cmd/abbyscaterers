@@ -456,7 +456,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     endDate,
                     description: `Manually defined via Proforma Wizard.`,
                     proformaId: docId.startsWith('TEMP-') ? null : docId,
-                    region: data.region,
+                    region: firstItem.region ?? data.region ?? undefined,
                     clientEvents: validItems.map(gi => ({
                         id: gi.id,
                         mealType: gi.mealType,
@@ -848,7 +848,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                     )}
                                                                 </div>
 
-                                                                <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-1.5">
+                                                                <div className="col-span-12 md:col-span-4 lg:col-span-2 space-y-1.5">
                                                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Service Date</FormLabel>
                                                                     <FormField control={form.control} name={`items.${index}.date`} render={({ field }) => (
                                                                         <FormItem className="flex flex-col">
@@ -860,20 +860,34 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                                     </Button></FormControl>
                                                                                 </PopoverTrigger>
                                                                                 <PopoverContent className="w-auto p-0" align="start">
-                                                                                    <Calendar 
-                                                                                        mode="single" 
-                                                                                        selected={field.value ? parseISO(field.value) : undefined} 
-                                                                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} 
+                                                                                    <Calendar
+                                                                                        mode="single"
+                                                                                        selected={field.value ? parseISO(field.value) : undefined}
+                                                                                        onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
                                                                                         disabled={(date) => {
                                                                                             const s = form.getValues('startDate');
                                                                                             const e = form.getValues('endDate');
                                                                                             if (!s || !e) return false;
                                                                                             return date < parseISO(s) || date > parseISO(e);
                                                                                         }}
-                                                                                        initialFocus 
+                                                                                        initialFocus
                                                                                     />
                                                                                 </PopoverContent>
                                                                             </Popover>
+                                                                        </FormItem>
+                                                                    )} />
+                                                                </div>
+
+                                                                <div className="col-span-12 md:col-span-4 lg:col-span-2 space-y-1.5">
+                                                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Region</FormLabel>
+                                                                    <FormField control={form.control} name={`items.${index}.region`} render={({ field }) => (
+                                                                        <FormItem>
+                                                                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                                                                                <FormControl><SelectTrigger className="h-10 text-xs bg-background"><SelectValue placeholder="Select region…" /></SelectTrigger></FormControl>
+                                                                                <SelectContent>
+                                                                                    {REGIONS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                                                                                </SelectContent>
+                                                                            </Select>
                                                                         </FormItem>
                                                                     )} />
                                                                 </div>
@@ -1019,7 +1033,8 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                         unitPrice: 0,
                                                         total: 0,
                                                         date: format(new Date(), 'yyyy-MM-dd'),
-                                                        vatType: 'inclusive'
+                                                        vatType: 'inclusive',
+                                                        region: form.getValues('region') ?? undefined,
                                                     })}
                                                 >
                                                     <div className="flex flex-col items-center gap-2">

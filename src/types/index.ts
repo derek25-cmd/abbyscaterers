@@ -161,6 +161,7 @@ export interface InvoiceItem {
   particularType: 'event' | 'meal' | 'custom';
   particularDescription?: string;
   vatType: 'inclusive' | 'exclusive';
+  region?: Region;
 }
 
 // Proforma Invoice Types

@@ -188,6 +188,7 @@ export const InvoiceItemSchema = z.object({
   particularType: z.enum(['event', 'meal', 'custom']),
   particularDescription: z.string().optional(),
   vatType: z.enum(['inclusive', 'exclusive']),
+  region: z.enum(REGIONS).optional(),
 });
 export type InvoiceItem = z.infer<typeof InvoiceItemSchema>;
 
