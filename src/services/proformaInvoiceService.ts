@@ -114,7 +114,9 @@ export const getLatestProformaNumber = async (): Promise<number> => {
             if (data.length < PAGE) break;
             page++;
         }
-        return maxNum > 0 ? maxNum + 1 : 1;
+        // Never suggest a number below 15065 — the sequence was reset here
+        // at the manager's request; numbers below this were already issued.
+        return Math.max(maxNum > 0 ? maxNum + 1 : 1, 15065);
     } catch (err) {
         console.error('Error in getLatestProformaNumber:', err);
         return 1;

@@ -168,6 +168,7 @@ export const OrderSchema = z.object({
   description: z.string().optional(),
   proformaId: z.string().optional(),
   booking_id: z.string().nullable().optional(),
+  region: z.enum(REGIONS).optional(),
   clientEvents: z.array(ClientEventSchema).optional(),
 });
 export type OrderFormData = z.infer<typeof OrderSchema>;

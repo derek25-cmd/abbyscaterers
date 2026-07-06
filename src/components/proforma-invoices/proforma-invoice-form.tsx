@@ -455,9 +455,10 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     startDate,
                     endDate,
                     description: `Manually defined via Proforma Wizard.`,
-                    proformaId: docId.startsWith('TEMP-') ? null : docId, 
+                    proformaId: docId.startsWith('TEMP-') ? null : docId,
+                    region: data.region,
                     clientEvents: validItems.map(gi => ({
-                        id: gi.id, 
+                        id: gi.id,
                         mealType: gi.mealType,
                         eventType: gi.eventType,
                         numberOfPeople: Number(gi.pax) || 0,
@@ -474,17 +475,18 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
                 const newOrder = await addOrder(orderPayload as any);
                 if (newOrder) {
+                    // Match returned events positionally — addOrder preserves insertion order
+                    // via map(), so event[i] in the response corresponds to validItems[i].
+                    // Matching by particularDescription+date fails when descriptions are empty.
+                    const returnedEvents = newOrder.clientEvents || [];
+                    let evtIndex = 0;
                     currentItemsForDrafts = currentItemsForDrafts.map(ci => {
                         if (ci.orderId === tempOrderId) {
-                            const matchingEvent = newOrder.clientEvents?.find(e => 
-                                e.particularDescription === ci.particularDescription && 
-                                e.date === ci.date
-                            );
-                            return {
-                                ...ci,
-                                orderId: newOrder.id,
-                                id: matchingEvent?.id || ci.id
-                            };
+                            if (ci.date) {
+                                const realEvt = returnedEvents[evtIndex++];
+                                return { ...ci, orderId: newOrder.id, id: realEvt?.id || ci.id };
+                            }
+                            return { ...ci, orderId: newOrder.id };
                         }
                         return ci;
                     });

@@ -141,6 +141,7 @@ export interface Order {
   description?: string;
   proformaId?: string;
   booking_id?: string | null;
+  region?: Region;
   clientEvents: ClientEvent[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
