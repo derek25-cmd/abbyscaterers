@@ -61,6 +61,12 @@ export const getOrderById = async (id: string): Promise<Order | null> => {
     return mapDbToOrder(data);
 };
 
+// A real, previously-claimed order/event id looks like ORD-00001 / EVT-00001.
+// Anything else (missing, or a client-side placeholder like DRAFT-EVT-...,
+// EVT-<timestamp>, etc.) needs a fresh id claimed from the DB counter.
+const isRealOrderId = (id: string | undefined | null): boolean => !!id && /^ORD-\d{5}$/.test(id);
+const isRealEventId = (id: string | undefined | null): boolean => !!id && /^EVT-\d{5}$/.test(id);
+
 // ── ID counter helper ──────────────────────────────────────────────────────
 // Calls the DB-side claim_ids() function which atomically increments a
 // named counter and returns the first ID in the claimed range.  Because the
@@ -81,18 +87,18 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
 
         // Use the DB counter for order IDs so deleted IDs are never reissued.
         let orderId = orderData.id;
-        if (!orderId || orderId.startsWith('ORD-17')) {
+        if (!isRealOrderId(orderId)) {
             const nextNum = await claimIds('order_id');
             orderId = `ORD-${String(nextNum).padStart(5, '0')}`;
         }
 
         // Claim exactly as many event IDs as there are events that need one.
         const eventsNeedingId = (orderData.clientEvents || []).filter(
-            e => !e.id || e.id.startsWith('EVT-17')
+            e => !isRealEventId(e.id)
         ).length;
         let nextEvtNum = eventsNeedingId > 0 ? await claimIds('event_id', eventsNeedingId) : 0;
         const processedEvents = (orderData.clientEvents || []).map(event => {
-            if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
+            if (isRealEventId(event.id)) {
                 return event;
             }
             return {
@@ -147,11 +153,11 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
         
         if (updates.clientEvents !== undefined) {
             const eventsNeedingId = (updates.clientEvents || []).filter(
-                (e: any) => !e.id || e.id.startsWith('EVT-17')
+                (e: any) => !isRealEventId(e.id)
             ).length;
             let nextEvtNum = eventsNeedingId > 0 ? await claimIds('event_id', eventsNeedingId) : 0;
             payload.clientEvents = (updates.clientEvents || []).map((event: any) => {
-                if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
+                if (isRealEventId(event.id)) {
                     return event;
                 }
                 return {
@@ -215,7 +221,7 @@ export const bulkAddOrders = async (ordersData: Partial<OrderFormData>[]): Promi
         let nextNum = await claimIds('order_id', ordersData.length);
         const totalEventsNeedingId = ordersData.reduce((sum, od) => {
             return sum + (od.clientEvents || []).filter(
-                (e: any) => !e.id || e.id.startsWith('EVT-17')
+                (e: any) => !isRealEventId(e.id)
             ).length;
         }, 0);
         let nextEvtNum = totalEventsNeedingId > 0
@@ -227,7 +233,7 @@ export const bulkAddOrders = async (ordersData: Partial<OrderFormData>[]): Promi
             const clientId = orderData.clientId && orderData.clientId.trim() !== '' ? orderData.clientId : null;
 
             const processedEvents = (orderData.clientEvents || []).map(event => {
-                if (event.id && event.id.startsWith('EVT-') && !event.id.includes('EVT-17')) {
+                if (isRealEventId(event.id)) {
                     return event;
                 }
                 return {
@@ -245,6 +251,7 @@ export const bulkAddOrders = async (ordersData: Partial<OrderFormData>[]): Promi
                 description: orderData.description,
                 proforma_id: orderData.proformaId,
                 booking_id: orderData.booking_id,
+                region: orderData.region,
                 clientEvents: processedEvents,
                 createdAt: now,
                 updatedAt: now,

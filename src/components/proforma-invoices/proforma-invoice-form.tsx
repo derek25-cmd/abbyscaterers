@@ -469,6 +469,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                         clientId: data.clientId!,
                         particularDescription: gi.particularDescription,
                         particularType: gi.particularType,
+                        region: gi.region ?? data.region ?? undefined,
                         recipes: []
                     }))
                 };
