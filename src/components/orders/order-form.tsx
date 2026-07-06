@@ -27,6 +27,16 @@ import { Textarea } from "../ui/textarea";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Label } from "../ui/label";
 
+function findFirstErrorMessage(errors: any): string | undefined {
+  if (!errors || typeof errors !== 'object') return undefined;
+  if (typeof errors.message === 'string' && errors.message) return errors.message;
+  for (const key of Object.keys(errors)) {
+    const found = findFirstErrorMessage(errors[key]);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 interface ClientEventRecipeFormProps {
     nestIndex: number;
     control: Control<OrderFormData>;
@@ -364,6 +374,16 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
     }
   }
 
+  function onInvalid(errors: any) {
+    console.error("Validation Errors:", errors);
+    const firstMessage = findFirstErrorMessage(errors);
+    toast({
+      variant: "destructive",
+      title: "Cannot Save Order",
+      description: firstMessage || "Some fields are invalid. Please review the form and try again.",
+    });
+  }
+
   const dateRange = React.useMemo(() => {
       if (watchedStartDate && watchedEndDate && isValid(parseISO(watchedStartDate)) && isValid(parseISO(watchedEndDate))) {
           return { from: parseISO(watchedStartDate), to: parseISO(watchedEndDate) };
@@ -373,7 +393,7 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, (err) => console.log("Validation Errors:", err))} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
         <Card className="border-primary/20 shadow-md">
           <CardHeader>
             <CardTitle>{order ? `Edit Order: ${order.name}` : "Create New Order"}</CardTitle>
