@@ -75,13 +75,19 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const { proformaInvoices, getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
     const { orders, addOrder, updateOrder, getOrderById } = useOrderStorage();
 
-    // Event IDs already committed to a proforma other than the one being edited.
-    // An event in this set cannot be imported into a second proforma.
-    const usedEventIds = useMemo(() => {
+    // (orderId, eventId) pairs already committed to a proforma other than the
+    // one being edited. Keyed by the pair rather than the bare event id because
+    // historical data corruption left several event ids duplicated (or blank)
+    // across unrelated orders — keying by id alone would mark every order
+    // sharing a corrupted id as "used" once any one of them got imported once.
+    const usedEventKeys = useMemo(() => {
         const used = new Set<string>();
         proformaInvoices.forEach(pi => {
             if (pi.id === invoiceId) return; // current proforma — skip
-            pi.items.forEach(item => used.add(item.id));
+            pi.items.forEach(item => {
+                if (!item.id) return; // can't reliably key an event with no id
+                used.add(`${item.orderId || ''}::${item.id}`);
+            });
         });
         return used;
     }, [proformaInvoices, invoiceId]);
@@ -200,13 +206,13 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             // present in this form. This allows one Order to be split across proformas.
             return order.clientEvents.some(e =>
                 e.date && e.date >= start && e.date <= end &&
-                !usedEventIds.has(e.id) &&
+                !usedEventKeys.has(`${order.id}::${e.id}`) &&
                 !currentItemEventIds.has(e.id)
             );
         });
 
         setMatchingOrders(matches);
-    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, invoiceId, usedEventIds]);
+    }, [selectedClientId, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.items, orders, invoiceId, usedEventKeys]);
 
     const handleImportSelected = (orderList: Order[]) => {
         const currentItems = form.getValues('items');
@@ -229,7 +235,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                 // in another proforma and not already present in the current form.
                 if (
                     event.date && event.date >= startDate && event.date <= endDate &&
-                    !usedEventIds.has(event.id) &&
+                    !usedEventKeys.has(`${order.id}::${event.id}`) &&
                     !currentEventIds.has(event.id)
                 ) {
                     append({
