@@ -6,6 +6,7 @@ import type { DeliveryNote, Order } from "@/types";
 import {
   getDeliveryNotes as getDeliveryNotesFromService,
   createDeliveryNoteFromOrder as createDeliveryNoteInService,
+  updateDeliveryNote as updateDeliveryNoteInService,
   deleteDeliveryNote as deleteDeliveryNoteFromService,
 } from '@/services/deliveryNoteService';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +47,25 @@ export function useDeliveryNoteStorage() {
     }
   }, [refreshDeliveryNotes, toast]);
 
+  const updateDeliveryNote = useCallback(async (id: string, updates: {
+    delivery_date?: string;
+    delivery_location?: string;
+    vehicle_reg_no?: string;
+    delivered_by?: string;
+    items?: { qty: number; itemCode: string; description: string; }[];
+    is_narration?: boolean;
+    narration_text?: string;
+  }) => {
+    try {
+      const updated = await updateDeliveryNoteInService(id, updates);
+      if (updated) await refreshDeliveryNotes();
+      return updated;
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Failed to update delivery note', description: getErrorDescription(err) });
+      return null;
+    }
+  }, [refreshDeliveryNotes, toast]);
+
   const deleteDeliveryNote = useCallback(async (id: string) => {
     try {
       const success = await deleteDeliveryNoteFromService(id);
@@ -61,12 +81,18 @@ export function useDeliveryNoteStorage() {
     return deliveryNotes.find(dn => dn.id === id);
   }, [deliveryNotes]);
 
+  const getDeliveryNoteByOrderId = useCallback((orderId: string) => {
+    return deliveryNotes.find(dn => dn.order_id === orderId);
+  }, [deliveryNotes]);
+
   return {
     deliveryNotes,
     isLoading,
     addDeliveryNote,
+    updateDeliveryNote,
     deleteDeliveryNote,
     getDeliveryNoteById,
+    getDeliveryNoteByOrderId,
     refreshDeliveryNotes
   };
 }

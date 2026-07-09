@@ -17,6 +17,7 @@ import { Badge } from "../ui/badge";
 import { CreateDeliveryNoteDialog } from "./create-delivery-note-dialog";
 import { getMenusByOrderId } from "@/services/dailyMenuService";
 import { DailyMenu } from "@/types";
+import { useDeliveryNoteStorage } from "@/hooks/use-delivery-note-storage";
 import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
 
 
@@ -112,8 +113,10 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeliveryNoteDialogOpen, setIsDeliveryNoteDialogOpen] = useState(false);
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
+  const { getDeliveryNoteByOrderId } = useDeliveryNoteStorage();
   const { toast } = useToast();
   const client = getClientById(order.clientId);
+  const existingDeliveryNote = getDeliveryNoteByOrderId(order.id);
   const [dailyMenus, setDailyMenus] = useState<DailyMenu[]>([]);
   const [isMenusLoading, setIsMenusLoading] = useState(false);
 
@@ -164,9 +167,17 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
            <p className="text-sm font-mono text-muted-foreground">ID: {order.id}</p>
         </div>
         <div className="flex gap-2">
-             <Button variant="outline" onClick={() => setIsDeliveryNoteDialogOpen(true)}>
-              <Truck className="mr-2 h-4 w-4" /> Create Delivery Note
-            </Button>
+             {existingDeliveryNote ? (
+                <Link href={`/delivery-notes/${existingDeliveryNote.id}/edit`}>
+                    <Button variant="outline">
+                        <Truck className="mr-2 h-4 w-4" /> Edit Delivery Note
+                    </Button>
+                </Link>
+             ) : (
+                <Button variant="outline" onClick={() => setIsDeliveryNoteDialogOpen(true)}>
+                    <Truck className="mr-2 h-4 w-4" /> Create Delivery Note
+                </Button>
+             )}
             <Button variant="outline" onClick={handlePdfExport} disabled={isExporting}>
               {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
                {isExporting ? 'Exporting...' : 'Export PDF'}

@@ -12,10 +12,10 @@ export const getDeliveryNotes = async (): Promise<DeliveryNote[]> => {
 };
 
 export const createDeliveryNoteFromOrder = async (
-  order: Order, 
-  details: { 
-    vehicleRegNo?: string; 
-    deliveredBy: string; 
+  order: Order,
+  details: {
+    vehicleRegNo?: string;
+    deliveredBy: string;
     location: string;
     eventIndex: number;
     items: { qty: number; itemCode: string; description: string; }[];
@@ -28,6 +28,19 @@ export const createDeliveryNoteFromOrder = async (
     if (!user) throw new Error("User not authenticated.");
     if (!order || !order.clientEvents || order.clientEvents.length === 0) {
       throw new Error("Order details are incomplete.");
+    }
+
+    // Enforce one delivery note per order. Existing orders that already have
+    // more than one (from before this rule) are left untouched, but no new
+    // duplicate can be created going forward.
+    const { data: existing, error: existingError } = await supabase
+      .from('delivery_notes')
+      .select('id')
+      .eq('order_id', order.id)
+      .limit(1);
+    if (existingError) throw new Error(`Could not check for an existing delivery note: ${existingError.message}`);
+    if (existing && existing.length > 0) {
+      throw new Error(`This order already has a delivery note (${existing[0].id}). Edit the existing one instead of creating a new one.`);
     }
 
     // Claim the next delivery note ID from the monotonic counter — never reuses
@@ -104,6 +117,32 @@ export const createDeliveryNoteFromOrder = async (
   }
 };
 
+
+export const updateDeliveryNote = async (
+  id: string,
+  updates: {
+    delivery_date?: string;
+    delivery_location?: string;
+    vehicle_reg_no?: string;
+    delivered_by?: string;
+    items?: { qty: number; itemCode: string; description: string; }[];
+    is_narration?: boolean;
+    narration_text?: string;
+  }
+): Promise<DeliveryNote | null> => {
+  const payload = { ...updates, updated_at: new Date().toISOString() };
+  const { data, error } = await supabase
+    .from('delivery_notes')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) {
+    console.error('Error updating delivery note:', error);
+    throw new Error(error.message);
+  }
+  return data as DeliveryNote;
+};
 
 export const deleteDeliveryNote = async (id: string): Promise<boolean> => {
     const { error } = await supabase.from('delivery_notes').delete().eq('id', id);

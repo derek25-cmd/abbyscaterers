@@ -9,7 +9,7 @@ import { DeliveryNoteTemplate } from "@/components/delivery-notes/delivery-note-
 import type { DeliveryNote, Client } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Download, Printer } from "lucide-react";
+import { Loader2, Download, Printer, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -129,6 +129,11 @@ export default function DeliveryNoteViewPage() {
                     <p className="text-sm text-muted-foreground">Adjust "Content Scale Factor" in Settings to fit the page better.</p>
                 </div>
                 <div className="space-x-2">
+                    <Button variant="outline" asChild>
+                        <Link href={`/delivery-notes/${deliveryNote.id}/edit`}>
+                            <Pencil className="w-4 h-4 mr-2" /> Edit
+                        </Link>
+                    </Button>
                     <Button variant="outline" onClick={handlePrint}>
                         <Printer className="w-4 h-4 mr-2" /> Print
                     </Button>

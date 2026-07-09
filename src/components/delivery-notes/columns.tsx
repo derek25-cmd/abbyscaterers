@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Trash2, Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -62,6 +62,11 @@ export const getDeliveryNoteColumns = (
             <DropdownMenuItem asChild>
               <Link href={`/delivery-notes/${deliveryNote.id}`} className="cursor-pointer">
                 <Eye className="mr-2 h-4 w-4" /> View Details
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/delivery-notes/${deliveryNote.id}/edit`} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" /> Edit Note
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
