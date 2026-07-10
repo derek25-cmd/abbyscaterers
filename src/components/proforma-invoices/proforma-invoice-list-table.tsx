@@ -45,27 +45,30 @@ import { Calendar } from "../ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 
 export function ProformaInvoiceListTable() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
-  
+
   const { proformaInvoices, isLoading: proformasLoading, deleteProformaInvoice } = useProformaInvoiceStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
-  
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+
+  // Persisted (not just component state) so a filter/sort survives navigating
+  // away to view a proforma and clicking Back, until the user changes or clears it.
+  const [sorting, setSorting] = usePersistedState<SortingState>("proforma-invoices-list-sorting", []);
+  const [columnFilters, setColumnFilters] = usePersistedState<ColumnFiltersState>("proforma-invoices-list-column-filters", []);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
-  
+
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
-  const [filterType, setFilterType] = React.useState("clientName");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [selectedDate, setSelectedDate] = usePersistedState<Date | undefined>("proforma-invoices-list-selected-date", new Date());
+  const [filterType, setFilterType] = usePersistedState<string>("proforma-invoices-list-filter-type", "clientName");
+  const [searchQuery, setSearchQuery] = usePersistedState<string>("proforma-invoices-list-search-query", "");
 
   const handleDeleteRequest = React.useCallback((invoiceId: string) => {
     setItemToDelete(invoiceId);

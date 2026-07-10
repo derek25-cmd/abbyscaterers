@@ -50,6 +50,7 @@ import { format } from 'date-fns';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { MarkAsPaidDialog } from "./mark-as-paid-dialog";
 import type { Invoice } from "@/types";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 
 export function InvoiceListTable() {
@@ -61,18 +62,20 @@ export function InvoiceListTable() {
   const { proformaInvoices, isLoading: proformasLoading } = useProformaInvoiceStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();
   const { toast } = useToast();
-  
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+
+  // Persisted (not just component state) so a filter/sort survives navigating
+  // away to view an invoice and clicking Back, until the user changes or clears it.
+  const [sorting, setSorting] = usePersistedState<SortingState>("invoices-list-sorting", []);
+  const [columnFilters, setColumnFilters] = usePersistedState<ColumnFiltersState>("invoices-list-column-filters", []);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemToDelete, setItemToDelete] = React.useState<string | null>(null);
   const [itemToPay, setItemToPay] = React.useState<Invoice | null>(null);
 
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
-  const [filterType, setFilterType] = React.useState("clientName");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [selectedDate, setSelectedDate] = usePersistedState<Date | undefined>("invoices-list-selected-date", new Date());
+  const [filterType, setFilterType] = usePersistedState<string>("invoices-list-filter-type", "clientName");
+  const [searchQuery, setSearchQuery] = usePersistedState<string>("invoices-list-search-query", "");
 
   const handleDeleteRequest = React.useCallback((invoiceId: string) => {
     setItemToDelete(invoiceId);

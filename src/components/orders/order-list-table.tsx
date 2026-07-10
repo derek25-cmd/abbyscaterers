@@ -45,24 +45,27 @@ import { Calendar } from "../ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 export function OrderListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
-  
+
   const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore, bulkDeleteOrders } = useOrderStorage();
   const { clients, isLoading: clientsLoading, getClientById } = useClientStorage();
   const { proformaInvoices } = useProformaInvoiceStorage();
   const { toast } = useToast();
-  
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+
+  // Persisted (not just component state) so a filter/sort survives navigating
+  // away to view an order and clicking Back, until the user changes or clears it.
+  const [sorting, setSorting] = usePersistedState<SortingState>("orders-list-sorting", []);
+  const [columnFilters, setColumnFilters] = usePersistedState<ColumnFiltersState>("orders-list-column-filters", []);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemsToDelete, setItemsToDelete] = React.useState<string[] | null>(null);
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date());
-  const [filterType, setFilterType] = React.useState("customerName");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [selectedDate, setSelectedDate] = usePersistedState<Date | undefined>("orders-list-selected-date", new Date());
+  const [filterType, setFilterType] = usePersistedState<string>("orders-list-filter-type", "customerName");
+  const [searchQuery, setSearchQuery] = usePersistedState<string>("orders-list-search-query", "");
 
 
   // Build a map: orderId → all proforma IDs that reference any of its events.

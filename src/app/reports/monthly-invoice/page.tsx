@@ -550,6 +550,22 @@ export default function MonthlyInvoiceReportPage() {
                     <CommandList>
                       <CommandEmpty>No clients found.</CommandEmpty>
                       <CommandGroup>
+                        <CommandItem
+                          value="__select_all__"
+                          onSelect={() => {
+                            const allSelected = selectedClientIds.length === clients.length && clients.length > 0;
+                            setSelectedClientIds(allSelected ? [] : clients.map((c) => c.id));
+                          }}
+                          className="font-semibold"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedClientIds.length === clients.length && clients.length > 0 ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {selectedClientIds.length === clients.length && clients.length > 0 ? "Deselect All" : "Select All"}
+                        </CommandItem>
                         {clients.map((client) => (
                           <CommandItem
                             key={client.id}
