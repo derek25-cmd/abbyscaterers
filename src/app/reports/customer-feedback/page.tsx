@@ -401,7 +401,7 @@ export default function CustomerFeedbackPage() {
                 <CardContent className="pt-4 space-y-4">
                   <div>
                     <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Overall Summary</Label>
-                    <p className="text-sm line-clamp-3 italic">"{feedback.overall_summary}"</p>
+                    <p className="text-sm line-clamp-3 italic">&quot;{feedback.overall_summary}&quot;</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">

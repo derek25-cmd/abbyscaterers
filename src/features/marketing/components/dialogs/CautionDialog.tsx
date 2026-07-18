@@ -47,7 +47,7 @@ export function CautionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Issue Formal Caution</DialogTitle>
-          <DialogDescription>This will be recorded in {marketer.fullName}'s account history.</DialogDescription>
+          <DialogDescription>This will be recorded in {marketer.fullName}&apos;s account history.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">

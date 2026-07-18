@@ -375,7 +375,7 @@ export default function MenuCostingDashboard() {
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle className="text-xl font-bold">Delete Menu Package?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This will permanently remove "{selectedMenu.name}" and all associated costing data.
+                                                                This will permanently remove &quot;{selectedMenu.name}&quot; and all associated costing data.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>

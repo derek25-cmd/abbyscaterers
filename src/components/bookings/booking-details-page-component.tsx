@@ -58,9 +58,16 @@ export function BookingDetailsPageComponent() {
   }, [bookingId, bookingsLoading, orders, ordersLoading, getBookingById, getOrdersByBookingId, router]);
 
   const handleAddDailyOrder = async (orderData: Partial<OrderFormData>) => {
-    if (!bookingId) return;
+    if (!bookingId || !booking) return;
     try {
-        const newOrder = await addOrder(orderData);
+        const fullOrderData: OrderFormData = {
+          ...orderData,
+          name: orderData.name ?? booking.name,
+          clientId: orderData.clientId ?? booking.client_id,
+          startDate: orderData.startDate ?? booking.start_date,
+          endDate: orderData.endDate ?? booking.end_date,
+        };
+        const newOrder = await addOrder(fullOrderData);
         if (newOrder) {
           toast({ title: "Success", description: "Daily order has been recorded."});
           setIsAddOrderOpen(false);
@@ -209,6 +216,9 @@ export function BookingDetailsPageComponent() {
         customEventType: '',
         serviceFields: {},
         serviceDesc: proformaDetails.serviceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
+        vatType: proformaDetails.vatType ?? null,
+        serviceCharge: proformaDetails.serviceCharge ?? null,
+        transportCosts: proformaDetails.transportCosts ?? null,
     };
     
     try {

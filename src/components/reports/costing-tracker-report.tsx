@@ -517,7 +517,7 @@ export default function CostingTrackerReport() {
                 Performance Summary
               </h3>
               <p className="text-foreground/90 leading-relaxed italic">
-                "{aiAnalysis.summary}"
+                &quot;{aiAnalysis.summary}&quot;
               </p>
             </div>
 

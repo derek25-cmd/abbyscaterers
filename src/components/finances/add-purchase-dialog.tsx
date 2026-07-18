@@ -541,7 +541,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                         <CommandList>
                           <CommandEmpty className="py-3 px-4 text-sm">
                             <div className="text-muted-foreground">No saved supplier found.</div>
-                            {field.value && <div className="mt-1 flex items-center gap-1.5 text-foreground"><UserPlus className="h-3.5 w-3.5" /><span>Using <strong>"{field.value}"</strong> as new supplier</span></div>}
+                            {field.value && <div className="mt-1 flex items-center gap-1.5 text-foreground"><UserPlus className="h-3.5 w-3.5" /><span>Using <strong>&quot;{field.value}&quot;</strong> as new supplier</span></div>}
                           </CommandEmpty>
                           {suppliers.length > 0 && (
                             <CommandGroup heading="Your Supplier Database">

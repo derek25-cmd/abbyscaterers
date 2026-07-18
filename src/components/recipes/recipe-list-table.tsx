@@ -53,9 +53,9 @@ export function RecipeListTable() {
     setItemToDelete(recipeNumber);
   }, []);
 
-  const confirmDelete = React.useCallback(() => {
+  const confirmDelete = React.useCallback(async () => {
     if (itemToDelete) {
-      const success = deleteRecipeFromStore(itemToDelete);
+      const success = await deleteRecipeFromStore(itemToDelete);
       if (success) {
         toast({ title: "Recipe Deleted", description: "The recipe has been successfully deleted." });
       } else {

@@ -191,7 +191,7 @@ export default function FinancesRedirectPage() {
             </CardTitle>
             <CardDescription>
               All ledgers (Sales, Purchases, Expenses, Payroll) are linked by <strong>date</strong>.
-              Select any date to see a consolidated P&L statement for that day's financial activity.
+              Select any date to see a consolidated P&L statement for that day&apos;s financial activity.
             </CardDescription>
           </div>
 

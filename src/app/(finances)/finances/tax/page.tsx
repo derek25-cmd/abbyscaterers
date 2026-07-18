@@ -300,7 +300,7 @@ export default function TaxBookPage() {
                 Tanzania Tax Book (TRA Ledgers)
               </CardTitle>
               <CardDescription>
-                Computed live from Invoices (VAT Output), Purchases (VAT Input), Expenses (WHT 5%), and Payroll (PAYE). Click "Cycle Status" to log filing progress with TRA.
+                Computed live from Invoices (VAT Output), Purchases (VAT Input), Expenses (WHT 5%), and Payroll (PAYE). Click &quot;Cycle Status&quot; to log filing progress with TRA.
               </CardDescription>
             </div>
             <div className="flex gap-2">

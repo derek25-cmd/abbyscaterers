@@ -14,8 +14,8 @@ export function WelcomeCard() {
                 <div className="flex items-center gap-4">
                     <Image src="/logo.png" alt="Abby's Catersmart Logo" width={80} height={80} style={{ mixBlendMode: 'darken' }} className="rounded-lg"/>
                     <div>
-                        <CardTitle className="text-2xl font-bold text-primary">Welcome Back to Abby's Catersmart!</CardTitle>
-                        <CardDescription className="text-muted-foreground">Here's what's happening with your business today.</CardDescription>
+                        <CardTitle className="text-2xl font-bold text-primary">Welcome Back to Abby&apos;s Catersmart!</CardTitle>
+                        <CardDescription className="text-muted-foreground">Here&apos;s what&apos;s happening with your business today.</CardDescription>
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

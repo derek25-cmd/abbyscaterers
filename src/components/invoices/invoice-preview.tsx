@@ -83,10 +83,10 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
     const calculateSubtotal = () => getDisplayItems(formData.items).reduce((sum, item) => sum + item.total, 0);
     const calculateTotalDays = () => formData.multiplyByDays ? calculateSubtotal() * (formData.numberOfDays || 1) : calculateSubtotal();
     const calculateVAT = () => {
-        const total = calculateTotalDays() + formData.serviceCharge + formData.transportCosts;
+        const total = calculateTotalDays() + (formData.serviceCharge ?? 0) + (formData.transportCosts ?? 0);
         return formData.vatType === 'exclusive' ? total * 0.18 : 0;
     };
-    const calculateGrandTotal = () => calculateTotalDays() + formData.serviceCharge + formData.transportCosts + calculateVAT();
+    const calculateGrandTotal = () => calculateTotalDays() + (formData.serviceCharge ?? 0) + (formData.transportCosts ?? 0) + calculateVAT();
 
     const convertToWords = (amount: number): string => {
         if (amount < 0) return 'Negative amounts are not supported';
@@ -258,12 +258,12 @@ export function InvoicePreview({ formData, client, onDismiss, onSave, isSaving }
                     <tr>
                         <td colSpan={3} className="border-r border-black"></td>
                         <td className="border-y border-black p-1 text-right">Add Service Charge (TSHS)</td>
-                        <td className="border border-black p-1 text-right">{formData.serviceCharge > 0 ? formData.serviceCharge.toLocaleString() : '0.00'}</td>
+                        <td className="border border-black p-1 text-right">{(formData.serviceCharge ?? 0) > 0 ? (formData.serviceCharge ?? 0).toLocaleString() : '0.00'}</td>
                     </tr>
                     <tr>
                         <td colSpan={3} className="border-r border-black"></td>
                         <td className="border-y border-black p-1 text-right">Add Transportation Costs (TSHS)</td>
-                        <td className="border border-black p-1 text-right">{formData.transportCosts > 0 ? formData.transportCosts.toLocaleString() : '0.00'}</td>
+                        <td className="border border-black p-1 text-right">{(formData.transportCosts ?? 0) > 0 ? (formData.transportCosts ?? 0).toLocaleString() : '0.00'}</td>
                     </tr>
                     <tr>
                         <td colSpan={3} className="border-r border-black"></td>

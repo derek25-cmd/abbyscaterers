@@ -191,7 +191,7 @@ export function VisitForm({
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Log Visit — {companyName}</DialogTitle>
-          <DialogDescription>Manually record a field visit and update this prospect's lead score.</DialogDescription>
+          <DialogDescription>Manually record a field visit and update this prospect&apos;s lead score.</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center justify-between rounded-lg border p-3">

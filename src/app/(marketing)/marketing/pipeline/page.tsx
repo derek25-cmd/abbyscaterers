@@ -235,8 +235,8 @@ export default function PipelinePage() {
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This app tracks quotations as Proforma Invoices in a separate client list, so their details aren't
-            linked automatically. Open a new proforma invoice and enter {quotationPrompt?.companyName}'s details
+            This app tracks quotations as Proforma Invoices in a separate client list, so their details aren&apos;t
+            linked automatically. Open a new proforma invoice and enter {quotationPrompt?.companyName}&apos;s details
             below to continue.
           </p>
           {quotationPrompt && (

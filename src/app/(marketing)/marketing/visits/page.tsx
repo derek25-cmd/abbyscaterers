@@ -178,7 +178,7 @@ export default function DailyVisitsPage() {
                 ) : (
                   <div className="flex flex-col items-center gap-2 py-8 text-center text-xs text-muted-foreground">
                     <MapPin className="h-6 w-6" />
-                    No GPS coordinates available for this day's visits.
+                    No GPS coordinates available for this day&apos;s visits.
                   </div>
                 )}
                 <Link href="/marketing/map" className="mt-2 block text-center text-xs font-medium text-primary hover:underline">

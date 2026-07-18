@@ -290,7 +290,7 @@ export function CreateInvoiceDialog({
                         Link to Proforma Invoice
                       </FormLabel>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">
-                        Append "as per Proforma Invoice No. {proformaId}" to description
+                        Append &quot;as per Proforma Invoice No. {proformaId}&quot; to description
                       </p>
                     </div>
                   </FormItem>

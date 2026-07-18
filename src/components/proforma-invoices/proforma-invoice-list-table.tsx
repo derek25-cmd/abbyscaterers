@@ -74,9 +74,9 @@ export function ProformaInvoiceListTable() {
     setItemToDelete(invoiceId);
   }, []);
 
-  const confirmDelete = React.useCallback(() => {
+  const confirmDelete = React.useCallback(async () => {
     if (itemToDelete) {
-      const success = deleteProformaInvoice(itemToDelete);
+      const success = await deleteProformaInvoice(itemToDelete);
       if (success) {
         toast({ title: "Proforma Invoice Deleted", description: "The proforma invoice has been successfully deleted." });
       } else {

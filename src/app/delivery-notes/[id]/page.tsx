@@ -126,7 +126,7 @@ export default function DeliveryNoteViewPage() {
             <div className="flex justify-between items-center mb-6 print:hidden">
                 <div>
                     <h1 className="text-2xl font-bold text-primary">Delivery Note Preview</h1>
-                    <p className="text-sm text-muted-foreground">Adjust "Content Scale Factor" in Settings to fit the page better.</p>
+                    <p className="text-sm text-muted-foreground">Adjust &quot;Content Scale Factor&quot; in Settings to fit the page better.</p>
                 </div>
                 <div className="space-x-2">
                     <Button variant="outline" asChild>

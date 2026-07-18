@@ -16,11 +16,9 @@ import {
 import type { DeliveryNote } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
 
-type DeliveryNoteWithClient = DeliveryNote & { clientName: string; orderId: string; };
-
 export const getDeliveryNoteColumns = (
   onDelete: (id: string) => void
-): ColumnDef<DeliveryNoteWithClient>[] => [
+): ColumnDef<DeliveryNote>[] => [
   {
     accessorKey: "id",
     header: "Delivery Note #",

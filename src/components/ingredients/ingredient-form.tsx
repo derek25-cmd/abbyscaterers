@@ -66,17 +66,21 @@ export function IngredientForm({ ingredient }: IngredientFormProps) {
     setIsSubmitting(true);
     try {
       if (ingredient) {
-        const updated = updateIngredient(ingredient.itemNumber, data); 
+        const updated = await updateIngredient(ingredient.itemNumber, data);
         if (updated) {
-          toast({ title: "Ingredient Updated", description: `${updated.itemDescription} (No: ${updated.itemNumber}) has been updated.` });
-          router.push(`/ingredients/${updated.itemNumber}`);
+          toast({ title: "Ingredient Updated", description: `${data.itemDescription} (No: ${ingredient.itemNumber}) has been updated.` });
+          router.push(`/ingredients/${ingredient.itemNumber}`);
         } else {
           toast({ variant: "destructive", title: "Error", description: "Failed to update ingredient." });
         }
       } else {
-        const newIngredientData = addIngredient(data);
-        toast({ title: "Ingredient Added", description: `${newIngredientData.itemDescription} (No: ${newIngredientData.itemNumber}) has been added.` });
-        router.push("/ingredients");
+        const newIngredientData = await addIngredient(data);
+        if (newIngredientData) {
+          toast({ title: "Ingredient Added", description: `${newIngredientData.itemDescription} (No: ${newIngredientData.itemNumber}) has been added.` });
+          router.push("/ingredients");
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Failed to add ingredient." });
+        }
       }
     } catch (error: unknown) {
       console.error("Submission error:", error);

@@ -46,7 +46,8 @@ export function RecentOrders() {
                 ) : (
                     <div className="space-y-4">
                         {recentOrders.map((order) => {
-                             const firstClient = order.clientEvents.length > 0 ? getClientById(order.clientEvents[0].clientId) : null;
+                             const firstClientId = order.clientEvents[0]?.clientId;
+                             const firstClient = firstClientId ? getClientById(firstClientId) : null;
                              const createdDate = parseISO(order.createdAt);
 
                             return (

@@ -64,7 +64,7 @@ export const DailyOrderReport = () => {
         const tableRows: (string | number)[][] = [];
         
         dailyEvents.forEach((event, index) => {
-          const client = getClientById(event.clientId);
+          const client = event.clientId ? getClientById(event.clientId) : undefined;
           tableRows.push([
               index + 1,
               event.orderId,
@@ -99,7 +99,7 @@ export const DailyOrderReport = () => {
     const csvRows = [headers.join(',')];
 
     dailyEvents.forEach((event, index) => {
-      const client = getClientById(event.clientId);
+      const client = event.clientId ? getClientById(event.clientId) : undefined;
       const row = [
         index + 1,
         event.orderId,
@@ -179,7 +179,7 @@ export const DailyOrderReport = () => {
                     </TableCell>
                   </TableRow>
                 ) : dailyEvents.length > 0 ? dailyEvents.map((event, index) => {
-                  const client = getClientById(event.clientId);
+                  const client = event.clientId ? getClientById(event.clientId) : undefined;
                   const grandTotal = calculateGrandTotal(event);
                   return (
                     <TableRow key={`${event.orderId}-${index}`}>

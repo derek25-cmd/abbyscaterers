@@ -54,9 +54,9 @@ export function IngredientListTable() {
     setItemToDelete(itemNumber);
   }, []);
 
-  const confirmDelete = React.useCallback(() => {
+  const confirmDelete = React.useCallback(async () => {
     if (itemToDelete) {
-      const success = deleteIngredientFromStore(itemToDelete);
+      const success = await deleteIngredientFromStore(itemToDelete);
       if (success) {
         toast({ title: "Ingredient Deleted", description: "The ingredient item has been successfully deleted." });
       } else {

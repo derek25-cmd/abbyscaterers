@@ -912,7 +912,7 @@ export function LogStockMovementDialog({ isOpen, setIsOpen, logType, onLogMoveme
                   </div>
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-xs text-amber-800 font-semibold">
-                      💡 Tip: Stock in the missing quantities, then click "Resume" on the draft card to complete this batch.
+                      💡 Tip: Stock in the missing quantities, then click &quot;Resume&quot; on the draft card to complete this batch.
                     </p>
                   </div>
               </div>

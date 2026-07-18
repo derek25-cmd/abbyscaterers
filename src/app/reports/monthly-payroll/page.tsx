@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getPayrolls } from "@/services/payrollService";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import type { ProformaInvoice as Payroll } from "@/types";
+import type { Payroll } from "@/types";
 import { format, parseISO } from 'date-fns';
 import Link from "next/link";
 import { Input } from "@/components/ui/input";

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSettingsStorage } from '@/hooks/use-settings-storage';
 
 export default function LoginPage() {
@@ -22,7 +22,7 @@ export default function LoginPage() {
 }
 
 function LoginForm() {
-  const { user, signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { user, signInWithEmail, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -32,7 +32,6 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -61,21 +60,12 @@ function LoginForm() {
   const handleAuthAction = async () => {
     setIsLoading(true);
     try {
-      if (isSignUp) {
-        await signUpWithEmail(email, password);
-        toast({
-          title: "Account Created",
-          description: "Please check your email to confirm your account.",
-        });
-        // Stay on the page to show the toast
-      } else {
-        await signInWithEmail(email, password);
-        // The onAuthStateChange listener will handle redirect on successful login
-      }
+      await signInWithEmail(email, password);
+      // The onAuthStateChange listener will handle redirect on successful login
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: isSignUp ? "Sign Up Failed" : "Login Failed",
+        title: "Login Failed",
         description: error.message || "An unexpected error occurred. Please try again.",
       });
     } finally {
@@ -91,9 +81,9 @@ function LoginForm() {
              <div className="flex items-center justify-center gap-2 mb-4">
                 <Image src="/logo.png" alt="Abby's Catersmart Logo" width={200} height={50} style={{ mixBlendMode: 'darken' }}/>
              </div>
-            <CardTitle className="text-2xl font-bold">{isSignUp ? 'Create an Account' : 'Welcome Back'}</CardTitle>
+            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
             <CardDescription>
-              {isSignUp ? 'Enter your details to get started.' : 'Enter your credentials to access your dashboard.'}
+              Enter your credentials to access your dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -125,7 +115,7 @@ function LoginForm() {
               </div>
               <Button onClick={handleAuthAction} disabled={isLoading} className="w-full">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSignUp ? 'Sign Up' : 'Sign In'}
+                Sign In
               </Button>
 
               <div className="relative">
@@ -158,14 +148,6 @@ function LoginForm() {
               </Button>
             </div>
           </CardContent>
-          <CardFooter className="text-center text-sm">
-             <p className="w-full">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              <Button variant="link" onClick={() => setIsSignUp(!isSignUp)} className="font-semibold">
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </Button>
-            </p>
-          </CardFooter>
         </Card>
       </div>
       <div className="hidden bg-muted lg:block">

@@ -45,7 +45,7 @@ export default function DailyReportsPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Daily Reports</h2>
-        <p className="text-sm text-muted-foreground">Your day's movements, who you met, and what's a prospect — auto-compiled from visits you logged.</p>
+        <p className="text-sm text-muted-foreground">Your day&apos;s movements, who you met, and what&apos;s a prospect — auto-compiled from visits you logged.</p>
       </div>
 
       <Card>

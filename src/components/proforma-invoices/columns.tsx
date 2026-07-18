@@ -61,7 +61,7 @@ export const getProformaInvoiceColumns = (
     accessorKey: "isInvoiced",
     header: "Status",
     cell: ({ row }) => {
-      const isInvoiced = row.getValue("isInvoiced");
+      const isInvoiced = row.getValue<boolean>("isInvoiced");
       return (
         <Badge
           variant={isInvoiced ? "destructive" : "secondary"}

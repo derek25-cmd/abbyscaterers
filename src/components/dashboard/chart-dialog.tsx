@@ -16,7 +16,7 @@ interface ChartDialogProps {
   title: string;
   description: string;
   chartConfig: ChartConfig;
-  children: React.ReactNode;
+  children: React.ReactElement;
 }
 
 export function ChartDialog({

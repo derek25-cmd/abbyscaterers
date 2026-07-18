@@ -485,7 +485,7 @@ export default function ReportsPage() {
             <CardHeader><CardTitle className="text-base">Competitor Intelligence</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {!competitors || competitors.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No competitor data recorded yet. It populates as visits record "current caterer".</p>
+                <p className="text-sm text-muted-foreground">No competitor data recorded yet. It populates as visits record &quot;current caterer&quot;.</p>
               ) : (
                 <>
                   <Table>

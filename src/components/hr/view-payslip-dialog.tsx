@@ -50,7 +50,7 @@ export function ViewPayslipDialog({ isOpen, setIsOpen, payslip }) {
           <ScrollArea className="h-[60vh] p-4 border rounded-md">
             <div className="space-y-4">
                 <div className="text-center">
-                    <h3 className="text-xl font-bold font-headline">Abby's Legendary Caterers Limited</h3>
+                    <h3 className="text-xl font-bold font-headline">Abby&apos;s Legendary Caterers Limited</h3>
                     <p className="text-sm text-muted-foreground">Payslip</p>
                 </div>
                 <Separator/>

@@ -260,7 +260,7 @@ export function InvoiceTemplate({ invoiceData, client, showHeaders = true, prese
                         <div className="flex-1 border border-gray-800 p-3" style={{fontSize: '14px'}}>
                             <p className="font-bold mb-1">Please remit your payment to the below Bank details:</p>
                             <div className="grid grid-cols-[max-content_auto] gap-x-2 gap-y-0" style={{fontSize: '14px'}}>
-                                <div>Account Name</div><div>: ABBY'S LEGENDARY CATERERS LIMITED</div>
+                                <div>Account Name</div><div>: ABBY&apos;S LEGENDARY CATERERS LIMITED</div>
                                 <div>Bank</div><div>: Stanbic Bank Tanzania Limited</div>
                                 <div>Account Number(TZS)</div><div>: 9120002502036</div>
                                 <div>Branch</div><div>: PENINSULA Branch</div>

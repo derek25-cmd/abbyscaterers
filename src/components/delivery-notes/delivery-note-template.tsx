@@ -272,7 +272,7 @@ export function DeliveryNoteTemplate({
       marginBottom: '6px',
     }}
   >
-    ABBY'S LEGENDARY CATERERS LIMITED
+    ABBY&apos;S LEGENDARY CATERERS LIMITED
   </p>
 
   <div

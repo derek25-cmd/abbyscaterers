@@ -100,7 +100,7 @@ export function DeleteDialog({
             <Textarea rows={2} value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Type "{marketer.fullName}" to confirm *</label>
+            <label className="text-sm font-medium">Type &quot;{marketer.fullName}&quot; to confirm *</label>
             <Input value={confirmName} onChange={(e) => setConfirmName(e.target.value)} />
             {confirmName.length > 0 && (
               <p className={`text-xs ${nameOk ? "text-success" : "text-destructive"}`}>
