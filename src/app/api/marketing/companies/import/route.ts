@@ -4,6 +4,8 @@ import ExcelJS from 'exceljs';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { formatTanzanianPhone } from '@/features/marketing/utils/format';
 import type { CompanyImportResult, CompanyImportRowError, CompanyImportRowWarning } from '@/features/marketing/types';
+import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +43,17 @@ function parseEstimatedValue(raw: string): number | null {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+  if (!isManager(session.role)) {
+    return NextResponse.json({ error: 'Only managers or admins can bulk-import companies' }, { status: 403 });
+  }
+  const { allowed } = await checkRateLimit('upload', session.marketerId);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many imports. Please wait a moment and try again.' }, { status: 429 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
   const formData = await request.formData();
   const file = formData.get('file');

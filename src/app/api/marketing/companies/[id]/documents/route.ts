@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import type { DocumentRow } from '@/features/marketing/types';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
 
   const [companyDocsRes, visitsRes] = await Promise.all([

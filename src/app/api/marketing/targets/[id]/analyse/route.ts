@@ -44,6 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   let narrative: string | null = null;
   let recommendation: string | null = null;
+  let narrativeFailed = false;
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       const result = await analyseTargetPerformance({
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       recommendation = result.recommendation;
     } catch (err) {
       console.error('[targets/analyse] Claude API error:', err);
+      narrativeFailed = true;
     }
   }
 
@@ -82,5 +84,5 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ data });
+  return NextResponse.json({ data, narrativeFailed });
 }

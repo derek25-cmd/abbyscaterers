@@ -10,7 +10,7 @@ export function useAppVersion() {
 
   const checkVersion = async () => {
     try {
-      const res = await fetch('/api/version', { cache: 'no-store' });
+      const res = await fetch('/api/version', { cache: 'no-store', signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return;
       const { buildId } = await res.json();
 

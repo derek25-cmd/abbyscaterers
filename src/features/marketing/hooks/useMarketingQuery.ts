@@ -887,7 +887,7 @@ export function useAnalyseTarget() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (targetId: string) =>
-      fetchJson<{ data: TargetAnalysis }>(`/api/marketing/targets/${targetId}/analyse`, { method: "POST" }),
+      fetchJson<{ data: TargetAnalysis; narrativeFailed: boolean }>(`/api/marketing/targets/${targetId}/analyse`, { method: "POST" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["marketing", "targets"] }),
   });
 }

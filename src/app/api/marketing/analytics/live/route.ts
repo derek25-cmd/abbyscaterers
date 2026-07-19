@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
 
   const todayStart = new Date();

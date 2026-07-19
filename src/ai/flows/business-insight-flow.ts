@@ -9,6 +9,7 @@
 
 import { ai } from '../genkit';
 import { z } from 'zod';
+import { withTimeout } from '@/lib/with-timeout';
 
 const BusinessInsightInputSchema = z.object({
   revenueThisMonth: z.number().describe('Total revenue generated this month.'),
@@ -63,5 +64,5 @@ export const generateBusinessInsightFlow = ai.defineFlow(
 );
 
 export async function generateBusinessInsightAction(input: BusinessInsightInput): Promise<BusinessInsightOutput> {
-  return await generateBusinessInsightFlow(input);
+  return await withTimeout(generateBusinessInsightFlow(input), 45_000, 'generateBusinessInsightFlow');
 }

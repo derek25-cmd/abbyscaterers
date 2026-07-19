@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
+import { getMarketingSession, isManager } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
+
+  // A marketer can only complete their own follow-ups; managers/admins can complete anyone's.
+  if (!isManager(session.role)) {
+    const { data: followUp } = await client.from('follow_ups').select('assigned_to').eq('id', params.id).maybeSingle();
+    if (!followUp) {
+      return NextResponse.json({ error: 'Follow-up not found' }, { status: 404 });
+    }
+    if (followUp.assigned_to !== session.marketerId) {
+      return NextResponse.json({ error: 'You can only complete your own follow-ups' }, { status: 403 });
+    }
+  }
+
   const { data, error } = await client
     .from('follow_ups')
     .update({ status: 'DONE', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })

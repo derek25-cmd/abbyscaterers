@@ -12,6 +12,10 @@ const FIELD_MAP: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
   const [marketerRes, visitsRes, companiesRes, performanceRes] = await Promise.all([
     client.from('marketing_users').select('*, region:regions(id, name)').eq('id', params.id).maybeSingle(),

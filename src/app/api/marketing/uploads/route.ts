@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
-import { buildStoragePath, getSignedUrl, uploadFile, type UploadBucket } from '@/features/marketing/utils/upload';
+import { buildStoragePath, getSignedUrl, uploadFile, validateFile, type UploadBucket } from '@/features/marketing/utils/upload';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +12,18 @@ const VISIT_FIELD_BY_DOCUMENT_TYPE: Record<string, string> = {
   VOICE_NOTE: 'voice_note_url',
 };
 
+const ALLOWED_BUCKETS = new Set<UploadBucket>(['visit-photos', 'voice-notes', 'company-documents']);
+
 export async function POST(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
+  const { allowed } = await checkRateLimit('upload', session.marketerId);
+  if (!allowed) {
+    return NextResponse.json({ error: 'Too many uploads. Please wait a moment and try again.' }, { status: 429 });
+  }
+
   const client = getRouteClient(request.headers.get('authorization'));
   const formData = await request.formData();
 
@@ -19,10 +32,18 @@ export async function POST(request: NextRequest) {
   const entityType = formData.get('entityType') as 'visit' | 'company' | null;
   const entityId = formData.get('entityId') as string | null;
   const documentType = (formData.get('documentType') as string | null) ?? 'OTHER';
-  const uploadedBy = formData.get('uploadedBy') as string | null;
+  // Never trust a client-supplied uploader identity — always derive it from the verified session.
+  const uploadedBy = session.marketerId;
 
-  if (!(file instanceof File) || !bucket || !entityType || !entityId || !uploadedBy) {
-    return NextResponse.json({ error: 'file, bucket, entityType, entityId and uploadedBy are required' }, { status: 400 });
+  if (!(file instanceof File) || !bucket || !entityType || !entityId) {
+    return NextResponse.json({ error: 'file, bucket, entityType and entityId are required' }, { status: 400 });
+  }
+  if (!ALLOWED_BUCKETS.has(bucket)) {
+    return NextResponse.json({ error: 'Invalid bucket' }, { status: 400 });
+  }
+  const validation = validateFile(file, bucket);
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
   const path = buildStoragePath(entityId, file);

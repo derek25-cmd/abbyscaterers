@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRouteClient } from '@/features/marketing/api/route-client';
+import { getMarketingSession } from '@/features/marketing/utils/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,10 @@ async function getExpenses(client: ReturnType<typeof getRouteClient>, month: num
 }
 
 export async function GET(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
   const now = new Date();
   const month = Number(request.nextUrl.searchParams.get('month') ?? now.getMonth() + 1);
@@ -47,6 +52,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
   const body = await request.json();
   const { month, year, totalExpenses, notes } = body;

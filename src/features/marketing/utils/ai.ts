@@ -6,21 +6,32 @@
 const CLAUDE_MODEL = "claude-sonnet-4-6";
 const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
 
+const CLAUDE_TIMEOUT_MS = 45_000;
+
 async function callClaude(systemPrompt: string, userMessage: string, maxTokens = 1000): Promise<string> {
-  const response = await fetch(CLAUDE_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: userMessage }],
-      system: systemPrompt,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(CLAUDE_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: maxTokens,
+        messages: [{ role: "user", content: userMessage }],
+        system: systemPrompt,
+      }),
+      signal: AbortSignal.timeout(CLAUDE_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "TimeoutError") {
+      throw new Error(`Claude API timed out after ${CLAUDE_TIMEOUT_MS / 1000}s`);
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const err = await response.text();
@@ -159,15 +170,14 @@ ${input.visitSummaries.map((s, i) => `${i + 1}. ${s}`).join("\n")}`;
 
   const raw = await callClaude(system, user, 400);
 
+  const clean = raw.replace(/```json|```/g, "").trim();
   try {
-    const clean = raw.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
   } catch {
-    return {
-      recommendation: "PAUSE",
-      reasoning: "Could not parse AI response. Please review manually.",
-      nextAction: "Review visit history and decide manually.",
-    };
+    // Let the caller (ai/lead-analysis route) report an honest failure
+    // instead of silently returning a canned "PAUSE" recommendation as if
+    // Claude had actually produced it.
+    throw new Error("Claude returned a non-JSON response for lead analysis");
   }
 }
 
@@ -328,13 +338,14 @@ ${metricLines}`;
 
   const raw = await callClaude(system, user, 350);
 
+  const clean = raw.replace(/```json|```/g, "").trim();
   try {
-    const clean = raw.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
   } catch {
-    return {
-      narrative: "Could not generate AI narrative. Please review the metrics above manually.",
-      recommendation: "Review progress against each metric and follow up with the marketer directly.",
-    };
+    // Let the caller (targets/analyse route) treat this the same as any
+    // other Claude failure — surfacing it via narrativeFailed — instead of
+    // silently storing a canned placeholder string as if it were real AI
+    // output.
+    throw new Error("Claude returned a non-JSON response for target analysis");
   }
 }

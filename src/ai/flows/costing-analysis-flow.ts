@@ -2,6 +2,7 @@
 
 import { ai } from '../genkit';
 import { z } from 'zod';
+import { withTimeout } from '@/lib/with-timeout';
 
 const CostingAnalysisInputSchema = z.object({
   trendData: z.array(z.object({
@@ -73,5 +74,5 @@ export const generateCostingAnalysisFlow = ai.defineFlow(
 );
 
 export async function generateCostingAnalysisAction(input: CostingAnalysisInput): Promise<CostingAnalysisOutput> {
-  return await generateCostingAnalysisFlow(input);
+  return await withTimeout(generateCostingAnalysisFlow(input), 45_000, 'generateCostingAnalysisFlow');
 }

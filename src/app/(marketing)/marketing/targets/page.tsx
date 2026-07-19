@@ -52,8 +52,12 @@ export default function TargetsPage() {
 
   const handleAnalyse = async (target: MarketingTarget) => {
     try {
-      await analyse.mutateAsync(target.id);
-      toast({ title: "Target analysed" });
+      const result = await analyse.mutateAsync(target.id);
+      if (result.narrativeFailed) {
+        toast({ variant: "destructive", title: "Analysed, but AI narrative unavailable", description: "The score was saved; the AI summary could not be generated. Try again shortly." });
+      } else {
+        toast({ title: "Target analysed" });
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Could not analyse target", description: error instanceof Error ? error.message : undefined });
     }

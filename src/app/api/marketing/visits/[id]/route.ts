@@ -17,6 +17,10 @@ const FIELD_MAP: Record<string, string> = {
 };
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getMarketingSession(request);
+  if (!session) {
+    return NextResponse.json({ error: 'You must be a registered marketing user' }, { status: 403 });
+  }
   const client = getRouteClient(request.headers.get('authorization'));
   const { data, error } = await client
     .from('visits')
