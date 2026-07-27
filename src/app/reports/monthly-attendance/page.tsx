@@ -70,17 +70,6 @@ export default function AttendanceReportPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-        setIsLoading(true);
-        const [recs, emps] = await Promise.all([getAttendanceRecords(), getEmployees()]);
-        setRecords(recs);
-        setEmployees(emps);
-        setIsLoading(false);
-    };
-    fetchData();
-  }, []);
-
   const dateRange = useMemo(() => {
     if (interval === 'day') {
         return { start: reportDate, end: reportDate };
@@ -90,6 +79,24 @@ export default function AttendanceReportPage() {
         return { start: startOfMonth(reportDate), end: endOfMonth(reportDate) };
     }
   }, [reportDate, interval]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+        setIsLoading(true);
+        // Scoped to the visible range — an unbounded fetch would silently
+        // truncate at PostgREST's 1000-row default cap once the registry
+        // grows, making both this report and its PDF export wrong with no
+        // error shown.
+        const [recs, emps] = await Promise.all([
+            getAttendanceRecords({ startDate: format(dateRange.start, 'yyyy-MM-dd'), endDate: format(dateRange.end, 'yyyy-MM-dd') }),
+            getEmployees()
+        ]);
+        setRecords(recs);
+        setEmployees(emps);
+        setIsLoading(false);
+    };
+    fetchData();
+  }, [dateRange]);
 
   const reportData = useMemo(() => {
     const activeEmployees = employees.filter(e => e.status === 'Active');

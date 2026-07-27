@@ -87,14 +87,24 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
                     <DetailRow label="Role" value={employee.role} />
                     <DetailRow label="Department" value={employee.department} />
                     <DetailRow label="Monthly Salary" value={employee.monthlySalary} isCurrency />
-                    <DetailRow 
-                        label="Status" 
-                        value={employee.status} 
-                        isBadge 
+                    <DetailRow
+                        label="Status"
+                        value={employee.status}
+                        isBadge
                         badgeVariant={employee.status === 'Active' ? 'default' : 'outline'}
                         badgeClass={employee.status === 'Active' ? 'bg-accent text-accent-foreground' : ''}
                     />
                 </div>
+                {employee.status === 'Inactive' && (employee.employmentEndDate || employee.employmentEndReason) && (
+                  <>
+                    <Separator />
+                    <div>
+                        <h3 className="mb-2 text-lg font-medium text-destructive">Employment End</h3>
+                        <DetailRow label="Last Working Date" value={employee.employmentEndDate} />
+                        <DetailRow label="Reason" value={employee.employmentEndReason} />
+                    </div>
+                  </>
+                )}
                  <Separator />
                  <EmployeeActionCenter employee={employee} />
             </div>

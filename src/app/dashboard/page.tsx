@@ -63,9 +63,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchExtras = async () => {
+        // Only today's attendance is used below (attendanceRate) — scope
+        // the query instead of pulling the whole table.
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
         const [assetsData, attendanceData, empsData] = await Promise.all([
             getAssets(),
-            getAttendanceRecords(),
+            getAttendanceRecords({ startDate: todayStr, endDate: todayStr }),
             getEmployees()
         ]);
         setAssets(assetsData || []);

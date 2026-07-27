@@ -32,9 +32,13 @@ import {
 } from "date-fns";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from 'next/navigation';
-import { getAttendanceRecords, upsertAttendanceRecords } from "@/services/attendanceService";
+import { getAttendanceRecords, upsertAttendanceRecords, checkForConflicts } from "@/services/attendanceService";
 import { getEmployees } from "@/services/employeeService";
 import { Attendance, AttendanceStatus, Employee } from "@/types";
+import type { AttendanceFormData } from "@/lib/schemas";
+import { useToast } from "@/hooks/use-toast";
+import { EditAttendanceDialog } from "@/components/hr/edit-attendance-dialog";
+import { BulkMarkAttendanceDialog } from "@/components/hr/bulk-mark-attendance-dialog";
 import "./AttendanceRedesign.css";
 
 const STATUS_ORDER: (AttendanceStatus | null)[] = ['Present', 'Absent', 'Leave', 'Half Day', 'Late', null];
@@ -43,6 +47,7 @@ export function AttendancePageComponent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const employeeIdFilter = searchParams.get('employeeId');
+    const { toast } = useToast();
 
     const [records, setRecords] = useState<Attendance[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -57,16 +62,25 @@ export function AttendancePageComponent() {
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
+    const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+    const [isCellDialogOpen, setIsCellDialogOpen] = useState(false);
+    const [selectedCell, setSelectedCell] = useState<{ employee: Employee; date: string; record: Attendance | null } | null>(null);
+
+    // Scoped to the visible month — an unbounded full-table fetch would
+    // silently truncate at PostgREST's 1000-row default cap once the
+    // registry grows, with no error, just missing rows.
     const fetchData = useCallback(async () => {
         setLoading(true);
+        const monthStart = startOfMonth(new Date(currentYear, currentMonth, 1));
+        const monthEnd = endOfMonth(new Date(currentYear, currentMonth, 1));
         const [recordsData, employeesData] = await Promise.all([
-            getAttendanceRecords(),
+            getAttendanceRecords({ startDate: format(monthStart, 'yyyy-MM-dd'), endDate: format(monthEnd, 'yyyy-MM-dd') }),
             getEmployees()
         ]);
         setRecords(recordsData);
         setEmployees(employeesData);
         setLoading(false);
-    }, []);
+    }, [currentMonth, currentYear]);
 
     useEffect(() => {
         fetchData();
@@ -113,8 +127,34 @@ export function AttendancePageComponent() {
         if (Object.keys(pendingChanges).length === 0) return;
         setSaving(true);
 
-        const updates: Partial<Attendance>[] = Object.entries(pendingChanges).map(([key, status]) => {
+        const cells = Object.entries(pendingChanges).map(([key, status]) => {
             const [employeeId, date] = key.split(':');
+            const existing = records.find(r => r.employee_id === employeeId && r.date === date);
+            return { employeeId, date, status, existing };
+        });
+
+        // Optimistic-concurrency pre-check: block the save (rather than
+        // silently overwrite) if someone else changed one of these cells
+        // since it was loaded on screen.
+        const knownCells = cells
+            .filter(c => c.existing)
+            .map(c => ({ employee_id: c.employeeId, date: c.date, knownUpdatedAt: c.existing!.updatedAt }));
+        const conflicts = await checkForConflicts(knownCells);
+        if (conflicts.length > 0) {
+            setSaving(false);
+            const names = conflicts.map(c => {
+                const emp = employees.find(e => e.id === c.employee_id);
+                return `${emp ? `${emp.firstName} ${emp.lastName}` : c.employee_id} (${c.date})`;
+            }).join(', ');
+            toast({
+                variant: "destructive",
+                title: "Someone else changed this data",
+                description: `${names} — reload the page before saving to avoid overwriting their changes.`,
+            });
+            return;
+        }
+
+        const updates: Partial<Attendance>[] = cells.map(({ employeeId, date, status }) => {
             const emp = employees.find(e => e.id === employeeId);
             // Omit 'id' to let DB handle defaults for new records and avoid null constraint errors in bulk upserts
             return {
@@ -125,8 +165,13 @@ export function AttendancePageComponent() {
             };
         });
 
-        const result = await upsertAttendanceRecords(updates);
-        if (result) {
+        try {
+            const { data: result, error } = await upsertAttendanceRecords(updates);
+            if (error || !result) {
+                // Keep pendingChanges intact — nothing was lost, just not yet saved.
+                toast({ variant: "destructive", title: "Could not save attendance", description: error || "Unknown error" });
+                return;
+            }
             setRecords(prev => {
                 const newRecords = [...prev];
                 result.forEach(updated => {
@@ -137,32 +182,58 @@ export function AttendancePageComponent() {
                 return newRecords;
             });
             setPendingChanges({}); // Clear pending changes
+            toast({ title: "Attendance saved", description: `${result.length} record(s) updated.` });
+        } finally {
+            setSaving(false);
         }
-        setSaving(false);
     };
 
-    const handleMarkAllPresent = () => {
-        const today = format(new Date(), "yyyy-MM-dd");
-        const newPending = { ...pendingChanges };
-        let hasChanges = false;
-
-        filteredEmployees.forEach(emp => {
-            const existing = records.find(r => r.employee_id === emp.id && r.date === today);
-            const pending = pendingChanges[`${emp.id}:${today}`];
-            const currentStatus = pending !== undefined ? pending : existing?.status;
-
-            if (currentStatus !== 'Present') {
-                newPending[`${emp.id}:${today}`] = 'Present' as AttendanceStatus;
-                hasChanges = true;
-            }
+    const handleBulkApply = ({ date, status, employeeIds }: { date: string; status: AttendanceStatus; employeeIds: string[] }) => {
+        setPendingChanges(prev => {
+            const next = { ...prev };
+            employeeIds.forEach(id => {
+                next[`${id}:${date}`] = status;
+            });
+            return next;
         });
-
-        if (hasChanges) {
-            setPendingChanges(newPending);
-        }
     };
 
-    const getStatusInfo = (employeeId: string, date: Date) => {
+    const openCellDialog = (emp: Employee, date: Date) => {
+        const dateStr = format(date, "yyyy-MM-dd");
+        const record = records.find(r => r.employee_id === emp.id && r.date === dateStr) || null;
+        setSelectedCell({ employee: emp, date: dateStr, record });
+        setIsCellDialogOpen(true);
+    };
+
+    const handleCellSave = async (data: AttendanceFormData) => {
+        const { data: result, error } = await upsertAttendanceRecords([data]);
+        if (error || !result) {
+            toast({ variant: "destructive", title: "Could not save attendance", description: error || "Unknown error" });
+            throw new Error(error || 'save failed');
+        }
+        setRecords(prev => {
+            const newRecords = [...prev];
+            result.forEach(updated => {
+                const idx = newRecords.findIndex(r => r.employee_id === updated.employee_id && r.date === updated.date);
+                if (idx > -1) newRecords[idx] = updated;
+                else newRecords.push(updated);
+            });
+            return newRecords;
+        });
+        // The detail dialog is a direct save, not staged — drop any pending
+        // quick-cycle change for this same cell so it doesn't get re-applied
+        // and clobber what was just saved.
+        setPendingChanges(prev => {
+            const key = `${data.employee_id}:${data.date}`;
+            if (!(key in prev)) return prev;
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
+        toast({ title: "Attendance saved", description: `${data.employee} — ${data.date}` });
+    };
+
+    const getStatusInfo = useCallback((employeeId: string, date: Date) => {
         const dateStr = format(date, "yyyy-MM-dd");
         const key = `${employeeId}:${dateStr}`;
 
@@ -174,7 +245,15 @@ export function AttendancePageComponent() {
             status: pendingStatus !== undefined ? pendingStatus : record?.status,
             isUnsaved: pendingStatus !== undefined && pendingStatus !== record?.status
         };
-    };
+    }, [pendingChanges, records]);
+
+    const defaultBulkDate = useMemo(() => {
+        const today = new Date();
+        if (today.getFullYear() === currentYear && today.getMonth() === currentMonth) {
+            return format(today, 'yyyy-MM-dd');
+        }
+        return format(new Date(currentYear, currentMonth, 1), 'yyyy-MM-dd');
+    }, [currentYear, currentMonth]);
 
     const summary = useMemo(() => {
         const currentMonthStr = format(new Date(currentYear, currentMonth, 1), "yyyy-MM");
@@ -212,7 +291,7 @@ export function AttendancePageComponent() {
             late,
             rate: totalMarked > 0 ? (totalPresentUnits / totalMarked) * 100 : 0
         };
-    }, [records, currentMonth, currentYear, filteredEmployees, pendingChanges, daysInMonth]);
+    }, [currentMonth, currentYear, filteredEmployees, daysInMonth, getStatusInfo]);
 
     if (loading) {
         return (
@@ -248,8 +327,8 @@ export function AttendancePageComponent() {
                                 className="pl-10"
                             />
                         </div>
-                        <Button variant="outline" onClick={handleMarkAllPresent} className="hidden md:flex">
-                            <Check className="mr-2 h-4 w-4" /> Mark All Present Today
+                        <Button variant="outline" onClick={() => setIsBulkDialogOpen(true)} className="hidden md:flex">
+                            <Check className="mr-2 h-4 w-4" /> Bulk Mark
                         </Button>
 
                         {Object.keys(pendingChanges).length > 0 && (
@@ -322,7 +401,7 @@ export function AttendancePageComponent() {
                         <div className="legend-item"><div className="legend-box attendance-cell h">H</div> <span>Half Day</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell t">T</div> <span>Late</span></div>
                         <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            💡 Click cells to cycle status • <span className="text-destructive">●</span> Unsaved
+                            💡 Click to cycle status • Right-click for clock in/out & notes • <span className="text-destructive">●</span> Unsaved
                         </div>
                     </div>
 
@@ -365,6 +444,7 @@ export function AttendancePageComponent() {
                                                             isUnsaved && "unsaved"
                                                         )}
                                                         onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), (status || undefined) as AttendanceStatus | undefined)}
+                                                        onContextMenu={(e) => { e.preventDefault(); openCellDialog(emp, day); }}
                                                     >
                                                         {status ? status.charAt(0) : ''}
                                                     </div>
@@ -400,6 +480,24 @@ export function AttendancePageComponent() {
                     </div>
                 </div>
             </div>
+
+            <BulkMarkAttendanceDialog
+                isOpen={isBulkDialogOpen}
+                setIsOpen={setIsBulkDialogOpen}
+                employees={filteredEmployees}
+                defaultDate={defaultBulkDate}
+                onApply={handleBulkApply}
+            />
+            {selectedCell && (
+                <EditAttendanceDialog
+                    isOpen={isCellDialogOpen}
+                    setIsOpen={setIsCellDialogOpen}
+                    employee={selectedCell.employee}
+                    date={selectedCell.date}
+                    record={selectedCell.record}
+                    onSave={handleCellSave}
+                />
+            )}
         </main>
     );
 }

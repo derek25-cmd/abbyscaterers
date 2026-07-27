@@ -14,7 +14,7 @@ export function mockQueryResult(result: { data: any; error: any; count?: number 
   };
   const chainMethods = [
     'select', 'insert', 'update', 'delete', 'upsert', 'eq', 'neq', 'in', 'is',
-    'order', 'range', 'limit', 'single', 'maybeSingle', 'not',
+    'order', 'range', 'limit', 'single', 'maybeSingle', 'not', 'gte', 'lte',
   ];
   for (const method of chainMethods) {
     builder[method] = vi.fn(() => builder);

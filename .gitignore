@@ -57,3 +57,6 @@ linux-unpacked/
 win-unpacked/
 mac-unpacked/
 electron/dist/
+
+# Sentry Config File
+.env.sentry-build-plugin

@@ -384,8 +384,16 @@ export const EmployeeSchema = z.object({
   bankName: z.string().optional(),
   bankAccountNumber: z.string().optional(),
   nssfNumber: z.string().optional(),
+  employmentEndDate: z.string().nullable().optional(),
+  employmentEndReason: z.string().nullable().optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
+
+export const FireEmployeeSchema = z.object({
+  employmentEndDate: z.string().refine((d) => isValidDate(d), "A valid last working date is required"),
+  employmentEndReason: z.string().min(3, "Please provide a reason (firing/resignation/etc.)"),
+});
+export type FireEmployeeFormData = z.infer<typeof FireEmployeeSchema>;
 
 
 // --- PAYROLL / TAX RATES ---
@@ -448,6 +456,24 @@ export const PayrollSchema = z.object({
   }
 });
 export type PayrollFormData = z.infer<typeof PayrollSchema>;
+
+// --- ATTENDANCE ---
+const TIME_HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+export const AttendanceSchema = z.object({
+  employee_id: z.string().min(1, "Employee is required"),
+  employee: z.string().min(1),
+  date: z.string().refine((d) => isValidDate(d), "A valid date is required"),
+  status: z.enum(['Present', 'Absent', 'Leave', 'Half Day', 'Late']),
+  clock_in_time: z.string().regex(TIME_HHMM, "Use HH:mm").nullable().optional().or(z.literal('')),
+  clock_out_time: z.string().regex(TIME_HHMM, "Use HH:mm").nullable().optional().or(z.literal('')),
+  notes: z.string().optional(),
+}).superRefine((val, ctx) => {
+  if (val.clock_in_time && val.clock_out_time && val.clock_out_time <= val.clock_in_time) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['clock_out_time'], message: 'Clock out must be after clock in' });
+  }
+});
+export type AttendanceFormData = z.infer<typeof AttendanceSchema>;
 
 
 // --- MENU COSTING ---

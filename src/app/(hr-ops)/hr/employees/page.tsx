@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2, FileDown, FileSpreadsheet } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2, FileDown, FileSpreadsheet, ChevronDown, UserMinus } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
 import { ViewEmployeeDialog } from "@/components/hr/view-employee-dialog";
+import { FireEmployeeDialog } from "@/components/hr/fire-employee-dialog";
 import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeService";
+import type { FireEmployeeFormData } from "@/lib/schemas";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS } from "@/lib/schemas";
@@ -27,6 +29,7 @@ export default function EmployeesPage() {
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isViewEmployeeDialogOpen, setIsViewEmployeeDialogOpen] = useState(false);
+  const [isFireDialogOpen, setIsFireDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -87,31 +90,64 @@ export default function EmployeesPage() {
     );
   };
 
+  const handleFireEmployee = async (data: FireEmployeeFormData) => {
+    if (!selectedEmployee) return;
+    try {
+      const success = await updateEmployee(selectedEmployee.id, {
+        status: 'Inactive',
+        employmentEndDate: data.employmentEndDate,
+        employmentEndReason: data.employmentEndReason,
+      });
+      if (!success) throw new Error('The database update did not succeed.');
+      setEmployees(prevEmployees =>
+        prevEmployees.map(employee =>
+          employee.id === selectedEmployee.id
+            ? { ...employee, status: 'Inactive', employmentEndDate: data.employmentEndDate, employmentEndReason: data.employmentEndReason }
+            : employee
+        )
+      );
+      toast({ title: "Employment ended", description: `${getFullName(selectedEmployee)} has been marked Inactive.` });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Could not end employment",
+        description: getErrorDescription(err),
+      });
+      throw err;
+    }
+  };
+
   const openEditDialog = (employee: any) => {
     setSelectedEmployee(employee);
     setIsEditEmployeeDialogOpen(true);
   };
-  
+
   const openViewDialog = (employee: any) => {
     setSelectedEmployee(employee);
     setIsViewEmployeeDialogOpen(true);
   };
 
-  const handleExportPDF = () => {
+  const openFireDialog = (employee: any) => {
+    setSelectedEmployee(employee);
+    setIsFireDialogOpen(true);
+  };
+
+  const handleExportPDF = (activeOnly: boolean) => {
+    const scoped = activeOnly ? employees.filter(e => e.status === 'Active') : employees;
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("ABBY'S CATERERS — FULL STAFF DIRECTORY", 14, 18);
+    doc.text(`ABBY'S CATERERS — ${activeOnly ? 'ACTIVE STAFF DIRECTORY' : 'FULL STAFF DIRECTORY'}`, 14, 18);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
-    doc.text(`Total Employees: ${employees.length}`, 14, 30);
+    doc.text(`Total Employees: ${scoped.length}`, 14, 30);
 
     (doc as any).autoTable({
       startY: 36,
       theme: 'grid',
       head: [['ID', 'Name', 'Department', 'Role', 'Status', 'Email', 'Phone', 'Monthly Salary']],
-      body: employees.map(emp => [
+      body: scoped.map(emp => [
         emp.id,
         getFullName(emp),
         emp.department,
@@ -133,10 +169,11 @@ export default function EmployeesPage() {
       }
     });
 
-    doc.save(`employee-directory-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    doc.save(`employee-directory-${activeOnly ? 'active-' : ''}${format(new Date(), 'yyyy-MM-dd')}.pdf`);
   };
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = async (activeOnly: boolean) => {
+    const scoped = activeOnly ? employees.filter(e => e.status === 'Active') : employees;
     try {
       const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
@@ -153,7 +190,7 @@ export default function EmployeesPage() {
         { header: 'Monthly Salary', key: 'salary', width: 18 }
       ];
 
-      employees.forEach(emp => {
+      scoped.forEach(emp => {
         worksheet.addRow({
           id: emp.id,
           name: getFullName(emp),
@@ -188,7 +225,7 @@ export default function EmployeesPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `employee-directory-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      a.download = `employee-directory-${activeOnly ? 'active-' : ''}${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -202,18 +239,36 @@ export default function EmployeesPage() {
         <div className="flex items-center">
             <h1 className="font-headline text-2xl font-bold">Employee Records</h1>
             <div className="ml-auto flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExportPDF}>
-                    <FileDown className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Export PDF
-                    </span>
-                </Button>
-                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleExportExcel}>
-                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Export Excel
-                    </span>
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1">
+                        <FileDown className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                            Export PDF
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleExportPDF(false)}>All Employees</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExportPDF(true)}>Active Only</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1">
+                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                            Export Excel
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleExportExcel(false)}>All Employees</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExportExcel(true)}>Active Only</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddEmployeeDialogOpen(true)}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -331,6 +386,15 @@ export default function EmployeesPage() {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => openViewDialog(employee)}>View Details</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
+                          {employee.status === 'Active' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openFireDialog(employee)}>
+                                <UserMinus className="mr-2 h-4 w-4" />
+                                Fire / End Employment
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -364,6 +428,14 @@ export default function EmployeesPage() {
             isOpen={isViewEmployeeDialogOpen}
             setIsOpen={setIsViewEmployeeDialogOpen}
             employee={selectedEmployee}
+        />
+      )}
+      {selectedEmployee && (
+        <FireEmployeeDialog
+            isOpen={isFireDialogOpen}
+            setIsOpen={setIsFireDialogOpen}
+            employee={selectedEmployee}
+            onConfirm={handleFireEmployee}
         />
       )}
     </main>

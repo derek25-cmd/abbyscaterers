@@ -364,6 +364,8 @@ export interface Employee {
   bankName?: string;
   bankAccountNumber?: string;
   nssfNumber?: string;
+  employmentEndDate?: string | null;
+  employmentEndReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -377,6 +379,8 @@ export interface Attendance {
     date: string;
     status: AttendanceStatus;
     notes?: string;
+    clock_in_time?: string | null;
+    clock_out_time?: string | null;
     createdAt: string;
     updatedAt: string;
 }
