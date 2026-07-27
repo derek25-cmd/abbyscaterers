@@ -208,8 +208,11 @@ export const baseInvoiceSchema = z.object({
     region: z.enum(REGIONS).nullable().optional(),
     numberOfDays: z.number().min(0).optional().default(1),
     multiplyByDays: z.boolean().default(false),
-    serviceCharge: z.number().min(0).nullable().optional().default(0),
-    transportCosts: z.number().min(0).nullable().optional().default(0),
+    // .transform() coerces an explicit null through to 0 — .default() alone
+    // only substitutes for undefined, not null, and the DB column is now
+    // NOT NULL DEFAULT 0 (see supabase/migrations/20260726000200_money_column_constraints.sql).
+    serviceCharge: z.number().min(0).nullable().optional().default(0).transform(v => v ?? 0),
+    transportCosts: z.number().min(0).nullable().optional().default(0).transform(v => v ?? 0),
     vatType: z.enum(['inclusive', 'exclusive']).nullable().optional().default('inclusive'),
     selectedEventType: z.string().nullable().optional(),
     customEventType: z.string().nullable().optional(),
@@ -378,8 +381,73 @@ export const EmployeeSchema = z.object({
   department: z.enum(DEPARTMENTS),
   status: z.enum(["Active", "Inactive"]).default("Active"),
   monthlySalary: z.number().min(0, "Monthly salary cannot be negative").optional(),
+  bankName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
+  nssfNumber: z.string().optional(),
 });
 export type EmployeeFormData = z.infer<typeof EmployeeSchema>;
+
+
+// --- PAYROLL / TAX RATES ---
+export const PayeBandSchema = z.object({
+  min: z.number().min(0),
+  max: z.number().min(0).nullable(), // null = "and above"
+  rate: z.number().min(0).max(1, "Rate must be between 0 and 1 (e.g. 0.08 for 8%)"),
+});
+
+export const TaxRateSchema = z.object({
+  effectiveFrom: z.string().refine((d) => isValidDate(d), "A valid effective-from date is required"),
+  effectiveTo: z.string().nullable().optional(),
+  payeBands: z.array(PayeBandSchema).min(1, "At least one PAYE band is required"),
+  nssfEmployeeRate: z.number().min(0).max(1),
+  nssfEmployerRate: z.number().min(0).max(1),
+  sdlRate: z.number().min(0).max(1),
+  wcfRate: z.number().min(0).max(1),
+  notes: z.string().optional(),
+}).superRefine((val, ctx) => {
+  const sorted = [...val.payeBands].sort((a, b) => a.min - b.min);
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].max !== null && sorted[i].max! <= sorted[i].min) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Band ${i + 1}: max must be greater than min` });
+    }
+    if (i > 0 && sorted[i - 1].max !== sorted[i].min) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Band ${i + 1} must start where the previous band ends (no gaps/overlaps)` });
+    }
+  }
+});
+export type TaxRateFormData = z.infer<typeof TaxRateSchema>;
+
+export const PayrollSchema = z.object({
+  employeeId: z.string().min(1, "Employee is required"),
+  employeeName: z.string().min(1),
+  staffType: z.enum(['permanent', 'casual']).default('permanent'),
+  payPeriodStart: z.string().refine((d) => isValidDate(d), "A valid start date is required"),
+  payPeriodEnd: z.string().refine((d) => isValidDate(d), "A valid end date is required"),
+  monthlySalary: z.number().min(0).optional(),
+  daysWorked: z.number().min(0).optional(),
+  dailyRate: z.number().min(0).optional(),
+  allowances: z.number().min(0).default(0),
+  otherDeductions: z.number().min(0).default(0),
+  event_id: z.string().optional(),
+  status: z.enum(['Paid', 'Pending']).default('Pending'),
+  paymentDate: z.string().nullable().optional(),
+}).superRefine((val, ctx) => {
+  if (new Date(val.payPeriodEnd) < new Date(val.payPeriodStart)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['payPeriodEnd'], message: 'End date must be on or after the start date' });
+  }
+  if (val.staffType === 'permanent' && (val.monthlySalary === undefined || val.monthlySalary <= 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['monthlySalary'], message: 'Monthly salary is required for permanent staff' });
+  }
+  if (val.staffType === 'casual') {
+    if (val.daysWorked === undefined || val.daysWorked <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['daysWorked'], message: 'Days worked is required for casual staff' });
+    }
+    if (val.dailyRate === undefined || val.dailyRate <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['dailyRate'], message: 'Daily rate is required for casual staff' });
+    }
+  }
+});
+export type PayrollFormData = z.infer<typeof PayrollSchema>;
 
 
 // --- MENU COSTING ---

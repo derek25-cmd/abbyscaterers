@@ -32,7 +32,11 @@ export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 
 };
 
 export const updateEmployee = async (id: string, updatedEmployee: Partial<Employee>): Promise<boolean> => {
-    const { error } = await supabase.from('employees').update(updatedEmployee).eq('id', id);
+    // Payroll runs read monthlySalary directly off this record — validate
+    // partial updates the same way addEmployee validates full records,
+    // rather than trusting whatever shape the caller passes.
+    const validated = validate(EmployeeSchema.partial(), updatedEmployee);
+    const { error } = await supabase.from('employees').update(validated).eq('id', id);
     if (error) {
         console.error('Error updating employee:', error);
     }

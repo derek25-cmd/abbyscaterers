@@ -217,8 +217,11 @@ export function BookingDetailsPageComponent() {
         serviceFields: {},
         serviceDesc: proformaDetails.serviceDesc || `Catering services for ${client.companyName} from ${format(parseISO(booking.start_date), 'PPP')} to ${format(parseISO(booking.end_date), 'PPP')}`,
         vatType: proformaDetails.vatType ?? null,
-        serviceCharge: proformaDetails.serviceCharge ?? null,
-        transportCosts: proformaDetails.transportCosts ?? null,
+        // serviceCharge/transportCosts are NOT NULL DEFAULT 0 in the DB
+        // (see supabase/migrations/20260726000200_money_column_constraints.sql)
+        // — default to 0, not null, or this insert would violate that constraint.
+        serviceCharge: proformaDetails.serviceCharge ?? 0,
+        transportCosts: proformaDetails.transportCosts ?? 0,
     };
     
     try {

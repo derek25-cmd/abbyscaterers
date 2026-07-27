@@ -1,5 +1,6 @@
 import { getRouteClient } from '@/features/marketing/api/route-client';
 import { computeTargetActuals, scoreTarget } from '@/features/marketing/utils/targets';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ async function runTargetAnalysis(client: ReturnType<typeof getRouteClient>) {
     .gte('end_date', today);
 
   if (error) {
-    console.error('[cron] fetching active targets failed:', error);
+    logger.error({ err: error }, 'cron: fetching active targets failed');
     return { analysed: 0, notified: 0 };
   }
   if (!activeTargets || activeTargets.length === 0) {
@@ -55,7 +56,7 @@ async function runTargetAnalysis(client: ReturnType<typeof getRouteClient>) {
       status,
     }]);
     if (insertError) {
-      console.error(`[cron] target analysis insert failed for ${target.id}:`, insertError);
+      logger.error({ err: insertError, targetId: target.id }, 'cron: target analysis insert failed');
       continue;
     }
     analysed += 1;
@@ -80,7 +81,7 @@ async function runTargetAnalysis(client: ReturnType<typeof getRouteClient>) {
       toNotify.forEach((id: string) => alreadyNotified.add(id));
       notified += toNotify.length;
     } else {
-      console.error(`[cron] TARGET_DUE notification insert failed for target ${target.id}:`, notifyError);
+      logger.error({ err: notifyError, targetId: target.id }, 'cron: TARGET_DUE notification insert failed');
     }
   }
 
@@ -100,16 +101,16 @@ export async function GET(request: Request) {
   const { error } = await client.rpc('aggregate_marketing_performance');
 
   if (error) {
-    console.error('[cron] marketing-performance aggregation failed:', error);
+    logger.error({ err: error }, 'cron: marketing-performance aggregation failed');
     return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 
   const { data: reinstatedCount, error: reinstateError } = await client.rpc('auto_reinstate_expired_suspensions');
 
   if (reinstateError) {
-    console.error('[cron] auto-reinstate failed:', reinstateError);
+    logger.error({ err: reinstateError }, 'cron: auto-reinstate failed');
   } else {
-    console.log(`[cron] Auto-reinstated ${reinstatedCount} suspended marketers`);
+    logger.info({ reinstatedCount }, 'cron: auto-reinstated suspended marketers');
   }
 
   const { analysed, notified } = await runTargetAnalysis(client);

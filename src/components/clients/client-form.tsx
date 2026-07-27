@@ -156,11 +156,16 @@ export function ClientForm({ client }: ClientFormProps) {
     }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (client) {
-        deleteClient(client.id);
-        toast({ title: "Client Deleted", description: "The client has been permanently removed."});
-        router.push('/clients');
+        // deleteClient already shows its own destructive toast on failure
+        // (e.g. the client still has linked orders/invoices) — only
+        // navigate away when the delete actually went through.
+        const success = await deleteClient(client.id);
+        if (success) {
+          toast({ title: "Client Deleted", description: "The client has been permanently removed." });
+          router.push('/clients');
+        }
     }
   };
 

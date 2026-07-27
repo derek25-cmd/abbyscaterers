@@ -4,11 +4,35 @@ import { StockLog } from '@/types';
 import { format } from 'date-fns';
 
 export const getStockLogs = async () => {
-    return await supabase
-        .from('stock_logs')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(3000);
+    // Supabase's default/max page size is 1 000 rows. The previous hardcoded
+    // .limit(3000) silently dropped anything beyond it once stock_logs grew
+    // past that — no error, just missing rows. Paginate until exhausted so
+    // stock reports never silently under-report.
+    const PAGE = 1000;
+    const all: any[] = [];
+    let page = 0;
+
+    while (true) {
+        const { data, error } = await supabase
+            .from('stock_logs')
+            .select('*')
+            // Secondary sort on id breaks ties on same-date rows so .range()
+            // pagination is deterministic — without it, rows sharing a date
+            // could be skipped or duplicated across page boundaries.
+            .order('date', { ascending: false })
+            .order('id', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+
+        if (error) {
+            return { data: null, error };
+        }
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < PAGE) break; // last page
+        page++;
+    }
+
+    return { data: all, error: null };
 };
 
 

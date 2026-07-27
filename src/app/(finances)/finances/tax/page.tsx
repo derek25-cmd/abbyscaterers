@@ -144,11 +144,19 @@ export default function TaxBookPage() {
       });
     });
 
-    // PAYE — sourced from Payroll deductions (estimated at 60% of deductions per TRA progressive rates)
+    // PAYE — real progressive-band figure from the payroll calculation
+    // engine (src/lib/payrollEngine.ts), computed and persisted at payslip
+    // creation time. Falls back to the old 60%-of-deductions guess only for
+    // legacy payroll rows created before paye_amount existed.
     payrolls.forEach(pay => {
-      if ((pay.deductions || 0) <= 0) return;
-      const estimatedPAYE = Math.round(pay.deductions * 0.6);
-      if (estimatedPAYE <= 0) return;
+      const hasRealPaye = (pay.paye_amount ?? 0) > 0;
+      const payeAmount = hasRealPaye ? Math.round(pay.paye_amount!) : Math.round((pay.deductions || 0) * 0.6);
+      if (payeAmount <= 0) return;
+      // tax_rate is only meaningful as a flat percentage for the WHT/VAT
+      // entries elsewhere in this ledger — PAYE is genuinely progressive
+      // (banded), so this is an *effective* rate for display purposes only,
+      // not the input to any calculation.
+      const effectiveRate = pay.grossSalary > 0 ? Math.round((payeAmount / pay.grossSalary) * 100) : 0;
       const key = `payroll-${pay.id}`;
       entries.push({
         key,
@@ -159,8 +167,8 @@ export default function TaxBookPage() {
         ref_ledger: 'payroll',
         ref_record: pay.id,
         base_amount: pay.grossSalary,
-        tax_rate: 9,
-        tax_amount: estimatedPAYE,
+        tax_rate: hasRealPaye ? effectiveRate : 9,
+        tax_amount: payeAmount,
         filing_st: taxFilingMap[key] || 'accrued',
       });
     });

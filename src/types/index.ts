@@ -361,6 +361,9 @@ export interface Employee {
   department: Department;
   status: 'Active' | 'Inactive';
   monthlySalary?: number;
+  bankName?: string;
+  bankAccountNumber?: string;
+  nssfNumber?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -446,10 +449,16 @@ export interface Payroll {
     payPeriodEnd: string;
     basicSalary: number;
     allowances: number;
-    deductions: number;
+    deductions: number; // persisted computed total: paye_amount + nssf_employee + other_deductions
     grossSalary: number;
     netSalary: number;
-    wcf_contrib?: number; // Workers Compensation Fund contribution (0.5% paid by employer)
+    paye_amount?: number;
+    nssf_employee?: number; // employee-side NSSF (part of `deductions`)
+    nssf_employer?: number; // employer-only cost, not part of employee's `deductions`
+    sdl_amount?: number; // Skills Development Levy, employer-only
+    other_deductions?: number; // loans/advances/etc, itemized instead of folded into a lump sum
+    tax_rate_version_id?: string | null; // which tax_rates row computed this payslip
+    wcf_contrib?: number; // Workers Compensation Fund contribution, employer-only
     status: 'Paid' | 'Pending';
     paymentDate: string | null;
     createdAt: string;

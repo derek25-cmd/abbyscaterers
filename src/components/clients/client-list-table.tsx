@@ -56,8 +56,13 @@ export function ClientListTable() {
 
   const confirmDelete = React.useCallback(async () => {
     if (itemToDelete) {
-      await deleteClient(itemToDelete);
-      toast({ title: "Client Deleted", description: "The client and all associated data have been removed." });
+      const success = await deleteClient(itemToDelete);
+      // deleteClient already shows its own destructive toast on failure
+      // (e.g. the client still has linked orders/invoices) — only show the
+      // success toast when the delete actually went through.
+      if (success) {
+        toast({ title: "Client Deleted", description: "The client has been removed." });
+      }
       setItemToDelete(null);
     }
   }, [itemToDelete, deleteClient, toast]);

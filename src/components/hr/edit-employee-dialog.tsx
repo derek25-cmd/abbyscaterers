@@ -37,6 +37,9 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
         department: '',
         status: 'Active',
         monthlySalary: 0,
+        bankName: '',
+        bankAccountNumber: '',
+        nssfNumber: '',
       });
 
   useEffect(() => {
@@ -60,6 +63,9 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
         department: employee.department || '',
         status: employee.status || 'Active',
         monthlySalary: employee.monthlySalary || 0,
+        bankName: employee.bankName || '',
+        bankAccountNumber: employee.bankAccountNumber || '',
+        nssfNumber: employee.nssfNumber || '',
       });
     }
   }, [employee]);
@@ -216,6 +222,22 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
                             <SelectItem value="Inactive">Inactive</SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+                </div>
+
+                <h3 className="text-lg font-medium">Payroll Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <Label htmlFor="nssfNumber">NSSF Number</Label>
+                        <Input id="nssfNumber" value={formData.nssfNumber} onChange={handleChange} />
+                    </div>
+                    <div>
+                        <Label htmlFor="bankName">Bank Name</Label>
+                        <Input id="bankName" value={formData.bankName} onChange={handleChange} />
+                    </div>
+                    <div>
+                        <Label htmlFor="bankAccountNumber">Bank Account Number</Label>
+                        <Input id="bankAccountNumber" value={formData.bankAccountNumber} onChange={handleChange} />
                     </div>
                 </div>
             </div>

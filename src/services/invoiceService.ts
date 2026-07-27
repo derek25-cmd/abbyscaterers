@@ -4,6 +4,7 @@ import type { Invoice } from '@/types';
 import { FinalInvoiceSchema, type FinalInvoiceFormData } from '@/lib/schemas';
 import { validate } from '@/lib/service-validation';
 import { resyncCommissionForInvoice, voidCommissionForInvoice, renameInvoiceIdForCommission, recordCommissionForInvoice } from '@/features/marketing/utils/commission';
+import { logAuditEvent } from '@/lib/audit-log';
 
 export const getInvoices = async (): Promise<Invoice[]> => {
     const PAGE = 1000;
@@ -34,37 +35,21 @@ export const getInvoiceById = async (id: string): Promise<Invoice | null> => {
 }
 
 export const addInvoice = async (invoiceData: FinalInvoiceFormData): Promise<Invoice | null> => {
-    // Server-side guard: a proforma can only ever have one final invoice.
-    // This catches races and direct-URL bypasses where the client-side
-    // isInvoiced flag might be stale.
-    if (invoiceData.proformaId) {
-        const { data: existing } = await supabase
-            .from('invoices')
-            .select('id')
-            .eq('proformaId', invoiceData.proformaId)
-            .maybeSingle();
-        if (existing) {
-            throw new Error(
-                `A final invoice (${existing.id}) already exists for this proforma. Open that invoice instead of creating a new one.`
-            );
-        }
-    }
-
     const validated = validate(FinalInvoiceSchema, invoiceData);
     const now = new Date().toISOString();
     const newInvoiceData = { ...validated, createdAt: now, updatedAt: now };
 
-    const { data, error } = await supabase.from('invoices').insert([newInvoiceData]).select().single();
+    // create_invoice_from_proforma() does the duplicate-invoice check, the
+    // insert, and marking the proforma invoiced all inside one DB
+    // transaction — see supabase/migrations/20260719000100_atomic_invoice_writes.sql.
+    // Previously these were three separate sequential calls; a failure
+    // between them could leave an invoice with no matching proforma flag
+    // (already a known issue per the old code comments here), or — since
+    // the duplicate check was a separate pre-check, not atomic with the
+    // insert — let two concurrent requests both pass the check and both
+    // create an invoice for the same proforma.
+    const { data, error } = await supabase.rpc('create_invoice_from_proforma', { p_invoice: newInvoiceData }).single();
     if (error) throw new Error(error.message);
-
-    // Mark proforma as invoiced (non-critical — log but don't block)
-    if (invoiceData.proformaId) {
-        const { error: proformaError } = await supabase
-            .from('proforma_invoices')
-            .update({ isInvoiced: true })
-            .eq('id', invoiceData.proformaId);
-        if (proformaError) console.error("Error marking proforma as invoiced:", proformaError.message);
-    }
 
     // Marketer commission (non-critical — log but don't block invoice creation)
     recordCommissionForInvoice(data as Invoice).catch((err) => console.error('Error recording commission:', err));
@@ -98,23 +83,15 @@ export const updateInvoice = async (id: string, updates: Partial<FinalInvoiceFor
 };
 
 export const deleteInvoice = async (id: string): Promise<boolean> => {
-    const { data: invoice, error: fetchError } = await supabase.from('invoices').select('*').eq('id', id).single();
-    if (fetchError) throw new Error(fetchError.message);
-
-    // Revert proforma status (non-critical — log but don't block)
-    if (invoice && invoice.proformaId) {
-        const { error: proformaError } = await supabase
-            .from('proforma_invoices')
-            .update({ isInvoiced: false, updatedAt: new Date().toISOString() })
-            .eq('id', invoice.proformaId);
-        if (proformaError) console.error('Error reverting proforma status:', proformaError.message);
-    }
-
-    const { error: deleteError } = await supabase.from('invoices').delete().eq('id', id);
-    if (deleteError) throw new Error(deleteError.message);
+    // delete_invoice_and_revert_proforma() deletes the invoice and reverts
+    // the proforma's isInvoiced flag in one DB transaction — see
+    // supabase/migrations/20260719000100_atomic_invoice_writes.sql.
+    const { error } = await supabase.rpc('delete_invoice_and_revert_proforma', { p_invoice_id: id });
+    if (error) throw new Error(error.message);
 
     // Marketer commission (non-critical — log but don't block invoice deletion)
     voidCommissionForInvoice(id).catch((err) => console.error('Error voiding commission:', err));
+    void logAuditEvent('invoice.delete', 'invoices', id);
 
     return true;
 };

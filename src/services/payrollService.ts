@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase-client';
 import { Payroll } from '@/types';
+import { logAuditEvent } from '@/lib/audit-log';
+import { calculatePayroll, type PayrollBreakdown } from '@/lib/payrollEngine';
+import { getActiveTaxRates } from '@/services/taxRatesService';
+import { getEmployees } from '@/services/employeeService';
 
 const PAYROLL_LOCAL_KEY = 'cater_payroll_local';
 
@@ -42,28 +46,33 @@ export const getPayrolls = async (): Promise<Payroll[]> => {
         if (data.length < PAGE) break;
         page++;
     }
-    const data = raw;
 
-    const mapped = data.map(p => ({
+    const mapped = raw.map(p => ({
         id: p.id,
-        employeeId: p.employeeId || p.employee_id || '',
-        employeeName: p.employeeName || p.employee_name || '',
-        event_id: p.event_id || p.eventid || getLocalPayrolls().find(lp => lp.id === p.id)?.event_id || 'MONTHLY_CORE',
-        staff_type: p.staff_type || p.stafftype || getLocalPayrolls().find(lp => lp.id === p.id)?.staff_type || 'permanent',
+        employeeId: p.employeeId,
+        employeeName: p.employeeName,
+        event_id: p.event_id || 'MONTHLY_CORE',
+        staff_type: p.staff_type || 'permanent',
         days_worked: p.days_worked !== null && p.days_worked !== undefined ? Number(p.days_worked) : undefined,
         daily_rate: p.daily_rate !== null && p.daily_rate !== undefined ? Number(p.daily_rate) : undefined,
-        payPeriodStart: p.payPeriodStart || p.pay_period_start || p.payperiodstart,
-        payPeriodEnd: p.payPeriodEnd || p.pay_period_end || p.payperiodend,
-        basicSalary: Number(p.basicSalary || p.basic_salary || p.basicsalary || 0),
-        allowances: Number(p.allowances || p.allowance || 0),
-        deductions: Number(p.deductions || p.deduction || 0),
-        grossSalary: Number(p.grossSalary || p.gross_salary || p.grosssalary || 0),
-        netSalary: Number(p.netSalary || p.net_salary || p.netsalary || 0),
-        wcf_contrib: p.wcf_contrib !== null && p.wcf_contrib !== undefined ? Number(p.wcf_contrib) : 0,
+        payPeriodStart: p.payPeriodStart,
+        payPeriodEnd: p.payPeriodEnd,
+        basicSalary: Number(p.basicSalary || 0),
+        allowances: Number(p.allowances || 0),
+        deductions: Number(p.deductions || 0),
+        grossSalary: Number(p.grossSalary || 0),
+        netSalary: Number(p.netSalary || 0),
+        paye_amount: Number(p.paye_amount || 0),
+        nssf_employee: Number(p.nssf_employee || 0),
+        nssf_employer: Number(p.nssf_employer || 0),
+        sdl_amount: Number(p.sdl_amount || 0),
+        other_deductions: Number(p.other_deductions || 0),
+        tax_rate_version_id: p.tax_rate_version_id ?? null,
+        wcf_contrib: Number(p.wcf_contrib || 0),
         status: p.status || 'Pending',
-        paymentDate: p.paymentDate || p.payment_date || p.paymentdate || null,
-        createdAt: p.createdAt || p.created_at || p.createdat,
-        updatedAt: p.updatedAt || p.updated_at || p.updatedat
+        paymentDate: p.paymentDate || null,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
     })) as Payroll[];
 
     // Sync remote and local
@@ -82,65 +91,101 @@ export const getPayrolls = async (): Promise<Payroll[]> => {
     return mapped;
 };
 
-export const addPayroll = async (payroll: Omit<Payroll, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+export interface AddPayrollInput {
+    employeeId: string;
+    employeeName: string;
+    staffType: 'permanent' | 'casual';
+    monthlySalary?: number;
+    daysWorked?: number;
+    dailyRate?: number;
+    allowances: number;
+    otherDeductions: number;
+    payPeriodStart: string;
+    payPeriodEnd: string;
+    event_id?: string;
+    status: 'Paid' | 'Pending';
+    paymentDate?: string | null;
+}
+
+/** Runs the calculation engine against the currently-active tax rates. Throws if none are configured — payroll should never silently compute against a missing/zeroed rate set. */
+async function computeBreakdown(input: {
+    staffType: 'permanent' | 'casual';
+    monthlySalary?: number;
+    daysWorked?: number;
+    dailyRate?: number;
+    allowances: number;
+    otherDeductions: number;
+}): Promise<{ breakdown: PayrollBreakdown; taxRateVersionId: string }> {
+    const rates = await getActiveTaxRates();
+    if (!rates) {
+        throw new Error('No active tax rates are configured. Set up tax rates in HR > Payroll > Tax Rates before generating payroll.');
+    }
+    const breakdown = calculatePayroll(input, rates);
+    return { breakdown, taxRateVersionId: rates.id };
+}
+
+export const addPayroll = async (input: AddPayrollInput): Promise<string> => {
+    const { breakdown, taxRateVersionId } = await computeBreakdown(input);
+
     const payrollId = `PAY-${Date.now()}`;
     const now = new Date().toISOString();
 
     const dbPayroll = {
         id: payrollId,
-        employeeId: payroll.employeeId,
-        employeeName: payroll.employeeName,
-        payPeriodStart: payroll.payPeriodStart,
-        payPeriodEnd: payroll.payPeriodEnd,
-        basicSalary: Number(payroll.basicSalary),
-        allowances: Number(payroll.allowances),
-        deductions: Number(payroll.deductions),
-        grossSalary: Number(payroll.grossSalary),
-        netSalary: Number(payroll.netSalary),
-        status: payroll.status,
-        paymentDate: payroll.paymentDate,
-        event_id: payroll.event_id || 'MONTHLY_CORE',
-        staff_type: payroll.staff_type || 'permanent',
-        days_worked: payroll.days_worked !== undefined ? Number(payroll.days_worked) : null,
-        daily_rate: payroll.daily_rate !== undefined ? Number(payroll.daily_rate) : null,
-        wcf_contrib: payroll.wcf_contrib !== undefined ? Number(payroll.wcf_contrib) : 0
+        employeeId: input.employeeId,
+        employeeName: input.employeeName,
+        payPeriodStart: input.payPeriodStart,
+        payPeriodEnd: input.payPeriodEnd,
+        basicSalary: breakdown.basicSalary,
+        allowances: input.allowances,
+        deductions: breakdown.deductions,
+        grossSalary: breakdown.grossSalary,
+        netSalary: breakdown.netSalary,
+        paye_amount: breakdown.payeAmount,
+        nssf_employee: breakdown.nssfEmployee,
+        nssf_employer: breakdown.nssfEmployer,
+        sdl_amount: breakdown.sdlAmount,
+        other_deductions: breakdown.otherDeductions,
+        wcf_contrib: breakdown.wcfContrib,
+        tax_rate_version_id: taxRateVersionId,
+        status: input.status,
+        paymentDate: input.paymentDate ?? null,
+        event_id: input.event_id || 'MONTHLY_CORE',
+        staff_type: input.staffType,
+        days_worked: input.daysWorked ?? null,
+        daily_rate: input.dailyRate ?? null,
     };
 
-    const { data, error } = await supabase.from('payroll').insert([dbPayroll]).select();
-    
+    const { data, error } = await supabase.from('payroll').insert([dbPayroll]).select().single();
+
     if (error) {
         console.warn('Could not insert payroll into Supabase. Creating in localStorage fallback:', error.message);
-        
-        // Strip out columns if database errors on new columns
-        if (error.message.includes('event_id') || error.message.includes('staff_type') || error.message.includes('wcf_contrib')) {
-            const stripped = { ...dbPayroll };
-            delete (stripped as any).event_id;
-            delete (stripped as any).staff_type;
-            delete (stripped as any).days_worked;
-            delete (stripped as any).daily_rate;
-            delete (stripped as any).wcf_contrib;
-
-            const { data: strippedData, error: strippedError } = await supabase.from('payroll').insert([stripped]).select();
-            if (!strippedError && strippedData?.[0]) {
-                const completed: Payroll = {
-                    ...payroll,
-                    id: strippedData[0].id,
-                    createdAt: strippedData[0].created_at || now,
-                    updatedAt: strippedData[0].updated_at || now
-                };
-                const local = getLocalPayrolls();
-                local.push(completed);
-                saveLocalPayrolls(local);
-                return completed.id;
-            }
-        }
-
-        // Entirely local fallback
         const localPay: Payroll = {
-            ...payroll,
+            employeeId: input.employeeId,
+            employeeName: input.employeeName,
+            payPeriodStart: input.payPeriodStart,
+            payPeriodEnd: input.payPeriodEnd,
+            basicSalary: breakdown.basicSalary,
+            allowances: input.allowances,
+            deductions: breakdown.deductions,
+            grossSalary: breakdown.grossSalary,
+            netSalary: breakdown.netSalary,
+            paye_amount: breakdown.payeAmount,
+            nssf_employee: breakdown.nssfEmployee,
+            nssf_employer: breakdown.nssfEmployer,
+            sdl_amount: breakdown.sdlAmount,
+            other_deductions: breakdown.otherDeductions,
+            wcf_contrib: breakdown.wcfContrib,
+            tax_rate_version_id: taxRateVersionId,
+            status: input.status,
+            paymentDate: input.paymentDate ?? null,
+            event_id: input.event_id || 'MONTHLY_CORE',
+            staff_type: input.staffType,
+            days_worked: input.daysWorked,
+            daily_rate: input.dailyRate,
             id: payrollId,
             createdAt: now,
-            updatedAt: now
+            updatedAt: now,
         };
         const local = getLocalPayrolls();
         local.push(localPay);
@@ -148,19 +193,17 @@ export const addPayroll = async (payroll: Omit<Payroll, 'id' | 'createdAt' | 'up
         return payrollId;
     }
 
-    const created = data?.[0] || dbPayroll;
-    const completedRecord: Payroll = {
-        ...payroll,
-        id: created.id,
-        createdAt: created.created_at || now,
-        updatedAt: created.updated_at || now
-    };
-
     const local = getLocalPayrolls();
-    local.push(completedRecord);
+    local.push({ ...data, id: data.id } as Payroll);
     saveLocalPayrolls(local);
 
-    return completedRecord.id;
+    void logAuditEvent('payroll.create', 'payroll', data.id, {
+        employeeId: input.employeeId,
+        netSalary: breakdown.netSalary,
+        grossSalary: breakdown.grossSalary,
+    });
+
+    return data.id;
 };
 
 export const updatePayroll = async (id: string, updatedPayroll: Partial<Payroll>): Promise<boolean> => {
@@ -170,28 +213,24 @@ export const updatePayroll = async (id: string, updatedPayroll: Partial<Payroll>
     if (updatedPayroll.deductions !== undefined) dbUpdate.deductions = Number(updatedPayroll.deductions);
     if (updatedPayroll.grossSalary !== undefined) dbUpdate.grossSalary = Number(updatedPayroll.grossSalary);
     if (updatedPayroll.netSalary !== undefined) dbUpdate.netSalary = Number(updatedPayroll.netSalary);
+    if (updatedPayroll.paye_amount !== undefined) dbUpdate.paye_amount = Number(updatedPayroll.paye_amount);
+    if (updatedPayroll.nssf_employee !== undefined) dbUpdate.nssf_employee = Number(updatedPayroll.nssf_employee);
+    if (updatedPayroll.nssf_employer !== undefined) dbUpdate.nssf_employer = Number(updatedPayroll.nssf_employer);
+    if (updatedPayroll.sdl_amount !== undefined) dbUpdate.sdl_amount = Number(updatedPayroll.sdl_amount);
+    if (updatedPayroll.other_deductions !== undefined) dbUpdate.other_deductions = Number(updatedPayroll.other_deductions);
+    if (updatedPayroll.wcf_contrib !== undefined) dbUpdate.wcf_contrib = Number(updatedPayroll.wcf_contrib);
+    if (updatedPayroll.tax_rate_version_id !== undefined) dbUpdate.tax_rate_version_id = updatedPayroll.tax_rate_version_id;
     if (updatedPayroll.status !== undefined) dbUpdate.status = updatedPayroll.status;
     if (updatedPayroll.paymentDate !== undefined) dbUpdate.paymentDate = updatedPayroll.paymentDate;
     if (updatedPayroll.event_id !== undefined) dbUpdate.event_id = updatedPayroll.event_id;
     if (updatedPayroll.staff_type !== undefined) dbUpdate.staff_type = updatedPayroll.staff_type;
     if (updatedPayroll.days_worked !== undefined) dbUpdate.days_worked = Number(updatedPayroll.days_worked);
     if (updatedPayroll.daily_rate !== undefined) dbUpdate.daily_rate = Number(updatedPayroll.daily_rate);
-    if (updatedPayroll.wcf_contrib !== undefined) dbUpdate.wcf_contrib = Number(updatedPayroll.wcf_contrib);
 
     const { error } = await supabase.from('payroll').update({ ...dbUpdate, updatedAt: new Date().toISOString() }).eq('id', id);
+    const dbUpdateSucceeded = !error;
     if (error) {
         console.warn('Supabase payroll update failed, updating locally:', error.message);
-        
-        // Strip custom columns
-        if (error.message.includes('event_id') || error.message.includes('staff_type') || error.message.includes('wcf_contrib')) {
-            const stripped = { ...dbUpdate };
-            delete stripped.event_id;
-            delete stripped.staff_type;
-            delete stripped.days_worked;
-            delete stripped.daily_rate;
-            delete stripped.wcf_contrib;
-            await supabase.from('payroll').update(stripped).eq('id', id);
-        }
     }
 
     const local = getLocalPayrolls();
@@ -200,5 +239,89 @@ export const updatePayroll = async (id: string, updatedPayroll: Partial<Payroll>
         local[idx] = { ...local[idx], ...updatedPayroll, updatedAt: new Date().toISOString() };
         saveLocalPayrolls(local);
     }
-    return true;
+
+    // Only log the audit event if the database write actually succeeded —
+    // an audit log entry claiming an update happened when it didn't (the
+    // change only landed in localStorage, which never syncs anywhere) would
+    // be worse than no entry at all.
+    if (dbUpdateSucceeded) {
+        void logAuditEvent('payroll.update', 'payroll', id, { fields: Object.keys(dbUpdate) });
+    }
+
+    // Report the real outcome — callers (e.g. "Mark as Paid") need to know
+    // if the change actually reached the shared database, not just that a
+    // localStorage copy was updated.
+    return dbUpdateSucceeded;
+};
+
+export interface MonthlyPayrollRunResult {
+    created: Payroll[];
+    skipped: { employeeId: string; employeeName: string; reason: string }[];
+}
+
+/**
+ * Batch-generates payslips for every active, permanent employee for a pay
+ * period. Casual staff are not included — their days_worked/daily_rate is
+ * per-event/manual and doesn't fit a uniform monthly run.
+ */
+export const runMonthlyPayroll = async (
+    payPeriodStart: string,
+    payPeriodEnd: string
+): Promise<MonthlyPayrollRunResult> => {
+    const [employees, rates] = await Promise.all([getEmployees(), getActiveTaxRates()]);
+
+    if (!rates) {
+        throw new Error('No active tax rates are configured. Set up tax rates in HR > Payroll > Tax Rates before running payroll.');
+    }
+
+    const created: Payroll[] = [];
+    const skipped: MonthlyPayrollRunResult['skipped'] = [];
+
+    for (const employee of employees) {
+        if (employee.status !== 'Active') continue;
+        if (!employee.monthlySalary || employee.monthlySalary <= 0) {
+            skipped.push({ employeeId: employee.id, employeeName: `${employee.firstName} ${employee.lastName}`, reason: 'No monthly salary set' });
+            continue;
+        }
+
+        const breakdown = calculatePayroll(
+            { staffType: 'permanent', monthlySalary: employee.monthlySalary, allowances: 0, otherDeductions: 0 },
+            rates
+        );
+
+        const id = await addPayroll({
+            employeeId: employee.id,
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            staffType: 'permanent',
+            monthlySalary: employee.monthlySalary,
+            allowances: 0,
+            otherDeductions: 0,
+            payPeriodStart,
+            payPeriodEnd,
+            status: 'Pending',
+        });
+
+        created.push({
+            id,
+            employeeId: employee.id,
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            payPeriodStart,
+            payPeriodEnd,
+            allowances: 0,
+            ...breakdown,
+            paye_amount: breakdown.payeAmount,
+            nssf_employee: breakdown.nssfEmployee,
+            nssf_employer: breakdown.nssfEmployer,
+            sdl_amount: breakdown.sdlAmount,
+            other_deductions: breakdown.otherDeductions,
+            wcf_contrib: breakdown.wcfContrib,
+            status: 'Pending',
+            paymentDate: null,
+            staff_type: 'permanent',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        } as Payroll);
+    }
+
+    return { created, skipped };
 };

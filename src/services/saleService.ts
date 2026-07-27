@@ -26,10 +26,35 @@ const saveLocalSales = (sales: Sale[]) => {
 };
 
 export const getSales = async (): Promise<Sale[]> => {
-    const { data, error } = await supabase.from('sales').select('*').order('date', { ascending: false });
-    
-    if (error) {
-        console.warn('Supabase fetch failed, falling back to local sales storage:', error.message);
+    // Supabase's default page size is 1 000 rows. An un-paginated select
+    // silently truncates once sales history grows past that — paginate
+    // until exhausted so nothing goes missing. Secondary sort on id breaks
+    // ties on same-date rows so .range() pagination is deterministic.
+    const PAGE = 1000;
+    const data: any[] = [];
+    let page = 0;
+    let fetchError: any = null;
+
+    while (true) {
+        const { data: pageData, error } = await supabase
+            .from('sales')
+            .select('*')
+            .order('date', { ascending: false })
+            .order('id', { ascending: false })
+            .range(page * PAGE, (page + 1) * PAGE - 1);
+
+        if (error) {
+            fetchError = error;
+            break;
+        }
+        if (!pageData || pageData.length === 0) break;
+        data.push(...pageData);
+        if (pageData.length < PAGE) break; // last page
+        page++;
+    }
+
+    if (fetchError) {
+        console.warn('Supabase fetch failed, falling back to local sales storage:', fetchError.message);
         return getLocalSales();
     }
 
@@ -37,7 +62,7 @@ export const getSales = async (): Promise<Sale[]> => {
     const mappedSales = data.map(s => ({
         id: s.id,
         date: s.date,
-        customerId: s.customerId || s.customer_id,
+        customerId: s.customerId || s.customer_id || s.customerid,
         invoiceNumber: s.invoiceNumber || s.invoice_number || s.invoicenumber,
         description: s.description,
         quantity: Number(s.quantity),
@@ -71,51 +96,40 @@ export const getSales = async (): Promise<Sale[]> => {
 export const addSale = async (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>): Promise<Sale | null> => {
     const saleId = typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9);
     const now = new Date().toISOString();
-    
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // The live `sales` table's real column names are unquoted/lowercase
+    // (customerid, invoicenumber, unitprice, totalamount, taxamount,
+    // paymentmethod, paymentstatus — confirmed against the live schema, not
+    // schema.sql's camelCase definitions which never actually matched what
+    // was deployed). Every insert using the camelCase keys was silently
+    // failing and falling back to localStorage-only — sales were never
+    // actually reaching the shared database. user_id is also NOT NULL and
+    // was never being sent at all.
     const dbSale = {
         date: sale.date,
-        customerId: sale.customerId,
-        invoiceNumber: sale.invoiceNumber,
+        customerid: sale.customerId,
+        invoicenumber: sale.invoiceNumber,
         description: sale.description,
         quantity: Number(sale.quantity),
-        unitPrice: Number(sale.unitPrice),
-        totalAmount: Number(sale.totalAmount),
-        taxAmount: Number(sale.taxAmount || 0),
-        paymentMethod: sale.paymentMethod,
-        paymentStatus: sale.paymentStatus,
+        unitprice: Number(sale.unitPrice),
+        totalamount: Number(sale.totalAmount),
+        taxamount: Number(sale.taxAmount || 0),
+        paymentmethod: sale.paymentMethod,
+        paymentstatus: sale.paymentStatus,
         event_id: sale.event_id,
-        efd_receipt: sale.efd_receipt
+        efd_receipt: sale.efd_receipt,
+        user_id: user?.id,
     };
 
     // Attempt to write to Supabase
     const { data, error } = await supabase.from('sales').insert([dbSale]).select().single();
-    
+
     if (error) {
         console.warn('Could not insert sale into Supabase. Creating in localStorage fallback:', error.message);
-        
-        // If it's a column missing error, we also try inserting without event_id & efd_receipt
-        if (error.message.includes('event_id') || error.message.includes('efd_receipt')) {
-            const strippedDbSale = { ...dbSale };
-            delete (strippedDbSale as any).event_id;
-            delete (strippedDbSale as any).efd_receipt;
-            
-            const { data: strippedData, error: strippedError } = await supabase.from('sales').insert([strippedDbSale]).select().single();
-            if (!strippedError && strippedData) {
-                const completedSale: Sale = {
-                    ...sale,
-                    id: strippedData.id,
-                    createdAt: strippedData.created_at || now,
-                    updatedAt: strippedData.updated_at || now
-                };
-                // Store the Event linkage properties locally
-                const localSales = getLocalSales();
-                localSales.push(completedSale);
-                saveLocalSales(localSales);
-                return completedSale;
-            }
-        }
 
-        // Fallback entirely to local storage if all database insertions fail
+        // Fallback entirely to local storage if the database insert fails
         const localSale: Sale = {
             ...sale,
             id: saleId,
@@ -131,8 +145,8 @@ export const addSale = async (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>
     const createdSale: Sale = {
         ...sale,
         id: data.id,
-        createdAt: data.created_at || now,
-        updatedAt: data.updated_at || now
+        createdAt: data.createdat || now,
+        updatedAt: data.updatedat || now
     };
 
     // Save locally too
@@ -144,33 +158,26 @@ export const addSale = async (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>
 };
 
 export const updateSale = async (id: string, updatedSale: Partial<Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>>): Promise<boolean> => {
-    // Map to DB structure
+    // Map to the live DB's real (unquoted/lowercase) column names — see the
+    // comment in addSale for why this doesn't match schema.sql's camelCase.
     const dbUpdate: any = {};
     if (updatedSale.date !== undefined) dbUpdate.date = updatedSale.date;
-    if (updatedSale.customerId !== undefined) dbUpdate.customerId = updatedSale.customerId;
-    if (updatedSale.invoiceNumber !== undefined) dbUpdate.invoiceNumber = updatedSale.invoiceNumber;
+    if (updatedSale.customerId !== undefined) dbUpdate.customerid = updatedSale.customerId;
+    if (updatedSale.invoiceNumber !== undefined) dbUpdate.invoicenumber = updatedSale.invoiceNumber;
     if (updatedSale.description !== undefined) dbUpdate.description = updatedSale.description;
     if (updatedSale.quantity !== undefined) dbUpdate.quantity = Number(updatedSale.quantity);
-    if (updatedSale.unitPrice !== undefined) dbUpdate.unitPrice = Number(updatedSale.unitPrice);
-    if (updatedSale.totalAmount !== undefined) dbUpdate.totalAmount = Number(updatedSale.totalAmount);
-    if (updatedSale.taxAmount !== undefined) dbUpdate.taxAmount = Number(updatedSale.taxAmount);
-    if (updatedSale.paymentMethod !== undefined) dbUpdate.paymentMethod = updatedSale.paymentMethod;
-    if (updatedSale.paymentStatus !== undefined) dbUpdate.paymentStatus = updatedSale.paymentStatus;
+    if (updatedSale.unitPrice !== undefined) dbUpdate.unitprice = Number(updatedSale.unitPrice);
+    if (updatedSale.totalAmount !== undefined) dbUpdate.totalamount = Number(updatedSale.totalAmount);
+    if (updatedSale.taxAmount !== undefined) dbUpdate.taxamount = Number(updatedSale.taxAmount);
+    if (updatedSale.paymentMethod !== undefined) dbUpdate.paymentmethod = updatedSale.paymentMethod;
+    if (updatedSale.paymentStatus !== undefined) dbUpdate.paymentstatus = updatedSale.paymentStatus;
     if (updatedSale.event_id !== undefined) dbUpdate.event_id = updatedSale.event_id;
     if (updatedSale.efd_receipt !== undefined) dbUpdate.efd_receipt = updatedSale.efd_receipt;
 
-    const { error } = await supabase.from('sales').update({ ...dbUpdate, updatedAt: new Date().toISOString() }).eq('id', id);
-    
+    const { error } = await supabase.from('sales').update({ ...dbUpdate, updatedat: new Date().toISOString() }).eq('id', id);
+
     if (error) {
         console.warn('Supabase update failed, falling back to local sales storage:', error.message);
-        
-        // Strip column-missing keys if needed
-        if (error.message.includes('event_id') || error.message.includes('efd_receipt')) {
-            const strippedUpdate = { ...dbUpdate };
-            delete strippedUpdate.event_id;
-            delete strippedUpdate.efd_receipt;
-            await supabase.from('sales').update(strippedUpdate).eq('id', id);
-        }
     }
 
     // Always update local storage

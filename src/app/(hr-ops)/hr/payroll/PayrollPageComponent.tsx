@@ -9,6 +9,7 @@ import { PlusCircle, MoreHorizontal, Users, Wallet, AlertCircle } from "lucide-r
 import { useState, useEffect, useMemo } from "react";
 import { format, isThisMonth, parseISO } from "date-fns";
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 import { GeneratePayslipDialog } from "@/components/hr/generate-payslip-dialog";
 import { EditPayslipDialog } from "@/components/hr/edit-payslip-dialog";
@@ -16,10 +17,16 @@ import { ViewPayslipDialog } from "@/components/hr/view-payslip-dialog";
 import { getPayrolls, addPayroll, updatePayroll } from "@/services/payrollService";
 import { getEmployees } from "@/services/employeeService";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { getErrorDescription } from "@/lib/service-validation";
+import type { PayrollFormData } from "@/lib/schemas";
+import type { Payroll } from "@/types";
+import { formatTZS } from "@/lib/formatCurrency";
 
 export function PayrollPageComponent() {
     const searchParams = useSearchParams();
     const employeeIdFilter = searchParams.get('employeeId');
+    const { toast } = useToast();
 
     const [payrolls, setPayrolls] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -50,9 +57,7 @@ export function PayrollPageComponent() {
 
     }, [searchParams]);
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TZS' }).format(amount).replace('TZS', 'TZS ');
-    }
+    const formatCurrency = formatTZS;
 
     const filteredPayrolls = useMemo(() => {
         let filtered = payrolls;
@@ -69,49 +74,58 @@ export function PayrollPageComponent() {
         return filtered;
     }, [payrolls, employees, employeeIdFilter, searchQuery]);
     
-    const handleGeneratePayslip = async (payslipData: any) => {
-        const employee = employees.find(e => e.id === payslipData.employeeId);
-        if (!employee) return;
-
-        const grossSalary = payslipData.basicSalary + payslipData.allowances;
-        const netSalary = grossSalary - payslipData.deductions;
-
-        const newPayslip = {
-            ...payslipData,
-            employeeName: [employee.firstName, employee.lastName].join(' '),
-            grossSalary,
-            netSalary,
-            status: 'Pending',
-            paymentDate: null,
-        };
-        const newId = await addPayroll(newPayslip);
-        setPayrolls(prev => [{ id: newId, ...newPayslip }, ...prev]);
+    const handleGeneratePayslip = async (data: PayrollFormData) => {
+        try {
+            await addPayroll({
+                employeeId: data.employeeId,
+                employeeName: data.employeeName,
+                staffType: data.staffType,
+                monthlySalary: data.monthlySalary,
+                daysWorked: data.daysWorked,
+                dailyRate: data.dailyRate,
+                allowances: data.allowances,
+                otherDeductions: data.otherDeductions,
+                payPeriodStart: data.payPeriodStart,
+                payPeriodEnd: data.payPeriodEnd,
+                event_id: data.event_id,
+                status: data.status,
+                paymentDate: data.paymentDate,
+            });
+            const refreshed = await getPayrolls();
+            setPayrolls(refreshed);
+            toast({ title: "Payslip Generated" });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Could not generate payslip", description: getErrorDescription(error) });
+            throw error; // re-throw so the dialog keeps itself open, per its own catch
+        }
     };
 
-    const handleEditPayslip = async (updatedPayslip: any) => {
-        const grossSalary = updatedPayslip.basicSalary + updatedPayslip.allowances;
-        const netSalary = grossSalary - updatedPayslip.deductions;
-        const payload = {
-            ...updatedPayslip,
-            grossSalary,
-            netSalary,
-        };
-        await updatePayroll(payload.id, payload);
-        setPayrolls(prev => 
-            prev.map(p => p.id === payload.id ? payload : p)
-        );
+    const handleEditPayslip = async (updatedPayslip: Partial<Payroll> & { id: string }) => {
+        try {
+            const success = await updatePayroll(updatedPayslip.id, updatedPayslip);
+            const refreshed = await getPayrolls();
+            setPayrolls(refreshed);
+            if (success) {
+                toast({ title: "Payslip Updated" });
+            } else {
+                toast({ variant: "destructive", title: "Could not update payslip", description: "The change may only be saved locally — it did not reach the database." });
+            }
+        } catch (error) {
+            toast({ variant: "destructive", title: "Could not update payslip", description: getErrorDescription(error) });
+            throw error;
+        }
     };
 
     const handleMarkAsPaid = async (payslipId: string) => {
-        const payslip = payrolls.find(p => p.id === payslipId);
-        if (payslip) {
-            const updatedPayslip = { 
-                ...payslip, 
-                status: 'Paid',
-                paymentDate: format(new Date(), "yyyy-MM-dd")
-            };
-            await updatePayroll(payslipId, updatedPayslip);
-            setPayrolls(payrolls.map(p => p.id === payslipId ? updatedPayslip : p));
+        const success = await updatePayroll(payslipId, {
+            status: 'Paid',
+            paymentDate: format(new Date(), "yyyy-MM-dd"),
+        });
+        if (success) {
+            setPayrolls(prev => prev.map(p => p.id === payslipId ? { ...p, status: 'Paid', paymentDate: format(new Date(), "yyyy-MM-dd") } : p));
+            toast({ title: "Marked as Paid" });
+        } else {
+            toast({ variant: "destructive", title: "Could not update payslip status" });
         }
     };
     
@@ -148,6 +162,12 @@ export function PayrollPageComponent() {
         <div className="flex items-center">
           <h1 className="font-headline text-2xl font-bold">Payroll Management</h1>
           <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 gap-1" asChild>
+              <Link href="/hr/payroll/tax-rates">Tax Rates</Link>
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1" asChild>
+              <Link href="/hr/payroll/run">Run Monthly Payroll</Link>
+            </Button>
             <Button size="sm" className="h-8 gap-1" onClick={() => setIsGenerateDialogOpen(true)}>
               <PlusCircle className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -290,6 +310,7 @@ export function PayrollPageComponent() {
             isOpen={isViewDialogOpen}
             setIsOpen={setIsViewDialogOpen}
             payslip={selectedPayslip}
+            employee={employees.find(e => e.id === selectedPayslip.employeeId) ?? null}
           />
       )}
     </main>
