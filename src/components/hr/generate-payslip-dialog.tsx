@@ -74,6 +74,10 @@ export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGenerate
   }, [employeeId, employees, form]);
 
   const watched = form.watch();
+  const selectedEmployee = employees.find((e) => e.id === watched.employeeId);
+  const startDateWarning = selectedEmployee?.employmentStartDate && watched.payPeriodStart && watched.payPeriodStart < selectedEmployee.employmentStartDate
+    ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}'s employment start date (${selectedEmployee.employmentStartDate}) is after this pay period's start.`
+    : null;
   const preview = rates
     ? calculatePayroll(
         {
@@ -202,6 +206,10 @@ export function GeneratePayslipDialog({ isOpen, setIsOpen, employees, onGenerate
                     </FormItem>
                   )} />
                 </div>
+
+                {startDateWarning && (
+                  <p className="text-sm text-amber-600">{startDateWarning}</p>
+                )}
 
                 {preview && (
                   <div className="rounded-md border bg-muted/30 p-4 space-y-1.5 text-sm">

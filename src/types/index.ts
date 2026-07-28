@@ -364,6 +364,7 @@ export interface Employee {
   bankName?: string;
   bankAccountNumber?: string;
   nssfNumber?: string;
+  employmentStartDate?: string | null;
   employmentEndDate?: string | null;
   employmentEndReason?: string | null;
   createdAt: string;

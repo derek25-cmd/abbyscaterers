@@ -279,6 +279,15 @@ export const runMonthlyPayroll = async (
 
     for (const employee of employees) {
         if (employee.status !== 'Active') continue;
+        // yyyy-MM-dd strings compare lexicographically the same as chronologically.
+        if (employee.employmentStartDate && employee.employmentStartDate > payPeriodEnd) {
+            skipped.push({
+                employeeId: employee.id,
+                employeeName: `${employee.firstName} ${employee.lastName}`,
+                reason: `Not yet employed during this pay period (starts ${employee.employmentStartDate})`,
+            });
+            continue;
+        }
         if (!employee.monthlySalary || employee.monthlySalary <= 0) {
             skipped.push({ employeeId: employee.id, employeeName: `${employee.firstName} ${employee.lastName}`, reason: 'No monthly salary set' });
             continue;

@@ -384,6 +384,7 @@ export const EmployeeSchema = z.object({
   bankName: z.string().optional(),
   bankAccountNumber: z.string().optional(),
   nssfNumber: z.string().optional(),
+  employmentStartDate: z.string().nullable().optional(),
   employmentEndDate: z.string().nullable().optional(),
   employmentEndReason: z.string().nullable().optional(),
 });

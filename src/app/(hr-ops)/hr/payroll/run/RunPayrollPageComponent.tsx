@@ -49,13 +49,27 @@ export function RunPayrollPageComponent() {
     };
   }, [monthValue]);
 
+  // Mirrors runMonthlyPayroll's skip logic in payrollService.ts so the
+  // preview accurately reflects what will actually be created.
+  const notYetStartedEmployees = useMemo(
+    () => employees.filter((e) => e.status === 'Active' && e.employmentStartDate && e.employmentStartDate > payPeriodEnd),
+    [employees, payPeriodEnd]
+  );
   const activePermanentEmployees = useMemo(
-    () => employees.filter((e) => e.status === 'Active' && e.monthlySalary && e.monthlySalary > 0),
-    [employees]
+    () => employees.filter((e) =>
+      e.status === 'Active' &&
+      !(e.employmentStartDate && e.employmentStartDate > payPeriodEnd) &&
+      e.monthlySalary && e.monthlySalary > 0
+    ),
+    [employees, payPeriodEnd]
   );
   const missingSalaryEmployees = useMemo(
-    () => employees.filter((e) => e.status === 'Active' && (!e.monthlySalary || e.monthlySalary <= 0)),
-    [employees]
+    () => employees.filter((e) =>
+      e.status === 'Active' &&
+      !(e.employmentStartDate && e.employmentStartDate > payPeriodEnd) &&
+      (!e.monthlySalary || e.monthlySalary <= 0)
+    ),
+    [employees, payPeriodEnd]
   );
 
   const previewRows = useMemo(() => {
@@ -125,6 +139,11 @@ export function RunPayrollPageComponent() {
             <CardDescription>Nothing is saved yet — review before confirming.</CardDescription>
           </CardHeader>
           <CardContent>
+            {notYetStartedEmployees.length > 0 && (
+              <p className="text-sm text-amber-600 mb-2">
+                {notYetStartedEmployees.length} active employee(s) will be skipped (not yet employed during this period): {notYetStartedEmployees.map(e => `${e.firstName} ${e.lastName} (starts ${e.employmentStartDate})`).join(', ')}
+              </p>
+            )}
             {missingSalaryEmployees.length > 0 && (
               <p className="text-sm text-amber-600 mb-4">
                 {missingSalaryEmployees.length} active employee(s) will be skipped (no monthly salary set): {missingSalaryEmployees.map(e => `${e.firstName} ${e.lastName}`).join(', ')}

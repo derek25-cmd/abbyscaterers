@@ -37,6 +37,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
     role: '',
     department: '',
     status: 'Active',
+    employmentStartDate: '',
     monthlySalary: 0,
     bankName: '',
     bankAccountNumber: '',
@@ -62,6 +63,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
         role: '',
         department: '',
         status: 'Active',
+        employmentStartDate: '',
         monthlySalary: 0,
         bankName: '',
         bankAccountNumber: '',
@@ -213,6 +215,10 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
                     <div>
                         <Label htmlFor="monthlySalary">Monthly Salary (TZS)</Label>
                         <Input id="monthlySalary" type="number" value={formData.monthlySalary} onChange={handleChange} />
+                    </div>
+                    <div>
+                        <Label htmlFor="employmentStartDate">Employment Start Date</Label>
+                        <Input id="employmentStartDate" type="date" value={formData.employmentStartDate} onChange={handleChange} />
                     </div>
                     <div>
                         <Label htmlFor="status">Status</Label>

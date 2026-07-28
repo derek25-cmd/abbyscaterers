@@ -36,6 +36,7 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
         role: '',
         department: '',
         status: 'Active',
+        employmentStartDate: '',
         monthlySalary: 0,
         bankName: '',
         bankAccountNumber: '',
@@ -62,6 +63,7 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
         role: employee.role || '',
         department: employee.department || '',
         status: employee.status || 'Active',
+        employmentStartDate: employee.employmentStartDate || '',
         monthlySalary: employee.monthlySalary || 0,
         bankName: employee.bankName || '',
         bankAccountNumber: employee.bankAccountNumber || '',
@@ -210,6 +212,10 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
                     <div>
                         <Label htmlFor="monthlySalary">Monthly Salary (TZS)</Label>
                         <Input id="monthlySalary" type="number" value={formData.monthlySalary} onChange={handleChange} />
+                    </div>
+                    <div>
+                        <Label htmlFor="employmentStartDate">Employment Start Date</Label>
+                        <Input id="employmentStartDate" type="date" value={formData.employmentStartDate} onChange={handleChange} />
                     </div>
                     <div>
                         <Label htmlFor="status">Status</Label>
