@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, type SubmitHandler, type SubmitErrorHandler, type UseFormReturn } from 'react-hook-form';
@@ -104,6 +104,11 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const [selectedOrderIdsForImport, setSelectedOrderIdsForImport] = useState<string[]>([]);
     const [isServiceDescModified, setIsServiceDescModified] = useState(false);
     const [isPersistingDrafts, setIsPersistingDrafts] = useState(false);
+
+    // Day-count calculation preference — not part of the persisted form data,
+    // just changes how the (already-persisted) numberOfDays field is computed.
+    const [excludeWeekends, setExcludeWeekends] = useState(false);
+    const isFirstExcludeWeekendsRender = useRef(true);
 
     const form: UseFormReturn<ProformaInvoiceFormData> = useForm<ProformaInvoiceFormData>({
         resolver: zodResolver(ProformaInvoiceSchema),
@@ -282,6 +287,27 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     }, [watchedFormValues.serviceFields, watchedFormValues.items, watchedFormValues.numberOfDays, watchedFormValues.startDate, watchedFormValues.endDate, watchedFormValues.location, watchedFormValues.selectedEventType, watchedFormValues.customEventType, buildServiceDesc, form, isServiceDescModified]);
 
+    // Inclusive calendar-day count between two dates, optionally skipping
+    // Saturdays/Sundays. `excludeWeekends` is UI-only state (not persisted) —
+    // only the resulting count (numberOfDays, an existing persisted field)
+    // is saved.
+    const computeNumberOfDays = useCallback((startDate?: string | null, endDate?: string | null): number => {
+        if (!startDate || !endDate || !isValid(parseISO(startDate)) || !isValid(parseISO(endDate))) {
+            return 1;
+        }
+        const start = parseISO(startDate);
+        const end = parseISO(endDate);
+        if (!excludeWeekends) {
+            return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        }
+        let count = 0;
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const day = d.getDay();
+            if (day !== 0 && day !== 6) count++;
+        }
+        return Math.max(1, count);
+    }, [excludeWeekends]);
+
     useEffect(() => {
         const subscription = form.watch((value, { name }) => {
             if (name?.startsWith('items.')) {
@@ -310,16 +336,25 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
             }
              if (name === 'startDate' || name === 'endDate') {
                 const { startDate, endDate } = form.getValues();
-                if (startDate && endDate && isValid(parseISO(startDate)) && isValid(parseISO(endDate))) {
-                    const diff = Math.max(1, Math.ceil((parseISO(endDate).getTime() - parseISO(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1);
-                    form.setValue('numberOfDays', diff);
-                } else {
-                    form.setValue('numberOfDays', 1);
-                }
+                form.setValue('numberOfDays', computeNumberOfDays(startDate, endDate));
             }
         });
         return () => subscription.unsubscribe();
-    }, [form]);
+    }, [form, computeNumberOfDays]);
+
+    // Recompute the day count when the exclude-weekends toggle changes (a
+    // checkbox flip doesn't fire the startDate/endDate watch above). Skips
+    // the first render so opening an existing proforma for editing doesn't
+    // overwrite its already-persisted numberOfDays before the user interacts.
+    useEffect(() => {
+        if (isFirstExcludeWeekendsRender.current) {
+            isFirstExcludeWeekendsRender.current = false;
+            return;
+        }
+        const { startDate, endDate } = form.getValues();
+        form.setValue('numberOfDays', computeNumberOfDays(startDate, endDate));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [excludeWeekends]);
 
     useEffect(() => {
         if (isEditMode && invoiceId) {
@@ -650,7 +685,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
 
                                             <div className="space-y-6">
                                                 <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2"><CalendarIcon className="h-5 w-5 text-primary" /> Service Period</h3>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                                     <FormField control={form.control} name="startDate" render={({ field }) => (
                                                         <FormItem className="flex flex-col"><FormLabel className="font-semibold">START DATE</FormLabel>
                                                             <Popover>
@@ -661,7 +696,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                     </Button></FormControl>
                                                                 </PopoverTrigger>
                                                                 <PopoverContent className="w-auto p-0" align="start">
-                                                                    <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} initialFocus />
+                                                                    <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} captionLayout="dropdown-buttons" fromYear={new Date().getFullYear() - 1} toYear={new Date().getFullYear() + 5} initialFocus />
                                                                 </PopoverContent>
                                                             </Popover>
                                                             <FormMessage />
@@ -677,7 +712,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                     </Button></FormControl>
                                                                 </PopoverTrigger>
                                                                 <PopoverContent className="w-auto p-0" align="start">
-                                                                    <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} disabled={(date) => !!form.getValues('startDate') && date < parseISO(form.getValues('startDate'))} initialFocus />
+                                                                    <Calendar mode="single" selected={field.value ? parseISO(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")} disabled={(date) => !!form.getValues('startDate') && date < parseISO(form.getValues('startDate'))} captionLayout="dropdown-buttons" fromYear={new Date().getFullYear() - 1} toYear={new Date().getFullYear() + 5} initialFocus />
                                                                 </PopoverContent>
                                                             </Popover>
                                                             <FormMessage />
@@ -691,7 +726,18 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                             </div>
                                                         </FormItem>
                                                     )} />
+                                                    <div className="flex flex-col space-y-2">
+                                                        <Label className="font-semibold">DAY COUNT</Label>
+                                                        <div className="flex h-11 items-center space-x-3 rounded-md border-2 px-3 bg-muted/20">
+                                                            <Checkbox checked={excludeWeekends} onCheckedChange={(checked) => setExcludeWeekends(checked === true)} />
+                                                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Exclude Weekends</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Service period: <span className="font-semibold text-foreground">{form.watch('numberOfDays') || 1} day{(form.watch('numberOfDays') || 1) === 1 ? '' : 's'}</span>
+                                                    {excludeWeekends && ' (Saturdays and Sundays excluded)'}
+                                                </p>
                                             </div>
 
                                             <div className="space-y-6">
@@ -877,6 +923,9 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                                                                             if (!s || !e) return false;
                                                                                             return date < parseISO(s) || date > parseISO(e);
                                                                                         }}
+                                                                                        captionLayout="dropdown-buttons"
+                                                                                        fromYear={new Date().getFullYear() - 1}
+                                                                                        toYear={new Date().getFullYear() + 5}
                                                                                         initialFocus
                                                                                     />
                                                                                 </PopoverContent>

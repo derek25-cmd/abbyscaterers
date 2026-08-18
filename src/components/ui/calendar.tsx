@@ -53,6 +53,15 @@ function Calendar({
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
+        // Only rendered when a caller passes captionLayout="dropdown"/"dropdown-buttons"
+        // (e.g. the Proforma Invoice Wizard's date pickers, for jumping straight to a
+        // distant month/year instead of clicking prev/next repeatedly) — harmless no-op
+        // for every other Calendar usage, which still defaults to plain button navigation.
+        dropdown: "rdp-dropdown bg-background border border-input rounded-md text-sm px-1 py-1 focus:outline-none focus:ring-1 focus:ring-ring",
+        dropdown_month: "flex items-center gap-1",
+        dropdown_year: "flex items-center gap-1",
+        dropdown_icon: "ml-1",
+        vhidden: "hidden",
         ...classNames,
       }}
       components={{

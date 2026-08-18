@@ -1,18 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
 /**
- * Route Handlers run on the server and never see the browser's localStorage
- * session, so the shared `@/lib/supabase-client` singleton always falls back
- * to the `anon` role there. The marketing tables' RLS policies require
- * `authenticated`, so every route builds a client scoped to this one request,
- * forwarding the caller's bearer token so `auth.uid()` resolves correctly.
+ * Re-exported from the shared, non-marketing-specific location — every
+ * Route Handler across the app (marketing and business reports alike) needs
+ * the same per-request, bearer-token-forwarding client. Kept here too so
+ * existing marketing imports don't need to change.
  */
-export function getRouteClient(authHeader: string | null): SupabaseClient {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
-    global: authHeader ? { headers: { Authorization: authHeader } } : undefined,
-  });
-}
+export { getRouteClient } from '@/lib/supabase-route-client';

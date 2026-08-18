@@ -3,9 +3,20 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils, ClipboardCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, BarChart3, Box, Calendar, DollarSign, FileText, Truck, Users, Utensils, ClipboardCheck, TrendingUp, Sparkles } from "lucide-react";
 
 const reportCategories = [
+  {
+    category: "Company-Wide Periodic Reports",
+    reports: [
+      {
+        title: "Business Reports",
+        description: "Monthly, quarterly, semi-annual, and annual reports across every department — with AI-generated insights and PDF export.",
+        href: "/reports/business",
+        icon: Sparkles,
+      },
+    ],
+  },
   {
     category: "Management & Quality Reports",
     reports: [
