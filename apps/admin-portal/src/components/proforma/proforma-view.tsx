@@ -8,6 +8,20 @@ import { useSupabaseClient } from '@/lib/supabase-client';
 import { useAppSettings } from '@/lib/use-app-settings';
 import { exportDocumentToPdf } from '@/lib/pdf-export';
 import { ProformaPdfTemplate } from '@/components/pdf/proforma-pdf-template';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface ProformaItem {
   id: string;
@@ -203,103 +217,88 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
   const grandTotal = itemsTotal + (p.serviceCharge ?? 0) + (p.transportCosts ?? 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Proforma {p.id}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Proforma {p.id}</h1>
           <div className="flex flex-wrap gap-1.5 mt-1">
-            {p.reviewStatus === 'pending' && (
-              <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">Pending Review</span>
-            )}
+            {p.reviewStatus === 'pending' && <Badge variant="secondary">Pending Review</Badge>}
             {p.reviewStatus === 'approved' && (
-              <span className="inline-block rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs">
+              <Badge variant="outline" className="bg-emerald-100 text-emerald-800">
                 Approved
-              </span>
+              </Badge>
             )}
             {p.reviewStatus === 'rejected' && (
-              <span className="inline-block rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">
+              <Badge variant="outline" className="bg-destructive/10 text-destructive">
                 Rejected{p.rejectionReason ? ` — ${p.rejectionReason}` : ''}
-              </span>
+              </Badge>
             )}
             {p.isVoided && (
-              <span className="inline-block rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">
+              <Badge variant="outline" className="bg-destructive/10 text-destructive">
                 Uninvoiced{p.voidedReason ? ` — ${p.voidedReason}` : ''}
-              </span>
+              </Badge>
             )}
-            {p.isInvoiced && !p.isVoided && (
-              <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">Invoiced</span>
-            )}
+            {p.isInvoiced && !p.isVoided && <Badge variant="secondary">Invoiced</Badge>}
           </div>
         </div>
         <div className="flex items-center gap-2">
           {p.reviewStatus === 'pending' && !p.isVoided && !p.isInvoiced && (
             <>
-              <button
-                type="button"
-                onClick={approve}
-                disabled={reviewing}
-                className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
+              <Button type="button" size="sm" onClick={approve} disabled={reviewing}>
                 {reviewing ? 'Approving…' : 'Approve'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                size="sm"
+                variant="outline"
+                className="border-destructive text-destructive hover:bg-destructive/10"
                 onClick={() => setShowRejectReason((v) => !v)}
                 disabled={reviewing}
-                className="rounded-md border border-destructive text-destructive px-3 py-1.5 text-sm hover:bg-destructive/10 disabled:opacity-50"
               >
                 Reject
-              </button>
+              </Button>
             </>
           )}
-          <button
-            type="button"
-            onClick={() => exportPdf(p)}
-            disabled={exporting || appSettingsQuery.isLoading}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
-          >
+          <Button type="button" variant="outline" onClick={() => exportPdf(p)} disabled={exporting || appSettingsQuery.isLoading}>
             <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
-          </button>
+          </Button>
         </div>
       </div>
       {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
       {showRejectReason && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2 no-print">
-          <label className="text-sm font-medium">Reason for rejection (shown to staff)</label>
-          <textarea
+        <Card className="border-destructive/30 bg-destructive/5 no-print">
+          <CardContent className="space-y-2 pt-6">
+          <Label>Reason for rejection (shown to staff)</Label>
+          <Textarea
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             placeholder="e.g. Pax count doesn't match the RFQ, please revise"
           />
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={confirmReject}
-              disabled={reviewing}
-              className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground hover:opacity-90 disabled:opacity-50"
-            >
+            <Button type="button" variant="destructive" onClick={confirmReject} disabled={reviewing}>
               {reviewing ? 'Rejecting…' : 'Confirm rejection'}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => {
                 setShowRejectReason(false);
                 setRejectReason('');
               }}
               disabled={reviewing}
-              className="rounded-md border border-input px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
             >
               Cancel
-            </button>
+            </Button>
           </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
       {reviewError && <p className="text-sm text-destructive no-print">{reviewError}</p>}
 
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <Card>
+        <CardContent className="p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Client</p>
@@ -331,28 +330,28 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
           <p className="text-sm border-t border-border pt-3">{p.serviceDesc}</p>
         )}
 
-        <table className="w-full text-sm border-t border-border pt-2">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-2">Date</th>
-              <th className="py-2">Meal</th>
-              <th className="py-2 text-right">Pax</th>
-              <th className="py-2 text-right">Unit price</th>
-              <th className="py-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="border-t border-border">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Meal</TableHead>
+              <TableHead className="text-right">Pax</TableHead>
+              <TableHead className="text-right">Unit price</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(p.items ?? []).map((item) => (
-              <tr key={item.id} className="border-t border-border">
-                <td className="py-2">{item.date ?? '—'}</td>
-                <td className="py-2">{item.mealType || item.eventType}</td>
-                <td className="py-2 text-right">{item.pax}</td>
-                <td className="py-2 text-right">TZS {item.unitPrice.toLocaleString()}</td>
-                <td className="py-2 text-right">TZS {item.total.toLocaleString()}</td>
-              </tr>
+              <TableRow key={item.id}>
+                <TableCell>{item.date ?? '—'}</TableCell>
+                <TableCell>{item.mealType || item.eventType}</TableCell>
+                <TableCell className="text-right">{item.pax}</TableCell>
+                <TableCell className="text-right">TZS {item.unitPrice.toLocaleString()}</TableCell>
+                <TableCell className="text-right">TZS {item.total.toLocaleString()}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
 
         <div className="border-t border-border pt-3 flex flex-col items-end text-sm gap-1">
           <div className="flex justify-between w-56">
@@ -372,10 +371,14 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
             <span>TZS {grandTotal.toLocaleString()}</span>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-4 no-print">
-        <h2 className="font-medium">Comments</h2>
+      <Card className="no-print">
+        <CardHeader>
+          <CardTitle>Comments</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
         {commentsQuery.data && commentsQuery.data.length > 0 ? (
           <ul className="space-y-2">
             {commentsQuery.data.map((c) => (
@@ -391,22 +394,18 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
           <p className="text-sm text-muted-foreground">No comments yet.</p>
         )}
         <div className="flex gap-2">
-          <input
+          <Input
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Add a comment…"
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="flex-1"
           />
-          <button
-            type="button"
-            onClick={submitComment}
-            disabled={submitting || !comment.trim()}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="button" onClick={submitComment} disabled={submitting || !comment.trim()}>
             {submitting ? 'Posting…' : 'Post'}
-          </button>
+          </Button>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {appSettingsQuery.data && (
         <div style={{ position: 'fixed', top: 0, left: '-10000px', zIndex: -1 }} aria-hidden="true">
