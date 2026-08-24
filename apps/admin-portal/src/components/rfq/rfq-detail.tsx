@@ -47,6 +47,8 @@ interface RfqRecord {
 export function RfqDetail({ rfqId }: { rfqId: string }) {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const rfqQuery = useQuery({
     queryKey: ['rfq', rfqId],
@@ -153,14 +155,40 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
   }
   const rfq = rfqQuery.data!;
 
+  const submitToCateringSystem = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const { error } = await supabase.rpc('submit_rfq', { p_rfq_id: rfqId });
+      if (error) throw error;
+      // No manual refetch: the Realtime subscription below picks up both
+      // the status flip and the new rfq_status_history row.
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit RFQ');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">{rfq.title}</h1>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{rfq.status}</span>
+          {rfq.status === 'draft' && (
+            <button
+              type="button"
+              onClick={submitToCateringSystem}
+              disabled={submitting}
+              className="rounded-md bg-primary px-3 py-1 text-xs text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {submitting ? 'Submitting…' : 'Submit to Catering System'}
+            </button>
+          )}
         </div>
         <p className="text-sm text-muted-foreground font-mono">{rfq.id}</p>
+        {submitError && <p className="text-sm text-destructive mt-1">{submitError}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
