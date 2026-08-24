@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RfqStatusHistoryEntry, PaxPerDayEntry, MealTypePerDayEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { LinkProformaForm } from './link-proforma-form';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
 import { RequestCostingButton, type CostingRequestSummary } from './request-costing-button';
@@ -201,17 +205,12 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold">{rfq.title}</h1>
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{rfq.status}</span>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">{rfq.title}</h1>
+          <Badge variant="secondary">{rfq.status}</Badge>
           {rfq.status === 'draft' && (
-            <button
-              type="button"
-              onClick={submitToCateringSystem}
-              disabled={submitting}
-              className="rounded-md bg-primary px-3 py-1 text-xs text-primary-foreground hover:opacity-90 disabled:opacity-50"
-            >
+            <Button size="sm" onClick={submitToCateringSystem} disabled={submitting}>
               {submitting ? 'Submitting…' : 'Submit to Catering System'}
-            </button>
+            </Button>
           )}
         </div>
         <p className="text-sm text-muted-foreground font-mono">{rfq.id}</p>
@@ -219,8 +218,11 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4 space-y-2">
-          <h2 className="font-medium">Details</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
           <dl className="text-sm space-y-1">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Client</dt>
@@ -280,68 +282,77 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
             <h3 className="text-xs font-medium text-muted-foreground uppercase mb-1">Costing</h3>
             <RequestCostingButton rfqId={rfqId} latestRequest={costingRequestQuery.data ?? null} />
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">Status history</h2>
-          {historyQuery.data && historyQuery.data.length > 0 ? (
-            <ul className="text-sm space-y-1">
-              {historyQuery.data.map((h) => (
-                <li key={h.id} className="text-muted-foreground">
-                  {h.fromStatus ?? '—'} → <span className="text-foreground">{h.toStatus}</span>
-                  {h.note ? ` — ${h.note}` : ''}
-                </li>
-              ))}
-            </ul>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Status history</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {historyQuery.data && historyQuery.data.length > 0 ? (
+              <ul className="text-sm space-y-1">
+                {historyQuery.data.map((h) => (
+                  <li key={h.id} className="text-muted-foreground">
+                    {h.fromStatus ?? '—'} → <span className="text-foreground">{h.toStatus}</span>
+                    {h.note ? ` — ${h.note}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No status changes yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Linked proformas</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {linksQuery.data && linksQuery.data.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Proforma ID</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Invoice date</TableHead>
+                  <TableHead>Items subtotal</TableHead>
+                  <TableHead>Linked</TableHead>
+                  <TableHead>Invoice</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {linksQuery.data.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-mono text-xs">
+                      <Link href={`/proformas/${p.id}`} className="text-primary hover:underline">
+                        {p.id}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{p.clientId ?? '—'}</TableCell>
+                    <TableCell>{p.invoiceDate}</TableCell>
+                    <TableCell>TZS {p.itemsSubtotal.toLocaleString()}</TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(p.linkedAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <RequestInvoiceButton
+                        rfqId={rfqId}
+                        proformaId={p.id}
+                        latestRequest={invoiceRequestsQuery.data?.get(p.id) ?? null}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
-            <p className="text-sm text-muted-foreground">No status changes yet.</p>
+            <p className="text-sm text-muted-foreground">No proforma linked yet.</p>
           )}
-        </div>
-      </div>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-        <h2 className="font-medium">Linked proformas</h2>
-        {linksQuery.data && linksQuery.data.length > 0 ? (
-          <table className="w-full text-sm">
-            <thead className="border-b border-border text-left text-muted-foreground">
-              <tr>
-                <th className="py-2 font-medium">Proforma ID</th>
-                <th className="py-2 font-medium">Client</th>
-                <th className="py-2 font-medium">Invoice date</th>
-                <th className="py-2 font-medium">Items subtotal</th>
-                <th className="py-2 font-medium">Linked</th>
-                <th className="py-2 font-medium">Invoice</th>
-              </tr>
-            </thead>
-            <tbody>
-              {linksQuery.data.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="py-2 font-mono text-xs">
-                    <Link href={`/proformas/${p.id}`} className="text-primary hover:underline">
-                      {p.id}
-                    </Link>
-                  </td>
-                  <td className="py-2">{p.clientId ?? '—'}</td>
-                  <td className="py-2">{p.invoiceDate}</td>
-                  <td className="py-2">TZS {p.itemsSubtotal.toLocaleString()}</td>
-                  <td className="py-2 text-muted-foreground">{new Date(p.linkedAt).toLocaleDateString()}</td>
-                  <td className="py-2">
-                    <RequestInvoiceButton
-                      rfqId={rfqId}
-                      proformaId={p.id}
-                      latestRequest={invoiceRequestsQuery.data?.get(p.id) ?? null}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-sm text-muted-foreground">No proforma linked yet.</p>
-        )}
-
-        <LinkProformaForm rfqId={rfqId} />
-      </div>
+          <LinkProformaForm rfqId={rfqId} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

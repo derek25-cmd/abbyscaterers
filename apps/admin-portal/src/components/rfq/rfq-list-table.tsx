@@ -9,7 +9,12 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { PlusCircle } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 interface RfqRow {
   id: string;
@@ -25,6 +30,16 @@ interface RfqRow {
   region: string | null;
   created_at: string;
 }
+
+const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  draft: 'outline',
+  submitted: 'secondary',
+  in_review: 'secondary',
+  proforma_created: 'default',
+  approved: 'default',
+  closed: 'outline',
+  cancelled: 'destructive',
+};
 
 const columns: ColumnDef<RfqRow>[] = [
   {
@@ -50,9 +65,10 @@ const columns: ColumnDef<RfqRow>[] = [
   {
     accessorKey: 'status',
     header: 'Status',
-    cell: (c) => (
-      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.getValue<string>()}</span>
-    ),
+    cell: (c) => {
+      const status = c.getValue<string>();
+      return <Badge variant={STATUS_VARIANT[status] ?? 'outline'}>{status}</Badge>;
+    },
   },
   {
     id: 'servicePeriod',
@@ -129,46 +145,42 @@ export function RfqListTable() {
 
   return (
     <div className="space-y-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by ID, title, or client…"
-        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+        className="max-w-sm"
       />
-      <div className="rounded-lg border border-border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-border text-left text-muted-foreground">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th key={header.id} className="p-3 font-medium">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-b border-border last:border-0 hover:bg-muted/40">
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="p-3">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-          {filteredRfqs.length === 0 && (
-            <tr>
-              <td colSpan={columns.length} className="p-4 text-center text-muted-foreground">
-                No RFQs match &quot;{search}&quot;.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <div className="rounded-md border shadow-sm bg-card">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                ))}
+              </TableRow>
+            ))}
+            {filteredRfqs.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                  No RFQs match &quot;{search}&quot;.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -176,11 +188,11 @@ export function RfqListTable() {
 
 export function NewRfqLink() {
   return (
-    <Link
-      href="/rfqs/new"
-      className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
-    >
-      New RFQ
-    </Link>
+    <Button asChild>
+      <Link href="/rfqs/new">
+        <PlusCircle className="mr-2 h-4 w-4" />
+        New RFQ
+      </Link>
+    </Button>
   );
 }

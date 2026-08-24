@@ -10,6 +10,12 @@ import { format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import { RfqSchema, type RfqFormData } from '@abbyscaterers/validation';
 import { REGIONS, MEAL_TYPES } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const selectClass = 'mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
 
 // Matches the existing app's ORD-NNNNN / EVT-NNNNN convention (see
 // src/services/orderService.ts) — zero-padded to 6 digits since RFQ ids
@@ -176,19 +182,19 @@ export function RfqForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
       <div>
-        <label className="text-sm font-medium">Name of Client</label>
-        <input
+        <Label>Name of Client</Label>
+        <Input
           type="text"
           value={clientSearch}
           onChange={(e) => setClientSearch(e.target.value)}
           placeholder="Search clients…"
-          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="mt-1"
         />
         <select
           {...register('clientId')}
           defaultValue=""
           size={clientSearch.trim() ? Math.min(6, Math.max(2, filteredClients.length + 1)) : undefined}
-          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className={selectClass}
         >
           <option value="" disabled>
             Select client
@@ -203,23 +209,15 @@ export function RfqForm() {
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1 block">Service Period</label>
+        <Label className="mb-1 block">Service Period</Label>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-muted-foreground">Start date</label>
-            <input
-              type="date"
-              {...register('serviceStartDate')}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+            <Label className="text-xs text-muted-foreground font-normal">Start date</Label>
+            <Input type="date" {...register('serviceStartDate')} className="mt-1" />
           </div>
           <div>
-            <label className="text-xs text-muted-foreground">End date</label>
-            <input
-              type="date"
-              {...register('serviceEndDate')}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+            <Label className="text-xs text-muted-foreground font-normal">End date</Label>
+            <Input type="date" {...register('serviceEndDate')} className="mt-1" />
           </div>
         </div>
         {errors.serviceStartDate && (
@@ -231,48 +229,43 @@ export function RfqForm() {
       </div>
 
       <div>
-        <label className="text-sm font-medium">Date the Proforma is Required By</label>
-        <input
-          type="date"
-          {...register('proformaRequiredBy')}
-          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-        />
+        <Label>Date the Proforma is Required By</Label>
+        <Input type="date" {...register('proformaRequiredBy')} className="mt-1" />
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             id="samePax"
             checked={samePaxAllDates}
-            onChange={(e) => setValue('samePaxAllDates', e.target.checked)}
+            onCheckedChange={(checked) => setValue('samePaxAllDates', checked === true)}
           />
-          <label htmlFor="samePax" className="text-sm font-medium">
+          <Label htmlFor="samePax" className="font-medium">
             Same pax for all dates
-          </label>
+          </Label>
         </div>
 
         {samePaxAllDates ? (
           <div>
-            <label className="text-xs text-muted-foreground">No. of pax</label>
-            <input
+            <Label className="text-xs text-muted-foreground font-normal">No. of pax</Label>
+            <Input
               type="number"
               min={1}
               value={uniformPax}
               onChange={(e) => setUniformPax(Number(e.target.value) || 1)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="mt-1"
             />
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">No. of pax per day</label>
+            <Label className="text-xs text-muted-foreground font-normal">No. of pax per day</Label>
             {paxPerDay.length === 0 && (
               <p className="text-xs text-muted-foreground">Set the service period above first.</p>
             )}
             {paxPerDay.map((entry, i) => (
               <div key={entry.date} className="flex items-center gap-3">
                 <span className="w-28 text-xs text-muted-foreground">{entry.date}</span>
-                <input
+                <Input
                   type="number"
                   min={1}
                   value={entry.pax}
@@ -281,7 +274,7 @@ export function RfqForm() {
                     next[i] = { ...next[i], pax: Number(e.target.value) || 1 };
                     setValue('paxPerDay', next, { shouldValidate: false });
                   }}
-                  className="w-28 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="w-28"
                 />
               </div>
             ))}
@@ -296,24 +289,23 @@ export function RfqForm() {
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             id="sameMealType"
             checked={sameMealTypeAllDates}
-            onChange={(e) => setValue('sameMealTypeAllDates', e.target.checked)}
+            onCheckedChange={(checked) => setValue('sameMealTypeAllDates', checked === true)}
           />
-          <label htmlFor="sameMealType" className="text-sm font-medium">
+          <Label htmlFor="sameMealType" className="font-medium">
             Same meal type for all dates
-          </label>
+          </Label>
         </div>
 
         {sameMealTypeAllDates ? (
           <div>
-            <label className="text-xs text-muted-foreground">Type of meal</label>
+            <Label className="text-xs text-muted-foreground font-normal">Type of meal</Label>
             <select
               value={uniformMealType}
               onChange={(e) => setUniformMealType(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className={selectClass}
             >
               {MEAL_TYPES.map((m) => (
                 <option key={m} value={m}>
@@ -324,7 +316,7 @@ export function RfqForm() {
           </div>
         ) : (
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">Type of meal per day</label>
+            <Label className="text-xs text-muted-foreground font-normal">Type of meal per day</Label>
             {mealTypePerDay.length === 0 && (
               <p className="text-xs text-muted-foreground">Set the service period above first.</p>
             )}
@@ -338,7 +330,7 @@ export function RfqForm() {
                     next[i] = { ...next[i], mealType: e.target.value };
                     setValue('mealTypePerDay', next, { shouldValidate: false });
                   }}
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className={`flex-1 ${selectClass} mt-0`}
                 >
                   {MEAL_TYPES.map((m) => (
                     <option key={m} value={m}>
@@ -359,24 +351,21 @@ export function RfqForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium">Rate per Plate (TZS)</label>
-          <input
+          <Label>Rate per Plate (TZS)</Label>
+          <Input
             type="number"
             min={0}
             step="0.01"
             {...register('ratePerPlate', { valueAsNumber: true })}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="mt-1"
           />
           {errors.ratePerPlate && (
             <p className="text-xs text-destructive mt-1">{errors.ratePerPlate.message}</p>
           )}
         </div>
         <div>
-          <label className="text-sm font-medium">VAT</label>
-          <select
-            {...register('vatType')}
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
+          <Label>VAT</Label>
+          <select {...register('vatType')} className={selectClass}>
             <option value="inclusive">Inclusive</option>
             <option value="exclusive">Exclusive</option>
           </select>
@@ -385,21 +374,17 @@ export function RfqForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium">Location of Order</label>
-          <input
+          <Label>Location of Order</Label>
+          <Input
             {...register('location')}
             placeholder="e.g. Serena Hotel, Dar es Salaam"
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="mt-1"
           />
           {errors.location && <p className="text-xs text-destructive mt-1">{errors.location.message}</p>}
         </div>
         <div>
-          <label className="text-sm font-medium">Region</label>
-          <select
-            {...register('region')}
-            defaultValue=""
-            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
+          <Label>Region</Label>
+          <select {...register('region')} defaultValue="" className={selectClass}>
             <option value="" disabled>
               Select region
             </option>
@@ -415,13 +400,9 @@ export function RfqForm() {
 
       {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
-      >
+      <Button type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Creating…' : 'Create RFQ'}
-      </button>
+      </Button>
     </form>
   );
 }

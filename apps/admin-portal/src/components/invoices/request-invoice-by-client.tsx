@@ -4,6 +4,20 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from '@/components/rfq/request-invoice-button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
+
+const selectClass = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
 
 interface ProformaRow {
   id: string;
@@ -81,19 +95,18 @@ export function RequestInvoiceByClient() {
   return (
     <div className="space-y-6">
       <div className="max-w-md space-y-2">
-        <label className="text-sm font-medium">Client</label>
-        <input
+        <Label>Client</Label>
+        <Input
           type="text"
           value={clientSearch}
           onChange={(e) => setClientSearch(e.target.value)}
           placeholder="Search clients…"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
         <select
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
           size={clientSearch.trim() ? Math.min(6, Math.max(2, filteredClients.length + 1)) : undefined}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className={selectClass}
         >
           <option value="">Select a client…</option>
           {filteredClients.map((c) => (
@@ -105,7 +118,7 @@ export function RequestInvoiceByClient() {
       </div>
 
       {clientId && (
-        <div className="rounded-lg border border-border bg-card overflow-x-auto">
+        <Card className="overflow-x-auto">
           {proformasQuery.isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading proformas…</p>
           ) : proformasQuery.error ? (
@@ -115,36 +128,36 @@ export function RequestInvoiceByClient() {
           ) : !proformasQuery.data || proformasQuery.data.length === 0 ? (
             <p className="p-4 text-sm text-muted-foreground">No proformas found for this client.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-border text-left text-muted-foreground">
-                <tr>
-                  <th className="p-3 font-medium">Proforma ID</th>
-                  <th className="p-3 font-medium">Date</th>
-                  <th className="p-3 font-medium">Items subtotal</th>
-                  <th className="p-3 font-medium">Status</th>
-                  <th className="p-3 font-medium">Invoice</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Proforma ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Items subtotal</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Invoice</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {proformasQuery.data.map((p) => {
                   const subtotal = (p.items ?? []).reduce((sum, item) => sum + (item.total ?? 0), 0);
                   return (
-                    <tr key={p.id} className="border-b border-border last:border-0">
-                      <td className="p-3 font-mono text-xs">{p.id}</td>
-                      <td className="p-3">{p.invoiceDate}</td>
-                      <td className="p-3">TZS {subtotal.toLocaleString()}</td>
-                      <td className="p-3">
+                    <TableRow key={p.id}>
+                      <TableCell className="font-mono text-xs">{p.id}</TableCell>
+                      <TableCell>{p.invoiceDate}</TableCell>
+                      <TableCell>TZS {subtotal.toLocaleString()}</TableCell>
+                      <TableCell>
                         {p.isVoided ? (
-                          <span className="rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">
+                          <Badge variant="outline" className="bg-destructive/10 text-destructive">
                             Uninvoiced
-                          </span>
+                          </Badge>
                         ) : p.isInvoiced ? (
-                          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">Already invoiced</span>
+                          <Badge variant="secondary">Already invoiced</Badge>
                         ) : (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs">Open</span>
+                          <Badge variant="outline">Open</Badge>
                         )}
-                      </td>
-                      <td className="p-3">
+                      </TableCell>
+                      <TableCell>
                         {p.isInvoiced || p.isVoided ? (
                           <span className="text-xs text-muted-foreground">—</span>
                         ) : (
@@ -156,14 +169,14 @@ export function RequestInvoiceByClient() {
                             }
                           />
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

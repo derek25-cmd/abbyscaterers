@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface ProformaPreview {
   id: string;
@@ -77,7 +79,7 @@ export function LinkProformaForm({ rfqId }: { rfqId: string }) {
     <div className="border-t border-border pt-4 space-y-3">
       <h3 className="text-sm font-medium">Link a proforma</h3>
       <div className="flex gap-2">
-        <input
+        <Input
           value={proformaId}
           onChange={(e) => {
             setProformaId(e.target.value);
@@ -85,16 +87,11 @@ export function LinkProformaForm({ rfqId }: { rfqId: string }) {
             setError(null);
           }}
           placeholder="Proforma ID (e.g. 0015123)"
-          className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="flex-1"
         />
-        <button
-          type="button"
-          onClick={lookup}
-          disabled={busy || !proformaId.trim()}
-          className="rounded-md border border-input px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
-        >
+        <Button type="button" variant="outline" onClick={lookup} disabled={busy || !proformaId.trim()}>
           Look up
-        </button>
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -115,14 +112,9 @@ export function LinkProformaForm({ rfqId }: { rfqId: string }) {
             <span className="text-muted-foreground">Items subtotal</span> TZS{' '}
             {preview.itemsSubtotal.toLocaleString()}
           </p>
-          <button
-            type="button"
-            onClick={confirmLink}
-            disabled={busy}
-            className="mt-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="button" size="sm" className="mt-2" onClick={confirmLink} disabled={busy}>
             {busy ? 'Linking…' : 'Confirm link'}
-          </button>
+          </Button>
         </div>
       )}
     </div>

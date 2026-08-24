@@ -5,6 +5,16 @@ import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface InvoiceListItem extends InvoiceTotalFields {
   id: string;
@@ -66,49 +76,49 @@ export function InvoiceListTable() {
 
   return (
     <div className="space-y-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by invoice number or client…"
-        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+        className="max-w-sm"
       />
-      <table className="w-full text-sm">
-        <thead className="text-left text-muted-foreground border-b border-border">
-          <tr>
-            <th className="py-2">Invoice No.</th>
-            <th className="py-2">Client</th>
-            <th className="py-2">Date</th>
-            <th className="py-2 text-right">Grand Total</th>
-            <th className="py-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Invoice No.</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead className="text-right">Grand Total</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {filteredInvoices.map((inv) => (
-            <tr key={inv.id} className="border-b border-border last:border-0">
-              <td className="py-2 font-mono text-xs">
+            <TableRow key={inv.id}>
+              <TableCell className="font-mono text-xs">
                 <Link href={`/invoices/${inv.id}`} className="text-primary hover:underline">
                   {inv.id}
                 </Link>
-              </td>
-              <td className="py-2">{inv.clients?.companyName ?? inv.clientId ?? '—'}</td>
-              <td className="py-2">{inv.invoiceDate}</td>
-              <td className="py-2 text-right">TZS {computeInvoiceGrandTotal(inv).toLocaleString()}</td>
-              <td className="py-2">
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_CLASS[inv.status] ?? ''}`}>
+              </TableCell>
+              <TableCell>{inv.clients?.companyName ?? inv.clientId ?? '—'}</TableCell>
+              <TableCell>{inv.invoiceDate}</TableCell>
+              <TableCell className="text-right">TZS {computeInvoiceGrandTotal(inv).toLocaleString()}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className={STATUS_CLASS[inv.status] ?? ''}>
                   {STATUS_LABEL[inv.status] ?? inv.status}
-                </span>
-              </td>
-            </tr>
+                </Badge>
+              </TableCell>
+            </TableRow>
           ))}
           {filteredInvoices.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-4 text-center text-muted-foreground">
+            <TableRow>
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
                 No invoices match &quot;{search}&quot;.
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
 
 export interface InvoiceRequestSummary {
   status: 'pending' | 'fulfilled' | 'rejected';
@@ -61,14 +62,9 @@ export function RequestInvoiceButton({ rfqId, proformaId, latestRequest, onReque
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <button
-        type="button"
-        onClick={requestInvoice}
-        disabled={busy}
-        className="rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted disabled:opacity-50"
-      >
+      <Button type="button" size="sm" variant="outline" onClick={requestInvoice} disabled={busy}>
         {busy ? 'Requesting…' : 'Request invoice'}
-      </button>
+      </Button>
       {latestRequest?.status === 'rejected' && (
         <p className="text-xs text-destructive">
           Previous request rejected{latestRequest.rejectionReason ? `: ${latestRequest.rejectionReason}` : ''}

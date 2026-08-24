@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceToNow, startOfMonth, endOfMonth, subMonths, addDays } from 'date-fns';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface InvoiceRow extends InvoiceTotalFields {
   id: string;
@@ -215,17 +216,19 @@ export function DashboardContent() {
   ];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+    <div className="space-y-6 animate-fade-in">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map((kpi) => {
           const content = (
-            <div className="rounded-lg border border-border bg-card p-4 h-full hover:bg-muted/40 transition-colors">
-              <p className="text-xs text-muted-foreground">{kpi.label}</p>
-              <p className="text-2xl font-semibold mt-1">{kpi.value}</p>
-              {kpi.sub && <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>}
-            </div>
+            <Card className="h-full transition-shadow hover:shadow-elegant">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                <p className="text-2xl font-semibold mt-1">{kpi.value}</p>
+                {kpi.sub && <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>}
+              </CardContent>
+            </Card>
           );
           return kpi.href ? (
             <Link key={kpi.label} href={kpi.href}>
@@ -238,45 +241,53 @@ export function DashboardContent() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">Upcoming Events (next 7 days)</h2>
-          {ordersQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : upcomingEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No events in the next 7 days.</p>
-          ) : (
-            <ul className="text-sm space-y-2">
-              {upcomingEvents.map((o) => (
-                <li key={o.id} className="flex justify-between">
-                  <span>{o.name}</span>
-                  <span className="text-muted-foreground">
-                    {o.start_date} – {o.end_date}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Upcoming Events (next 7 days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {ordersQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : upcomingEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No events in the next 7 days.</p>
+            ) : (
+              <ul className="text-sm space-y-2">
+                {upcomingEvents.map((o) => (
+                  <li key={o.id} className="flex justify-between">
+                    <span>{o.name}</span>
+                    <span className="text-muted-foreground">
+                      {o.start_date} – {o.end_date}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">Recent Activity</h2>
-          {activity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent activity.</p>
-          ) : (
-            <ul className="text-sm space-y-2 max-h-80 overflow-y-auto">
-              {activity.map((a) => (
-                <li key={a.id}>
-                  <Link href={a.href} className="hover:underline">
-                    {a.label}
-                  </Link>
-                  <span className="block text-xs text-muted-foreground">
-                    {new Date(a.timestamp).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            ) : (
+              <ul className="text-sm space-y-2 max-h-80 overflow-y-auto">
+                {activity.map((a) => (
+                  <li key={a.id}>
+                    <Link href={a.href} className="hover:underline">
+                      {a.label}
+                    </Link>
+                    <span className="block text-xs text-muted-foreground">
+                      {new Date(a.timestamp).toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
