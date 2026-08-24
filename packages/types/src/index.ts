@@ -171,15 +171,28 @@ export const RFQ_STATUSES = [
 ] as const;
 export type RfqStatus = (typeof RFQ_STATUSES)[number];
 
+export interface PaxPerDayEntry {
+  date: string; // ISO date string
+  pax: number;
+}
+
 export interface Rfq {
   id: string; // RFQ-NNNNNN
   clientId?: string | null;
-  clientNameFreetext?: string;
+  clientNameFreetext?: string; // legacy, unused by the current create form
   title: string;
   description?: string;
   requestedById?: string;
   status: RfqStatus;
-  targetEventDate?: string;
+  targetEventDate?: string; // legacy, unused by the current create form
+  serviceStartDate?: string;
+  serviceEndDate?: string;
+  proformaRequiredBy?: string;
+  samePaxAllDates?: boolean;
+  paxPerDay?: PaxPerDayEntry[];
+  ratePerPlate?: number;
+  vatType?: 'inclusive' | 'exclusive';
+  location?: string;
   region?: Region;
   branch?: Branch;
   notes?: string;
