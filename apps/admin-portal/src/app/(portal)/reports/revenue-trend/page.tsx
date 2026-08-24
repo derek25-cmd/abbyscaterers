@@ -6,6 +6,8 @@ import { format, startOfYear } from 'date-fns';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Row extends InvoiceTotalFields {
   id: string;
@@ -56,38 +58,40 @@ export default function RevenueTrendPage() {
   const ytdTotal = trend.reduce((sum, [, v]) => sum + v, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Revenue Trend</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Revenue Trend</h1>
           <p className="text-sm text-muted-foreground">Year-to-date invoiced revenue.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => exportToCsv('revenue-trend.csv', ['Period', 'Revenue (TZS)'], trend.map(([k, v]) => [k, v]))}
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">YTD Revenue</p>
-          <p className="text-2xl font-semibold">TZS {ytdTotal.toLocaleString()}</p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">YTD Revenue</p>
+            <p className="text-2xl font-semibold">TZS {ytdTotal.toLocaleString()}</p>
+          </CardContent>
+        </Card>
         <div className="flex gap-1">
           {(['daily', 'weekly', 'monthly'] as Bucket[]).map((b) => (
-            <button
+            <Button
               key={b}
               type="button"
+              size="sm"
+              variant={bucket === b ? 'default' : 'outline'}
+              className="capitalize"
               onClick={() => setBucket(b)}
-              className={`rounded-md border px-3 py-1.5 text-sm capitalize ${
-                bucket === b ? 'bg-primary text-primary-foreground border-primary' : 'border-input hover:bg-muted'
-              }`}
             >
               {b}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -95,7 +99,8 @@ export default function RevenueTrendPage() {
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <Card>
+          <CardContent className="p-4 space-y-2">
           {trend.map(([key, value]) => (
             <div key={key} className="flex items-center gap-3 text-sm">
               <span className="w-32 text-muted-foreground shrink-0">{key}</span>
@@ -106,7 +111,8 @@ export default function RevenueTrendPage() {
             </div>
           ))}
           {trend.length === 0 && <p className="text-sm text-muted-foreground">No invoices this year.</p>}
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

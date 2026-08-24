@@ -7,6 +7,16 @@ import { useSupabaseClient } from '@/lib/supabase-client';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface Row extends InvoiceTotalFields {
   id: string;
@@ -41,14 +51,15 @@ export default function SalesReportPage() {
   const totalRevenue = rows.reduce((sum, r) => sum + r.total, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Sales / Revenue Report</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Sales / Revenue Report</h1>
           <p className="text-sm text-muted-foreground">Invoiced revenue by period.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `sales-report-${range.from}-to-${range.to}.csv`,
@@ -56,56 +67,57 @@ export default function SalesReportPage() {
               rows.map((r) => [r.id, r.clients?.companyName ?? r.clientId ?? '', r.invoiceDate, r.status, r.total])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
 
-      <div className="rounded-lg border border-border bg-card p-4">
-        <p className="text-sm text-muted-foreground">Total Revenue</p>
-        <p className="text-2xl font-semibold">TZS {totalRevenue.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground mt-1">{rows.length} invoices</p>
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground">Total Revenue</p>
+          <p className="text-2xl font-semibold">TZS {totalRevenue.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mt-1">{rows.length} invoices</p>
+        </CardContent>
+      </Card>
 
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">Invoice No.</th>
-              <th className="py-2">Client</th>
-              <th className="py-2">Date</th>
-              <th className="py-2">Status</th>
-              <th className="py-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invoice No.</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-border last:border-0">
-                <td className="py-2 font-mono text-xs">
+              <TableRow key={r.id}>
+                <TableCell className="font-mono text-xs">
                   <Link href={`/invoices/${r.id}`} className="text-primary hover:underline">
                     {r.id}
                   </Link>
-                </td>
-                <td className="py-2">{r.clients?.companyName ?? r.clientId ?? '—'}</td>
-                <td className="py-2">{r.invoiceDate}</td>
-                <td className="py-2">{r.status}</td>
-                <td className="py-2 text-right">TZS {r.total.toLocaleString()}</td>
-              </tr>
+                </TableCell>
+                <TableCell>{r.clients?.companyName ?? r.clientId ?? '—'}</TableCell>
+                <TableCell>{r.invoiceDate}</TableCell>
+                <TableCell>{r.status}</TableCell>
+                <TableCell className="text-right">TZS {r.total.toLocaleString()}</TableCell>
+              </TableRow>
             ))}
             {rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-4 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No invoices in this period.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );

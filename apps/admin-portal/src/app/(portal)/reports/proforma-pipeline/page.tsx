@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Row {
   id: string;
@@ -53,14 +55,15 @@ export default function ProformaPipelineReportPage() {
   }, [query.data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Proforma Pipeline</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Proforma Pipeline</h1>
           <p className="text-sm text-muted-foreground">Approval status and conversion to invoice, by period.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `proforma-pipeline-${range.from}-to-${range.to}.csv`,
@@ -68,10 +71,9 @@ export default function ProformaPipelineReportPage() {
               Object.entries(summary.byStatus).map(([status, s]) => [STATUS_LABEL[status], s.count, s.total])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
@@ -82,19 +84,23 @@ export default function ProformaPipelineReportPage() {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(summary.byStatus).map(([status, s]) => (
-              <div key={status} className="rounded-lg border border-border bg-card p-4">
-                <p className="text-xs text-muted-foreground">{STATUS_LABEL[status]}</p>
-                <p className="text-2xl font-semibold mt-1">{s.count}</p>
-                <p className="text-xs text-muted-foreground mt-1">TZS {s.total.toLocaleString()}</p>
-              </div>
+              <Card key={status}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">{STATUS_LABEL[status]}</p>
+                  <p className="text-2xl font-semibold mt-1">{s.count}</p>
+                  <p className="text-xs text-muted-foreground mt-1">TZS {s.total.toLocaleString()}</p>
+                </CardContent>
+              </Card>
             ))}
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-xs text-muted-foreground">Conversion to Invoice</p>
-              <p className="text-2xl font-semibold mt-1">{summary.conversionRate}%</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {summary.invoicedCount} of {summary.total} invoiced
-              </p>
-            </div>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Conversion to Invoice</p>
+                <p className="text-2xl font-semibold mt-1">{summary.conversionRate}%</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {summary.invoicedCount} of {summary.total} invoiced
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </>
       )}

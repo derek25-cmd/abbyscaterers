@@ -6,6 +6,8 @@ import { useSupabaseClient } from '@/lib/supabase-client';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Row extends InvoiceTotalFields {
   id: string;
@@ -47,14 +49,15 @@ export default function CustomerPerformancePage() {
   const maxRevenue = Math.max(1, ...byClient.map((c) => c.revenue));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Customer Performance</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Customer Performance</h1>
           <p className="text-sm text-muted-foreground">Top clients by revenue and invoice frequency.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `customer-performance-${range.from}-to-${range.to}.csv`,
@@ -62,10 +65,9 @@ export default function CustomerPerformancePage() {
               byClient.map((c) => [c.name, c.revenue, c.count])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
@@ -73,7 +75,8 @@ export default function CustomerPerformancePage() {
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <Card>
+          <CardContent className="p-4 space-y-2">
           {byClient.map((c) => (
             <div key={c.name} className="flex items-center gap-3 text-sm">
               <span className="w-40 truncate shrink-0">{c.name}</span>
@@ -85,7 +88,8 @@ export default function CustomerPerformancePage() {
             </div>
           ))}
           {byClient.length === 0 && <p className="text-sm text-muted-foreground">No invoices in this period.</p>}
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

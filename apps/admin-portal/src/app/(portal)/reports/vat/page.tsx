@@ -6,6 +6,16 @@ import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface Row {
   id: string;
@@ -67,14 +77,15 @@ export default function VatReportPage() {
   const totalBase = rows.reduce((sum, r) => sum + r.totalBeforeVat, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">VAT Report</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">VAT Report</h1>
           <p className="text-sm text-muted-foreground">Output VAT from invoices (rate: {vatRate}%).</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `vat-report-${range.from}-to-${range.to}.csv`,
@@ -82,61 +93,64 @@ export default function VatReportPage() {
               rows.map((r) => [r.id, r.clients?.companyName ?? r.clientId ?? '', r.invoiceDate, r.totalBeforeVat, r.vat])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Taxable Base</p>
-          <p className="text-2xl font-semibold">TZS {totalBase.toLocaleString()}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Output VAT</p>
-          <p className="text-2xl font-semibold">TZS {totalVat.toLocaleString()}</p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Taxable Base</p>
+            <p className="text-2xl font-semibold">TZS {totalBase.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Output VAT</p>
+            <p className="text-2xl font-semibold">TZS {totalVat.toLocaleString()}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">Invoice No.</th>
-              <th className="py-2">Client</th>
-              <th className="py-2">Date</th>
-              <th className="py-2 text-right">Base</th>
-              <th className="py-2 text-right">VAT</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invoice No.</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Base</TableHead>
+              <TableHead className="text-right">VAT</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-border last:border-0">
-                <td className="py-2 font-mono text-xs">
+              <TableRow key={r.id}>
+                <TableCell className="font-mono text-xs">
                   <Link href={`/invoices/${r.id}`} className="text-primary hover:underline">
                     {r.id}
                   </Link>
-                </td>
-                <td className="py-2">{r.clients?.companyName ?? r.clientId ?? '—'}</td>
-                <td className="py-2">{r.invoiceDate}</td>
-                <td className="py-2 text-right">TZS {r.totalBeforeVat.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                <td className="py-2 text-right">TZS {r.vat.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-              </tr>
+                </TableCell>
+                <TableCell>{r.clients?.companyName ?? r.clientId ?? '—'}</TableCell>
+                <TableCell>{r.invoiceDate}</TableCell>
+                <TableCell className="text-right">TZS {r.totalBeforeVat.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+                <TableCell className="text-right">TZS {r.vat.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
+              </TableRow>
             ))}
             {rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-4 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No invoices in this period.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );

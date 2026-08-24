@@ -4,6 +4,16 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface CostingRequestRow {
   id: string;
@@ -57,55 +67,55 @@ export function CostingListTable() {
 
   return (
     <div className="space-y-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by RFQ ID or title…"
-        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+        className="max-w-sm"
       />
-      <table className="w-full text-sm">
-        <thead className="text-left text-muted-foreground border-b border-border">
-          <tr>
-            <th className="py-2">RFQ</th>
-            <th className="py-2">Requested</th>
-            <th className="py-2">Status</th>
-            <th className="py-2 text-right">Total Cost</th>
-            <th className="py-2 text-right">Revenue</th>
-            <th className="py-2 text-right">Margin</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>RFQ</TableHead>
+            <TableHead>Requested</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Total Cost</TableHead>
+            <TableHead className="text-right">Revenue</TableHead>
+            <TableHead className="text-right">Margin</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {filtered.map((r) => (
-            <tr key={r.id} className="border-b border-border last:border-0">
-              <td className="py-2">
+            <TableRow key={r.id}>
+              <TableCell>
                 <Link href={`/rfqs/${r.rfq_id}`} className="text-primary hover:underline">
                   {r.rfqs?.title ?? r.rfq_id}
                 </Link>
                 <div className="text-xs text-muted-foreground font-mono">{r.rfq_id}</div>
-              </td>
-              <td className="py-2">{new Date(r.requested_at).toLocaleDateString()}</td>
-              <td className="py-2">
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_CLASS[r.status]}`}>
+              </TableCell>
+              <TableCell>{new Date(r.requested_at).toLocaleDateString()}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className={STATUS_CLASS[r.status]}>
                   {STATUS_LABEL[r.status]}
-                </span>
+                </Badge>
                 {r.status === 'rejected' && r.rejection_reason && (
                   <p className="text-xs text-muted-foreground mt-1">{r.rejection_reason}</p>
                 )}
-              </td>
-              <td className="py-2 text-right">{r.total_cost != null ? `TZS ${r.total_cost.toLocaleString()}` : '—'}</td>
-              <td className="py-2 text-right">{r.total_revenue != null ? `TZS ${r.total_revenue.toLocaleString()}` : '—'}</td>
-              <td className="py-2 text-right">{r.gross_margin_pct != null ? `${r.gross_margin_pct}%` : '—'}</td>
-            </tr>
+              </TableCell>
+              <TableCell className="text-right">{r.total_cost != null ? `TZS ${r.total_cost.toLocaleString()}` : '—'}</TableCell>
+              <TableCell className="text-right">{r.total_revenue != null ? `TZS ${r.total_revenue.toLocaleString()}` : '—'}</TableCell>
+              <TableCell className="text-right">{r.gross_margin_pct != null ? `${r.gross_margin_pct}%` : '—'}</TableCell>
+            </TableRow>
           ))}
           {filtered.length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-4 text-center text-muted-foreground">
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-muted-foreground">
                 No costing requests match &quot;{search}&quot;.
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

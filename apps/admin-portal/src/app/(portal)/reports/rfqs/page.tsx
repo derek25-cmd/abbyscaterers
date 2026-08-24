@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface RfqRow {
   id: string;
@@ -95,14 +97,15 @@ export default function RfqReportPage() {
   }, [historyQuery.data, rfqsQuery.data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">RFQ Report</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">RFQ Report</h1>
           <p className="text-sm text-muted-foreground">RFQs created in the selected period, by status and branch.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `rfq-report-${range.from}-to-${range.to}.csv`,
@@ -110,49 +113,56 @@ export default function RfqReportPage() {
               Object.entries(byStatus).map(([status, count]) => [STATUS_LABEL[status] ?? status, count])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total RFQs</p>
-          <p className="text-2xl font-semibold mt-1">{rfqsQuery.data?.length ?? '—'}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Avg. Response Time</p>
-          <p className="text-2xl font-semibold mt-1">{avgResponseHours != null ? `${avgResponseHours}h` : '—'}</p>
-          <p className="text-xs text-muted-foreground mt-1">Submission to first proforma</p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Total RFQs</p>
+            <p className="text-2xl font-semibold mt-1">{rfqsQuery.data?.length ?? '—'}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Avg. Response Time</p>
+            <p className="text-2xl font-semibold mt-1">{avgResponseHours != null ? `${avgResponseHours}h` : '—'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Submission to first proforma</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">By Status</h2>
-          <ul className="text-sm space-y-1">
-            {Object.entries(byStatus).map(([status, count]) => (
-              <li key={status} className="flex justify-between">
-                <span className="text-muted-foreground">{STATUS_LABEL[status] ?? status}</span>
-                <span>{count}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">By Branch</h2>
-          <ul className="text-sm space-y-1">
-            {Object.entries(byBranch).map(([branch, count]) => (
-              <li key={branch} className="flex justify-between">
-                <span className="text-muted-foreground">{branch}</span>
-                <span>{count}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="font-medium mb-2">By Status</h2>
+            <ul className="text-sm space-y-1">
+              {Object.entries(byStatus).map(([status, count]) => (
+                <li key={status} className="flex justify-between">
+                  <span className="text-muted-foreground">{STATUS_LABEL[status] ?? status}</span>
+                  <span>{count}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="font-medium mb-2">By Branch</h2>
+            <ul className="text-sm space-y-1">
+              {Object.entries(byBranch).map(([branch, count]) => (
+                <li key={branch} className="flex justify-between">
+                  <span className="text-muted-foreground">{branch}</span>
+                  <span>{count}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

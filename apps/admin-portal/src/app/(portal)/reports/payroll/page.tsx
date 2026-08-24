@@ -6,6 +6,16 @@ import { useSupabaseClient } from '@/lib/supabase-client';
 import { ReportAccessGate } from '@/components/reports/report-access-gate';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface PayrollRow {
   employeeId: string;
@@ -47,14 +57,15 @@ function PayrollReport() {
   }, [query.data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Payroll Summary</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Payroll Summary</h1>
           <p className="text-sm text-muted-foreground">Gross/net salary by employee, for the selected pay period range.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `payroll-summary-${range.from}-to-${range.to}.csv`,
@@ -62,59 +73,62 @@ function PayrollReport() {
               (query.data ?? []).map((r) => [r.employeeName, r.payPeriodStart, r.payPeriodEnd, r.grossSalary, r.netSalary, r.status])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Total Gross</p>
-          <p className="text-2xl font-semibold">TZS {totals.gross.toLocaleString()}</p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Total Net</p>
-          <p className="text-2xl font-semibold">TZS {totals.net.toLocaleString()}</p>
-        </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total Gross</p>
+            <p className="text-2xl font-semibold">TZS {totals.gross.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Total Net</p>
+            <p className="text-2xl font-semibold">TZS {totals.net.toLocaleString()}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">Employee</th>
-              <th className="py-2">Period</th>
-              <th className="py-2">Status</th>
-              <th className="py-2 text-right">Gross</th>
-              <th className="py-2 text-right">Net</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Employee</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Gross</TableHead>
+              <TableHead className="text-right">Net</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(query.data ?? []).map((r, i) => (
-              <tr key={`${r.employeeId}-${i}`} className="border-b border-border last:border-0">
-                <td className="py-2">{r.employeeName}</td>
-                <td className="py-2">
+              <TableRow key={`${r.employeeId}-${i}`}>
+                <TableCell>{r.employeeName}</TableCell>
+                <TableCell>
                   {r.payPeriodStart} – {r.payPeriodEnd}
-                </td>
-                <td className="py-2">{r.status}</td>
-                <td className="py-2 text-right">TZS {(r.grossSalary ?? 0).toLocaleString()}</td>
-                <td className="py-2 text-right">TZS {(r.netSalary ?? 0).toLocaleString()}</td>
-              </tr>
+                </TableCell>
+                <TableCell>{r.status}</TableCell>
+                <TableCell className="text-right">TZS {(r.grossSalary ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-right">TZS {(r.netSalary ?? 0).toLocaleString()}</TableCell>
+              </TableRow>
             ))}
             {(query.data ?? []).length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-4 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No payroll records in this period.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );
