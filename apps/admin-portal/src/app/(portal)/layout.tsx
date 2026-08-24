@@ -3,19 +3,22 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { LayoutDashboard, FileText, Receipt } from 'lucide-react';
+import { LayoutDashboard, FileText, Receipt, Percent } from 'lucide-react';
+import type { PortalRole } from '@abbyscaterers/types';
 import { usePortalRole } from '@/lib/portal-role';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 
-const navItems = [
+const navItems: { href: string; label: string; icon: typeof LayoutDashboard; roles?: PortalRole[] }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/rfqs', label: 'RFQs', icon: FileText },
-  { href: '/invoices', label: 'Request Invoices', icon: Receipt },
+  { href: '/invoices', label: 'Invoices', icon: Receipt },
+  { href: '/tax-settings', label: 'Tax Settings', icon: Percent, roles: ['super_admin', 'finance'] },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { role, isActive, loading } = usePortalRole();
+  const visibleNavItems = navItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
@@ -24,7 +27,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           <span className="font-semibold">Abby&apos;s Admin Portal</span>
         </div>
         <nav className="flex-1 p-2 space-y-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link
