@@ -1,0 +1,177 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Rfq, RfqStatusHistoryEntry } from '@abbyscaterers/types';
+import { useSupabaseClient } from '@/lib/supabase-client';
+import { LinkProformaForm } from './link-proforma-form';
+
+interface LinkedProforma {
+  id: string;
+  linkedAt: string;
+  clientId: string | null;
+  invoiceDate: string;
+  itemsSubtotal: number;
+}
+
+export function RfqDetail({ rfqId }: { rfqId: string }) {
+  const supabase = useSupabaseClient();
+  const queryClient = useQueryClient();
+
+  const rfqQuery = useQuery({
+    queryKey: ['rfq', rfqId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('rfqs').select('*').eq('id', rfqId).single();
+      if (error) throw error;
+      return data as Rfq & { client_name_freetext: string | null };
+    },
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ['rfq-history', rfqId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rfq_status_history')
+        .select('*')
+        .eq('rfq_id', rfqId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as RfqStatusHistoryEntry[];
+    },
+  });
+
+  const linksQuery = useQuery({
+    queryKey: ['rfq-links', rfqId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('rfq_proforma_links')
+        .select('id, linked_at, proforma_invoices(id, "clientId", "invoiceDate", items)')
+        .eq('rfq_id', rfqId)
+        .order('linked_at', { ascending: false });
+      if (error) throw error;
+      // proforma_invoices is embedded via the FK — flatten it into a simple, display-only shape.
+      // itemsSubtotal is a raw sum of stored line-item totals for at-a-glance context only —
+      // NOT a recomputation of VAT/tax; the authoritative figures live in the proforma itself.
+      return (data ?? []).map((row: any) => ({
+        id: row.proforma_invoices.id,
+        linkedAt: row.linked_at,
+        clientId: row.proforma_invoices.clientId,
+        invoiceDate: row.proforma_invoices.invoiceDate,
+        itemsSubtotal: (row.proforma_invoices.items ?? []).reduce(
+          (sum: number, item: { total?: number }) => sum + (item.total ?? 0),
+          0
+        ),
+      })) as LinkedProforma[];
+    },
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`rfq-${rfqId}-changes`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rfqs', filter: `id=eq.${rfqId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rfq', rfqId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rfq_status_history', filter: `rfq_id=eq.${rfqId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rfq-history', rfqId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rfq_proforma_links', filter: `rfq_id=eq.${rfqId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rfq-links', rfqId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, queryClient, rfqId]);
+
+  if (rfqQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (rfqQuery.error) {
+    return <p className="text-sm text-destructive">Failed to load RFQ: {(rfqQuery.error as Error).message}</p>;
+  }
+  const rfq = rfqQuery.data!;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">{rfq.title}</h1>
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{rfq.status}</span>
+        </div>
+        <p className="text-sm text-muted-foreground font-mono">{rfq.id}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+          <h2 className="font-medium">Details</h2>
+          <dl className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Client</dt>
+              <dd>{rfq.clientNameFreetext ?? rfq.clientId ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Target date</dt>
+              <dd>{rfq.targetEventDate ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Branch</dt>
+              <dd>{rfq.branch ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Region</dt>
+              <dd>{rfq.region ?? '—'}</dd>
+            </div>
+          </dl>
+          {rfq.description && <p className="text-sm pt-2 border-t border-border">{rfq.description}</p>}
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h2 className="font-medium mb-2">Status history</h2>
+          {historyQuery.data && historyQuery.data.length > 0 ? (
+            <ul className="text-sm space-y-1">
+              {historyQuery.data.map((h) => (
+                <li key={h.id} className="text-muted-foreground">
+                  {h.fromStatus ?? '—'} → <span className="text-foreground">{h.toStatus}</span>
+                  {h.note ? ` — ${h.note}` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No status changes yet.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+        <h2 className="font-medium">Linked proformas</h2>
+        {linksQuery.data && linksQuery.data.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead className="border-b border-border text-left text-muted-foreground">
+              <tr>
+                <th className="py-2 font-medium">Proforma ID</th>
+                <th className="py-2 font-medium">Client</th>
+                <th className="py-2 font-medium">Invoice date</th>
+                <th className="py-2 font-medium">Items subtotal</th>
+                <th className="py-2 font-medium">Linked</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linksQuery.data.map((p) => (
+                <tr key={p.id} className="border-b border-border last:border-0">
+                  <td className="py-2 font-mono text-xs">{p.id}</td>
+                  <td className="py-2">{p.clientId ?? '—'}</td>
+                  <td className="py-2">{p.invoiceDate}</td>
+                  <td className="py-2">TZS {p.itemsSubtotal.toLocaleString()}</td>
+                  <td className="py-2 text-muted-foreground">{new Date(p.linkedAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-sm text-muted-foreground">No proforma linked yet.</p>
+        )}
+
+        <LinkProformaForm rfqId={rfqId} />
+      </div>
+    </div>
+  );
+}

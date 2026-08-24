@@ -23,7 +23,15 @@ interface RfqRow {
 }
 
 const columns: ColumnDef<RfqRow>[] = [
-  { accessorKey: 'id', header: 'ID', cell: (c) => <span className="font-mono text-xs">{c.getValue<string>()}</span> },
+  {
+    accessorKey: 'id',
+    header: 'ID',
+    cell: (c) => (
+      <Link href={`/rfqs/${c.getValue<string>()}`} className="font-mono text-xs text-primary hover:underline">
+        {c.getValue<string>()}
+      </Link>
+    ),
+  },
   { accessorKey: 'title', header: 'Title' },
   {
     id: 'client',

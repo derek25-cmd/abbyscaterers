@@ -196,3 +196,11 @@ export interface RfqStatusHistoryEntry {
   note?: string;
   createdAt: string;
 }
+
+export interface RfqProformaLink {
+  id: string;
+  rfqId: string;
+  proformaId: string;
+  linkedById?: string;
+  linkedAt: string;
+}
