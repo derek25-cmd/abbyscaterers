@@ -40,7 +40,11 @@ interface InvoiceRecord {
   receiverPosition: string | null;
   lpoNumber: string | null;
   proformaId: string | null;
-  appendProformaId: boolean | null;
+  // NOT a real column — apps/catering-system/src/services/invoiceService.ts
+  // never persists it (no migration ever created it either); catering-
+  // system's own invoice-template.tsx reads it expecting undefined at
+  // display time too. Kept as an always-false constant below rather than
+  // queried, to match that same (quirky but real) behavior.
   serviceDesc: string | null;
   signedAtDate: string | null;
   signedAtLocation: string | null;
@@ -81,7 +85,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       const { data, error } = await supabase
         .from('invoices')
         .select(
-          'id, "invoiceDate", "clientId", clients(companyName, address1, address2), location, "numberOfDays", "multiplyByDays", "serviceCharge", "transportCosts", "vatType", items, status, "amountPaid", "paymentDate", "receiverName", "receiverPosition", "lpoNumber", "proformaId", "appendProformaId", "serviceDesc", "signedAtDate", "signedAtLocation"'
+          'id, "invoiceDate", "clientId", clients(companyName, address1, address2), location, "numberOfDays", "multiplyByDays", "serviceCharge", "transportCosts", "vatType", items, status, "amountPaid", "paymentDate", "receiverName", "receiverPosition", "lpoNumber", "proformaId", "serviceDesc", "signedAtDate", "signedAtLocation"'
         )
         .eq('id', invoiceId)
         .single();
@@ -330,7 +334,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
               clientAddress2: inv.clients?.address2 ?? null,
               serviceDesc: inv.serviceDesc,
               proformaId: inv.proformaId,
-              appendProformaId: inv.appendProformaId,
+              appendProformaId: false,
               serviceCharge: inv.serviceCharge ?? 0,
               transportCosts: inv.transportCosts ?? 0,
               multiplyByDays: inv.multiplyByDays,
