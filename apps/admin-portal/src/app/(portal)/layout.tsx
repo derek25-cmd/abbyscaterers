@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
 import {
@@ -13,70 +14,127 @@ import {
   Bell,
   ShieldAlert,
   Users,
+  ChefHat,
 } from 'lucide-react';
 import type { PortalRole } from '@abbyscaterers/types';
 import { usePortalRole } from '@/lib/portal-role';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
 
-const navItems: { href: string; label: string; icon: typeof LayoutDashboard; roles?: PortalRole[] }[] = [
+const navItems: { href: string; label: string; icon: typeof LayoutDashboard }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/rfqs', label: 'RFQs', icon: FileText },
   { href: '/invoices', label: 'Invoices', icon: Receipt },
   { href: '/costing', label: 'Costing', icon: Calculator },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/notifications', label: 'Notifications', icon: Bell },
+];
+
+// Mirrors catering-system's managementItems (Reports/Settings in its
+// sidebar footer) — role-gated admin functions separated from day-to-day
+// operational nav.
+const managementItems: { href: string; label: string; icon: typeof LayoutDashboard; roles: PortalRole[] }[] = [
   { href: '/tax-settings', label: 'Tax Settings', icon: Percent, roles: ['super_admin', 'finance'] },
   { href: '/audit-log', label: 'Audit Log', icon: ShieldAlert, roles: ['super_admin'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['super_admin'] },
 ];
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+function NavLink({ href, label, icon: Icon, pathname }: { href: string; label: string; icon: typeof LayoutDashboard; pathname: string }) {
+  const { open } = useSidebar();
+  const isActive = pathname.startsWith(href);
+  return (
+    <SidebarMenuItem>
+      <Link href={href}>
+        <SidebarMenuButton isActive={isActive} tooltip={{ children: label, side: 'right' }}>
+          <Icon />
+          {open && <span>{label}</span>}
+        </SidebarMenuButton>
+      </Link>
+    </SidebarMenuItem>
+  );
+}
+
+function SidebarLogo() {
+  const { open } = useSidebar();
+  return (
+    <div className="flex items-center gap-2.5 p-2">
+      {open ? (
+        <Image src="/logo.png" alt="Abby's Catersmart" width={150} height={40} style={{ mixBlendMode: 'darken' }} />
+      ) : (
+        <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-lg">
+          <ChefHat className="h-5 w-5 text-primary-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { role, isActive, loading } = usePortalRole();
-  const visibleNavItems = navItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
+  const visibleManagementItems = managementItems.filter((item) => role && item.roles.includes(role));
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col">
-        <div className="h-16 flex items-center px-4 border-b border-border">
-          <span className="font-semibold">Abby&apos;s Admin Portal</span>
-        </div>
-        <nav className="flex-1 p-2 space-y-1">
-          {visibleNavItems.map((item) => {
-            const active = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
-                  active
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-foreground hover:bg-muted'
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-        {!loading && !isActive && (
-          <div className="m-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
-            Your account isn&apos;t provisioned for portal access yet. Ask a super admin to
-            add you in Users.
-          </div>
-        )}
-      </aside>
+      <Sidebar collapsible="icon" variant="inset">
+        <SidebarHeader>
+          <SidebarLogo />
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            {navItems.map((item) => (
+              <NavLink key={item.href} {...item} pathname={pathname} />
+            ))}
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            {visibleManagementItems.map((item) => (
+              <NavLink key={item.href} {...item} pathname={pathname} />
+            ))}
+          </SidebarMenu>
+          {!loading && !isActive && (
+            <div className="m-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+              Your account isn&apos;t provisioned for portal access yet. Ask a super admin to add you in Users.
+            </div>
+          )}
+        </SidebarFooter>
+      </Sidebar>
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-6 shrink-0">
-          <span className="text-sm text-muted-foreground">{role ? `Role: ${role}` : ''}</span>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <UserButton afterSignOutUrl="/sign-in" />
+        <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30 shrink-0">
+          <div className="h-full px-4 sm:px-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
+              <span className="text-sm text-muted-foreground">{role ? `Role: ${role}` : ''}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <UserButton afterSignOutUrl="/sign-in" />
+            </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6 bg-muted/20">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-muted/20">{children}</main>
       </div>
     </div>
+  );
+}
+
+export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider defaultOpen>
+      <LayoutContentWrapper>{children}</LayoutContentWrapper>
+    </SidebarProvider>
   );
 }

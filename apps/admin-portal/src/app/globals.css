@@ -2,49 +2,101 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Same palette as apps/catering-system/src/app/globals.css for visual
-   consistency between the two apps (creamy background / dark brown primary
-   in light mode). */
+/* Exact copy of apps/catering-system/src/app/globals.css's palette — full
+   parity, not an approximation, per the admin-portal UI/UX refurbish. */
 @layer base {
   :root {
-    --background: 48 83% 94%;
-    --foreground: 0 11% 21%;
+    --background: 48 83% 94%; /* Creamy Yellow */
+    --foreground: 0 11% 21%; /* Dark Brown */
+
     --card: 45 100% 97%;
     --card-foreground: 0 11% 21%;
-    --primary: 0 11% 21%;
-    --primary-foreground: 45 100% 97%;
+
+    --popover: 45 100% 97%;
+    --popover-foreground: 0 11% 21%;
+
+    --primary: 0 11% 21%; /* Dark Brown */
+    --primary-foreground: 45 100% 95%;
+    --primary-glow: 0 11% 31%;
+
     --secondary: 45 30% 92%;
     --secondary-foreground: 0 11% 21%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+
     --muted: 45 40% 94%;
-    --muted-foreground: 0 6% 45%;
-    --accent: 0 11% 21%;
-    --accent-foreground: 45 100% 97%;
+    --muted-foreground: 0 10% 45%;
+
+    --accent: 0 11% 21%; /* Dark Brown */
+    --accent-foreground: 45 100% 95%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
     --border: 45 20% 88%;
-    --input: 45 20% 88%;
+    --input: 45 20% 92%;
     --ring: 0 11% 21%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 20 14% 8%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(45 100% 96%));
+
+    --shadow-elegant: 0 4px 12px -4px hsl(var(--primary) / 0.15);
+    --shadow-card: 0 2px 8px -2px hsl(0 11% 21% / 0.05);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
     --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%; /* White */
+    --sidebar-foreground: 0 11% 21%;
+    --sidebar-primary: 0 11% 21%;
+    --sidebar-primary-foreground: 45 100% 95%;
+    --sidebar-accent: 45 30% 92%;
+    --sidebar-accent-foreground: 0 11% 21%;
+    --sidebar-border: 45 20% 88%;
+    --sidebar-ring: 0 11% 21%;
   }
 
   .dark {
     --background: 24 10% 10%;
     --foreground: 35 10% 85%;
+
     --card: 24 8% 12%;
     --card-foreground: 35 10% 85%;
+
+    --popover: 24 10% 10%;
+    --popover-foreground: 35 10% 85%;
+
     --primary: 40 90% 55%;
-    --primary-foreground: 24 10% 10%;
+    --primary-foreground: 24 15% 10%;
+
     --secondary: 24 8% 18%;
     --secondary-foreground: 35 10% 85%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 100%;
+
     --muted: 24 8% 15%;
-    --muted-foreground: 35 6% 60%;
+    --muted-foreground: 35 10% 65%;
+
     --accent: 40 90% 55%;
-    --accent-foreground: 24 10% 10%;
+    --accent-foreground: 24 15% 10%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
     --border: 24 8% 20%;
     --input: 24 8% 20%;
     --ring: 40 90% 55%;
+
+    --sidebar-background: 24 8% 12%;
+    --sidebar-foreground: 35 10% 80%;
+    --sidebar-primary: 40 90% 55%;
+    --sidebar-primary-foreground: 24 15% 10%;
+    --sidebar-accent: 24 8% 16%;
+    --sidebar-accent-foreground: 35 10% 90%;
+    --sidebar-border: 24 8% 18%;
+    --sidebar-ring: 40 90% 55%;
   }
 
   * {
