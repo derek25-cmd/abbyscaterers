@@ -4,5 +4,10 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=apps/catering-system",
+    "dev": "npm run dev --workspace=apps/catering-system",
+    "start": "npm run start --workspace=apps/catering-system"
+  }
 }
