@@ -32,10 +32,16 @@ import { REGIONS, type Order, type OrderStatus } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/hr/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase-client";
 
 interface ProformaInvoiceFormProps {
     invoiceId?: string;
     clientId?: string;
+    // RFQ id to "answer" — pre-fills client/dates/items from the RFQ, and
+    // links the created proforma back to it (see the effect and onSubmit
+    // hook below) via the same link_rfq_to_proforma() RPC the admin portal
+    // uses for manual linking.
+    fromRfqId?: string;
 }
 
 const eventTypes = [
@@ -69,7 +75,7 @@ const serviceFieldsList = [
   { key: 'location', label: 'Location' }
 ];
 
-export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceFormProps) {
+export function ProformaInvoiceForm({ invoiceId, clientId, fromRfqId }: ProformaInvoiceFormProps) {
     const router = useRouter();
     const { clients, getClientById: getClientDetails, isLoading: clientsLoading } = useClientStorage();
     const { proformaInvoices, getProformaById, addProformaInvoice, updateProformaInvoice } = useProformaInvoiceStorage();
@@ -410,6 +416,63 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
         }
     }, [isEditMode, invoiceId, clientId, getProformaById, form]);
 
+    // "Answer RFQ": pre-fill client, service period, location, region, VAT
+    // mode, and one line item per day (pax/meal type/rate from the RFQ's
+    // per-day fields) from the RFQ the admin submitted. Items are 'custom'
+    // (no orderId) since no Single Order exists yet for this RFQ — staff
+    // can still replace/add real order-linked entries afterward the same
+    // way any other proforma is built.
+    useEffect(() => {
+        if (isEditMode || !fromRfqId) return;
+
+        (async () => {
+            const { data: rfq, error } = await supabase.from('rfqs').select('*').eq('id', fromRfqId).single();
+            if (error || !rfq) {
+                toast({ variant: 'destructive', title: 'Could not load RFQ', description: error?.message ?? 'RFQ not found.' });
+                return;
+            }
+
+            const paxByDate = new Map<string, number>((rfq.pax_per_day ?? []).map((p: { date: string; pax: number }) => [p.date, p.pax]));
+            const mealByDate = new Map<string, string>((rfq.meal_type_per_day ?? []).map((m: { date: string; mealType: string }) => [m.date, m.mealType]));
+            const dates = Array.from(new Set([...paxByDate.keys(), ...mealByDate.keys()])).sort();
+            const rate = Number(rfq.rate_per_plate) || 0;
+
+            const items = dates.map((date) => {
+                const pax = paxByDate.get(date) ?? 1;
+                const mealType = mealByDate.get(date) ?? '';
+                return {
+                    id: `RFQ-${date}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                    orderId: undefined,
+                    particularType: 'custom' as const,
+                    eventType: 'Custom',
+                    mealType,
+                    pax,
+                    unitPrice: rate,
+                    total: pax * rate,
+                    date,
+                    vatType: (rfq.vat_type as 'inclusive' | 'exclusive') || 'inclusive',
+                    particularDescription: `From RFQ ${fromRfqId}`,
+                };
+            });
+
+            form.reset({
+                ...form.getValues(),
+                clientId: rfq.client_id || '',
+                location: rfq.location || '',
+                region: rfq.region || 'Dar es Salaam',
+                vatType: (rfq.vat_type as 'inclusive' | 'exclusive') || 'inclusive',
+                startDate: rfq.service_start_date || format(new Date(), 'yyyy-MM-dd'),
+                endDate: rfq.service_end_date || format(new Date(), 'yyyy-MM-dd'),
+                serviceDesc: `Answering RFQ ${fromRfqId}.`,
+                items: items.length > 0 ? items : form.getValues('items'),
+            });
+            setIsServiceDescModified(true);
+
+            toast({ title: 'RFQ loaded', description: `Pre-filled from ${fromRfqId} — review and complete the remaining fields.` });
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isEditMode, fromRfqId]);
+
     const onSubmit: SubmitHandler<ProformaInvoiceFormData> = async (data) => {
         setIsSubmitting(true);
         try {
@@ -442,6 +505,25 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     // that touched this order; the real link lives in each proforma's items[].
                     if (!existingOrder?.proformaId || existingOrder.proformaId === (invoiceId ?? result.id)) {
                         await updateOrder(oid, { proformaId: result.id } as any);
+                    }
+                }
+
+                // 4. If this proforma answers an RFQ, link it back — advances the
+                // RFQ's status and notifies the requesting admin (both inside
+                // link_rfq_to_proforma()). Non-fatal: the proforma is already
+                // saved at this point, so a linking failure surfaces as a toast
+                // rather than losing the user's work.
+                if (!isEditMode && fromRfqId) {
+                    const { error: linkError } = await supabase.rpc('link_rfq_to_proforma', {
+                        p_rfq_id: fromRfqId,
+                        p_proforma_id: result.id,
+                    });
+                    if (linkError) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Proforma created, but linking to the RFQ failed',
+                            description: linkError.message,
+                        });
                     }
                 }
 

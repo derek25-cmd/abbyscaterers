@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import { RfqSchema, type RfqFormData } from '@abbyscaterers/validation';
-import { REGIONS } from '@abbyscaterers/types';
+import { REGIONS, MEAL_TYPES } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
 
 // Matches the existing app's ORD-NNNNN / EVT-NNNNN convention (see
@@ -24,6 +24,7 @@ export function RfqForm() {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uniformPax, setUniformPax] = useState<number>(1);
+  const [uniformMealType, setUniformMealType] = useState<string>(MEAL_TYPES[0]);
 
   // Mirrors the plain <Select> populated from a full client list that
   // apps/catering-system/src/components/proforma-invoices/proforma-invoice-form.tsx
@@ -53,6 +54,8 @@ export function RfqForm() {
     defaultValues: {
       samePaxAllDates: true,
       paxPerDay: [],
+      sameMealTypeAllDates: true,
+      mealTypePerDay: [],
       vatType: 'inclusive',
     },
   });
@@ -61,6 +64,8 @@ export function RfqForm() {
   const serviceEndDate = watch('serviceEndDate');
   const samePaxAllDates = watch('samePaxAllDates');
   const paxPerDay = watch('paxPerDay') || [];
+  const sameMealTypeAllDates = watch('sameMealTypeAllDates');
+  const mealTypePerDay = watch('mealTypePerDay') || [];
 
   // Recompute the day list whenever the service period changes, preserving
   // already-entered pax values for dates still in range and seeding new
@@ -83,6 +88,23 @@ export function RfqForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceStartDate, serviceEndDate]);
 
+  // Same recompute, independently, for meal type per day.
+  useEffect(() => {
+    if (!serviceStartDate || !serviceEndDate) return;
+    const start = parseISO(serviceStartDate);
+    const end = parseISO(serviceEndDate);
+    if (!isValid(start) || !isValid(end) || end < start) return;
+
+    const days = eachDayOfInterval({ start, end }).map((d) => format(d, 'yyyy-MM-dd'));
+    const existing = new Map(mealTypePerDay.map((m) => [m.date, m.mealType]));
+    const next = days.map((date) => ({
+      date,
+      mealType: existing.get(date) ?? uniformMealType,
+    }));
+    setValue('mealTypePerDay', next, { shouldValidate: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceStartDate, serviceEndDate]);
+
   // When "same pax for all dates" is checked, keep every day in sync with
   // the single uniform input as it changes.
   useEffect(() => {
@@ -94,6 +116,17 @@ export function RfqForm() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samePaxAllDates, uniformPax]);
+
+  // Same sync, independently, for meal type.
+  useEffect(() => {
+    if (!sameMealTypeAllDates || mealTypePerDay.length === 0) return;
+    setValue(
+      'mealTypePerDay',
+      mealTypePerDay.map((m) => ({ ...m, mealType: uniformMealType })),
+      { shouldValidate: false }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sameMealTypeAllDates, uniformMealType]);
 
   const onSubmit = async (values: RfqFormData) => {
     setSubmitError(null);
@@ -116,6 +149,8 @@ export function RfqForm() {
         proforma_required_by: values.proformaRequiredBy || null,
         same_pax_all_dates: values.samePaxAllDates,
         pax_per_day: values.paxPerDay,
+        same_meal_type_all_dates: values.sameMealTypeAllDates,
+        meal_type_per_day: values.mealTypePerDay,
         rate_per_plate: values.ratePerPlate,
         vat_type: values.vatType,
         location: values.location,
@@ -240,6 +275,69 @@ export function RfqForm() {
         {errors.paxPerDay && (
           <p className="text-xs text-destructive mt-1">
             {(errors.paxPerDay as { message?: string }).message ?? 'Pax entries are invalid.'}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="sameMealType"
+            checked={sameMealTypeAllDates}
+            onChange={(e) => setValue('sameMealTypeAllDates', e.target.checked)}
+          />
+          <label htmlFor="sameMealType" className="text-sm font-medium">
+            Same meal type for all dates
+          </label>
+        </div>
+
+        {sameMealTypeAllDates ? (
+          <div>
+            <label className="text-xs text-muted-foreground">Type of meal</label>
+            <select
+              value={uniformMealType}
+              onChange={(e) => setUniformMealType(e.target.value)}
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {MEAL_TYPES.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground">Type of meal per day</label>
+            {mealTypePerDay.length === 0 && (
+              <p className="text-xs text-muted-foreground">Set the service period above first.</p>
+            )}
+            {mealTypePerDay.map((entry, i) => (
+              <div key={entry.date} className="flex items-center gap-3">
+                <span className="w-28 text-xs text-muted-foreground">{entry.date}</span>
+                <select
+                  value={entry.mealType}
+                  onChange={(e) => {
+                    const next = [...mealTypePerDay];
+                    next[i] = { ...next[i], mealType: e.target.value };
+                    setValue('mealTypePerDay', next, { shouldValidate: false });
+                  }}
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {MEAL_TYPES.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+        {errors.mealTypePerDay && (
+          <p className="text-xs text-destructive mt-1">
+            {(errors.mealTypePerDay as { message?: string }).message ?? 'Meal type entries are invalid.'}
           </p>
         )}
       </div>

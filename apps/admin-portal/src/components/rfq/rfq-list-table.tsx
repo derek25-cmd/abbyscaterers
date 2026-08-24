@@ -36,6 +36,11 @@ const columns: ColumnDef<RfqRow>[] = [
       </Link>
     ),
   },
+  {
+    accessorKey: 'created_at',
+    header: 'Issue Date',
+    cell: (c) => new Date(c.getValue<string>()).toLocaleDateString(),
+  },
   { accessorKey: 'title', header: 'Title' },
   {
     id: 'client',

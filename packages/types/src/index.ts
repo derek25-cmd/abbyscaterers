@@ -114,6 +114,9 @@ export interface ProformaInvoice {
   updatedAt: string;
   isInvoiced?: boolean;
   booking_id?: string | null;
+  isVoided?: boolean;
+  voidedAt?: string | null;
+  voidedReason?: string | null;
 }
 
 export interface Invoice {
@@ -176,6 +179,25 @@ export interface PaxPerDayEntry {
   pax: number;
 }
 
+export interface MealTypePerDayEntry {
+  date: string; // ISO date string
+  mealType: string;
+}
+
+// Same vocabulary as apps/catering-system/src/types/index.ts's MEAL_TYPES.
+export const MEAL_TYPES = [
+  "Breakfast only",
+  "Lunch only",
+  "Dinner only",
+  "Breakfast and lunch",
+  "Brunch",
+  "Breakfast, lunch and evening tea",
+  "Breakfast, lunch and dinner",
+  "Evening tea",
+  "Evening Snacks",
+  "Breakfast Bites",
+] as const;
+
 export interface Rfq {
   id: string; // RFQ-NNNNNN
   clientId?: string | null;
@@ -190,6 +212,8 @@ export interface Rfq {
   proformaRequiredBy?: string;
   samePaxAllDates?: boolean;
   paxPerDay?: PaxPerDayEntry[];
+  sameMealTypeAllDates?: boolean;
+  mealTypePerDay?: MealTypePerDayEntry[];
   ratePerPlate?: number;
   vatType?: 'inclusive' | 'exclusive';
   location?: string;

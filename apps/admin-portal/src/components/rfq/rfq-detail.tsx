@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { RfqStatusHistoryEntry, PaxPerDayEntry } from '@abbyscaterers/types';
+import type { RfqStatusHistoryEntry, PaxPerDayEntry, MealTypePerDayEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { LinkProformaForm } from './link-proforma-form';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
@@ -34,6 +35,8 @@ interface RfqRecord {
   proforma_required_by: string | null;
   same_pax_all_dates: boolean;
   pax_per_day: PaxPerDayEntry[] | null;
+  same_meal_type_all_dates: boolean;
+  meal_type_per_day: MealTypePerDayEntry[] | null;
   rate_per_plate: number | null;
   vat_type: 'inclusive' | 'exclusive' | null;
   location: string | null;
@@ -191,6 +194,16 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
               </dd>
             </div>
             <div className="flex justify-between">
+              <dt className="text-muted-foreground">Meal type</dt>
+              <dd>
+                {rfq.meal_type_per_day && rfq.meal_type_per_day.length > 0
+                  ? rfq.same_meal_type_all_dates
+                    ? rfq.meal_type_per_day[0].mealType
+                    : 'Varies by day'
+                  : '—'}
+              </dd>
+            </div>
+            <div className="flex justify-between">
               <dt className="text-muted-foreground">Rate per plate</dt>
               <dd>{rfq.rate_per_plate != null ? `TZS ${rfq.rate_per_plate.toLocaleString()}` : '—'}</dd>
             </div>
@@ -244,7 +257,11 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
             <tbody>
               {linksQuery.data.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="py-2 font-mono text-xs">{p.id}</td>
+                  <td className="py-2 font-mono text-xs">
+                    <Link href={`/proformas/${p.id}`} className="text-primary hover:underline">
+                      {p.id}
+                    </Link>
+                  </td>
                   <td className="py-2">{p.clientId ?? '—'}</td>
                   <td className="py-2">{p.invoiceDate}</td>
                   <td className="py-2">TZS {p.itemsSubtotal.toLocaleString()}</td>

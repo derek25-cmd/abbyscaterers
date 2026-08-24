@@ -10,7 +10,8 @@ import { ExportDocumentDialog } from "@/components/proforma-invoices/export-docu
 import type { ProformaInvoice, Client, Region } from "@/types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, Edit, Download, Trash2, FileCheck, Lock, Eye, EyeOff, Ban } from "lucide-react";
+import { supabase } from "@/lib/supabase-client";
 import { useToast } from "@/hooks/use-toast";
 import {
     AlertDialog,
@@ -31,6 +32,7 @@ import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CreateInvoiceDialog } from "@/components/proforma-invoices/create-invoice-dialog";
+import { ProformaComments } from "@/components/proforma-invoices/proforma-comments";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -55,6 +57,8 @@ export function ProformaInvoiceViewPageComponent() {
   const [showFooterOnly, setShowFooterOnly] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [suggestedInvoiceId, setSuggestedInvoiceId] = useState('');
+  const [isVoiding, setIsVoiding] = useState(false);
+  const [voidReason, setVoidReason] = useState('');
 
   const invoiceId = typeof params.id === 'string' ? params.id : undefined;
   
@@ -304,6 +308,33 @@ export function ProformaInvoiceViewPageComponent() {
     }
   }
 
+  const handleVoidProforma = async () => {
+    if (!invoiceId) return;
+    setIsVoiding(true);
+    try {
+      const { error } = await supabase.rpc('void_proforma', {
+        p_proforma_id: invoiceId,
+        p_reason: voidReason || null,
+      });
+      if (error) throw error;
+
+      setInvoice((prev) => (prev ? { ...prev, isVoided: true, voidedReason: voidReason || null } : prev));
+      toast({
+        title: "Proforma Marked Uninvoiced",
+        description: "It can never be invoiced now, and every order linked to it has been cancelled.",
+      });
+      setVoidReason('');
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to Void Proforma",
+        description: error instanceof Error ? error.message : "Unknown error.",
+      });
+    } finally {
+      setIsVoiding(false);
+    }
+  };
+
   const handleOpenCreateInvoiceDialog = async () => {
     const nextId = await getNextInvoiceId();
     setSuggestedInvoiceId(nextId);
@@ -474,21 +505,66 @@ export function ProformaInvoiceViewPageComponent() {
               {exporting ? <Loader2 className="animate-spin mr-2"/> : <Download className="w-4 h-4 mr-2" />}
               {exporting ? "Exporting..." : "Export PDF"}
             </Button>
-             <Button onClick={handleOpenCreateInvoiceDialog} disabled={!!invoice.isInvoiced || !!associatedInvoice || isCreatingInvoice}>
+             <Button onClick={handleOpenCreateInvoiceDialog} disabled={!!invoice.isInvoiced || !!invoice.isVoided || !!associatedInvoice || isCreatingInvoice}>
                 {isCreatingInvoice ? <Loader2 className="animate-spin mr-2"/> : <FileCheck className="w-4 h-4 mr-2" />}
-                {(invoice.isInvoiced || associatedInvoice) ? "Already Invoiced" : "Create Final Invoice"}
+                {invoice.isVoided ? "Uninvoiced" : (invoice.isInvoiced || associatedInvoice) ? "Already Invoiced" : "Create Final Invoice"}
             </Button>
             {associatedInvoice && (
               <a href={`/invoices/${associatedInvoice.id}`} className="text-xs text-primary underline">
                 View Invoice {associatedInvoice.id} →
               </a>
             )}
+            {!invoice.isInvoiced && !invoice.isVoided && !associatedInvoice && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10">
+                    <Ban className="w-4 h-4 mr-2" /> Mark as Uninvoiced
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Mark this proforma as Uninvoiced?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This is permanent — this proforma can never be invoiced after this, and every order
+                      linked to it will be set to Cancelled. Use this when the event won&apos;t go ahead
+                      (e.g. order cancellations).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Input
+                    placeholder="Reason (optional)"
+                    value={voidReason}
+                    onChange={(e) => setVoidReason(e.target.value)}
+                  />
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setVoidReason('')}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleVoidProforma}
+                      disabled={isVoiding}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isVoiding ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
+                      Mark as Uninvoiced
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            {invoice.isVoided && (
+              <span className="inline-flex items-center rounded-full bg-destructive/10 text-destructive px-3 py-1.5 text-xs font-medium">
+                <Ban className="w-3.5 h-3.5 mr-1.5" /> Uninvoiced
+                {invoice.voidedReason ? ` — ${invoice.voidedReason}` : ''}
+              </span>
+            )}
           </div>
         </div>
         <div ref={printRef}>
           <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} showFooterOnly={showFooterOnly}/>
         </div>
-        
+
+        <div className="mt-6 max-w-2xl">
+          <ProformaComments proformaId={invoice.id} />
+        </div>
+
         {/* Hidden template for bundle export without disrupting layout */}
         {associatedInvoice && (
           <div className="absolute opacity-0 pointer-events-none" style={{ zIndex: -50, top: -10000, width: '1000px' }}>

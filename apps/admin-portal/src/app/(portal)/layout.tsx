@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { LayoutDashboard, FileText } from 'lucide-react';
+import { LayoutDashboard, FileText, Receipt } from 'lucide-react';
 import { usePortalRole } from '@/lib/portal-role';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/rfqs', label: 'RFQs', icon: FileText },
+  { href: '/invoices', label: 'Request Invoices', icon: Receipt },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -50,7 +52,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-6 shrink-0">
           <span className="text-sm text-muted-foreground">{role ? `Role: ${role}` : ''}</span>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <UserButton afterSignOutUrl="/sign-in" />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 bg-muted/20">{children}</main>
       </div>

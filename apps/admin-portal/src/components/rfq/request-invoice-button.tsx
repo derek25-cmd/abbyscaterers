@@ -12,9 +12,12 @@ export interface InvoiceRequestSummary {
 }
 
 interface RequestInvoiceButtonProps {
-  rfqId: string;
+  // Omitted when requesting directly from a client's proforma list rather
+  // than from a specific RFQ's linked-proformas table.
+  rfqId?: string;
   proformaId: string;
   latestRequest: InvoiceRequestSummary | null;
+  onRequested?: () => void;
 }
 
 /**
@@ -23,7 +26,7 @@ interface RequestInvoiceButtonProps {
  * processes). This deliberately does NOT call create_invoice_from_proforma
  * itself; that stays entirely on the staff/existing-system side.
  */
-export function RequestInvoiceButton({ rfqId, proformaId, latestRequest }: RequestInvoiceButtonProps) {
+export function RequestInvoiceButton({ rfqId, proformaId, latestRequest, onRequested }: RequestInvoiceButtonProps) {
   const supabase = useSupabaseClient();
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -35,12 +38,13 @@ export function RequestInvoiceButton({ rfqId, proformaId, latestRequest }: Reque
     setError(null);
     try {
       const { error } = await supabase.from('portal_invoice_requests').insert({
-        rfq_id: rfqId,
+        rfq_id: rfqId ?? null,
         proforma_id: proformaId,
         requested_by_id: user?.id ?? null,
       });
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['rfq-invoice-requests', rfqId] });
+      if (rfqId) queryClient.invalidateQueries({ queryKey: ['rfq-invoice-requests', rfqId] });
+      onRequested?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to request invoice');
     } finally {
