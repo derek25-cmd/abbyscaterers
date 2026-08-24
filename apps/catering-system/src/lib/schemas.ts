@@ -1,7 +1,7 @@
 
 import { z } from "zod";
 import { format } from "date-fns";
-import { RECIPE_TYPES, REGIONS } from "@/types";
+import { RECIPE_TYPES, REGIONS, ORDER_STATUSES } from "@/types";
 
 const isValidDate = (dateString?: string) => {
     if (!dateString) return false;
@@ -169,6 +169,7 @@ export const OrderSchema = z.object({
   proformaId: z.string().optional(),
   booking_id: z.string().nullable().optional(),
   region: z.enum(REGIONS).nullable().optional(),
+  status: z.enum(ORDER_STATUSES).optional(),
   clientEvents: z.array(ClientEventSchema).optional(),
 });
 export type OrderFormData = z.infer<typeof OrderSchema>;

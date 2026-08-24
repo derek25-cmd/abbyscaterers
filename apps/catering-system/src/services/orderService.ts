@@ -15,6 +15,7 @@ const mapDbToOrder = (dbOrder: any): Order => {
     proformaId: dbOrder.proforma_id || '', // Map from snake_case db column
     booking_id: dbOrder.booking_id,
     region: dbOrder.region,
+    status: dbOrder.status || 'confirmed',
     clientEvents: dbOrder.clientEvents || [], // Database column is camelCase
     createdAt: dbOrder.createdAt,
     updatedAt: dbOrder.updatedAt,
@@ -117,6 +118,7 @@ export const addOrder = async (orderData: Partial<OrderFormData>): Promise<Order
             proforma_id: orderData.proformaId,
             booking_id: orderData.booking_id,
             region: orderData.region,
+            status: orderData.status || 'pending_confirmation',
             clientEvents: processedEvents,
             createdAt: now,
             updatedAt: now,
@@ -150,7 +152,8 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
         if (updates.proformaId !== undefined) payload.proforma_id = updates.proformaId;
         if (updates.booking_id !== undefined) payload.booking_id = updates.booking_id;
         if (updates.region !== undefined) payload.region = updates.region;
-        
+        if (updates.status !== undefined) payload.status = updates.status;
+
         if (updates.clientEvents !== undefined) {
             const eventsNeedingId = (updates.clientEvents || []).filter(
                 (e: any) => !isRealEventId(e.id)
@@ -252,6 +255,7 @@ export const bulkAddOrders = async (ordersData: Partial<OrderFormData>[]): Promi
                 proforma_id: orderData.proformaId,
                 booking_id: orderData.booking_id,
                 region: orderData.region,
+                status: orderData.status || 'pending_confirmation',
                 clientEvents: processedEvents,
                 createdAt: now,
                 updatedAt: now,

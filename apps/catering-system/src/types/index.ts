@@ -132,6 +132,9 @@ export interface ClientEvent {
   customEventType?: string;
 }
 
+export const ORDER_STATUSES = ["pending_confirmation", "confirmed", "cancelled"] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
 export interface Order {
   id: string; // User-facing unique ID
   name: string;
@@ -142,6 +145,7 @@ export interface Order {
   proformaId?: string;
   booking_id?: string | null;
   region?: Region | null;
+  status?: OrderStatus; // defaults to 'confirmed' in the DB for pre-existing rows; new orders set it explicitly
   clientEvents: ClientEvent[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string

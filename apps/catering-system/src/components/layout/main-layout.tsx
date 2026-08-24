@@ -63,6 +63,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { PrivateRoute } from "./private-route";
 import { NotificationCenter } from "./notification-center";
+import { UnconfirmedOrdersReminder } from "@/components/orders/unconfirmed-orders-reminder";
 
 
 const navItems = [
@@ -220,6 +221,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
+      <UnconfirmedOrdersReminder />
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
              <div className="flex items-center gap-2.5 p-2">

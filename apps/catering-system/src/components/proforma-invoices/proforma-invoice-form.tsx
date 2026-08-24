@@ -28,7 +28,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { REGIONS, type Order } from '@/types';
+import { REGIONS, type Order, type OrderStatus } from '@/types';
 import { Alert, AlertDescription, AlertTitle } from "@/components/hr/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +104,11 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
     const [selectedOrderIdsForImport, setSelectedOrderIdsForImport] = useState<string[]>([]);
     const [isServiceDescModified, setIsServiceDescModified] = useState(false);
     const [isPersistingDrafts, setIsPersistingDrafts] = useState(false);
+
+    // Confirmation status for any new orders persisted from this wizard —
+    // not a proforma field itself (proformas have no such concept), just
+    // drives orderPayload.status in persistDraftOrders below.
+    const [newOrderStatus, setNewOrderStatus] = useState<OrderStatus>("pending_confirmation");
 
     // Day-count calculation preference — not part of the persisted form data,
     // just changes how the (already-persisted) numberOfDays field is computed.
@@ -498,6 +503,7 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                     description: `Manually defined via Proforma Wizard.`,
                     proformaId: docId.startsWith('TEMP-') ? null : docId,
                     region: firstItem.region ?? data.region ?? undefined,
+                    status: newOrderStatus,
                     clientEvents: validItems.map(gi => ({
                         id: gi.id,
                         mealType: gi.mealType,
@@ -772,6 +778,15 @@ export function ProformaInvoiceForm({ invoiceId, clientId }: ProformaInvoiceForm
                                              <div className="flex justify-between items-center bg-primary/5 p-4 rounded-xl border border-primary/10">
                                                 <h3 className="text-lg font-bold flex items-center gap-2 text-primary"><Utensils className="h-5 w-5" /> Line Items</h3>
                                                 <div className="flex items-center gap-2">
+                                                    <Select value={newOrderStatus} onValueChange={(v) => setNewOrderStatus(v as OrderStatus)}>
+                                                        <SelectTrigger className="w-[180px] h-9 bg-background text-[10px] font-black uppercase tracking-widest border-2">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="pending_confirmation">Pending Confirmation</SelectItem>
+                                                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                     <Button type="button" variant="outline" size="sm" onClick={() => persistDraftOrders()} disabled={isPersistingDrafts} className="bg-background font-black italic text-[10px] tracking-widest border-2">
                                                         {isPersistingDrafts ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                                                         SAVE ALL DRAFTS

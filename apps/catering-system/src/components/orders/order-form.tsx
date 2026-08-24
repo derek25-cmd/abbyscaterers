@@ -304,7 +304,8 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
           endDate: format(new Date(), 'yyyy-MM-dd'),
           description: "",
           proformaId: "",
-          clientEvents: [{ 
+          status: "pending_confirmation",
+          clientEvents: [{
               date: format(new Date(), 'yyyy-MM-dd'),
               mealType: "Lunch only", 
               numberOfPeople: 10,
@@ -485,6 +486,22 @@ export function OrderForm({ order, clientId }: OrderFormProps) {
                     <FormItem>
                         <FormLabel>Internal Description (Optional)</FormLabel>
                         <FormControl><Textarea placeholder="Any internal notes about this order..." {...field} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="status" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Confirmation Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                <SelectItem value="pending_confirmation">Pending Confirmation</SelectItem>
+                                <SelectItem value="confirmed">Confirmed</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <FormMessage />
                     </FormItem>
                 )} />
