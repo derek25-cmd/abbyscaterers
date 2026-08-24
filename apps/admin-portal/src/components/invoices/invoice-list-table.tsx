@@ -4,19 +4,14 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
 
-interface InvoiceListItem {
+interface InvoiceListItem extends InvoiceTotalFields {
   id: string;
   invoiceDate: string;
   clientId: string | null;
   clients: { companyName: string } | null;
   status: 'outstanding' | 'paid' | 'partially paid';
-  items: { total?: number }[] | null;
-  serviceCharge: number | null;
-  transportCosts: number | null;
-  numberOfDays: number | null;
-  multiplyByDays: boolean | null;
-  vatType: 'inclusive' | 'exclusive';
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -30,17 +25,6 @@ const STATUS_CLASS: Record<string, string> = {
   paid: 'bg-emerald-100 text-emerald-800',
   'partially paid': 'bg-amber-100 text-amber-800',
 };
-
-// Same grand-total shape as apps/catering-system/src/lib/utils.ts's
-// calculateGrandTotal — just enough for a list-row figure; the full,
-// tax-rate-aware breakdown lives in invoice-detail.tsx.
-function grandTotal(inv: InvoiceListItem): number {
-  const subtotal = (inv.items ?? []).reduce((sum, item) => sum + (item.total ?? 0), 0);
-  const totalForDays = inv.multiplyByDays ? subtotal * (inv.numberOfDays || 1) : subtotal;
-  const totalBeforeVat = totalForDays + (inv.serviceCharge ?? 0) + (inv.transportCosts ?? 0);
-  if (inv.vatType === 'exclusive') return totalBeforeVat * 1.18;
-  return totalBeforeVat;
-}
 
 export function InvoiceListTable() {
   const supabase = useSupabaseClient();
@@ -108,7 +92,7 @@ export function InvoiceListTable() {
               </td>
               <td className="py-2">{inv.clients?.companyName ?? inv.clientId ?? '—'}</td>
               <td className="py-2">{inv.invoiceDate}</td>
-              <td className="py-2 text-right">TZS {grandTotal(inv).toLocaleString()}</td>
+              <td className="py-2 text-right">TZS {computeInvoiceGrandTotal(inv).toLocaleString()}</td>
               <td className="py-2">
                 <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_CLASS[inv.status] ?? ''}`}>
                   {STATUS_LABEL[inv.status] ?? inv.status}
