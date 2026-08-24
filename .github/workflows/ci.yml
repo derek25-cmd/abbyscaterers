@@ -16,16 +16,30 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            apps/catering-system/package-lock.json
 
+      # apps/catering-system is a standalone project (its own lockfile) —
+      # it doesn't depend on the shared packages/*, so it isn't part of the
+      # root npm workspaces. Root npm ci only covers apps/admin-portal and
+      # packages/*.
       - run: npm ci
 
-      - run: npm run typecheck --workspace=apps/catering-system
+      - run: npm ci
+        working-directory: apps/catering-system
 
-      - run: npm run lint --workspace=apps/catering-system
+      - run: npm run typecheck
+        working-directory: apps/catering-system
 
-      - run: npm run test --workspace=apps/catering-system
+      - run: npm run lint
+        working-directory: apps/catering-system
 
-      - run: npm run build --workspace=apps/catering-system
+      - run: npm run test
+        working-directory: apps/catering-system
+
+      - run: npm run build
+        working-directory: apps/catering-system
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -36,3 +50,7 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+
+      - run: npm run typecheck --workspace=apps/admin-portal
+
+      - run: npm run lint --workspace=apps/admin-portal
