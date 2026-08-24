@@ -5,6 +5,22 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PORTAL_ROLES, BRANCHES, type PortalRole, type Branch } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { SuperAdminGate } from '@/components/admin/super-admin-gate';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
+
+const selectClass = 'mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
+const selectClassSm = 'rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
 
 interface PortalUserRow {
   id: string;
@@ -72,62 +88,61 @@ function UsersAdmin() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Users</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Users</h1>
           <p className="text-sm text-muted-foreground">Manage admin portal access, roles, and branches.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAdd((v) => !v)}
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
-        >
+        <Button type="button" onClick={() => setShowAdd((v) => !v)}>
           Add User
-        </button>
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {showAdd && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <h2 className="font-medium">Provision a new portal user</h2>
-          <p className="text-xs text-muted-foreground">
-            The user must already have a Clerk account — get their Clerk user id from the Clerk dashboard. This
-            doesn&apos;t create a Clerk account, only grants it portal access.
-          </p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Provision a new portal user</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              The user must already have a Clerk account — get their Clerk user id from the Clerk dashboard. This
+              doesn&apos;t create a Clerk account, only grants it portal access.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-muted-foreground">Clerk User ID</label>
-              <input
+              <Label className="text-xs text-muted-foreground font-normal">Clerk User ID</Label>
+              <Input
                 value={newUser.id}
                 onChange={(e) => setNewUser((u) => ({ ...u, id: e.target.value }))}
                 placeholder="user_..."
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Email</label>
-              <input
+              <Label className="text-xs text-muted-foreground font-normal">Email</Label>
+              <Input
                 value={newUser.email}
                 onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Full name</label>
-              <input
+              <Label className="text-xs text-muted-foreground font-normal">Full name</Label>
+              <Input
                 value={newUser.full_name}
                 onChange={(e) => setNewUser((u) => ({ ...u, full_name: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Role</label>
+              <Label className="text-xs text-muted-foreground font-normal">Role</Label>
               <select
                 value={newUser.role}
                 onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value as PortalRole }))}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={selectClass}
               >
                 {PORTAL_ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -137,11 +152,11 @@ function UsersAdmin() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Branch (optional — blank = all)</label>
+              <Label className="text-xs text-muted-foreground font-normal">Branch (optional — blank = all)</Label>
               <select
                 value={newUser.branch}
                 onChange={(e) => setNewUser((u) => ({ ...u, branch: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className={selectClass}
               >
                 <option value="">All branches</option>
                 {BRANCHES.map((b) => (
@@ -152,40 +167,36 @@ function UsersAdmin() {
               </select>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={addUser}
-            disabled={adding}
-            className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
+          <Button type="button" onClick={addUser} disabled={adding}>
             {adding ? 'Adding…' : 'Add User'}
-          </button>
-        </div>
+          </Button>
+          </CardContent>
+        </Card>
       )}
 
       {usersQuery.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">Email</th>
-              <th className="py-2">Name</th>
-              <th className="py-2">Role</th>
-              <th className="py-2">Branch</th>
-              <th className="py-2">Active</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Branch</TableHead>
+              <TableHead>Active</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(usersQuery.data ?? []).map((u) => (
-              <tr key={u.id} className="border-b border-border last:border-0">
-                <td className="py-2">{u.email}</td>
-                <td className="py-2">{u.full_name ?? '—'}</td>
-                <td className="py-2">
+              <TableRow key={u.id}>
+                <TableCell>{u.email}</TableCell>
+                <TableCell>{u.full_name ?? '—'}</TableCell>
+                <TableCell>
                   <select
                     value={u.role}
                     onChange={(e) => updateUser(u.id, { role: e.target.value as PortalRole })}
-                    className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+                    className={selectClassSm}
                   >
                     {PORTAL_ROLES.map((r) => (
                       <option key={r} value={r}>
@@ -193,12 +204,12 @@ function UsersAdmin() {
                       </option>
                     ))}
                   </select>
-                </td>
-                <td className="py-2">
+                </TableCell>
+                <TableCell>
                   <select
                     value={u.branch ?? ''}
                     onChange={(e) => updateUser(u.id, { branch: (e.target.value || null) as Branch | null })}
-                    className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+                    className={selectClassSm}
                   >
                     <option value="">All branches</option>
                     {BRANCHES.map((b) => (
@@ -207,18 +218,17 @@ function UsersAdmin() {
                       </option>
                     ))}
                   </select>
-                </td>
-                <td className="py-2">
-                  <input
-                    type="checkbox"
+                </TableCell>
+                <TableCell>
+                  <Checkbox
                     checked={u.is_active}
-                    onChange={(e) => updateUser(u.id, { is_active: e.target.checked })}
+                    onCheckedChange={(checked) => updateUser(u.id, { is_active: checked === true })}
                   />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );

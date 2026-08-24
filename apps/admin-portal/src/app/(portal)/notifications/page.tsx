@@ -6,6 +6,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { AlertTriangle } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface NotificationRow {
   id: string;
@@ -94,46 +96,44 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Notifications</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Notifications</h1>
           <p className="text-sm text-muted-foreground">
             Email and SMS aren&apos;t set up yet — in-app only for now.
           </p>
         </div>
         {unreadCount > 0 && (
-          <button
-            type="button"
-            onClick={markAllRead}
-            className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
-          >
+          <Button type="button" variant="outline" onClick={markAllRead}>
             Mark all read
-          </button>
+          </Button>
         )}
       </div>
 
       {deadlinesQuery.data && deadlinesQuery.data.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-2">
-          <h2 className="font-medium flex items-center gap-1.5 text-amber-900">
-            <AlertTriangle className="h-4 w-4" /> Deadlines approaching (next 24h)
-          </h2>
-          <ul className="text-sm space-y-1">
-            {deadlinesQuery.data.map((r) => (
-              <li key={r.id}>
-                <button onClick={() => router.push(`/rfqs/${r.id}`)} className="text-primary hover:underline">
-                  {r.title}
-                </button>{' '}
-                <span className="text-muted-foreground">
-                  — proforma required by {new Date(r.proforma_required_by).toLocaleString()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card className="border-amber-300 bg-amber-50">
+          <div className="p-4 space-y-2">
+            <h2 className="font-medium flex items-center gap-1.5 text-amber-900">
+              <AlertTriangle className="h-4 w-4" /> Deadlines approaching (next 24h)
+            </h2>
+            <ul className="text-sm space-y-1">
+              {deadlinesQuery.data.map((r) => (
+                <li key={r.id}>
+                  <button onClick={() => router.push(`/rfqs/${r.id}`)} className="text-primary hover:underline">
+                    {r.title}
+                  </button>{' '}
+                  <span className="text-muted-foreground">
+                    — proforma required by {new Date(r.proforma_required_by).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Card>
       )}
 
-      <div className="rounded-lg border border-border bg-card divide-y divide-border">
+      <Card className="divide-y divide-border">
         {notifications.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">No notifications yet.</p>
         ) : (
@@ -149,7 +149,7 @@ export default function NotificationsPage() {
             </button>
           ))
         )}
-      </div>
+      </Card>
     </div>
   );
 }

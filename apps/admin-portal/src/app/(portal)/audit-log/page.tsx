@@ -4,6 +4,16 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { SuperAdminGate } from '@/components/admin/super-admin-gate';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface AuditRow {
   id: string;
@@ -53,46 +63,46 @@ function AuditLog() {
   }, [query.data, search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-semibold">Audit Log</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Audit Log</h1>
         <p className="text-sm text-muted-foreground">
           Approvals, rejections, request fulfillments, and access changes. Most recent 200 entries.
         </p>
       </div>
 
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by action, table, record, or actor…"
-        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+        className="max-w-sm"
       />
 
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">When</th>
-              <th className="py-2">Actor</th>
-              <th className="py-2">Action</th>
-              <th className="py-2">Record</th>
-              <th className="py-2">Note</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>When</TableHead>
+              <TableHead>Actor</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Record</TableHead>
+              <TableHead>Note</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.map((r) => (
-              <tr key={r.id} className="border-b border-border last:border-0 align-top">
-                <td className="py-2 text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="py-2">
-                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs mr-1 ${ACTOR_TYPE_CLASS[r.actor_type]}`}>
+              <TableRow key={r.id} className="align-top">
+                <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={`mr-1 ${ACTOR_TYPE_CLASS[r.actor_type]}`}>
                     {r.actor_type}
-                  </span>
+                  </Badge>
                   <span className="font-mono text-xs">{r.actor_id ?? '—'}</span>
-                </td>
-                <td className="py-2 font-mono text-xs">{r.action}</td>
-                <td className="py-2 text-xs">
+                </TableCell>
+                <TableCell className="font-mono text-xs">{r.action}</TableCell>
+                <TableCell className="text-xs">
                   {r.table_name ? (
                     <>
                       {r.table_name}
@@ -101,19 +111,19 @@ function AuditLog() {
                   ) : (
                     '—'
                   )}
-                </td>
-                <td className="py-2 text-xs text-muted-foreground">{r.note ?? '—'}</td>
-              </tr>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{r.note ?? '—'}</TableCell>
+              </TableRow>
             ))}
             {filtered.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-4 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No audit entries match &quot;{search}&quot;.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );
