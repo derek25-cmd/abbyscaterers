@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RfqStatusHistoryEntry, PaxPerDayEntry, MealTypePerDayEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
@@ -256,7 +257,11 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
             <tbody>
               {linksQuery.data.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="py-2 font-mono text-xs">{p.id}</td>
+                  <td className="py-2 font-mono text-xs">
+                    <Link href={`/proformas/${p.id}`} className="text-primary hover:underline">
+                      {p.id}
+                    </Link>
+                  </td>
                   <td className="py-2">{p.clientId ?? '—'}</td>
                   <td className="py-2">{p.invoiceDate}</td>
                   <td className="py-2">TZS {p.itemsSubtotal.toLocaleString()}</td>

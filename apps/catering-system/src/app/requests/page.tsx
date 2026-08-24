@@ -17,7 +17,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { FileText, Receipt, BarChart3, Loader2 } from "lucide-react";
+import { FileText, Receipt, BarChart3, Loader2, MessageSquareReply } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface RfqRequestRow {
@@ -26,11 +26,16 @@ interface RfqRequestRow {
   status: string;
   client_name_freetext: string | null;
   client_id: string | null;
+  clients: { companyName: string } | null;
+  service_start_date: string | null;
+  service_end_date: string | null;
   target_event_date: string | null;
   branch: string | null;
   created_at: string;
   rfq_proforma_links: { proforma_id: string }[];
 }
+
+const ANSWERABLE_STATUSES = new Set(["draft", "submitted", "in_review"]);
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "outline",
@@ -49,11 +54,13 @@ function ProformaRequestsTab() {
       const { data, error } = await supabase
         .from("rfqs")
         .select(
-          "id, title, status, client_name_freetext, client_id, target_event_date, branch, created_at, rfq_proforma_links(proforma_id)"
+          "id, title, status, client_name_freetext, client_id, clients(companyName), service_start_date, service_end_date, target_event_date, branch, created_at, rfq_proforma_links(proforma_id)"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as RfqRequestRow[];
+      // clients(...) is a many-to-one embed but supabase-js's untyped
+      // client infers every embed as an array regardless of cardinality.
+      return data as unknown as RfqRequestRow[];
     },
   });
 
@@ -78,9 +85,9 @@ function ProformaRequestsTab() {
           <TableHead>Request</TableHead>
           <TableHead>Client</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Branch</TableHead>
-          <TableHead>Target date</TableHead>
+          <TableHead>Service period</TableHead>
           <TableHead>Linked proforma</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -90,12 +97,15 @@ function ProformaRequestsTab() {
               <div className="font-medium">{rfq.title}</div>
               <div className="text-xs text-muted-foreground font-mono">{rfq.id}</div>
             </TableCell>
-            <TableCell>{rfq.client_name_freetext ?? rfq.client_id ?? "—"}</TableCell>
+            <TableCell>{rfq.clients?.companyName ?? rfq.client_name_freetext ?? rfq.client_id ?? "—"}</TableCell>
             <TableCell>
               <Badge variant={STATUS_VARIANT[rfq.status] ?? "outline"}>{rfq.status}</Badge>
             </TableCell>
-            <TableCell>{rfq.branch ?? "—"}</TableCell>
-            <TableCell>{rfq.target_event_date ?? "—"}</TableCell>
+            <TableCell>
+              {rfq.service_start_date && rfq.service_end_date
+                ? `${rfq.service_start_date} – ${rfq.service_end_date}`
+                : rfq.target_event_date ?? "—"}
+            </TableCell>
             <TableCell>
               {rfq.rfq_proforma_links.length > 0 ? (
                 <div className="flex flex-col gap-1">
@@ -111,6 +121,15 @@ function ProformaRequestsTab() {
                 </div>
               ) : (
                 <span className="text-xs text-muted-foreground">Not yet created</span>
+              )}
+            </TableCell>
+            <TableCell className="text-right">
+              {rfq.rfq_proforma_links.length === 0 && ANSWERABLE_STATUSES.has(rfq.status) && (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/proforma-invoices/new?fromRfq=${rfq.id}`}>
+                    <MessageSquareReply className="h-4 w-4 mr-1.5" /> Answer
+                  </Link>
+                </Button>
               )}
             </TableCell>
           </TableRow>

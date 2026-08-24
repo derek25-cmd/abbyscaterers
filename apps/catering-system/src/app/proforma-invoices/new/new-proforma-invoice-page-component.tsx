@@ -8,6 +8,7 @@ import { ProformaInvoiceForm } from "@/components/proforma-invoices/proforma-inv
 export function NewProformaInvoicePageComponent() {
     const searchParams = useSearchParams();
     const clientId = searchParams.get('clientId');
-    
-    return <ProformaInvoiceForm clientId={clientId ?? undefined} />;
+    const fromRfq = searchParams.get('fromRfq');
+
+    return <ProformaInvoiceForm clientId={clientId ?? undefined} fromRfqId={fromRfq ?? undefined} />;
 }

@@ -32,6 +32,7 @@ import html2canvas from 'html2canvas';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { CreateInvoiceDialog } from "@/components/proforma-invoices/create-invoice-dialog";
+import { ProformaComments } from "@/components/proforma-invoices/proforma-comments";
 
 export function ProformaInvoiceViewPageComponent() {
   const params = useParams();
@@ -559,7 +560,11 @@ export function ProformaInvoiceViewPageComponent() {
         <div ref={printRef}>
           <ProformaInvoiceTemplate invoiceData={invoice} client={client} showHeaders={showHeaders} preserveSpace={preserveSpace} showFooterOnly={showFooterOnly}/>
         </div>
-        
+
+        <div className="mt-6 max-w-2xl">
+          <ProformaComments proformaId={invoice.id} />
+        </div>
+
         {/* Hidden template for bundle export without disrupting layout */}
         {associatedInvoice && (
           <div className="absolute opacity-0 pointer-events-none" style={{ zIndex: -50, top: -10000, width: '1000px' }}>
