@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Rfq, RfqStatusHistoryEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { LinkProformaForm } from './link-proforma-form';
+import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
 
 interface LinkedProforma {
   id: string;
@@ -65,6 +66,32 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
     },
   });
 
+  const invoiceRequestsQuery = useQuery({
+    queryKey: ['rfq-invoice-requests', rfqId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('portal_invoice_requests')
+        .select('proforma_id, status, invoice_id, rejection_reason, requested_at')
+        .eq('rfq_id', rfqId)
+        .order('requested_at', { ascending: false });
+      if (error) throw error;
+      // Keep only the most recent request per proforma — a rejected
+      // request can be followed by a fresh one, and the newest is what
+      // matters for what the button should show.
+      const latestByProforma = new Map<string, InvoiceRequestSummary>();
+      for (const row of data ?? []) {
+        if (!latestByProforma.has(row.proforma_id)) {
+          latestByProforma.set(row.proforma_id, {
+            status: row.status,
+            invoiceId: row.invoice_id,
+            rejectionReason: row.rejection_reason,
+          });
+        }
+      }
+      return latestByProforma;
+    },
+  });
+
   useEffect(() => {
     const channel = supabase
       .channel(`rfq-${rfqId}-changes`)
@@ -76,6 +103,9 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rfq_proforma_links', filter: `rfq_id=eq.${rfqId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['rfq-links', rfqId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'portal_invoice_requests', filter: `rfq_id=eq.${rfqId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rfq-invoice-requests', rfqId] });
       })
       .subscribe();
 
@@ -152,6 +182,7 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
                 <th className="py-2 font-medium">Invoice date</th>
                 <th className="py-2 font-medium">Items subtotal</th>
                 <th className="py-2 font-medium">Linked</th>
+                <th className="py-2 font-medium">Invoice</th>
               </tr>
             </thead>
             <tbody>
@@ -162,6 +193,13 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
                   <td className="py-2">{p.invoiceDate}</td>
                   <td className="py-2">TZS {p.itemsSubtotal.toLocaleString()}</td>
                   <td className="py-2 text-muted-foreground">{new Date(p.linkedAt).toLocaleDateString()}</td>
+                  <td className="py-2">
+                    <RequestInvoiceButton
+                      rfqId={rfqId}
+                      proformaId={p.id}
+                      latestRequest={invoiceRequestsQuery.data?.get(p.id) ?? null}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
