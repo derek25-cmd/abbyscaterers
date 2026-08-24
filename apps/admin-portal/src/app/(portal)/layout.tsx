@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { LayoutDashboard, FileText } from 'lucide-react';
+import { LayoutDashboard, FileText, Receipt } from 'lucide-react';
 import { usePortalRole } from '@/lib/portal-role';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/rfqs', label: 'RFQs', icon: FileText },
+  { href: '/invoices', label: 'Request Invoices', icon: Receipt },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {

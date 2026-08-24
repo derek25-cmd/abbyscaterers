@@ -40,6 +40,11 @@ export const PaxPerDayEntrySchema = z.object({
   pax: z.number().min(1, "Pax must be at least 1"),
 });
 
+export const MealTypePerDayEntrySchema = z.object({
+  date: z.string().refine(isValidDateStr, "Invalid date"),
+  mealType: z.string().min(1, "Meal type is required"),
+});
+
 // Mirrors the fields on the proforma wizard's "Recipient" + "Service
 // Period" sections (clientId via a real client picker, a date range) plus
 // the RFQ-specific additions: a proforma-required-by deadline, per-day pax
@@ -56,6 +61,8 @@ export const RfqSchema = z.object({
   }),
   samePaxAllDates: z.boolean(),
   paxPerDay: z.array(PaxPerDayEntrySchema).min(1, "Pax for at least one day is required"),
+  sameMealTypeAllDates: z.boolean(),
+  mealTypePerDay: z.array(MealTypePerDayEntrySchema).min(1, "Meal type for at least one day is required"),
   ratePerPlate: z.number().min(0, "Rate per plate cannot be negative"),
   vatType: z.enum(['inclusive', 'exclusive']),
   location: z.string().min(1, "Location is required"),

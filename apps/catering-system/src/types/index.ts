@@ -194,6 +194,9 @@ export interface ProformaInvoice {
   updatedAt: string; // ISO date string
   isInvoiced?: boolean; // New status flag
   booking_id?: string | null;
+  isVoided?: boolean; // "Uninvoiced" — permanent, never invoiceable
+  voidedAt?: string | null;
+  voidedReason?: string | null;
 }
 
 

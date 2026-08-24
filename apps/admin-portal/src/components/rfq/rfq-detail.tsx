@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { RfqStatusHistoryEntry, PaxPerDayEntry } from '@abbyscaterers/types';
+import type { RfqStatusHistoryEntry, PaxPerDayEntry, MealTypePerDayEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { LinkProformaForm } from './link-proforma-form';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
@@ -34,6 +34,8 @@ interface RfqRecord {
   proforma_required_by: string | null;
   same_pax_all_dates: boolean;
   pax_per_day: PaxPerDayEntry[] | null;
+  same_meal_type_all_dates: boolean;
+  meal_type_per_day: MealTypePerDayEntry[] | null;
   rate_per_plate: number | null;
   vat_type: 'inclusive' | 'exclusive' | null;
   location: string | null;
@@ -187,6 +189,16 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
                   ? rfq.same_pax_all_dates
                     ? `${rfq.pax_per_day[0].pax} / day (all dates)`
                     : `${rfq.pax_per_day.reduce((s, p) => s + p.pax, 0)} total, varies by day`
+                  : '—'}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Meal type</dt>
+              <dd>
+                {rfq.meal_type_per_day && rfq.meal_type_per_day.length > 0
+                  ? rfq.same_meal_type_all_dates
+                    ? rfq.meal_type_per_day[0].mealType
+                    : 'Varies by day'
                   : '—'}
               </dd>
             </div>
