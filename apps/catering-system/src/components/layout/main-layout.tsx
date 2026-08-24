@@ -31,7 +31,8 @@ import {
     ArrowLeft,
     RefreshCw,
     GraduationCap,
-    TrendingUp
+    TrendingUp,
+    Inbox
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -66,6 +67,7 @@ import { NotificationCenter } from "./notification-center";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/requests", label: "Requests", icon: Inbox },
   { href: "/orders", label: "Single Orders", icon: BookOpen },
   { href: "/bookings", label: "Bookings", icon: CalendarClock },
   { href: "/delivery-notes", label: "Delivery Notes", icon: Truck },
