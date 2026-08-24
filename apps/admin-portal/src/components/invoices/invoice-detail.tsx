@@ -74,9 +74,9 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   });
 
   const ratesQuery = useQuery({
-    queryKey: ['tax-rates'],
+    queryKey: ['invoice-tax-rates'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('tax_rates').select('tax_type, rate');
+      const { data, error } = await supabase.from('invoice_tax_rates').select('tax_type, rate');
       if (error) throw error;
       return data as TaxRateRow[];
     },
@@ -88,7 +88,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
     enabled: !!clientId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('client_tax_settings')
+        .from('client_invoice_tax_settings')
         .select('tax_type, applies')
         .eq('client_id', clientId as string);
       if (error) throw error;

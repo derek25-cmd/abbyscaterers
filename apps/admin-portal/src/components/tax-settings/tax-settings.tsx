@@ -33,8 +33,8 @@ interface ClientTaxSettingRow {
 }
 
 /**
- * Writes are RLS-gated to super_admin/finance (tax_rates_write /
- * client_tax_settings_write, supabase/migrations/20260901140000_tax_settings.sql)
+ * Writes are RLS-gated to super_admin/finance (invoice_tax_rates_write /
+ * client_invoice_tax_settings_write, supabase/migrations/20260901140000_tax_settings.sql)
  * — this role check is UI-only, same documented convention as usePortalRole
  * itself: it decides what to show, never what to allow.
  */
@@ -51,9 +51,9 @@ export function TaxSettings() {
   const canEdit = role === 'super_admin' || role === 'finance';
 
   const ratesQuery = useQuery({
-    queryKey: ['tax-rates'],
+    queryKey: ['invoice-tax-rates'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('tax_rates').select('tax_type, rate');
+      const { data, error } = await supabase.from('invoice_tax_rates').select('tax_type, rate');
       if (error) throw error;
       return data as TaxRateRow[];
     },
@@ -74,7 +74,7 @@ export function TaxSettings() {
   const clientTaxQuery = useQuery({
     queryKey: ['client-tax-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('client_tax_settings').select('client_id, tax_type, applies');
+      const { data, error } = await supabase.from('client_invoice_tax_settings').select('client_id, tax_type, applies');
       if (error) throw error;
       return data as ClientTaxSettingRow[];
     },
@@ -105,11 +105,11 @@ export function TaxSettings() {
     setError(null);
     try {
       const { error } = await supabase
-        .from('tax_rates')
+        .from('invoice_tax_rates')
         .upsert({ tax_type: taxType, rate, updated_by: user?.id ?? null, updated_at: new Date().toISOString() });
       if (error) throw error;
       setRateDrafts((prev) => ({ ...prev, [taxType]: undefined }));
-      queryClient.invalidateQueries({ queryKey: ['tax-rates'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-tax-rates'] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save rate');
     } finally {
@@ -125,7 +125,7 @@ export function TaxSettings() {
       return [...rest, { client_id: clientId, tax_type: taxType, applies: next }];
     });
     try {
-      const { error } = await supabase.from('client_tax_settings').upsert({
+      const { error } = await supabase.from('client_invoice_tax_settings').upsert({
         client_id: clientId,
         tax_type: taxType,
         applies: next,
