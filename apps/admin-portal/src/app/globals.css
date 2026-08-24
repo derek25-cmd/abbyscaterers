@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Same palette as apps/catering-system/src/app/globals.css for visual
+   consistency between the two apps (creamy background / dark brown primary
+   in light mode). */
+@layer base {
+  :root {
+    --background: 48 83% 94%;
+    --foreground: 0 11% 21%;
+    --card: 45 100% 97%;
+    --card-foreground: 0 11% 21%;
+    --primary: 0 11% 21%;
+    --primary-foreground: 45 100% 97%;
+    --secondary: 45 30% 92%;
+    --secondary-foreground: 0 11% 21%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 45 40% 94%;
+    --muted-foreground: 0 6% 45%;
+    --accent: 0 11% 21%;
+    --accent-foreground: 45 100% 97%;
+    --border: 45 20% 88%;
+    --input: 45 20% 88%;
+    --ring: 0 11% 21%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 24 10% 10%;
+    --foreground: 35 10% 85%;
+    --card: 24 8% 12%;
+    --card-foreground: 35 10% 85%;
+    --primary: 40 90% 55%;
+    --primary-foreground: 24 10% 10%;
+    --secondary: 24 8% 18%;
+    --secondary-foreground: 35 10% 85%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 24 8% 15%;
+    --muted-foreground: 35 6% 60%;
+    --accent: 40 90% 55%;
+    --accent-foreground: 24 10% 10%;
+    --border: 24 8% 20%;
+    --input: 24 8% 20%;
+    --ring: 40 90% 55%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
