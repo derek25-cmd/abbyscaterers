@@ -7,6 +7,7 @@ import type { RfqStatusHistoryEntry, PaxPerDayEntry, MealTypePerDayEntry } from 
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { LinkProformaForm } from './link-proforma-form';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
+import { RequestCostingButton, type CostingRequestSummary } from './request-costing-button';
 
 interface LinkedProforma {
   id: string;
@@ -127,6 +128,29 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
     },
   });
 
+  const costingRequestQuery = useQuery({
+    queryKey: ['rfq-costing-request', rfqId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('portal_costing_requests')
+        .select('status, total_cost, total_revenue, gross_margin_pct, notes, rejection_reason')
+        .eq('rfq_id', rfqId)
+        .order('requested_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        status: data.status,
+        totalCost: data.total_cost,
+        totalRevenue: data.total_revenue,
+        grossMarginPct: data.gross_margin_pct,
+        notes: data.notes,
+        rejectionReason: data.rejection_reason,
+      } as CostingRequestSummary;
+    },
+  });
+
   useEffect(() => {
     const channel = supabase
       .channel(`rfq-${rfqId}-changes`)
@@ -141,6 +165,9 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'portal_invoice_requests', filter: `rfq_id=eq.${rfqId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['rfq-invoice-requests', rfqId] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'portal_costing_requests', filter: `rfq_id=eq.${rfqId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['rfq-costing-request', rfqId] });
       })
       .subscribe();
 
@@ -249,6 +276,10 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
             </div>
           </dl>
           {rfq.description && <p className="text-sm pt-2 border-t border-border">{rfq.description}</p>}
+          <div className="pt-2 border-t border-border">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase mb-1">Costing</h3>
+            <RequestCostingButton rfqId={rfqId} latestRequest={costingRequestQuery.data ?? null} />
+          </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4">
