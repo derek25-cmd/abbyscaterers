@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
-import { Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useAppSettings } from '@/lib/use-app-settings';
+import { exportDocumentToPdf } from '@/lib/pdf-export';
+import { ProformaPdfTemplate } from '@/components/pdf/proforma-pdf-template';
 
 interface ProformaItem {
   id: string;
@@ -15,13 +18,14 @@ interface ProformaItem {
   total: number;
   date?: string;
   particularDescription?: string;
+  orderId?: string | null;
 }
 
 interface ProformaRecord {
   id: string;
   invoiceDate: string;
   clientId: string | null;
-  clients: { companyName: string } | null;
+  clients: { companyName: string; address1: string | null; address2: string | null } | null;
   location: string;
   region: string | null;
   startDate: string;
@@ -30,6 +34,11 @@ interface ProformaRecord {
   serviceCharge: number;
   transportCosts: number;
   serviceDesc: string | null;
+  receiverName: string | null;
+  receiverPosition: string | null;
+  lpoNumber: string | null;
+  multiplyByDays: boolean | null;
+  numberOfDays: number | null;
   items: ProformaItem[];
   isInvoiced: boolean | null;
   isVoided: boolean | null;
@@ -47,24 +56,26 @@ interface CommentRow {
 }
 
 /**
- * A read/print view — NOT a re-implementation of catering-system's PDF
- * export (that's client-side jsPDF/html2canvas tightly coupled to its own
- * template components; porting or duplicating it here is a real
- * architecture decision that hasn't been made — see the plan notes on
- * document-engine reuse). "Export" here is the browser's own Print →
- * Save as PDF, driven by the @media print rules below, not a byte-
- * identical match to the existing system's branded template.
+ * PDF export renders ProformaPdfTemplate off-screen (same
+ * jsPDF/html2canvas pagination technique as catering-system's own
+ * proforma-invoice-view-page-component.tsx) and captures it — same
+ * header/footer/signature/stamp images (from the shared app_settings
+ * table), same TIN/VRN/terms/amount-in-words, so the output is the same
+ * document, not a re-derived approximation.
  */
 export function ProformaView({ proformaId }: { proformaId: string }) {
   const supabase = useSupabaseClient();
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const appSettingsQuery = useAppSettings();
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [showRejectReason, setShowRejectReason] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const proformaQuery = useQuery({
     queryKey: ['proforma-view', proformaId],
@@ -72,7 +83,7 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
       const { data, error } = await supabase
         .from('proforma_invoices')
         .select(
-          'id, "invoiceDate", "clientId", clients(companyName), location, region, "startDate", "endDate", "vatType", "serviceCharge", "transportCosts", "serviceDesc", items, "isInvoiced", "isVoided", "voidedReason", "reviewStatus", "reviewedAt", "rejectionReason"'
+          'id, "invoiceDate", "clientId", clients(companyName, address1, address2), location, region, "startDate", "endDate", "vatType", "serviceCharge", "transportCosts", "serviceDesc", "receiverName", "receiverPosition", "lpoNumber", "multiplyByDays", "numberOfDays", items, "isInvoiced", "isVoided", "voidedReason", "reviewStatus", "reviewedAt", "rejectionReason"'
         )
         .eq('id', proformaId)
         .single();
@@ -146,6 +157,25 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
     }
   };
 
+  const exportPdf = async (p: ProformaRecord) => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await exportDocumentToPdf({
+        cardId: 'proforma-invoice-pdf-content',
+        headerId: 'proforma-header',
+        contentId: 'proforma-main-content',
+        footerId: 'proforma-footer',
+        pdfScale: appSettingsQuery.data?.pdfScale ?? 2.0,
+        filename: `PI-${p.id} - ${p.clients?.companyName ?? 'Client'} - at ${p.invoiceDate}.pdf`,
+      });
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const submitComment = async () => {
     if (!comment.trim()) return;
     setSubmitting(true);
@@ -174,15 +204,7 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
 
   return (
     <div className="space-y-6">
-      <style jsx global>{`
-        @media print {
-          nav, aside, header, .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
-
-      <div className="flex items-center justify-between no-print">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Proforma {p.id}</h1>
           <div className="flex flex-wrap gap-1.5 mt-1">
@@ -232,13 +254,15 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
           )}
           <button
             type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
+            onClick={() => exportPdf(p)}
+            disabled={exporting || appSettingsQuery.isLoading}
+            className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
           >
-            <Printer className="h-4 w-4" /> Print / Export PDF
+            <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
           </button>
         </div>
       </div>
+      {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
       {showRejectReason && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2 no-print">
@@ -383,6 +407,31 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
           </button>
         </div>
       </div>
+
+      {appSettingsQuery.data && (
+        <div style={{ position: 'fixed', top: 0, left: '-10000px', zIndex: -1 }} aria-hidden="true">
+          <ProformaPdfTemplate
+            data={{
+              id: p.id,
+              invoiceDate: p.invoiceDate,
+              receiverName: p.receiverName,
+              receiverPosition: p.receiverPosition,
+              lpoNumber: p.lpoNumber,
+              clientCompanyName: p.clients?.companyName ?? null,
+              clientAddress1: p.clients?.address1 ?? null,
+              clientAddress2: p.clients?.address2 ?? null,
+              serviceDesc: p.serviceDesc,
+              serviceCharge: p.serviceCharge ?? 0,
+              transportCosts: p.transportCosts ?? 0,
+              multiplyByDays: p.multiplyByDays,
+              numberOfDays: p.numberOfDays,
+              vatType: p.vatType,
+              items: p.items ?? [],
+            }}
+            settings={appSettingsQuery.data}
+          />
+        </div>
+      )}
     </div>
   );
 }

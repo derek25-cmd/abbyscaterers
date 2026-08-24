@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -25,7 +25,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, Receipt, BarChart3, Loader2, MessageSquareReply, MoreHorizontal, Eye, Link2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FileText, Receipt, BarChart3, Calculator, Loader2, MessageSquareReply, MoreHorizontal, Eye, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ViewRfqDialog } from "@/components/requests/view-rfq-dialog";
 import { LinkExistingProformaDialog } from "@/components/requests/link-existing-proforma-dialog";
@@ -445,6 +447,240 @@ function InvoiceRequestsTab() {
   );
 }
 
+interface CostingRequestRow {
+  id: string;
+  rfq_id: string;
+  requested_at: string;
+  status: "pending" | "fulfilled" | "rejected";
+  total_cost: number | null;
+  total_revenue: number | null;
+  gross_margin_pct: number | null;
+  notes: string | null;
+  rejection_reason: string | null;
+}
+
+const COSTING_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  pending: "secondary",
+  fulfilled: "default",
+  rejected: "destructive",
+};
+
+/**
+ * Costing has no backend calculation to call (see
+ * supabase/migrations/20260901180000_costing_requests.sql) — staff fills
+ * in the real numbers from their own costing-report.tsx/DailyCostingModule.tsx
+ * work, same request/fulfill shape as invoice requests but with manual
+ * entry instead of an RPC.
+ */
+function CostingRequestsTab() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [actingOnId, setActingOnId] = useState<string | null>(null);
+  const [fulfillingId, setFulfillingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ totalCost: "", totalRevenue: "", marginPct: "", notes: "" });
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["costing-requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("portal_costing_requests")
+        .select("id, rfq_id, requested_at, status, total_cost, total_revenue, gross_margin_pct, notes, rejection_reason")
+        .order("requested_at", { ascending: false });
+      if (error) throw error;
+      return data as CostingRequestRow[];
+    },
+  });
+
+  const openFulfill = (request: CostingRequestRow) => {
+    setFulfillingId(request.id);
+    setForm({ totalCost: "", totalRevenue: "", marginPct: "", notes: "" });
+  };
+
+  const handleFulfill = async (request: CostingRequestRow) => {
+    const totalCost = Number(form.totalCost);
+    const totalRevenue = Number(form.totalRevenue);
+    if (!Number.isFinite(totalCost) || !Number.isFinite(totalRevenue)) {
+      toast({ variant: "destructive", title: "Enter valid numbers for cost and revenue" });
+      return;
+    }
+    const marginPct = form.marginPct.trim()
+      ? Number(form.marginPct)
+      : totalRevenue > 0
+      ? Math.round(((totalRevenue - totalCost) / totalRevenue) * 100 * 100) / 100
+      : 0;
+
+    setActingOnId(request.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error: updateError } = await supabase
+        .from("portal_costing_requests")
+        .update({
+          status: "fulfilled",
+          total_cost: totalCost,
+          total_revenue: totalRevenue,
+          gross_margin_pct: marginPct,
+          notes: form.notes || null,
+          fulfilled_by_id: user?.id ?? null,
+          fulfilled_at: new Date().toISOString(),
+        })
+        .eq("id", request.id);
+      if (updateError) throw updateError;
+
+      toast({ title: "Costing fulfilled", description: `Costing for RFQ ${request.rfq_id} recorded.` });
+      queryClient.invalidateQueries({ queryKey: ["costing-requests"] });
+      setFulfillingId(null);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Failed to fulfill costing request",
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setActingOnId(null);
+    }
+  };
+
+  const handleReject = async (request: CostingRequestRow) => {
+    const reason = window.prompt("Reason for rejecting this costing request (shown to the admin):");
+    if (reason === null) return;
+    setActingOnId(request.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error: updateError } = await supabase
+        .from("portal_costing_requests")
+        .update({
+          status: "rejected",
+          rejection_reason: reason || null,
+          fulfilled_by_id: user?.id ?? null,
+          fulfilled_at: new Date().toISOString(),
+        })
+        .eq("id", request.id);
+      if (updateError) throw updateError;
+      queryClient.invalidateQueries({ queryKey: ["costing-requests"] });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Failed to reject request",
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setActingOnId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading requests…
+      </div>
+    );
+  }
+  if (error) {
+    return <p className="text-sm text-destructive py-8">Failed to load requests: {(error as Error).message}</p>;
+  }
+  if (!data || data.length === 0) {
+    return <p className="text-sm text-muted-foreground py-8">No costing requests from the admin portal yet.</p>;
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>RFQ</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Requested</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {data.map((r) => (
+          <Fragment key={r.id}>
+            <TableRow>
+              <TableCell>
+                <Link href={`/requests`} className="font-mono text-xs text-primary hover:underline">
+                  {r.rfq_id}
+                </Link>
+              </TableCell>
+              <TableCell>
+                <Badge variant={COSTING_STATUS_VARIANT[r.status]}>{r.status}</Badge>
+                {r.status === "rejected" && r.rejection_reason && (
+                  <p className="text-xs text-muted-foreground mt-1">{r.rejection_reason}</p>
+                )}
+                {r.status === "fulfilled" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Cost {r.total_cost?.toLocaleString()} · Revenue {r.total_revenue?.toLocaleString()} · Margin {r.gross_margin_pct}%
+                  </p>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">{new Date(r.requested_at).toLocaleString()}</TableCell>
+              <TableCell className="text-right">
+                {r.status === "pending" && (
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" disabled={actingOnId === r.id} onClick={() => handleReject(r)}>
+                      Reject
+                    </Button>
+                    <Button size="sm" disabled={actingOnId === r.id} onClick={() => openFulfill(r)}>
+                      Fulfill
+                    </Button>
+                  </div>
+                )}
+              </TableCell>
+            </TableRow>
+            {fulfillingId === r.id && (
+              <TableRow key={`${r.id}-form`}>
+                <TableCell colSpan={4} className="bg-muted/30">
+                  <div className="grid grid-cols-4 gap-3 py-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Total Cost (TZS)</label>
+                      <Input
+                        type="number"
+                        value={form.totalCost}
+                        onChange={(e) => setForm((f) => ({ ...f, totalCost: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Total Revenue (TZS)</label>
+                      <Input
+                        type="number"
+                        value={form.totalRevenue}
+                        onChange={(e) => setForm((f) => ({ ...f, totalRevenue: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Margin % (auto if blank)</label>
+                      <Input
+                        type="number"
+                        value={form.marginPct}
+                        onChange={(e) => setForm((f) => ({ ...f, marginPct: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <Button size="sm" disabled={actingOnId === r.id} onClick={() => handleFulfill(r)}>
+                        {actingOnId === r.id ? "Saving…" : "Confirm"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setFulfillingId(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                    <div className="col-span-4">
+                      <label className="text-xs text-muted-foreground">Notes (optional)</label>
+                      <Textarea
+                        rows={2}
+                        value={form.notes}
+                        onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </Fragment>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 function PlaceholderTab({ label }: { label: string }) {
   return (
     <p className="text-sm text-muted-foreground py-8">
@@ -480,6 +716,9 @@ export default function RequestsPage() {
               <TabsTrigger value="invoice" className="gap-1.5">
                 <Receipt className="h-4 w-4" /> Invoice Requests
               </TabsTrigger>
+              <TabsTrigger value="costing" className="gap-1.5">
+                <Calculator className="h-4 w-4" /> Costing Requests
+              </TabsTrigger>
               <TabsTrigger value="reports" className="gap-1.5">
                 <BarChart3 className="h-4 w-4" /> Report Requests
               </TabsTrigger>
@@ -489,6 +728,9 @@ export default function RequestsPage() {
             </TabsContent>
             <TabsContent value="invoice">
               <InvoiceRequestsTab />
+            </TabsContent>
+            <TabsContent value="costing">
+              <CostingRequestsTab />
             </TabsContent>
             <TabsContent value="reports">
               <PlaceholderTab label="Report requests" />

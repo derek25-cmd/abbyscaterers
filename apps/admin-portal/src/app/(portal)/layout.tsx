@@ -3,7 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { LayoutDashboard, FileText, Receipt, Percent } from 'lucide-react';
+import {
+  LayoutDashboard,
+  FileText,
+  Receipt,
+  Percent,
+  Calculator,
+  BarChart3,
+  Bell,
+  ShieldAlert,
+  Users,
+} from 'lucide-react';
 import type { PortalRole } from '@abbyscaterers/types';
 import { usePortalRole } from '@/lib/portal-role';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -12,7 +22,12 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; rol
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/rfqs', label: 'RFQs', icon: FileText },
   { href: '/invoices', label: 'Invoices', icon: Receipt },
+  { href: '/costing', label: 'Costing', icon: Calculator },
+  { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/notifications', label: 'Notifications', icon: Bell },
   { href: '/tax-settings', label: 'Tax Settings', icon: Percent, roles: ['super_admin', 'finance'] },
+  { href: '/audit-log', label: 'Audit Log', icon: ShieldAlert, roles: ['super_admin'] },
+  { href: '/users', label: 'Users', icon: Users, roles: ['super_admin'] },
 ];
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
