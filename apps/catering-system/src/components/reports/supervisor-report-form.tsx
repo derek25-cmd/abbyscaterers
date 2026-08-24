@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
 import { addSupervisorReport, getSupervisorReportById, updateSupervisorReport } from "@/services/supervisorReportService";
 import { getOrders } from "@/services/orderService";
+import { excludeCancelledOrders } from "@/lib/order-utils";
 import { getStockLogs } from "@/services/stockLogService";
 import { getIssuances } from "@/services/issuanceService";
 import { getMenusByDate } from "@/services/dailyMenuService";
@@ -168,8 +169,9 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
     const trainingsData = await getTrainingSessions();
     const dateTrainings = (trainingsData || []).filter(t => t.training_date === date || t.createdAt?.startsWith(date));
 
+    const reportableOrders = excludeCancelledOrders(ordersData);
     setAvailability({
-      orders: ordersData.some(o => o.clientEvents?.some(e => e.date?.startsWith(date))),
+      orders: reportableOrders.some(o => o.clientEvents?.some(e => e.date?.startsWith(date))),
       stock: (stockData || []).some((l: any) => l.date?.startsWith(date) || l.createdAt?.startsWith(date)),
       issuance: issuanceData.some(i => i.date?.startsWith(date) || i.createdAt?.startsWith(date)),
       proformas: dateProformas.length > 0,
@@ -369,7 +371,7 @@ export function SupervisorReportForm({ reportId }: SupervisorReportFormProps) {
 
       // --- SECTION: DAILY ORDERS ---
       if (selectedAttachments.orders && availability.orders) {
-        const orders = await getOrders();
+        const orders = excludeCancelledOrders(await getOrders());
         const dailyEvents = orders.flatMap(order =>
           order.clientEvents
             .filter(e => e.date?.startsWith(reportDate))

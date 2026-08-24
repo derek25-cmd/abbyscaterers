@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { getOrders } from "@/services/orderService";
+import { excludeCancelledOrders } from "@/lib/order-utils";
 import { getFeedbackByDate, addFeedback, deleteFeedback } from "@/services/feedbackService";
 import type { Order, ServiceFeedback } from "@/types";
 import { cn } from "@/lib/utils";
@@ -83,7 +84,7 @@ export default function CustomerFeedbackPage() {
       ]);
       
       // Filter orders that overlap with this date
-      const activeOrders = allOrders.filter(o => 
+      const activeOrders = excludeCancelledOrders(allOrders).filter(o =>
         o.startDate <= formattedDate && o.endDate >= formattedDate
       );
       

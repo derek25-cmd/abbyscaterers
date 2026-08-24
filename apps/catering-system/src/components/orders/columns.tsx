@@ -2,7 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,10 +19,24 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 type OrderWithClientName = Order & { customerName: string };
 
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  pending_confirmation: "Pending",
+  confirmed: "Confirmed",
+  cancelled: "Cancelled",
+};
+
+const ORDER_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  pending_confirmation: "secondary",
+  confirmed: "default",
+  cancelled: "destructive",
+};
+
 export const getOrderColumns = (
   onDelete: (orderId: string) => void,
   getClientById: (id: string) => Client | undefined,
-  getLinkedProformas: (orderId: string, fallback?: string | null) => string[]
+  getLinkedProformas: (orderId: string, fallback?: string | null) => string[],
+  onConfirmOrder: (orderId: string) => void,
+  onCancelOrder: (orderId: string) => void
 ): ColumnDef<OrderWithClientName>[] => {
   return [
     {
@@ -81,6 +95,19 @@ export const getOrderColumns = (
             return <div className="text-xs">{start} - {end}</div>
           }
       }
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }: { row: any }) => {
+        const status = row.original.status as string | undefined;
+        if (!status) return <span className="text-muted-foreground text-[10px] italic">—</span>;
+        return (
+          <Badge variant={ORDER_STATUS_VARIANT[status] ?? "outline"}>
+            {ORDER_STATUS_LABEL[status] ?? status}
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: "proformaId",
@@ -151,6 +178,19 @@ export const getOrderColumns = (
                   <Edit className="mr-2 h-4 w-4" /> Edit Order
                 </Link>
               </DropdownMenuItem>
+              {order.status === "pending_confirmation" && (
+                <DropdownMenuItem onClick={() => onConfirmOrder(order.id)} className="flex items-center cursor-pointer">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Order
+                </DropdownMenuItem>
+              )}
+              {order.status === "confirmed" && (
+                <DropdownMenuItem
+                  onClick={() => onCancelOrder(order.id)}
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center cursor-pointer"
+                >
+                  <XCircle className="mr-2 h-4 w-4" /> Cancel Order
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete(order.id)}

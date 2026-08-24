@@ -32,7 +32,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function SalesChart() {
-  const { orders } = useOrderStorage()
+  const { orders } = useOrderStorage({ excludeCancelled: true })
   const [timeUnit, setTimeUnit] = React.useState<TimeUnit>("monthly")
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 

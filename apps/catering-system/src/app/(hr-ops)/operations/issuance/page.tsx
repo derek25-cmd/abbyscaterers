@@ -15,6 +15,7 @@ import { getIssuances, addIssuance, updateIssuance } from "@/services/issuanceSe
 import { getAssets, updateAsset } from "@/services/assetService";
 import { getEmployees } from "@/services/employeeService";
 import { getOrders } from "@/services/orderService";
+import { excludeCancelledOrders } from "@/lib/order-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ export default function IssuancePage() {
         setLog(logsData);
         setAssets(assetsData);
         setEmployees(employeesData);
-        setOrders(ordersData);
+        setOrders(excludeCancelledOrders(ordersData));
         setLoading(false);
     }
     

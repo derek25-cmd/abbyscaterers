@@ -64,6 +64,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PrivateRoute } from "./private-route";
 import { NotificationCenter } from "./notification-center";
 import { UnconfirmedOrdersReminder } from "@/components/orders/unconfirmed-orders-reminder";
+import { NewRfqPopup } from "@/components/requests/new-rfq-popup";
 
 
 const navItems = [
@@ -222,6 +223,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <UnconfirmedOrdersReminder />
+      <NewRfqPopup />
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
              <div className="flex items-center gap-2.5 p-2">

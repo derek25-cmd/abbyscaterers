@@ -182,6 +182,12 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
     }
 };
 
+export const confirmOrder = (id: string): Promise<Order | null> =>
+    updateOrder(id, { status: 'confirmed' });
+
+export const cancelOrder = (id: string): Promise<Order | null> =>
+    updateOrder(id, { status: 'cancelled' });
+
 export const deleteOrder = async (id: string): Promise<boolean> => {
     try {
         const { error } = await supabase.from('orders').delete().eq('id', id);

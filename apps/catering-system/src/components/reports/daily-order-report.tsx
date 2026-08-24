@@ -23,7 +23,7 @@ interface DailyEventInfo extends ClientEvent {
 export const DailyOrderReport = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
-  const { orders, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
 
