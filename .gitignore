@@ -11,7 +11,7 @@ build/
 out/
 .next/
 tsconfig.tsbuildinfo
-src-tauri/target/
+apps/catering-system/src-tauri/target/
 my-electron-app/dist/
 my-electron-app/out/
 my-electron-app/release/
