@@ -20,7 +20,7 @@ export type CostingRequest = {
 
 export default function CostingPage() {
     const { clients, isLoading: clientsLoading } = useClientStorage();
-    const { orders, isLoading: ordersLoading } = useOrderStorage();
+    const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
     
     const [request, setRequest] = useState<CostingRequest>(null);
 

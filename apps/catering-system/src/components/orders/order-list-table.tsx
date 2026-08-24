@@ -25,8 +25,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Loader2, CalendarIcon, ListFilter, Search, X, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { getOrderColumns } from "./columns"; 
+import { getOrderColumns } from "./columns";
 import { useOrderStorage } from "@/hooks/use-order-storage";
+import { confirmOrder, cancelOrder } from "@/services/orderService";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -51,7 +52,7 @@ export function OrderListTable() {
   const searchParams = useSearchParams();
   const clientIdFilter = searchParams.get('clientId');
 
-  const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore, bulkDeleteOrders } = useOrderStorage();
+  const { orders, isLoading: ordersLoading, deleteOrder: deleteOrderFromStore, bulkDeleteOrders, refreshOrders } = useOrderStorage();
   const { clients, isLoading: clientsLoading, getClientById } = useClientStorage();
   const { proformaInvoices } = useProformaInvoiceStorage();
   const { toast } = useToast();
@@ -63,6 +64,7 @@ export function OrderListTable() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [itemsToDelete, setItemsToDelete] = React.useState<string[] | null>(null);
+  const [orderToCancel, setOrderToCancel] = React.useState<string | null>(null);
   const [selectedDate, setSelectedDate] = usePersistedState<Date | undefined>("orders-list-selected-date", new Date());
   const [filterType, setFilterType] = usePersistedState<string>("orders-list-filter-type", "customerName");
   const [searchQuery, setSearchQuery] = usePersistedState<string>("orders-list-search-query", "");
@@ -145,6 +147,32 @@ export function OrderListTable() {
     setItemsToDelete([orderId]);
   }, []);
 
+  const handleConfirmOrder = React.useCallback(async (orderId: string) => {
+    const result = await confirmOrder(orderId);
+    if (result) {
+      toast({ title: "Order Confirmed" });
+      refreshOrders();
+    } else {
+      toast({ variant: "destructive", title: "Error", description: "Failed to confirm the order." });
+    }
+  }, [refreshOrders, toast]);
+
+  const handleCancelRequest = React.useCallback((orderId: string) => {
+    setOrderToCancel(orderId);
+  }, []);
+
+  const confirmCancelOrder = React.useCallback(async () => {
+    if (!orderToCancel) return;
+    const result = await cancelOrder(orderToCancel);
+    if (result) {
+      toast({ title: "Order Cancelled", description: "It will no longer appear in costing, reports, or dashboards." });
+      refreshOrders();
+    } else {
+      toast({ variant: "destructive", title: "Error", description: "Failed to cancel the order." });
+    }
+    setOrderToCancel(null);
+  }, [orderToCancel, refreshOrders, toast]);
+
   const confirmDelete = React.useCallback(async () => {
     if (itemsToDelete && itemsToDelete.length > 0) {
       if (itemsToDelete.length === 1) {
@@ -168,8 +196,8 @@ export function OrderListTable() {
   }, [itemsToDelete, deleteOrderFromStore, bulkDeleteOrders, toast]);
   
   const columns = React.useMemo(
-    () => getOrderColumns(handleDeleteRequest, getClientById, getLinkedProformas),
-    [handleDeleteRequest, getClientById, getLinkedProformas]
+    () => getOrderColumns(handleDeleteRequest, getClientById, getLinkedProformas, handleConfirmOrder, handleCancelRequest),
+    [handleDeleteRequest, getClientById, getLinkedProformas, handleConfirmOrder, handleCancelRequest]
   );
 
   const table = useReactTable({
@@ -360,6 +388,23 @@ export function OrderListTable() {
             <AlertDialogCancel onClick={() => setItemsToDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={!!orderToCancel} onOpenChange={(open) => !open && setOrderToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the order completely. It will still show as Cancelled here, but it will no longer
+              appear in costing, reports, or dashboards.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOrderToCancel(null)}>Keep Order</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmCancelOrder} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Cancel Order
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

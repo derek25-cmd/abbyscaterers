@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 export default function CostingTrackerReport() {
   const { toast } = useToast();
-  const { orders, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
   const { logs: allLogs, isLoading: stockLogsLoading } = useStockLogStorage();
   const { products, isLoading: productsLoading } = useProductStorage();
   const { getClientById, isLoading: clientsLoading } = useClientStorage();

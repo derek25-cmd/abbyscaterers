@@ -16,7 +16,7 @@ interface upcomingEvent extends ClientEvent {
 }
 
 export function UpcomingEvents() {
-    const { orders, isLoading: ordersLoading } = useOrderStorage();
+    const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
     const { getClientById, isLoading: clientsLoading } = useClientStorage();
 
     const isLoading = ordersLoading || clientsLoading;

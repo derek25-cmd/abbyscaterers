@@ -28,7 +28,7 @@ const calculateTotal = (events: ClientEvent[]) => {
 export default function MonthlyOrderReportPage() {
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const { toast } = useToast();
-  const { orders, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
   const { clients, getClientById, isLoading: clientsLoading } = useClientStorage();
   const [isExporting, setIsExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

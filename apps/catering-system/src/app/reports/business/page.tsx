@@ -6,6 +6,7 @@ import { getSales } from '@/services/saleService';
 import { getInvoices } from '@/services/invoiceService';
 import { getProformaInvoices } from '@/services/proformaInvoiceService';
 import { getOrders } from '@/services/orderService';
+import { excludeCancelledOrders } from '@/lib/order-utils';
 import { getBookings } from '@/services/bookingService';
 import { getPurchases } from '@/services/purchaseService';
 import { getExpenses } from '@/services/expenseService';
@@ -99,7 +100,11 @@ export default function BusinessReportsPage() {
     sales: useQuery({ queryKey: ['reports', 'sales'], queryFn: getSales, staleTime: STALE_TIME }),
     invoices: useQuery({ queryKey: ['reports', 'invoices'], queryFn: getInvoices, staleTime: STALE_TIME }),
     proformaInvoices: useQuery({ queryKey: ['reports', 'proformas'], queryFn: getProformaInvoices, staleTime: STALE_TIME }),
-    orders: useQuery({ queryKey: ['reports', 'orders'], queryFn: getOrders, staleTime: STALE_TIME }),
+    orders: useQuery({
+      queryKey: ['reports', 'orders'],
+      queryFn: async () => excludeCancelledOrders(await getOrders()),
+      staleTime: STALE_TIME,
+    }),
     bookings: useQuery({ queryKey: ['reports', 'bookings'], queryFn: getBookings, staleTime: STALE_TIME }),
     purchases: useQuery({ queryKey: ['reports', 'purchases'], queryFn: getPurchases, staleTime: STALE_TIME }),
     expenses: useQuery({ queryKey: ['reports', 'expenses'], queryFn: getExpenses, staleTime: STALE_TIME }),

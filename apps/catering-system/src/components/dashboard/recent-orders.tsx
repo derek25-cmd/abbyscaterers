@@ -11,7 +11,7 @@ import { Button } from "../ui/button";
 import { format, parseISO } from 'date-fns';
 
 export function RecentOrders() {
-    const { orders, isLoading: ordersLoading } = useOrderStorage();
+    const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
     const { getClientById, isLoading: clientsLoading } = useClientStorage();
 
     const isLoading = ordersLoading || clientsLoading;

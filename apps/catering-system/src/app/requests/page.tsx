@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -17,8 +17,18 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import { FileText, Receipt, BarChart3, Loader2, MessageSquareReply } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileText, Receipt, BarChart3, Loader2, MessageSquareReply, MoreHorizontal, Eye, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ViewRfqDialog } from "@/components/requests/view-rfq-dialog";
+import { LinkExistingProformaDialog } from "@/components/requests/link-existing-proforma-dialog";
 
 interface RfqRequestRow {
   id: string;
@@ -35,7 +45,7 @@ interface RfqRequestRow {
   rfq_proforma_links: { proforma_id: string }[];
 }
 
-const ANSWERABLE_STATUSES = new Set(["draft", "submitted", "in_review"]);
+const ANSWERABLE_STATUSES = new Set(["submitted", "in_review"]);
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   draft: "outline",
@@ -48,6 +58,10 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 };
 
 function ProformaRequestsTab() {
+  const queryClient = useQueryClient();
+  const [viewingRfqId, setViewingRfqId] = useState<string | null>(null);
+  const [linkingRfqId, setLinkingRfqId] = useState<string | null>(null);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["rfq-requests"],
     queryFn: async () => {
@@ -56,6 +70,9 @@ function ProformaRequestsTab() {
         .select(
           "id, title, status, client_name_freetext, client_id, clients(companyName), service_start_date, service_end_date, target_event_date, branch, created_at, rfq_proforma_links(proforma_id)"
         )
+        // Drafts aren't "sent" to the catering system yet — an admin can
+        // still be mid-edit, so they shouldn't show up in the ops queue.
+        .neq("status", "draft")
         .order("created_at", { ascending: false });
       if (error) throw error;
       // clients(...) is a many-to-one embed but supabase-js's untyped
@@ -63,6 +80,25 @@ function ProformaRequestsTab() {
       return data as unknown as RfqRequestRow[];
     },
   });
+
+  // Live updates for new/changed requests — this tab's own copy below
+  // claims "no manual sync needed", so make that actually true instead of
+  // requiring a manual reload to see a newly submitted RFQ.
+  useEffect(() => {
+    const channel = supabase
+      .channel("requests-rfq-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rfqs" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["rfq-requests"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "rfq_proforma_links" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["rfq-requests"] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -79,6 +115,7 @@ function ProformaRequestsTab() {
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -124,18 +161,52 @@ function ProformaRequestsTab() {
               )}
             </TableCell>
             <TableCell className="text-right">
-              {rfq.rfq_proforma_links.length === 0 && ANSWERABLE_STATUSES.has(rfq.status) && (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={`/proforma-invoices/new?fromRfq=${rfq.id}`}>
-                    <MessageSquareReply className="h-4 w-4 mr-1.5" /> Answer
-                  </Link>
-                </Button>
-              )}
+              {(() => {
+                const answerable = rfq.rfq_proforma_links.length === 0 && ANSWERABLE_STATUSES.has(rfq.status);
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => setViewingRfqId(rfq.id)} className="cursor-pointer">
+                        <Eye className="mr-2 h-4 w-4" /> View RFQ Details
+                      </DropdownMenuItem>
+                      {answerable && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href={`/proforma-invoices/new?fromRfq=${rfq.id}`} className="flex items-center cursor-pointer">
+                              <MessageSquareReply className="mr-2 h-4 w-4" /> Create New Proforma
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setLinkingRfqId(rfq.id)} className="cursor-pointer">
+                            <Link2 className="mr-2 h-4 w-4" /> Link Existing Proforma
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              })()}
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+    <ViewRfqDialog rfqId={viewingRfqId} isOpen={viewingRfqId !== null} setIsOpen={(open) => !open && setViewingRfqId(null)} />
+    {linkingRfqId && (
+      <LinkExistingProformaDialog
+        rfqId={linkingRfqId}
+        isOpen={linkingRfqId !== null}
+        setIsOpen={(open) => !open && setLinkingRfqId(null)}
+      />
+    )}
+    </>
   );
 }
 

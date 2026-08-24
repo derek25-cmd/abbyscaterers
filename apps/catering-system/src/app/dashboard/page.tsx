@@ -45,7 +45,7 @@ import { motion } from "framer-motion";
 const calculateInvoiceTotal = (inv: Invoice): number => calculateGrandTotal(inv);
 
 export default function DashboardPage() {
-  const { orders: menus, isLoading: menusLoading } = useOrderStorage();
+  const { orders: menus, isLoading: menusLoading } = useOrderStorage({ excludeCancelled: true });
   const { invoices, isLoading: invoicesLoading } = useInvoiceStorage();
   const { ingredients, isLoading: ingredientsLoading } = useIngredientStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();

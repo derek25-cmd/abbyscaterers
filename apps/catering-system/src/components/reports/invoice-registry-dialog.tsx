@@ -33,7 +33,7 @@ interface InvoiceRegistryDialogProps {
 
 export function InvoiceRegistryDialog({ invoice, open, onOpenChange }: InvoiceRegistryDialogProps) {
   const { proformaInvoices, isLoading: proformasLoading } = useProformaInvoiceStorage();
-  const { orders, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
   const { deliveryNotes, isLoading: dnsLoading } = useDeliveryNoteStorage();
   const { issuances, isLoading: issuancesLoading } = useIssuanceStorage();
   const { clients, isLoading: clientsLoading } = useClientStorage();

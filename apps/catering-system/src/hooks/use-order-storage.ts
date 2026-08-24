@@ -16,8 +16,9 @@ import {
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorDescription } from '@/lib/service-validation';
+import { excludeCancelledOrders } from '@/lib/order-utils';
 
-export function useOrderStorage() {
+export function useOrderStorage(options?: { excludeCancelled?: boolean }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -96,19 +97,21 @@ export function useOrderStorage() {
     return orders.filter(o => o.booking_id === bookingId);
   }, [orders]);
 
+  const reportableOrders = options?.excludeCancelled ? excludeCancelledOrders(orders) : orders;
+
   const getEventsForDate = useCallback((date: Date): ClientEvent[] => {
     const targetDateStr = format(date, 'yyyy-MM-dd');
     const allEvents: ClientEvent[] = [];
-    orders.forEach(order => {
+    reportableOrders.forEach(order => {
       order.clientEvents.forEach(event => {
         if (event.date === targetDateStr) allEvents.push(event);
       });
     });
     return allEvents;
-  }, [orders]);
+  }, [reportableOrders]);
 
   return {
-    orders,
+    orders: reportableOrders,
     isLoading,
     addOrder,
     updateOrder,

@@ -159,7 +159,7 @@ export function RfqForm() {
       });
       if (insertError) throw insertError;
 
-      router.push('/rfqs');
+      router.push(`/rfqs/${formatRfqId(nextId as number)}`);
       router.refresh();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to create RFQ');

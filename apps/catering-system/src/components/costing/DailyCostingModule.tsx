@@ -19,7 +19,7 @@ import EventIncomeTable from "./EventIncomeTable";
 export const DailyCostingModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { toast } = useToast();
-  const { getEventsForDate } = useOrderStorage();
+  const { getEventsForDate } = useOrderStorage({ excludeCancelled: true });
   const { ingredients } = useIngredientStorage();
   const printRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);

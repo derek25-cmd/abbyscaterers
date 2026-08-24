@@ -34,6 +34,9 @@ interface ProformaRecord {
   isInvoiced: boolean | null;
   isVoided: boolean | null;
   voidedReason: string | null;
+  reviewStatus: 'pending' | 'approved' | 'rejected';
+  reviewedAt: string | null;
+  rejectionReason: string | null;
 }
 
 interface CommentRow {
@@ -58,6 +61,10 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
   const queryClient = useQueryClient();
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [showRejectReason, setShowRejectReason] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const proformaQuery = useQuery({
     queryKey: ['proforma-view', proformaId],
@@ -65,7 +72,7 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
       const { data, error } = await supabase
         .from('proforma_invoices')
         .select(
-          'id, "invoiceDate", "clientId", clients(companyName), location, region, "startDate", "endDate", "vatType", "serviceCharge", "transportCosts", "serviceDesc", items, "isInvoiced", "isVoided", "voidedReason"'
+          'id, "invoiceDate", "clientId", clients(companyName), location, region, "startDate", "endDate", "vatType", "serviceCharge", "transportCosts", "serviceDesc", items, "isInvoiced", "isVoided", "voidedReason", "reviewStatus", "reviewedAt", "rejectionReason"'
         )
         .eq('id', proformaId)
         .single();
@@ -95,11 +102,49 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
         { event: '*', schema: 'public', table: 'proforma_comments', filter: `proforma_id=eq.${proformaId}` },
         () => queryClient.invalidateQueries({ queryKey: ['proforma-comments', proformaId] })
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'proforma_invoices', filter: `id=eq.${proformaId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['proforma-view', proformaId] })
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [supabase, queryClient, proformaId]);
+
+  const approve = async () => {
+    setReviewing(true);
+    setReviewError(null);
+    try {
+      const { error } = await supabase.rpc('approve_proforma', { p_proforma_id: proformaId });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['proforma-view', proformaId] });
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : 'Failed to approve proforma');
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  const confirmReject = async () => {
+    setReviewing(true);
+    setReviewError(null);
+    try {
+      const { error } = await supabase.rpc('reject_proforma', {
+        p_proforma_id: proformaId,
+        p_reason: rejectReason.trim() || null,
+      });
+      if (error) throw error;
+      setShowRejectReason(false);
+      setRejectReason('');
+      queryClient.invalidateQueries({ queryKey: ['proforma-view', proformaId] });
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : 'Failed to reject proforma');
+    } finally {
+      setReviewing(false);
+    }
+  };
 
   const submitComment = async () => {
     if (!comment.trim()) return;
@@ -140,23 +185,95 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
       <div className="flex items-center justify-between no-print">
         <div>
           <h1 className="text-2xl font-semibold">Proforma {p.id}</h1>
-          {p.isVoided && (
-            <span className="inline-block mt-1 rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">
-              Uninvoiced{p.voidedReason ? ` — ${p.voidedReason}` : ''}
-            </span>
-          )}
-          {p.isInvoiced && !p.isVoided && (
-            <span className="inline-block mt-1 rounded-full bg-secondary px-2 py-0.5 text-xs">Invoiced</span>
-          )}
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {p.reviewStatus === 'pending' && (
+              <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">Pending Review</span>
+            )}
+            {p.reviewStatus === 'approved' && (
+              <span className="inline-block rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs">
+                Approved
+              </span>
+            )}
+            {p.reviewStatus === 'rejected' && (
+              <span className="inline-block rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">
+                Rejected{p.rejectionReason ? ` — ${p.rejectionReason}` : ''}
+              </span>
+            )}
+            {p.isVoided && (
+              <span className="inline-block rounded-full bg-destructive/10 text-destructive px-2 py-0.5 text-xs">
+                Uninvoiced{p.voidedReason ? ` — ${p.voidedReason}` : ''}
+              </span>
+            )}
+            {p.isInvoiced && !p.isVoided && (
+              <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs">Invoiced</span>
+            )}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
-        >
-          <Printer className="h-4 w-4" /> Print / Export PDF
-        </button>
+        <div className="flex items-center gap-2">
+          {p.reviewStatus === 'pending' && !p.isVoided && !p.isInvoiced && (
+            <>
+              <button
+                type="button"
+                onClick={approve}
+                disabled={reviewing}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {reviewing ? 'Approving…' : 'Approve'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRejectReason((v) => !v)}
+                disabled={reviewing}
+                className="rounded-md border border-destructive text-destructive px-3 py-1.5 text-sm hover:bg-destructive/10 disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
+          >
+            <Printer className="h-4 w-4" /> Print / Export PDF
+          </button>
+        </div>
       </div>
+
+      {showRejectReason && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2 no-print">
+          <label className="text-sm font-medium">Reason for rejection (shown to staff)</label>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={2}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder="e.g. Pax count doesn't match the RFQ, please revise"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={confirmReject}
+              disabled={reviewing}
+              className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {reviewing ? 'Rejecting…' : 'Confirm rejection'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowRejectReason(false);
+                setRejectReason('');
+              }}
+              disabled={reviewing}
+              className="rounded-md border border-input px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {reviewError && <p className="text-sm text-destructive no-print">{reviewError}</p>}
 
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">

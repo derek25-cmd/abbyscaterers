@@ -42,7 +42,7 @@ const MEAL_SECTIONS = {
 export default function DailyMenuPlannerPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [regionFilter, setRegionFilter] = useState<Region | "All">("All");
-  const { orders, isLoading: ordersLoading } = useOrderStorage();
+  const { orders, isLoading: ordersLoading } = useOrderStorage({ excludeCancelled: true });
   const { getClientById, isLoading: clientsLoading } = useClientStorage();
   const { recipes: availableRecipes, isLoading: recipesLoading } = useRecipeStorage();
 

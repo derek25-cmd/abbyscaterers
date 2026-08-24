@@ -3,7 +3,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
-import { MoreHorizontal, Edit, Trash2, Eye, Lock } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Eye, Lock, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -61,6 +61,15 @@ export const getProformaInvoiceColumns = (
     accessorKey: "isInvoiced",
     header: "Status",
     cell: ({ row }) => {
+      const invoice = row.original;
+      if (invoice.isVoided) {
+        return (
+          <Badge variant="destructive">
+            <Ban className="mr-1 h-3 w-3" />
+            Uninvoiced
+          </Badge>
+        );
+      }
       const isInvoiced = row.getValue<boolean>("isInvoiced");
       return (
         <Badge
