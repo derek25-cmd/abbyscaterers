@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Rfq, RfqStatusHistoryEntry } from '@abbyscaterers/types';
+import type { RfqStatusHistoryEntry, PaxPerDayEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { LinkProformaForm } from './link-proforma-form';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
@@ -15,6 +15,32 @@ interface LinkedProforma {
   itemsSubtotal: number;
 }
 
+// select('*') returns the real (snake_case, unquoted) column names, not
+// the camelCase Rfq type from @abbyscaterers/types — casting straight to
+// Rfq silently broke every multi-word field (clientNameFreetext,
+// targetEventDate, etc. were always undefined). This mirrors what the
+// columns are actually called.
+interface RfqRecord {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  client_id: string | null;
+  client_name_freetext: string | null;
+  clients: { companyName: string } | null;
+  service_start_date: string | null;
+  service_end_date: string | null;
+  target_event_date: string | null;
+  proforma_required_by: string | null;
+  same_pax_all_dates: boolean;
+  pax_per_day: PaxPerDayEntry[] | null;
+  rate_per_plate: number | null;
+  vat_type: 'inclusive' | 'exclusive' | null;
+  location: string | null;
+  region: string | null;
+  branch: string | null;
+}
+
 export function RfqDetail({ rfqId }: { rfqId: string }) {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
@@ -22,9 +48,13 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
   const rfqQuery = useQuery({
     queryKey: ['rfq', rfqId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('rfqs').select('*').eq('id', rfqId).single();
+      const { data, error } = await supabase
+        .from('rfqs')
+        .select('*, clients(companyName)')
+        .eq('id', rfqId)
+        .single();
       if (error) throw error;
-      return data as Rfq & { client_name_freetext: string | null };
+      return data as RfqRecord;
     },
   });
 
@@ -136,15 +166,41 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
           <dl className="text-sm space-y-1">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Client</dt>
-              <dd>{rfq.clientNameFreetext ?? rfq.clientId ?? '—'}</dd>
+              <dd>{rfq.clients?.companyName ?? rfq.client_name_freetext ?? rfq.client_id ?? '—'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Target date</dt>
-              <dd>{rfq.targetEventDate ?? '—'}</dd>
+              <dt className="text-muted-foreground">Service period</dt>
+              <dd>
+                {rfq.service_start_date && rfq.service_end_date
+                  ? `${rfq.service_start_date} – ${rfq.service_end_date}`
+                  : rfq.target_event_date ?? '—'}
+              </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Branch</dt>
-              <dd>{rfq.branch ?? '—'}</dd>
+              <dt className="text-muted-foreground">Proforma required by</dt>
+              <dd>{rfq.proforma_required_by ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Pax</dt>
+              <dd>
+                {rfq.pax_per_day && rfq.pax_per_day.length > 0
+                  ? rfq.same_pax_all_dates
+                    ? `${rfq.pax_per_day[0].pax} / day (all dates)`
+                    : `${rfq.pax_per_day.reduce((s, p) => s + p.pax, 0)} total, varies by day`
+                  : '—'}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Rate per plate</dt>
+              <dd>{rfq.rate_per_plate != null ? `TZS ${rfq.rate_per_plate.toLocaleString()}` : '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">VAT</dt>
+              <dd className="capitalize">{rfq.vat_type ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Location</dt>
+              <dd>{rfq.location ?? '—'}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Region</dt>

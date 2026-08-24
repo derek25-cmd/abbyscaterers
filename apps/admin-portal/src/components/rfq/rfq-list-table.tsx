@@ -17,8 +17,12 @@ interface RfqRow {
   status: string;
   client_name_freetext: string | null;
   client_id: string | null;
+  clients: { companyName: string } | null;
+  service_start_date: string | null;
+  service_end_date: string | null;
   target_event_date: string | null;
-  branch: string | null;
+  location: string | null;
+  region: string | null;
   created_at: string;
 }
 
@@ -36,7 +40,7 @@ const columns: ColumnDef<RfqRow>[] = [
   {
     id: 'client',
     header: 'Client',
-    accessorFn: (row) => row.client_name_freetext ?? row.client_id ?? '—',
+    accessorFn: (row) => row.clients?.companyName ?? row.client_name_freetext ?? row.client_id ?? '—',
   },
   {
     accessorKey: 'status',
@@ -45,12 +49,15 @@ const columns: ColumnDef<RfqRow>[] = [
       <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.getValue<string>()}</span>
     ),
   },
-  { accessorKey: 'branch', header: 'Branch', cell: (c) => c.getValue<string>() ?? '—' },
   {
-    accessorKey: 'target_event_date',
-    header: 'Target date',
-    cell: (c) => c.getValue<string>() ?? '—',
+    id: 'servicePeriod',
+    header: 'Service period',
+    accessorFn: (row) =>
+      row.service_start_date && row.service_end_date
+        ? `${row.service_start_date} – ${row.service_end_date}`
+        : row.target_event_date ?? '—',
   },
+  { accessorKey: 'region', header: 'Region', cell: (c) => c.getValue<string>() ?? '—' },
 ];
 
 export function RfqListTable() {
@@ -63,10 +70,16 @@ export function RfqListTable() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rfqs')
-        .select('id, title, status, client_name_freetext, client_id, target_event_date, branch, created_at')
+        .select(
+          'id, title, status, client_name_freetext, client_id, clients(companyName), service_start_date, service_end_date, target_event_date, location, region, created_at'
+        )
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as RfqRow[];
+      // Supabase's untyped client infers every embedded relation as an
+      // array regardless of actual cardinality — clients(companyName) is
+      // a many-to-one (rfqs.client_id -> clients.id) and is a single
+      // object at runtime. unknown-cast per TS's own suggestion.
+      return (data ?? []) as unknown as RfqRow[];
     },
   });
 

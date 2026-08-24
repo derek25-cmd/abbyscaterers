@@ -2,12 +2,12 @@
   "name": "abbyscaterers-monorepo",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "apps/admin-portal",
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=apps/catering-system",
-    "dev": "npm run dev --workspace=apps/catering-system",
-    "start": "npm run start --workspace=apps/catering-system"
+    "build": "cd apps/catering-system && npm run build",
+    "dev": "cd apps/catering-system && npm run dev",
+    "start": "cd apps/catering-system && npm run start"
   }
 }

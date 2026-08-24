@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ORGANIZATION_TYPES, PORTAL_ROLES, RFQ_STATUSES, BRANCHES, REGIONS } from '@abbyscaterers/types';
+import { ORGANIZATION_TYPES, PORTAL_ROLES, REGIONS } from '@abbyscaterers/types';
 
 // Source of truth for ContactSchema/ClientSchema is
 // apps/catering-system/src/lib/schemas.ts. Duplicated here, not imported —
@@ -33,21 +33,36 @@ export type ClientFormData = z.infer<typeof ClientSchema>;
 
 // ─── New: Admin Portal schemas ─────────────────────────────────────────────
 
+const isValidDateStr = (d?: string) => !!d && !isNaN(Date.parse(d));
+
+export const PaxPerDayEntrySchema = z.object({
+  date: z.string().refine(isValidDateStr, "Invalid date"),
+  pax: z.number().min(1, "Pax must be at least 1"),
+});
+
+// Mirrors the fields on the proforma wizard's "Recipient" + "Service
+// Period" sections (clientId via a real client picker, a date range) plus
+// the RFQ-specific additions: a proforma-required-by deadline, per-day pax
+// with a same-for-all-dates shortcut, rate per plate, VAT mode, location,
+// and region. title/status/branch/notes are still real rfqs columns but
+// aren't user-facing form fields — title is derived, status defaults to
+// 'draft', branch/notes are left unset by this form.
 export const RfqSchema = z.object({
-  clientId: z.string().optional().nullable(),
-  clientNameFreetext: z.string().optional(),
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  status: z.enum(RFQ_STATUSES).default('draft'),
-  targetEventDate: z.string().optional().refine((d) => !d || !isNaN(Date.parse(d)), {
-    message: "Invalid ISO date string",
+  clientId: z.string().min(1, "Client is required"),
+  serviceStartDate: z.string().refine(isValidDateStr, "A valid start date is required"),
+  serviceEndDate: z.string().refine(isValidDateStr, "A valid end date is required"),
+  proformaRequiredBy: z.string().optional().refine((d) => !d || isValidDateStr(d), {
+    message: "Invalid date",
   }),
-  region: z.enum(REGIONS).optional(),
-  branch: z.enum(BRANCHES).optional(),
-  notes: z.string().optional(),
-}).refine((data) => data.clientId || data.clientNameFreetext, {
-  message: "Either an existing client or a free-text client name is required",
-  path: ['clientNameFreetext'],
+  samePaxAllDates: z.boolean(),
+  paxPerDay: z.array(PaxPerDayEntrySchema).min(1, "Pax for at least one day is required"),
+  ratePerPlate: z.number().min(0, "Rate per plate cannot be negative"),
+  vatType: z.enum(['inclusive', 'exclusive']),
+  location: z.string().min(1, "Location is required"),
+  region: z.enum(REGIONS),
+}).refine((data) => data.serviceEndDate >= data.serviceStartDate, {
+  message: "End date must be on or after start date",
+  path: ['serviceEndDate'],
 });
 export type RfqFormData = z.infer<typeof RfqSchema>;
 
