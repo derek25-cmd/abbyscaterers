@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { TAX_DEFAULT_APPLIES, type TaxType } from '@/components/tax-settings/tax-settings';
+import { useAppSettings } from '@/lib/use-app-settings';
+import { exportDocumentToPdf } from '@/lib/pdf-export';
+import { InvoicePdfTemplate } from '@/components/pdf/invoice-pdf-template';
 
 interface InvoiceItem {
   id: string;
@@ -14,13 +18,14 @@ interface InvoiceItem {
   total: number;
   date?: string;
   particularDescription?: string;
+  orderId?: string | null;
 }
 
 interface InvoiceRecord {
   id: string;
   invoiceDate: string;
   clientId: string | null;
-  clients: { companyName: string } | null;
+  clients: { companyName: string; address1: string | null; address2: string | null } | null;
   location: string | null;
   numberOfDays: number | null;
   multiplyByDays: boolean | null;
@@ -31,6 +36,14 @@ interface InvoiceRecord {
   status: 'outstanding' | 'paid' | 'partially paid';
   amountPaid: number | null;
   paymentDate: string | null;
+  receiverName: string | null;
+  receiverPosition: string | null;
+  lpoNumber: string | null;
+  proformaId: string | null;
+  appendProformaId: boolean | null;
+  serviceDesc: string | null;
+  signedAtDate: string | null;
+  signedAtLocation: string | null;
 }
 
 interface TaxRateRow {
@@ -58,6 +71,9 @@ const STATUS_CLASS: Record<string, string> = {
 export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
+  const appSettingsQuery = useAppSettings();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const invoiceQuery = useQuery({
     queryKey: ['invoice-detail', invoiceId],
@@ -65,7 +81,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       const { data, error } = await supabase
         .from('invoices')
         .select(
-          'id, "invoiceDate", "clientId", clients(companyName), location, "numberOfDays", "multiplyByDays", "serviceCharge", "transportCosts", "vatType", items, status, "amountPaid", "paymentDate"'
+          'id, "invoiceDate", "clientId", clients(companyName, address1, address2), location, "numberOfDays", "multiplyByDays", "serviceCharge", "transportCosts", "vatType", items, status, "amountPaid", "paymentDate", "receiverName", "receiverPosition", "lpoNumber", "proformaId", "appendProformaId", "serviceDesc", "signedAtDate", "signedAtLocation"'
         )
         .eq('id', invoiceId)
         .single();
@@ -110,6 +126,25 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       supabase.removeChannel(channel);
     };
   }, [supabase, queryClient, invoiceId]);
+
+  const exportPdf = async (invoice: InvoiceRecord) => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      await exportDocumentToPdf({
+        cardId: 'invoice-pdf-content',
+        headerId: 'invoice-header',
+        contentId: 'invoice-main-content',
+        footerId: 'invoice-footer',
+        pdfScale: appSettingsQuery.data?.pdfScale ?? 2.0,
+        filename: `INV-${invoice.id} - ${invoice.clients?.companyName ?? 'Client'} - at ${invoice.invoiceDate}.pdf`,
+      });
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (invoiceQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (invoiceQuery.error) {
@@ -171,7 +206,16 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             {inv.clients?.companyName ?? inv.clientId ?? '—'} · {inv.invoiceDate}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => exportPdf(inv)}
+          disabled={exporting || appSettingsQuery.isLoading}
+          className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
+        </button>
       </div>
+      {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-border bg-card p-4 space-y-2">
@@ -271,6 +315,35 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           </tbody>
         </table>
       </div>
+
+      {appSettingsQuery.data && (
+        <div style={{ position: 'fixed', top: 0, left: '-10000px', zIndex: -1 }} aria-hidden="true">
+          <InvoicePdfTemplate
+            data={{
+              id: inv.id,
+              invoiceDate: inv.invoiceDate,
+              receiverName: inv.receiverName,
+              receiverPosition: inv.receiverPosition,
+              lpoNumber: inv.lpoNumber,
+              clientCompanyName: inv.clients?.companyName ?? null,
+              clientAddress1: inv.clients?.address1 ?? null,
+              clientAddress2: inv.clients?.address2 ?? null,
+              serviceDesc: inv.serviceDesc,
+              proformaId: inv.proformaId,
+              appendProformaId: inv.appendProformaId,
+              serviceCharge: inv.serviceCharge ?? 0,
+              transportCosts: inv.transportCosts ?? 0,
+              multiplyByDays: inv.multiplyByDays,
+              numberOfDays: inv.numberOfDays,
+              vatType: inv.vatType,
+              signedAtDate: inv.signedAtDate,
+              signedAtLocation: inv.signedAtLocation,
+              items: inv.items ?? [],
+            }}
+            settings={appSettingsQuery.data}
+          />
+        </div>
+      )}
     </div>
   );
 }
