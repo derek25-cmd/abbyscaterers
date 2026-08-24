@@ -132,7 +132,7 @@ export interface ClientEvent {
   customEventType?: string;
 }
 
-export const ORDER_STATUSES = ["pending_confirmation", "confirmed", "cancelled"] as const;
+export const ORDER_STATUSES = ["pending_confirmation", "confirmed", "completed", "cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export interface Order {

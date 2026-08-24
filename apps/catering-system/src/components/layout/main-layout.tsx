@@ -64,6 +64,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PrivateRoute } from "./private-route";
 import { NotificationCenter } from "./notification-center";
 import { UnconfirmedOrdersReminder } from "@/components/orders/unconfirmed-orders-reminder";
+import { CompletePastOrdersSweep } from "@/components/orders/complete-past-orders-sweep";
 import { NewRfqPopup } from "@/components/requests/new-rfq-popup";
 
 
@@ -223,6 +224,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <UnconfirmedOrdersReminder />
+      <CompletePastOrdersSweep />
       <NewRfqPopup />
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>

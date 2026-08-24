@@ -19,11 +19,25 @@ import { getMenusByOrderId } from "@/services/dailyMenuService";
 import { DailyMenu } from "@/types";
 import { useDeliveryNoteStorage } from "@/hooks/use-delivery-note-storage";
 import { OrderIssuanceSection } from "@/components/orders/order-issuance-section";
-
+import { cn } from "@/lib/utils";
 
 interface OrderDetailsViewProps {
   order: Order;
 }
+
+const ORDER_STATUS_LABEL: Record<string, string> = {
+  pending_confirmation: "Pending Confirmation",
+  confirmed: "Confirmed",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const ORDER_STATUS_CLASS: Record<string, string> = {
+  pending_confirmation: "bg-secondary text-secondary-foreground",
+  confirmed: "bg-primary/10 text-primary",
+  completed: "bg-emerald-100 text-emerald-800",
+  cancelled: "bg-destructive/10 text-destructive",
+};
 
 function ClientEventCard({ event, dailyMenu }: { event: ClientEvent, dailyMenu?: DailyMenu }) {
     const { getRecipeById, isLoading: recipesLoading } = useRecipeStorage();
@@ -163,7 +177,14 @@ export function OrderDetailsView({ order }: OrderDetailsViewProps) {
            <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
                 <Link href="/orders"><BookOpen className="mr-2 h-4 w-4" /> Back to Orders</Link>
            </Button>
-           <h1 className="text-3xl font-bold tracking-tight text-foreground">{order.name}</h1>
+           <div className="flex items-center gap-3">
+             <h1 className="text-3xl font-bold tracking-tight text-foreground">{order.name}</h1>
+             {order.status && (
+               <Badge className={cn("border-0", ORDER_STATUS_CLASS[order.status])}>
+                 {ORDER_STATUS_LABEL[order.status] ?? order.status}
+               </Badge>
+             )}
+           </div>
            <p className="text-sm font-mono text-muted-foreground">ID: {order.id}</p>
         </div>
         <div className="flex gap-2">
