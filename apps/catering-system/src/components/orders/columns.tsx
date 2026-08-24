@@ -190,7 +190,7 @@ export const getOrderColumns = (
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Order
                 </DropdownMenuItem>
               )}
-              {order.status === "confirmed" && (
+              {(order.status === "confirmed" || order.status === "completed") && (
                 <DropdownMenuItem
                   onClick={() => onCancelOrder(order.id)}
                   className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center cursor-pointer"

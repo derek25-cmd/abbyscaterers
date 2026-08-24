@@ -19,7 +19,7 @@ ALTER TABLE public.orders ADD CONSTRAINT orders_status_check
 -- ended is retroactively "Completed" as of this migration.
 UPDATE public.orders
 SET status = 'completed', "updatedAt" = now()
-WHERE status = 'confirmed' AND end_date < CURRENT_DATE;
+WHERE status = 'confirmed' AND end_date::date < CURRENT_DATE;
 
 CREATE OR REPLACE FUNCTION public.complete_past_orders()
 RETURNS void
@@ -27,7 +27,7 @@ LANGUAGE sql
 AS $$
   UPDATE public.orders
   SET status = 'completed', "updatedAt" = now()
-  WHERE status = 'confirmed' AND end_date < CURRENT_DATE;
+  WHERE status = 'confirmed' AND end_date::date < CURRENT_DATE;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.complete_past_orders() TO authenticated;
