@@ -69,6 +69,7 @@ export function RfqListTable() {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
   const [, setLiveTick] = useState(0);
+  const [search, setSearch] = useState('');
 
   const { data: rfqs, isLoading, error } = useQuery({
     queryKey: ['rfqs'],
@@ -105,8 +106,17 @@ export function RfqListTable() {
     };
   }, [supabase, queryClient]);
 
+  const filteredRfqs = useMemo(() => {
+    if (!search.trim()) return rfqs ?? [];
+    const q = search.trim().toLowerCase();
+    return (rfqs ?? []).filter((r) => {
+      const client = r.clients?.companyName ?? r.client_name_freetext ?? r.client_id ?? '';
+      return r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || client.toLowerCase().includes(q);
+    });
+  }, [rfqs, search]);
+
   const table = useReactTable({
-    data: useMemo(() => rfqs ?? [], [rfqs]),
+    data: filteredRfqs,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -118,7 +128,14 @@ export function RfqListTable() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-x-auto">
+    <div className="space-y-3">
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search by ID, title, or client…"
+        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <div className="rounded-lg border border-border bg-card overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="border-b border-border text-left text-muted-foreground">
           {table.getHeaderGroups().map((headerGroup) => (
@@ -143,8 +160,16 @@ export function RfqListTable() {
               ))}
             </tr>
           ))}
+          {filteredRfqs.length === 0 && (
+            <tr>
+              <td colSpan={columns.length} className="p-4 text-center text-muted-foreground">
+                No RFQs match &quot;{search}&quot;.
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

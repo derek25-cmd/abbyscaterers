@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from '@/components/rfq/request-invoice-button';
@@ -17,6 +17,7 @@ export function RequestInvoiceByClient() {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
   const [clientId, setClientId] = useState('');
+  const [clientSearch, setClientSearch] = useState('');
 
   const { data: clients } = useQuery({
     queryKey: ['clients-for-invoice-request'],
@@ -29,6 +30,12 @@ export function RequestInvoiceByClient() {
       return data as { id: string; companyName: string }[];
     },
   });
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return clients ?? [];
+    const q = clientSearch.trim().toLowerCase();
+    return (clients ?? []).filter((c) => c.companyName.toLowerCase().includes(q));
+  }, [clients, clientSearch]);
 
   const proformasQuery = useQuery({
     queryKey: ['client-proformas', clientId],
@@ -73,15 +80,23 @@ export function RequestInvoiceByClient() {
 
   return (
     <div className="space-y-6">
-      <div className="max-w-md">
+      <div className="max-w-md space-y-2">
         <label className="text-sm font-medium">Client</label>
+        <input
+          type="text"
+          value={clientSearch}
+          onChange={(e) => setClientSearch(e.target.value)}
+          placeholder="Search clients…"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
         <select
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
-          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          size={clientSearch.trim() ? Math.min(6, Math.max(2, filteredClients.length + 1)) : undefined}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="">Search by selecting a client…</option>
-          {(clients ?? []).map((c) => (
+          <option value="">Select a client…</option>
+          {filteredClients.map((c) => (
             <option key={c.id} value={c.id}>
               {c.companyName}
             </option>

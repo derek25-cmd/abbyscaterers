@@ -16,19 +16,26 @@ import type { Order, Client } from "@/types";
 import { format, parseISO, isValid } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 type OrderWithClientName = Order & { customerName: string };
 
 const ORDER_STATUS_LABEL: Record<string, string> = {
   pending_confirmation: "Pending",
   confirmed: "Confirmed",
+  completed: "Completed",
   cancelled: "Cancelled",
 };
 
 const ORDER_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending_confirmation: "secondary",
   confirmed: "default",
+  completed: "outline",
   cancelled: "destructive",
+};
+
+const ORDER_STATUS_CLASS: Record<string, string> = {
+  completed: "bg-emerald-100 text-emerald-800 border-emerald-300",
 };
 
 export const getOrderColumns = (
@@ -103,7 +110,7 @@ export const getOrderColumns = (
         const status = row.original.status as string | undefined;
         if (!status) return <span className="text-muted-foreground text-[10px] italic">—</span>;
         return (
-          <Badge variant={ORDER_STATUS_VARIANT[status] ?? "outline"}>
+          <Badge variant={ORDER_STATUS_VARIANT[status] ?? "outline"} className={cn(ORDER_STATUS_CLASS[status])}>
             {ORDER_STATUS_LABEL[status] ?? status}
           </Badge>
         );
@@ -183,7 +190,7 @@ export const getOrderColumns = (
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Order
                 </DropdownMenuItem>
               )}
-              {order.status === "confirmed" && (
+              {(order.status === "confirmed" || order.status === "completed") && (
                 <DropdownMenuItem
                   onClick={() => onCancelOrder(order.id)}
                   className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center cursor-pointer"
