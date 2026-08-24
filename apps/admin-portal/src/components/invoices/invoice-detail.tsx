@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { TAX_DEFAULT_APPLIES, type TaxType } from '@/components/tax-settings/tax-settings';
 
 interface InvoiceItem {
   id: string;
@@ -33,12 +34,12 @@ interface InvoiceRecord {
 }
 
 interface TaxRateRow {
-  tax_type: 'vat' | 'wht' | 'vat_withholding';
+  tax_type: TaxType;
   rate: number;
 }
 
 interface ClientTaxSettingRow {
-  tax_type: 'vat' | 'wht' | 'vat_withholding';
+  tax_type: TaxType;
   applies: boolean;
 }
 
@@ -120,8 +121,14 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const whtRate = ratesQuery.data?.find((r) => r.tax_type === 'wht')?.rate ?? 5;
   const vatWithholdingRate = ratesQuery.data?.find((r) => r.tax_type === 'vat_withholding')?.rate ?? 33.33;
 
-  const whtApplies = clientTaxQuery.data?.find((r) => r.tax_type === 'wht')?.applies ?? false;
-  const vatWithholdingApplies = clientTaxQuery.data?.find((r) => r.tax_type === 'vat_withholding')?.applies ?? false;
+  // TAX_DEFAULT_APPLIES: VAT applies unless a client is explicitly marked
+  // exempt; WHT/VAT Withholding only apply to clients explicitly ticked —
+  // same defaults the Tax Settings checkboxes use, so an unset client never
+  // silently gets taxed differently there vs. here.
+  const vatApplies = clientTaxQuery.data?.find((r) => r.tax_type === 'vat')?.applies ?? TAX_DEFAULT_APPLIES.vat;
+  const whtApplies = clientTaxQuery.data?.find((r) => r.tax_type === 'wht')?.applies ?? TAX_DEFAULT_APPLIES.wht;
+  const vatWithholdingApplies =
+    clientTaxQuery.data?.find((r) => r.tax_type === 'vat_withholding')?.applies ?? TAX_DEFAULT_APPLIES.vat_withholding;
 
   const itemsSubtotal = (inv.items ?? []).reduce((sum, item) => sum + (item.total ?? 0), 0);
   const totalForDays = inv.multiplyByDays ? itemsSubtotal * (inv.numberOfDays || 1) : itemsSubtotal;
@@ -130,16 +137,18 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   // Mirrors apps/catering-system/src/lib/reports/invoice-math.ts, the one
   // place in catering-system that correctly backs VAT out of an
   // inclusive total instead of showing 0 — exclusive adds VAT on top,
-  // inclusive decomposes the total into net + VAT.
-  let vatAmount: number;
-  let grandTotal: number;
-  if (inv.vatType === 'exclusive') {
-    vatAmount = totalBeforeVat * (vatRate / 100);
-    grandTotal = totalBeforeVat + vatAmount;
-  } else {
-    grandTotal = totalBeforeVat;
-    const net = grandTotal / (1 + vatRate / 100);
-    vatAmount = grandTotal - net;
+  // inclusive decomposes the total into net + VAT. Skipped entirely for a
+  // VAT-exempt client (Tax Settings).
+  let vatAmount = 0;
+  let grandTotal = totalBeforeVat;
+  if (vatApplies) {
+    if (inv.vatType === 'exclusive') {
+      vatAmount = totalBeforeVat * (vatRate / 100);
+      grandTotal = totalBeforeVat + vatAmount;
+    } else {
+      const net = totalBeforeVat / (1 + vatRate / 100);
+      vatAmount = totalBeforeVat - net;
+    }
   }
 
   const whtAmount = whtApplies ? grandTotal * (whtRate / 100) : 0;
@@ -173,7 +182,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             <Row label="Service charge" value={fmt(inv.serviceCharge ?? 0)} />
             <Row label="Transport costs" value={fmt(inv.transportCosts ?? 0)} />
             <Row label="Total before VAT" value={fmt(totalBeforeVat)} strong />
-            <Row label={`VAT (${vatRate}%, ${inv.vatType})`} value={fmt(vatAmount)} />
+            <Row
+              label={vatApplies ? `VAT (${vatRate}%, ${inv.vatType})` : 'VAT'}
+              value={vatApplies ? fmt(vatAmount) : 'Exempt'}
+            />
             <Row label="Grand Total" value={fmt(grandTotal)} strong />
             {whtApplies && <Row label={`WHT (${whtRate}% of gross)`} value={`− ${fmt(whtAmount)}`} />}
             {vatWithholdingApplies && (
@@ -181,12 +193,43 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             )}
             {(whtApplies || vatWithholdingApplies) && <Row label="Net Payable" value={fmt(netPayable)} strong />}
           </dl>
-          {!whtApplies && !vatWithholdingApplies && (
-            <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-              WHT and VAT Withholding aren&apos;t configured for this client — set them in Tax Settings if they
-              should apply.
-            </p>
-          )}
+
+          <div className="pt-2 border-t border-border text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">How this is calculated</p>
+            {vatApplies ? (
+              <p>
+                VAT: {inv.vatType === 'exclusive'
+                  ? `${fmt(totalBeforeVat)} × ${vatRate}% = ${fmt(vatAmount)} (added on top, since this invoice is VAT-exclusive)`
+                  : `${fmt(totalBeforeVat)} is VAT-inclusive, so VAT = total − (total ÷ (1 + ${vatRate}%)) = ${fmt(vatAmount)}`}
+              </p>
+            ) : (
+              <p>VAT: this client is marked VAT-exempt in Tax Settings, so no VAT is charged.</p>
+            )}
+            {whtApplies ? (
+              <p>
+                WHT: {fmt(grandTotal)} (Grand Total) × {whtRate}% = {fmt(whtAmount)}, withheld by the client and
+                remitted to TRA on the company&apos;s behalf.
+              </p>
+            ) : (
+              <p>WHT: not configured for this client — set it in Tax Settings if they&apos;re a withholding agent.</p>
+            )}
+            {vatWithholdingApplies ? (
+              <p>
+                VAT Withholding: {fmt(vatAmount)} (VAT amount) × {vatWithholdingRate}% = {fmt(vatWithholdingAmount)},
+                withheld by the client instead of paid to the company.
+              </p>
+            ) : (
+              <p>
+                VAT Withholding: not configured for this client — set it in Tax Settings if they&apos;re a
+                government/appointed withholding agent.
+              </p>
+            )}
+            {(whtApplies || vatWithholdingApplies) && (
+              <p className="text-foreground font-medium">
+                Net Payable = Grand Total − WHT − VAT Withholding = {fmt(netPayable)}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4 space-y-2">

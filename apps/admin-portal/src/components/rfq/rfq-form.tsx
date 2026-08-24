@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { useForm } from 'react-hook-form';
@@ -25,6 +25,7 @@ export function RfqForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uniformPax, setUniformPax] = useState<number>(1);
   const [uniformMealType, setUniformMealType] = useState<string>(MEAL_TYPES[0]);
+  const [clientSearch, setClientSearch] = useState('');
 
   // Mirrors the plain <Select> populated from a full client list that
   // apps/catering-system/src/components/proforma-invoices/proforma-invoice-form.tsx
@@ -42,6 +43,12 @@ export function RfqForm() {
       return data as { id: string; companyName: string }[];
     },
   });
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim()) return clients ?? [];
+    const q = clientSearch.trim().toLowerCase();
+    return (clients ?? []).filter((c) => c.companyName.toLowerCase().includes(q));
+  }, [clients, clientSearch]);
 
   const {
     register,
@@ -170,15 +177,23 @@ export function RfqForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
       <div>
         <label className="text-sm font-medium">Name of Client</label>
+        <input
+          type="text"
+          value={clientSearch}
+          onChange={(e) => setClientSearch(e.target.value)}
+          placeholder="Search clients…"
+          className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
         <select
           {...register('clientId')}
           defaultValue=""
+          size={clientSearch.trim() ? Math.min(6, Math.max(2, filteredClients.length + 1)) : undefined}
           className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           <option value="" disabled>
             Select client
           </option>
-          {(clients ?? []).map((c) => (
+          {filteredClients.map((c) => (
             <option key={c.id} value={c.id}>
               {c.companyName}
             </option>

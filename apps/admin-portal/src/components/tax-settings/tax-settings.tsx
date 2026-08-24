@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { usePortalRole } from '@/lib/portal-role';
 
-type TaxType = 'vat' | 'wht' | 'vat_withholding';
+export type TaxType = 'vat' | 'wht' | 'vat_withholding';
 
 const TAX_TYPE_LABEL: Record<TaxType, string> = {
   vat: 'VAT',
@@ -15,6 +15,18 @@ const TAX_TYPE_LABEL: Record<TaxType, string> = {
 };
 
 const TAX_TYPES: TaxType[] = ['vat', 'wht', 'vat_withholding'];
+
+// VAT is the statutory default in Tanzania — it applies unless a client is
+// explicitly marked exempt. WHT/VAT Withholding are the opposite: they only
+// apply to specific clients (e.g. government/appointed withholding agents),
+// so a client with no row for them defaults to "doesn't apply". Shared with
+// invoice-detail.tsx's computation so the checkbox state and the actual tax
+// math never disagree about what "unset" means.
+export const TAX_DEFAULT_APPLIES: Record<TaxType, boolean> = {
+  vat: true,
+  wht: false,
+  vat_withholding: false,
+};
 
 interface TaxRateRow {
   tax_type: TaxType;
@@ -194,8 +206,15 @@ export function TaxSettings() {
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium">Client Tax Applicability</h2>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-medium">Client Tax Applicability</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              VAT applies to every client by default — untick it only for VAT-exempt clients. WHT and VAT
+              Withholding are off by default and only apply to the clients you tick (e.g. government or
+              appointed withholding agents).
+            </p>
+          </div>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -226,7 +245,7 @@ export function TaxSettings() {
                       <td key={taxType} className="py-2 text-center">
                         <input
                           type="checkbox"
-                          checked={appliesMap.get(`${client.id}:${taxType}`) ?? false}
+                          checked={appliesMap.get(`${client.id}:${taxType}`) ?? TAX_DEFAULT_APPLIES[taxType]}
                           onChange={(e) => toggleClientTax(client.id, taxType, e.target.checked)}
                         />
                       </td>
