@@ -45,14 +45,24 @@ export default function RevenueTrendPage() {
     },
   });
 
+  const vatRateQuery = useQuery({
+    queryKey: ['report-vat-rate'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('invoice_tax_rates').select('rate').eq('tax_type', 'vat').maybeSingle();
+      if (error) throw error;
+      return data?.rate ?? 18;
+    },
+  });
+  const vatRate = vatRateQuery.data ?? 18;
+
   const trend = useMemo(() => {
     const map = new Map<string, number>();
     for (const inv of query.data ?? []) {
       const key = bucketKey(inv.invoiceDate, bucket);
-      map.set(key, (map.get(key) ?? 0) + computeInvoiceGrandTotal(inv));
+      map.set(key, (map.get(key) ?? 0) + computeInvoiceGrandTotal(inv, vatRate));
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [query.data, bucket]);
+  }, [query.data, bucket, vatRate]);
 
   const maxValue = Math.max(1, ...trend.map(([, v]) => v));
   const ytdTotal = trend.reduce((sum, [, v]) => sum + v, 0);

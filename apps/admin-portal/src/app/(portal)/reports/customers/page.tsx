@@ -33,18 +33,28 @@ export default function CustomerPerformancePage() {
     },
   });
 
+  const vatRateQuery = useQuery({
+    queryKey: ['report-vat-rate'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('invoice_tax_rates').select('rate').eq('tax_type', 'vat').maybeSingle();
+      if (error) throw error;
+      return data?.rate ?? 18;
+    },
+  });
+  const vatRate = vatRateQuery.data ?? 18;
+
   const byClient = useMemo(() => {
     const map = new Map<string, { name: string; revenue: number; count: number }>();
     for (const inv of query.data ?? []) {
       const key = inv.clientId ?? 'unknown';
       const name = inv.clients?.companyName ?? inv.clientId ?? 'Unknown';
       const existing = map.get(key) ?? { name, revenue: 0, count: 0 };
-      existing.revenue += computeInvoiceGrandTotal(inv);
+      existing.revenue += computeInvoiceGrandTotal(inv, vatRate);
       existing.count += 1;
       map.set(key, existing);
     }
     return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
-  }, [query.data]);
+  }, [query.data, vatRate]);
 
   const maxRevenue = Math.max(1, ...byClient.map((c) => c.revenue));
 

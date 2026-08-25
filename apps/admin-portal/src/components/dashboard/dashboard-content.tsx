@@ -118,6 +118,19 @@ export function DashboardContent() {
     },
   });
 
+  // Same admin-configured rate Tax Settings and invoice-detail.tsx use —
+  // computeInvoiceGrandTotal defaults to 18% otherwise, which goes stale
+  // the moment the admin changes the rate.
+  const vatRateQuery = useQuery({
+    queryKey: ['dashboard-vat-rate'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('invoice_tax_rates').select('tax_type, rate').eq('tax_type', 'vat').maybeSingle();
+      if (error) throw error;
+      return data?.rate ?? 18;
+    },
+  });
+  const vatRate = vatRateQuery.data ?? 18;
+
   const ordersQuery = useQuery({
     queryKey: ['dashboard-orders'],
     queryFn: async () => {
@@ -175,6 +188,7 @@ export function DashboardContent() {
     proformasQuery,
     proformaAllStatusQuery,
     invoicesQuery,
+    vatRateQuery,
     ordersQuery,
     rfqHistoryQuery,
     invoiceRequestsQuery,
@@ -192,8 +206,8 @@ export function DashboardContent() {
 
   const outstanding = useMemo(() => {
     const rows = (invoicesQuery.data ?? []).filter((i) => i.status === 'outstanding');
-    return { count: rows.length, total: rows.reduce((sum, i) => sum + computeInvoiceGrandTotal(i), 0) };
-  }, [invoicesQuery.data]);
+    return { count: rows.length, total: rows.reduce((sum, i) => sum + computeInvoiceGrandTotal(i, vatRate), 0) };
+  }, [invoicesQuery.data, vatRate]);
 
   const revenue = useMemo(() => {
     const now = new Date();
@@ -206,12 +220,12 @@ export function DashboardContent() {
     let prevMonth = 0;
     for (const inv of invoicesQuery.data ?? []) {
       const d = new Date(inv.invoiceDate);
-      const total = computeInvoiceGrandTotal(inv);
+      const total = computeInvoiceGrandTotal(inv, vatRate);
       if (d >= thisStart && d <= thisEnd) thisMonth += total;
       else if (d >= lastStart && d <= lastEnd) prevMonth += total;
     }
     return { thisMonth, prevMonth };
-  }, [invoicesQuery.data]);
+  }, [invoicesQuery.data, vatRate]);
 
   // Last 6 months of invoiced revenue, monthly buckets — same shape as
   // reports/revenue-trend/page.tsx's bucketing, inlined for this one extra
@@ -223,10 +237,10 @@ export function DashboardContent() {
     for (const inv of invoicesQuery.data ?? []) {
       const key = format(new Date(inv.invoiceDate), 'yyyy-MM');
       const bucket = byKey.get(key);
-      if (bucket) bucket.revenue += computeInvoiceGrandTotal(inv);
+      if (bucket) bucket.revenue += computeInvoiceGrandTotal(inv, vatRate);
     }
     return buckets;
-  }, [invoicesQuery.data]);
+  }, [invoicesQuery.data, vatRate]);
 
   const rfqStatusData = useMemo(() => {
     const counts = new Map<string, number>();

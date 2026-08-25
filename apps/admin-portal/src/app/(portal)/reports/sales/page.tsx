@@ -44,9 +44,19 @@ export default function SalesReportPage() {
     },
   });
 
+  const vatRateQuery = useQuery({
+    queryKey: ['report-vat-rate'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('invoice_tax_rates').select('rate').eq('tax_type', 'vat').maybeSingle();
+      if (error) throw error;
+      return data?.rate ?? 18;
+    },
+  });
+  const vatRate = vatRateQuery.data ?? 18;
+
   const rows = useMemo(
-    () => (query.data ?? []).map((inv) => ({ ...inv, total: computeInvoiceGrandTotal(inv) })),
-    [query.data]
+    () => (query.data ?? []).map((inv) => ({ ...inv, total: computeInvoiceGrandTotal(inv, vatRate) })),
+    [query.data, vatRate]
   );
   const totalRevenue = rows.reduce((sum, r) => sum + r.total, 0);
 
