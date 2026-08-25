@@ -3,12 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 import type { RfqStatusHistoryEntry, PaxPerDayEntry, MealTypePerDayEntry } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { StickyActionBar } from '@/components/pwa/sticky-action-bar';
 import { LinkProformaForm } from './link-proforma-form';
 import { RequestInvoiceButton, type InvoiceRequestSummary } from './request-invoice-button';
 import { RequestCostingButton, type CostingRequestSummary } from './request-costing-button';
@@ -52,8 +56,10 @@ interface RfqRecord {
 export function RfqDetail({ rfqId }: { rfqId: string }) {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const rfqQuery = useQuery({
     queryKey: ['rfq', rfqId],
@@ -202,13 +208,13 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">{rfq.title}</h1>
           <Badge variant="secondary">{rfq.status}</Badge>
           {rfq.status === 'draft' && (
-            <Button size="sm" onClick={submitToCateringSystem} disabled={submitting}>
+            <Button size="sm" className="hidden md:inline-flex" onClick={submitToCateringSystem} disabled={submitting}>
               {submitting ? 'Submitting…' : 'Submit to Catering System'}
             </Button>
           )}
@@ -217,7 +223,15 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
         {submitError && <p className="text-sm text-destructive mt-1">{submitError}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {rfq.status === 'draft' && (
+        <StickyActionBar>
+          <Button onClick={submitToCateringSystem} disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit to Catering System'}
+          </Button>
+        </StickyActionBar>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Details</CardTitle>
@@ -286,23 +300,34 @@ export function RfqDetail({ rfqId }: { rfqId: string }) {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status history</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {historyQuery.data && historyQuery.data.length > 0 ? (
-              <ul className="text-sm space-y-1">
-                {historyQuery.data.map((h) => (
-                  <li key={h.id} className="text-muted-foreground">
-                    {h.fromStatus ?? '—'} → <span className="text-foreground">{h.toStatus}</span>
-                    {h.note ? ` — ${h.note}` : ''}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">No status changes yet.</p>
-            )}
-          </CardContent>
+          <Collapsible open={!isMobile || historyOpen} onOpenChange={setHistoryOpen}>
+            <CardHeader>
+              {isMobile && historyQuery.data && historyQuery.data.length > 0 ? (
+                <CollapsibleTrigger className="flex w-full items-center justify-between">
+                  <CardTitle className="text-base">Status history</CardTitle>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${historyOpen ? 'rotate-180' : ''}`} />
+                </CollapsibleTrigger>
+              ) : (
+                <CardTitle className="text-base">Status history</CardTitle>
+              )}
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
+                {historyQuery.data && historyQuery.data.length > 0 ? (
+                  <ul className="text-sm space-y-1">
+                    {historyQuery.data.map((h) => (
+                      <li key={h.id} className="text-muted-foreground">
+                        {h.fromStatus ?? '—'} → <span className="text-foreground">{h.toStatus}</span>
+                        {h.note ? ` — ${h.note}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No status changes yet.</p>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       </div>
 

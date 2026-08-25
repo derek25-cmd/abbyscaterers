@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { Download } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useAppSettings } from '@/lib/use-app-settings';
 import { exportDocumentToPdf } from '@/lib/pdf-export';
 import { ProformaPdfTemplate } from '@/components/pdf/proforma-pdf-template';
@@ -14,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { StickyActionBar } from '@/components/pwa/sticky-action-bar';
 import {
   Table,
   TableHeader,
@@ -81,6 +84,7 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
   const supabase = useSupabaseClient();
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const appSettingsQuery = useAppSettings();
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -216,8 +220,10 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
   const itemsTotal = (p.items ?? []).reduce((sum, item) => sum + (item.total ?? 0), 0);
   const grandTotal = itemsTotal + (p.serviceCharge ?? 0) + (p.transportCosts ?? 0);
 
+  const pendingActionable = p.reviewStatus === 'pending' && !p.isVoided && !p.isInvoiced;
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Proforma {p.id}</h1>
@@ -241,8 +247,8 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
             {p.isInvoiced && !p.isVoided && <Badge variant="secondary">Invoiced</Badge>}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {p.reviewStatus === 'pending' && !p.isVoided && !p.isInvoiced && (
+        <div className="hidden md:flex items-center gap-2">
+          {pendingActionable && (
             <>
               <Button type="button" size="sm" onClick={approve} disabled={reviewing}>
                 {reviewing ? 'Approving…' : 'Approve'}
@@ -266,7 +272,30 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
       </div>
       {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
-      {showRejectReason && (
+      <StickyActionBar>
+        {pendingActionable && (
+          <>
+            <Button type="button" onClick={approve} disabled={reviewing}>
+              {reviewing ? 'Approving…' : 'Approve'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => setShowRejectReason(true)}
+              disabled={reviewing}
+            >
+              Reject
+            </Button>
+          </>
+        )}
+        <Button type="button" variant="outline" onClick={() => exportPdf(p)} disabled={exporting || appSettingsQuery.isLoading}>
+          <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
+        </Button>
+      </StickyActionBar>
+
+      {/* Reject reason: inline card on desktop (plenty of width), bottom sheet on mobile. */}
+      {showRejectReason && !isMobile && (
         <Card className="border-destructive/30 bg-destructive/5 no-print">
           <CardContent className="space-y-2 pt-6">
           <Label>Reason for rejection (shown to staff)</Label>
@@ -295,11 +324,29 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
           </CardContent>
         </Card>
       )}
+      <Sheet open={showRejectReason && isMobile} onOpenChange={setShowRejectReason}>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>Reason for rejection</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-3">
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Pax count doesn't match the RFQ, please revise"
+            />
+            <Button type="button" variant="destructive" className="w-full" onClick={confirmReject} disabled={reviewing}>
+              {reviewing ? 'Rejecting…' : 'Confirm rejection'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
       {reviewError && <p className="text-sm text-destructive no-print">{reviewError}</p>}
 
       <Card>
         <CardContent className="p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Client</p>
             <p className="font-medium">{p.clients?.companyName ?? p.clientId ?? '—'}</p>

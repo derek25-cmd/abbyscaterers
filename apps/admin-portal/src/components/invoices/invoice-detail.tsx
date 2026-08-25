@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download } from 'lucide-react';
+import { Download, ChevronDown } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { TAX_DEFAULT_APPLIES, type TaxType } from '@/components/tax-settings/tax-settings';
 import { useAppSettings } from '@/lib/use-app-settings';
@@ -11,6 +11,8 @@ import { InvoicePdfTemplate } from '@/components/pdf/invoice-pdf-template';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { StickyActionBar } from '@/components/pwa/sticky-action-bar';
 import {
   Table,
   TableHeader,
@@ -208,7 +210,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const fmt = (n: number) => `TZS ${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
@@ -221,13 +223,19 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             {inv.clients?.companyName ?? inv.clientId ?? '—'} · {inv.invoiceDate}
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => exportPdf(inv)} disabled={exporting || appSettingsQuery.isLoading}>
+        <Button type="button" variant="outline" className="hidden md:inline-flex" onClick={() => exportPdf(inv)} disabled={exporting || appSettingsQuery.isLoading}>
           <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
         </Button>
       </div>
       {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
-      <div className="grid grid-cols-2 gap-4">
+      <StickyActionBar>
+        <Button type="button" onClick={() => exportPdf(inv)} disabled={exporting || appSettingsQuery.isLoading}>
+          <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
+        </Button>
+      </StickyActionBar>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Tax Breakdown</CardTitle>
@@ -251,42 +259,47 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             {(whtApplies || vatWithholdingApplies) && <Row label="Net Payable" value={fmt(netPayable)} strong />}
           </dl>
 
-          <div className="pt-2 border-t border-border text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">How this is calculated</p>
-            {vatApplies ? (
-              <p>
-                VAT: {inv.vatType === 'exclusive'
-                  ? `${fmt(totalBeforeVat)} × ${vatRate}% = ${fmt(vatAmount)} (added on top, since this invoice is VAT-exclusive)`
-                  : `${fmt(totalBeforeVat)} is VAT-inclusive, so VAT = total − (total ÷ (1 + ${vatRate}%)) = ${fmt(vatAmount)}`}
-              </p>
-            ) : (
-              <p>VAT: this client is marked VAT-exempt in Tax Settings, so no VAT is charged.</p>
-            )}
-            {whtApplies ? (
-              <p>
-                WHT: {fmt(grandTotal)} (Grand Total) × {whtRate}% = {fmt(whtAmount)}, withheld by the client and
-                remitted to TRA on the company&apos;s behalf.
-              </p>
-            ) : (
-              <p>WHT: not configured for this client — set it in Tax Settings if they&apos;re a withholding agent.</p>
-            )}
-            {vatWithholdingApplies ? (
-              <p>
-                VAT Withholding: {fmt(vatAmount)} (VAT amount) × {vatWithholdingRate}% = {fmt(vatWithholdingAmount)},
-                withheld by the client instead of paid to the company.
-              </p>
-            ) : (
-              <p>
-                VAT Withholding: not configured for this client — set it in Tax Settings if they&apos;re a
-                government/appointed withholding agent.
-              </p>
-            )}
-            {(whtApplies || vatWithholdingApplies) && (
-              <p className="text-foreground font-medium">
-                Net Payable = Grand Total − WHT − VAT Withholding = {fmt(netPayable)}
-              </p>
-            )}
-          </div>
+          <Collapsible className="pt-2 border-t border-border">
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium text-foreground data-[state=open]:[&>svg]:rotate-180">
+              How this is calculated
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="text-xs text-muted-foreground space-y-1 pt-1">
+              {vatApplies ? (
+                <p>
+                  VAT: {inv.vatType === 'exclusive'
+                    ? `${fmt(totalBeforeVat)} × ${vatRate}% = ${fmt(vatAmount)} (added on top, since this invoice is VAT-exclusive)`
+                    : `${fmt(totalBeforeVat)} is VAT-inclusive, so VAT = total − (total ÷ (1 + ${vatRate}%)) = ${fmt(vatAmount)}`}
+                </p>
+              ) : (
+                <p>VAT: this client is marked VAT-exempt in Tax Settings, so no VAT is charged.</p>
+              )}
+              {whtApplies ? (
+                <p>
+                  WHT: {fmt(grandTotal)} (Grand Total) × {whtRate}% = {fmt(whtAmount)}, withheld by the client and
+                  remitted to TRA on the company&apos;s behalf.
+                </p>
+              ) : (
+                <p>WHT: not configured for this client — set it in Tax Settings if they&apos;re a withholding agent.</p>
+              )}
+              {vatWithholdingApplies ? (
+                <p>
+                  VAT Withholding: {fmt(vatAmount)} (VAT amount) × {vatWithholdingRate}% = {fmt(vatWithholdingAmount)},
+                  withheld by the client instead of paid to the company.
+                </p>
+              ) : (
+                <p>
+                  VAT Withholding: not configured for this client — set it in Tax Settings if they&apos;re a
+                  government/appointed withholding agent.
+                </p>
+              )}
+              {(whtApplies || vatWithholdingApplies) && (
+                <p className="text-foreground font-medium">
+                  Net Payable = Grand Total − WHT − VAT Withholding = {fmt(netPayable)}
+                </p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
           </CardContent>
         </Card>
 
