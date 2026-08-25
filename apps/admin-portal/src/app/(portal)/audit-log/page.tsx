@@ -3,9 +3,14 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useRevealWindow } from '@/hooks/use-reveal-window';
 import { SuperAdminGate } from '@/components/admin/super-admin-gate';
+import { AuditLogCard, type AuditLogCardData } from '@/components/admin/audit-log-card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableHeader,
@@ -14,17 +19,16 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import { PullToRefresh } from '@/components/pwa/pull-to-refresh';
+import { SortSheet } from '@/components/pwa/sort-sheet';
+import { FilterSheet } from '@/components/pwa/filter-sheet';
+import { LoadMoreButton } from '@/components/pwa/load-more-button';
+import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
 
-interface AuditRow {
-  id: string;
-  actor_id: string | null;
-  actor_type: 'portal' | 'staff' | 'system';
-  action: string;
-  table_name: string | null;
-  record_id: string | null;
-  note: string | null;
-  created_at: string;
-}
+type AuditRow = AuditLogCardData;
+
+const ACTOR_TYPES = ['portal', 'staff', 'system'] as const;
+type SortValue = 'date_desc' | 'date_asc';
 
 const ACTOR_TYPE_CLASS: Record<string, string> = {
   portal: 'bg-primary/10 text-primary',
@@ -34,7 +38,10 @@ const ACTOR_TYPE_CLASS: Record<string, string> = {
 
 function AuditLog() {
   const supabase = useSupabaseClient();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
+  const [actorFilter, setActorFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState<SortValue>('date_desc');
 
   const query = useQuery({
     queryKey: ['audit-log'],
@@ -50,17 +57,32 @@ function AuditLog() {
   });
 
   const filtered = useMemo(() => {
-    const rows = query.data ?? [];
-    if (!search.trim()) return rows;
-    const q = search.trim().toLowerCase();
-    return rows.filter(
-      (r) =>
-        r.action.toLowerCase().includes(q) ||
-        (r.table_name ?? '').toLowerCase().includes(q) ||
-        (r.record_id ?? '').toLowerCase().includes(q) ||
-        (r.actor_id ?? '').toLowerCase().includes(q)
+    let rows = query.data ?? [];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      rows = rows.filter(
+        (r) =>
+          r.action.toLowerCase().includes(q) ||
+          (r.table_name ?? '').toLowerCase().includes(q) ||
+          (r.record_id ?? '').toLowerCase().includes(q) ||
+          (r.actor_id ?? '').toLowerCase().includes(q)
+      );
+    }
+    if (actorFilter.length > 0) {
+      rows = rows.filter((r) => actorFilter.includes(r.actor_type));
+    }
+    return rows;
+  }, [query.data, search, actorFilter]);
+
+  const sorted = useMemo(() => {
+    const rows = [...filtered];
+    rows.sort((a, b) =>
+      sort === 'date_desc' ? b.created_at.localeCompare(a.created_at) : a.created_at.localeCompare(b.created_at)
     );
-  }, [query.data, search]);
+    return rows;
+  }, [filtered, sort]);
+
+  const { visibleItems, hasMore, loadMore } = useRevealWindow(sorted, 20);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -77,53 +99,97 @@ function AuditLog() {
         placeholder="Search by action, table, record, or actor…"
         className="max-w-sm"
       />
+      <div className="flex flex-wrap gap-2">
+        <SortSheet
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: 'date_desc', label: 'Newest first' },
+            { value: 'date_asc', label: 'Oldest first' },
+          ]}
+        />
+        <FilterSheet activeCount={actorFilter.length} onClear={() => setActorFilter([])}>
+          {ACTOR_TYPES.map((type) => (
+            <div key={type} className="flex items-center gap-2 rounded-md p-2">
+              <Checkbox
+                id={`actor-type-${type}`}
+                checked={actorFilter.includes(type)}
+                onCheckedChange={(checked) =>
+                  setActorFilter((prev) => (checked ? [...prev, type] : prev.filter((t) => t !== type)))
+                }
+              />
+              <Label htmlFor={`actor-type-${type}`} className="font-normal capitalize">
+                {type}
+              </Label>
+            </div>
+          ))}
+        </FilterSheet>
+      </div>
 
       {query.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        isMobile ? <SkeletonCards /> : (
+          <Table>
+            <TableBody><SkeletonTableRows columns={5} /></TableBody>
+          </Table>
+        )
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>When</TableHead>
-              <TableHead>Actor</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Record</TableHead>
-              <TableHead>Note</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((r) => (
-              <TableRow key={r.id} className="align-top">
-                <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={`mr-1 ${ACTOR_TYPE_CLASS[r.actor_type]}`}>
-                    {r.actor_type}
-                  </Badge>
-                  <span className="font-mono text-xs">{r.actor_id ?? '—'}</span>
-                </TableCell>
-                <TableCell className="font-mono text-xs">{r.action}</TableCell>
-                <TableCell className="text-xs">
-                  {r.table_name ? (
-                    <>
-                      {r.table_name}
-                      {r.record_id ? `:${r.record_id}` : ''}
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{r.note ?? '—'}</TableCell>
-              </TableRow>
-            ))}
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No audit entries match &quot;{search}&quot;.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <PullToRefresh onRefresh={async () => { await query.refetch(); }}>
+          {isMobile ? (
+            <div className="space-y-2">
+              {visibleItems.map((r) => (
+                <AuditLogCard key={r.id} entry={r} />
+              ))}
+              {filtered.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">No audit entries match &quot;{search}&quot;.</p>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Record</TableHead>
+                  <TableHead>Note</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleItems.map((r) => (
+                  <TableRow key={r.id} className="align-top">
+                    <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`mr-1 ${ACTOR_TYPE_CLASS[r.actor_type]}`}>
+                        {r.actor_type}
+                      </Badge>
+                      <span className="font-mono text-xs">{r.actor_id ?? '—'}</span>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{r.action}</TableCell>
+                    <TableCell className="text-xs">
+                      {r.table_name ? (
+                        <>
+                          {r.table_name}
+                          {r.record_id ? `:${r.record_id}` : ''}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{r.note ?? '—'}</TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No audit entries match &quot;{search}&quot;.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+          {hasMore && <div className="pt-2"><LoadMoreButton onClick={loadMore} /></div>}
+        </PullToRefresh>
       )}
     </div>
   );

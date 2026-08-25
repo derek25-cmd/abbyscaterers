@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PORTAL_ROLES, BRANCHES, type PortalRole, type Branch } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useRevealWindow } from '@/hooks/use-reveal-window';
 import { SuperAdminGate } from '@/components/admin/super-admin-gate';
+import { UserCard, type UserCardData } from '@/components/admin/user-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,26 +21,29 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import { PullToRefresh } from '@/components/pwa/pull-to-refresh';
+import { SortSheet } from '@/components/pwa/sort-sheet';
+import { FilterSheet } from '@/components/pwa/filter-sheet';
+import { LoadMoreButton } from '@/components/pwa/load-more-button';
+import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
 
 const selectClass = 'mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
 const selectClassSm = 'rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
 
-interface PortalUserRow {
-  id: string;
-  email: string;
-  full_name: string | null;
-  role: PortalRole;
-  branch: Branch | null;
-  is_active: boolean;
-}
+type PortalUserRow = UserCardData;
+type SortValue = 'email_asc' | 'email_desc';
 
 function UsersAdmin() {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newUser, setNewUser] = useState({ id: '', email: '', full_name: '', role: 'staff' as PortalRole, branch: '' });
   const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState<SortValue>('email_asc');
 
   const usersQuery = useQuery({
     queryKey: ['portal-users-admin'],
@@ -86,6 +92,26 @@ function UsersAdmin() {
       setAdding(false);
     }
   };
+
+  const filtered = useMemo(() => {
+    let rows = usersQuery.data ?? [];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      rows = rows.filter((u) => u.email.toLowerCase().includes(q) || (u.full_name ?? '').toLowerCase().includes(q));
+    }
+    if (roleFilter.length > 0) {
+      rows = rows.filter((u) => roleFilter.includes(u.role));
+    }
+    return rows;
+  }, [usersQuery.data, search, roleFilter]);
+
+  const sorted = useMemo(() => {
+    const rows = [...filtered];
+    rows.sort((a, b) => (sort === 'email_asc' ? a.email.localeCompare(b.email) : b.email.localeCompare(a.email)));
+    return rows;
+  }, [filtered, sort]);
+
+  const { visibleItems, hasMore, loadMore } = useRevealWindow(sorted, 20);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -174,61 +200,119 @@ function UsersAdmin() {
         </Card>
       )}
 
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search by email or name…"
+        className="max-w-sm"
+      />
+      <div className="flex flex-wrap gap-2">
+        <SortSheet
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: 'email_asc', label: 'Email A–Z' },
+            { value: 'email_desc', label: 'Email Z–A' },
+          ]}
+        />
+        <FilterSheet activeCount={roleFilter.length} onClear={() => setRoleFilter([])}>
+          {PORTAL_ROLES.map((role) => (
+            <div key={role} className="flex items-center gap-2 rounded-md p-2">
+              <Checkbox
+                id={`role-${role}`}
+                checked={roleFilter.includes(role)}
+                onCheckedChange={(checked) =>
+                  setRoleFilter((prev) => (checked ? [...prev, role] : prev.filter((r) => r !== role)))
+                }
+              />
+              <Label htmlFor={`role-${role}`} className="font-normal capitalize">
+                {role.replace(/_/g, ' ')}
+              </Label>
+            </div>
+          ))}
+        </FilterSheet>
+      </div>
+
       {usersQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        isMobile ? <SkeletonCards /> : (
+          <Table>
+            <TableBody><SkeletonTableRows columns={5} /></TableBody>
+          </Table>
+        )
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>Active</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(usersQuery.data ?? []).map((u) => (
-              <TableRow key={u.id}>
-                <TableCell>{u.email}</TableCell>
-                <TableCell>{u.full_name ?? '—'}</TableCell>
-                <TableCell>
-                  <select
-                    value={u.role}
-                    onChange={(e) => updateUser(u.id, { role: e.target.value as PortalRole })}
-                    className={selectClassSm}
-                  >
-                    {PORTAL_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                </TableCell>
-                <TableCell>
-                  <select
-                    value={u.branch ?? ''}
-                    onChange={(e) => updateUser(u.id, { branch: (e.target.value || null) as Branch | null })}
-                    className={selectClassSm}
-                  >
-                    <option value="">All branches</option>
-                    {BRANCHES.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                </TableCell>
-                <TableCell>
-                  <Checkbox
-                    checked={u.is_active}
-                    onCheckedChange={(checked) => updateUser(u.id, { is_active: checked === true })}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <PullToRefresh onRefresh={async () => { await usersQuery.refetch(); }}>
+          {isMobile ? (
+            <div className="space-y-2">
+              {visibleItems.map((u) => (
+                <UserCard key={u.id} user={u} onUpdate={updateUser} />
+              ))}
+              {filtered.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">No users match &quot;{search}&quot;.</p>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Branch</TableHead>
+                  <TableHead>Active</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleItems.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.full_name ?? '—'}</TableCell>
+                    <TableCell>
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateUser(u.id, { role: e.target.value as PortalRole })}
+                        className={selectClassSm}
+                      >
+                        {PORTAL_ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <select
+                        value={u.branch ?? ''}
+                        onChange={(e) => updateUser(u.id, { branch: (e.target.value || null) as Branch | null })}
+                        className={selectClassSm}
+                      >
+                        <option value="">All branches</option>
+                        {BRANCHES.map((b) => (
+                          <option key={b} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <Checkbox
+                        checked={u.is_active}
+                        onCheckedChange={(checked) => updateUser(u.id, { is_active: checked === true })}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No users match &quot;{search}&quot;.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+          {hasMore && <div className="pt-2"><LoadMoreButton onClick={loadMore} /></div>}
+        </PullToRefresh>
       )}
     </div>
   );
