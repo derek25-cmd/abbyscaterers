@@ -25,6 +25,9 @@ import { SortSheet } from '@/components/pwa/sort-sheet';
 import { FilterSheet } from '@/components/pwa/filter-sheet';
 import { LoadMoreButton } from '@/components/pwa/load-more-button';
 import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
+import { Button } from '@/components/ui/button';
+import { exportToCsv } from '@/lib/csv-export';
+import { X } from 'lucide-react';
 
 type InvoiceListItem = InvoiceCardData;
 
@@ -49,6 +52,8 @@ export function InvoiceListTable() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<SortValue>('date_desc');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const invoicesQuery = useQuery({
     queryKey: ['invoices-list'],
@@ -90,6 +95,27 @@ export function InvoiceListTable() {
   }, [filteredInvoices, sort]);
 
   const { visibleItems, hasMore, loadMore } = useRevealWindow(sortedInvoices, 20);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      if (next.size === 0) setSelectMode(false);
+      return next;
+    });
+  };
+
+  const exportSelected = () => {
+    const rows = invoices.filter((inv) => selectedIds.has(inv.id));
+    exportToCsv(
+      `invoices-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Invoice No.', 'Client', 'Date', 'Status', 'Total (TZS)'],
+      rows.map((inv) => [inv.id, inv.clients?.companyName ?? inv.clientId ?? '', inv.invoiceDate, inv.status, computeInvoiceGrandTotal(inv)])
+    );
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
 
   if (invoicesQuery.error) {
     return <p className="text-sm text-destructive">Failed to load invoices: {(invoicesQuery.error as Error).message}</p>;
@@ -143,7 +169,17 @@ export function InvoiceListTable() {
           {isMobile ? (
             <div className="space-y-2">
               {visibleItems.map((inv) => (
-                <InvoiceCard key={inv.id} invoice={inv} />
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(inv.id)}
+                  onEnterSelectMode={(id) => {
+                    setSelectMode(true);
+                    setSelectedIds(new Set([id]));
+                  }}
+                  onToggleSelected={toggleSelected}
+                />
               ))}
               {filteredInvoices.length === 0 && (
                 <p className="py-8 text-center text-sm text-muted-foreground">No invoices match &quot;{search}&quot;.</p>
@@ -190,6 +226,26 @@ export function InvoiceListTable() {
           )}
           {hasMore && <div className="pt-2"><LoadMoreButton onClick={loadMore} /></div>}
         </PullToRefresh>
+      )}
+
+      {selectMode && (
+        <div className="fixed inset-x-0 bottom-14 z-30 flex items-center justify-between gap-2 border-t border-border bg-background p-3 md:hidden">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setSelectMode(false);
+              setSelectedIds(new Set());
+            }}
+            aria-label="Cancel selection"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <Button type="button" className="flex-1" disabled={selectedIds.size === 0} onClick={exportSelected}>
+            Export {selectedIds.size} selected
+          </Button>
+        </div>
       )}
     </div>
   );

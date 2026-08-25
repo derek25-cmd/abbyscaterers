@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { StickyActionBar } from '@/components/pwa/sticky-action-bar';
+import { vibrate } from '@/lib/haptics';
 import {
   Table,
   TableHeader,
@@ -143,6 +144,7 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
   }, [supabase, queryClient, proformaId]);
 
   const approve = async () => {
+    vibrate();
     setReviewing(true);
     setReviewError(null);
     try {
@@ -157,6 +159,7 @@ export function ProformaView({ proformaId }: { proformaId: string }) {
   };
 
   const confirmReject = async () => {
+    vibrate();
     setReviewing(true);
     setReviewError(null);
     try {
