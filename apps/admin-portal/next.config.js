@@ -3,6 +3,7 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   disable: process.env.NODE_ENV === 'development',
   register: true,
   cacheOnFrontEndNav: true,
+  customWorkerSrc: 'service-worker',
   workboxOptions: {
     runtimeCaching: [
       // Clerk auth — never cache.
@@ -46,6 +47,10 @@ const withPWA = require('@ducanh2912/next-pwa').default({
   },
 });
 
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: [
@@ -55,4 +60,4 @@ const nextConfig = {
   ],
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = withBundleAnalyzer(withPWA(nextConfig));

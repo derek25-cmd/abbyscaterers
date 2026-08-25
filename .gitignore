@@ -56,6 +56,8 @@ apps/admin-portal/public/swe-worker-*.js
 apps/admin-portal/public/swe-worker-*.js.map
 apps/admin-portal/public/workbox-*.js
 apps/admin-portal/public/workbox-*.js.map
+apps/admin-portal/public/worker-*.js
+apps/admin-portal/public/worker-*.js.map
 *.dmg
 *.AppImage
 *.snap

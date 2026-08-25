@@ -4,8 +4,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Bell, BellOff } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -32,6 +33,7 @@ export default function NotificationsPage() {
   const { user } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const push = usePushNotifications();
 
   const notificationsQuery = useQuery({
     queryKey: ['portal-notifications-all', user?.id],
@@ -100,16 +102,48 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Notifications</h1>
-          <p className="text-sm text-muted-foreground">
-            Email and SMS aren&apos;t set up yet — in-app only for now.
-          </p>
+          <p className="text-sm text-muted-foreground">Email and SMS aren&apos;t set up yet — in-app and push only.</p>
         </div>
-        {unreadCount > 0 && (
-          <Button type="button" variant="outline" onClick={markAllRead}>
-            Mark all read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {push.supported && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={push.subscribed ? push.disable : push.enable}
+              disabled={push.loading}
+            >
+              {push.subscribed ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+              {push.subscribed ? 'Disable push' : 'Enable push'}
+            </Button>
+          )}
+          {unreadCount > 0 && (
+            <Button type="button" variant="outline" onClick={markAllRead}>
+              Mark all read
+            </Button>
+          )}
+        </div>
       </div>
+      {push.error && <p className="text-sm text-destructive">{push.error}</p>}
+
+      {push.showContextualPrompt && (
+        <Card className="border-primary/30 bg-primary/5">
+          <div className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <Bell className="h-4 w-4 text-primary shrink-0" />
+              Get notified when proformas need your approval — turn on notifications?
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button type="button" size="sm" onClick={push.enable} disabled={push.loading}>
+                Enable
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={push.dismissContextualPrompt}>
+                Not now
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {deadlinesQuery.data && deadlinesQuery.data.length > 0 && (
         <Card className="border-amber-300 bg-amber-50">
