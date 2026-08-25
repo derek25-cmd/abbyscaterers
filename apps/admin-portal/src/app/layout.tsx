@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from './providers';
@@ -17,9 +17,25 @@ const inter = Inter({
   variable: '--font-sans',
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#3b3030',
+};
+
 export const metadata: Metadata = {
   title: "Abby's Caterers — Admin Portal",
   description: 'RFQ, proforma, invoice, and reporting control plane for Abby\'s Legendary Caterers.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: "Abby's Admin",
+  },
+  icons: {
+    apple: '/icons/apple-touch-icon-180x180.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

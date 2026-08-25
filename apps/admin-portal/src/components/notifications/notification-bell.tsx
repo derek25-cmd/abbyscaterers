@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { Bell } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useUnreadNotificationCount } from '@/hooks/use-unread-notification-count';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -58,7 +59,7 @@ export function NotificationBell() {
     };
   }, [supabase, queryClient, user]);
 
-  const unreadCount = (notifications ?? []).filter((n) => !n.is_read).length;
+  const unreadCount = useUnreadNotificationCount();
 
   const handleOpenNotification = async (n: NotificationRow) => {
     if (!n.is_read) {

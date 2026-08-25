@@ -106,3 +106,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Minimum touch target size (Apple HIG / Material Design) on mobile and
+   tablet only — desktop data tables stay dense (not scoped inside @layer
+   base so it always wins over component-level sizing utilities). */
+@media (max-width: 1023.98px) {
+  button, a, [role="button"], input, select, textarea, summary {
+    min-height: 44px;
+  }
+}
