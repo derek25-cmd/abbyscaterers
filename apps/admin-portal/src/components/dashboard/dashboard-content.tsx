@@ -1,20 +1,30 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceToNow, startOfMonth, endOfMonth, subMonths, addDays } from 'date-fns';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
+
+// recharts is the single biggest dependency in admin-portal — only the
+// Dashboard uses it, so keep it out of this route's initial JS.
+const DashboardCharts = dynamic(() => import('./dashboard-charts').then((m) => m.DashboardCharts), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <SkeletonCards count={4} />
+    </div>
+  ),
+});
 
 interface InvoiceRow extends InvoiceTotalFields {
   id: string;
@@ -52,9 +62,6 @@ const RFQ_STATUS_LABEL: Record<string, string> = {
 
 const PROFORMA_STATUS_LABEL: Record<string, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 const INVOICE_STATUS_LABEL: Record<string, string> = { outstanding: 'Outstanding', paid: 'Paid', 'partially paid': 'Partially Paid' };
-
-const countChartConfig: ChartConfig = { count: { label: 'Count', color: 'hsl(var(--primary))' } };
-const revenueChartConfig: ChartConfig = { revenue: { label: 'Revenue (TZS)', color: 'hsl(var(--primary))' } };
 
 export function DashboardContent() {
   const supabase = useSupabaseClient();
@@ -366,75 +373,12 @@ export function DashboardContent() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Revenue Trend (last 6 months)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={revenueChartConfig}>
-              <LineChart data={revenueTrendData} margin={{ left: 12, right: 12 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} width={40} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">RFQ Status Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={countChartConfig}>
-              <BarChart data={rfqStatusData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                <CartesianGrid horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
-                <YAxis dataKey="status" type="category" tickLine={false} axisLine={false} width={100} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Proforma Pipeline</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={countChartConfig}>
-              <BarChart data={proformaStatusData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                <CartesianGrid horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
-                <YAxis dataKey="status" type="category" tickLine={false} axisLine={false} width={100} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Invoice Status Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={countChartConfig}>
-              <BarChart data={invoiceStatusData} layout="vertical" margin={{ left: 12, right: 12 }}>
-                <CartesianGrid horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} allowDecimals={false} />
-                <YAxis dataKey="status" type="category" tickLine={false} axisLine={false} width={100} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardCharts
+        revenueTrendData={revenueTrendData}
+        rfqStatusData={rfqStatusData}
+        proformaStatusData={proformaStatusData}
+        invoiceStatusData={invoiceStatusData}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
