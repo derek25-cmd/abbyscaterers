@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { PortalRole } from '@abbyscaterers/types';
 import { usePortalRole } from '@/lib/portal-role';
+import { useKeyboardAwareScroll } from '@/hooks/use-keyboard-aware-scroll';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { OfflineBanner } from '@/components/pwa/offline-banner';
 import { BottomTabBar } from '@/components/pwa/bottom-tab-bar';
@@ -86,6 +87,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { role, isActive, loading } = usePortalRole();
   const visibleManagementItems = managementItems.filter((item) => role && item.roles.includes(role));
+  useKeyboardAwareScroll();
 
   return (
     <div className="flex h-screen w-full overflow-hidden">

@@ -137,19 +137,22 @@ function UsersAdmin() {
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground font-normal">Clerk User ID</Label>
               <Input
                 value={newUser.id}
                 onChange={(e) => setNewUser((u) => ({ ...u, id: e.target.value }))}
                 placeholder="user_..."
+                autoComplete="off"
                 className="mt-1"
               />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground font-normal">Email</Label>
               <Input
+                type="email"
+                autoComplete="email"
                 value={newUser.email}
                 onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
                 className="mt-1"
@@ -158,6 +161,7 @@ function UsersAdmin() {
             <div>
               <Label className="text-xs text-muted-foreground font-normal">Full name</Label>
               <Input
+                autoComplete="name"
                 value={newUser.full_name}
                 onChange={(e) => setNewUser((u) => ({ ...u, full_name: e.target.value }))}
                 className="mt-1"

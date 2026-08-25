@@ -97,7 +97,8 @@ export function RequestInvoiceByClient() {
       <div className="max-w-md space-y-2">
         <Label>Client</Label>
         <Input
-          type="text"
+          type="search"
+          inputMode="search"
           value={clientSearch}
           onChange={(e) => setClientSearch(e.target.value)}
           placeholder="Search clients…"

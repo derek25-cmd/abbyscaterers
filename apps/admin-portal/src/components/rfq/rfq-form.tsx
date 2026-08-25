@@ -10,12 +10,24 @@ import { format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import { RfqSchema, type RfqFormData } from '@abbyscaterers/validation';
 import { REGIONS, MEAL_TYPES } from '@abbyscaterers/types';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const selectClass = 'mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2';
+
+// Field groups for the mobile wizard's per-step validation (react-hook-form
+// trigger()) and for deciding which section is visible on a given step.
+// Desktop ignores this entirely and shows every section at once.
+const STEP_FIELDS: (keyof RfqFormData)[][] = [
+  ['clientId', 'serviceStartDate', 'serviceEndDate', 'proformaRequiredBy'],
+  ['samePaxAllDates', 'paxPerDay'],
+  ['sameMealTypeAllDates', 'mealTypePerDay'],
+  ['ratePerPlate', 'vatType', 'location', 'region'],
+];
+const STEP_LABELS = ['Client & Dates', 'Guest Count', 'Meal Type', 'Pricing & Location'];
 
 // Matches the existing app's ORD-NNNNN / EVT-NNNNN convention (see
 // src/services/orderService.ts) — zero-padded to 6 digits since RFQ ids
@@ -28,6 +40,8 @@ export function RfqForm() {
   const supabase = useSupabaseClient();
   const { user } = useUser();
   const router = useRouter();
+  const isMobile = useIsMobile();
+  const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [uniformPax, setUniformPax] = useState<number>(1);
   const [uniformMealType, setUniformMealType] = useState<string>(MEAL_TYPES[0]);
@@ -61,6 +75,7 @@ export function RfqForm() {
     handleSubmit,
     setValue,
     watch,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm<RfqFormData>({
     resolver: zodResolver(RfqSchema),
@@ -179,230 +194,290 @@ export function RfqForm() {
     }
   };
 
+  const goNext = async () => {
+    const valid = await trigger(STEP_FIELDS[step]);
+    if (valid) setStep((s) => Math.min(s + 1, STEP_FIELDS.length - 1));
+  };
+  const goBack = () => setStep((s) => Math.max(s - 1, 0));
+
+  // Desktop shows every section at once (isMobile is false); mobile shows
+  // only the section matching the current wizard step.
+  const showStep = (i: number) => !isMobile || step === i;
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
-      <div>
-        <Label>Name of Client</Label>
-        <Input
-          type="text"
-          value={clientSearch}
-          onChange={(e) => setClientSearch(e.target.value)}
-          placeholder="Search clients…"
-          className="mt-1"
-        />
-        <select
-          {...register('clientId')}
-          defaultValue=""
-          size={clientSearch.trim() ? Math.min(6, Math.max(2, filteredClients.length + 1)) : undefined}
-          className={selectClass}
-        >
-          <option value="" disabled>
-            Select client
-          </option>
-          {filteredClients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.companyName}
-            </option>
-          ))}
-        </select>
-        {errors.clientId && <p className="text-xs text-destructive mt-1">{errors.clientId.message}</p>}
-      </div>
-
-      <div>
-        <Label className="mb-1 block">Service Period</Label>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-xs text-muted-foreground font-normal">Start date</Label>
-            <Input type="date" {...register('serviceStartDate')} className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground font-normal">End date</Label>
-            <Input type="date" {...register('serviceEndDate')} className="mt-1" />
-          </div>
-        </div>
-        {errors.serviceStartDate && (
-          <p className="text-xs text-destructive mt-1">{errors.serviceStartDate.message}</p>
-        )}
-        {errors.serviceEndDate && (
-          <p className="text-xs text-destructive mt-1">{errors.serviceEndDate.message}</p>
-        )}
-      </div>
-
-      <div>
-        <Label>Date the Proforma is Required By</Label>
-        <Input type="date" {...register('proformaRequiredBy')} className="mt-1" />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="samePax"
-            checked={samePaxAllDates}
-            onCheckedChange={(checked) => setValue('samePaxAllDates', checked === true)}
-          />
-          <Label htmlFor="samePax" className="font-medium">
-            Same pax for all dates
-          </Label>
-        </div>
-
-        {samePaxAllDates ? (
-          <div>
-            <Label className="text-xs text-muted-foreground font-normal">No. of pax</Label>
-            <Input
-              type="number"
-              min={1}
-              value={uniformPax}
-              onChange={(e) => setUniformPax(Number(e.target.value) || 1)}
-              className="mt-1"
+      {isMobile && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground">
+            Step {step + 1} of {STEP_FIELDS.length} — {STEP_LABELS[step]}
+          </p>
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${((step + 1) / STEP_FIELDS.length) * 100}%` }}
             />
           </div>
-        ) : (
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground font-normal">No. of pax per day</Label>
-            {paxPerDay.length === 0 && (
-              <p className="text-xs text-muted-foreground">Set the service period above first.</p>
-            )}
-            {paxPerDay.map((entry, i) => (
-              <div key={entry.date} className="flex items-center gap-3">
-                <span className="w-28 text-xs text-muted-foreground">{entry.date}</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={entry.pax}
-                  onChange={(e) => {
-                    const next = [...paxPerDay];
-                    next[i] = { ...next[i], pax: Number(e.target.value) || 1 };
-                    setValue('paxPerDay', next, { shouldValidate: false });
-                  }}
-                  className="w-28"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {errors.paxPerDay && (
-          <p className="text-xs text-destructive mt-1">
-            {(errors.paxPerDay as { message?: string }).message ?? 'Pax entries are invalid.'}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="sameMealType"
-            checked={sameMealTypeAllDates}
-            onCheckedChange={(checked) => setValue('sameMealTypeAllDates', checked === true)}
-          />
-          <Label htmlFor="sameMealType" className="font-medium">
-            Same meal type for all dates
-          </Label>
         </div>
+      )}
 
-        {sameMealTypeAllDates ? (
+      {showStep(0) && (
+        <>
           <div>
-            <Label className="text-xs text-muted-foreground font-normal">Type of meal</Label>
+            <Label>Name of Client</Label>
+            <Input
+              type="search"
+              inputMode="search"
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Search clients…"
+              className="mt-1"
+            />
             <select
-              value={uniformMealType}
-              onChange={(e) => setUniformMealType(e.target.value)}
+              {...register('clientId')}
+              defaultValue=""
+              size={clientSearch.trim() ? Math.min(6, Math.max(2, filteredClients.length + 1)) : undefined}
               className={selectClass}
             >
-              {MEAL_TYPES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+              <option value="" disabled>
+                Select client
+              </option>
+              {filteredClients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.companyName}
                 </option>
               ))}
             </select>
+            {errors.clientId && <p className="text-xs text-destructive mt-1">{errors.clientId.message}</p>}
           </div>
-        ) : (
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground font-normal">Type of meal per day</Label>
-            {mealTypePerDay.length === 0 && (
-              <p className="text-xs text-muted-foreground">Set the service period above first.</p>
-            )}
-            {mealTypePerDay.map((entry, i) => (
-              <div key={entry.date} className="flex items-center gap-3">
-                <span className="w-28 text-xs text-muted-foreground">{entry.date}</span>
-                <select
-                  value={entry.mealType}
-                  onChange={(e) => {
-                    const next = [...mealTypePerDay];
-                    next[i] = { ...next[i], mealType: e.target.value };
-                    setValue('mealTypePerDay', next, { shouldValidate: false });
-                  }}
-                  className={`flex-1 ${selectClass} mt-0`}
-                >
-                  {MEAL_TYPES.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        )}
-        {errors.mealTypePerDay && (
-          <p className="text-xs text-destructive mt-1">
-            {(errors.mealTypePerDay as { message?: string }).message ?? 'Meal type entries are invalid.'}
-          </p>
-        )}
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Rate per Plate (TZS)</Label>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            {...register('ratePerPlate', { valueAsNumber: true })}
-            className="mt-1"
-          />
-          {errors.ratePerPlate && (
-            <p className="text-xs text-destructive mt-1">{errors.ratePerPlate.message}</p>
+          <div>
+            <Label className="mb-1 block">Service Period</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-muted-foreground font-normal">Start date</Label>
+                <Input type="date" {...register('serviceStartDate')} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground font-normal">End date</Label>
+                <Input type="date" {...register('serviceEndDate')} className="mt-1" />
+              </div>
+            </div>
+            {errors.serviceStartDate && (
+              <p className="text-xs text-destructive mt-1">{errors.serviceStartDate.message}</p>
+            )}
+            {errors.serviceEndDate && (
+              <p className="text-xs text-destructive mt-1">{errors.serviceEndDate.message}</p>
+            )}
+          </div>
+
+          <div>
+            <Label>Date the Proforma is Required By</Label>
+            <Input type="date" {...register('proformaRequiredBy')} className="mt-1" />
+          </div>
+        </>
+      )}
+
+      {showStep(1) && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="samePax"
+              checked={samePaxAllDates}
+              onCheckedChange={(checked) => setValue('samePaxAllDates', checked === true)}
+            />
+            <Label htmlFor="samePax" className="font-medium">
+              Same pax for all dates
+            </Label>
+          </div>
+
+          {samePaxAllDates ? (
+            <div>
+              <Label className="text-xs text-muted-foreground font-normal">No. of pax</Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={uniformPax}
+                onChange={(e) => setUniformPax(Number(e.target.value) || 1)}
+                className="mt-1"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground font-normal">No. of pax per day</Label>
+              {paxPerDay.length === 0 && (
+                <p className="text-xs text-muted-foreground">Set the service period above first.</p>
+              )}
+              {paxPerDay.map((entry, i) => (
+                <div key={entry.date} className="flex items-center gap-3">
+                  <span className="w-28 text-xs text-muted-foreground">{entry.date}</span>
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={entry.pax}
+                    onChange={(e) => {
+                      const next = [...paxPerDay];
+                      next[i] = { ...next[i], pax: Number(e.target.value) || 1 };
+                      setValue('paxPerDay', next, { shouldValidate: false });
+                    }}
+                    className="w-28"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {errors.paxPerDay && (
+            <p className="text-xs text-destructive mt-1">
+              {(errors.paxPerDay as { message?: string }).message ?? 'Pax entries are invalid.'}
+            </p>
           )}
         </div>
-        <div>
-          <Label>VAT</Label>
-          <select {...register('vatType')} className={selectClass}>
-            <option value="inclusive">Inclusive</option>
-            <option value="exclusive">Exclusive</option>
-          </select>
-        </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Location of Order</Label>
-          <Input
-            {...register('location')}
-            placeholder="e.g. Serena Hotel, Dar es Salaam"
-            className="mt-1"
-          />
-          {errors.location && <p className="text-xs text-destructive mt-1">{errors.location.message}</p>}
+      {showStep(2) && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="sameMealType"
+              checked={sameMealTypeAllDates}
+              onCheckedChange={(checked) => setValue('sameMealTypeAllDates', checked === true)}
+            />
+            <Label htmlFor="sameMealType" className="font-medium">
+              Same meal type for all dates
+            </Label>
+          </div>
+
+          {sameMealTypeAllDates ? (
+            <div>
+              <Label className="text-xs text-muted-foreground font-normal">Type of meal</Label>
+              <select
+                value={uniformMealType}
+                onChange={(e) => setUniformMealType(e.target.value)}
+                className={selectClass}
+              >
+                {MEAL_TYPES.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground font-normal">Type of meal per day</Label>
+              {mealTypePerDay.length === 0 && (
+                <p className="text-xs text-muted-foreground">Set the service period above first.</p>
+              )}
+              {mealTypePerDay.map((entry, i) => (
+                <div key={entry.date} className="flex items-center gap-3">
+                  <span className="w-28 text-xs text-muted-foreground">{entry.date}</span>
+                  <select
+                    value={entry.mealType}
+                    onChange={(e) => {
+                      const next = [...mealTypePerDay];
+                      next[i] = { ...next[i], mealType: e.target.value };
+                      setValue('mealTypePerDay', next, { shouldValidate: false });
+                    }}
+                    className={`flex-1 ${selectClass} mt-0`}
+                  >
+                    {MEAL_TYPES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+          {errors.mealTypePerDay && (
+            <p className="text-xs text-destructive mt-1">
+              {(errors.mealTypePerDay as { message?: string }).message ?? 'Meal type entries are invalid.'}
+            </p>
+          )}
         </div>
-        <div>
-          <Label>Region</Label>
-          <select {...register('region')} defaultValue="" className={selectClass}>
-            <option value="" disabled>
-              Select region
-            </option>
-            {REGIONS.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-          {errors.region && <p className="text-xs text-destructive mt-1">{errors.region.message}</p>}
-        </div>
-      </div>
+      )}
+
+      {showStep(3) && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Rate per Plate (TZS)</Label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="0.01"
+                {...register('ratePerPlate', { valueAsNumber: true })}
+                className="mt-1"
+              />
+              {errors.ratePerPlate && (
+                <p className="text-xs text-destructive mt-1">{errors.ratePerPlate.message}</p>
+              )}
+            </div>
+            <div>
+              <Label>VAT</Label>
+              <select {...register('vatType')} className={selectClass}>
+                <option value="inclusive">Inclusive</option>
+                <option value="exclusive">Exclusive</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Location of Order</Label>
+              <Input
+                {...register('location')}
+                autoComplete="off"
+                placeholder="e.g. Serena Hotel, Dar es Salaam"
+                className="mt-1"
+              />
+              {errors.location && <p className="text-xs text-destructive mt-1">{errors.location.message}</p>}
+            </div>
+            <div>
+              <Label>Region</Label>
+              <select {...register('region')} defaultValue="" className={selectClass}>
+                <option value="" disabled>
+                  Select region
+                </option>
+                {REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              {errors.region && <p className="text-xs text-destructive mt-1">{errors.region.message}</p>}
+            </div>
+          </div>
+        </>
+      )}
 
       {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Creating…' : 'Create RFQ'}
-      </Button>
+      {isMobile ? (
+        <div className="flex gap-2">
+          {step > 0 && (
+            <Button type="button" variant="outline" className="flex-1" onClick={goBack}>
+              Back
+            </Button>
+          )}
+          {step < STEP_FIELDS.length - 1 ? (
+            <Button type="button" className="flex-1" onClick={goNext}>
+              Next
+            </Button>
+          ) : (
+            <Button type="submit" className="flex-1" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating…' : 'Create RFQ'}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating…' : 'Create RFQ'}
+        </Button>
+      )}
     </form>
   );
 }
