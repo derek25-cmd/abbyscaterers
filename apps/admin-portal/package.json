@@ -11,9 +11,9 @@
     "analyze": "cross-env ANALYZE=true next build"
   },
   "dependencies": {
-    "@abbyscaterers/database": "file:../../packages/database",
-    "@abbyscaterers/types": "file:../../packages/types",
-    "@abbyscaterers/validation": "file:../../packages/validation",
+    "@abbyscaterers/database": "*",
+    "@abbyscaterers/types": "*",
+    "@abbyscaterers/validation": "*",
     "@clerk/nextjs": "^6.9.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^3.10.0",

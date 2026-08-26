@@ -1,1 +1,5 @@
-rootDirectory: apps/admin-portal
+rootDirectory: .
+
+scripts:
+  buildCommand: cd apps/admin-portal && npm install && npm run build
+  runCommand: cd apps/admin-portal && npm run start
