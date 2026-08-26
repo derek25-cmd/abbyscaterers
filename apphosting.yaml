@@ -2,4 +2,4 @@ rootDirectory: .
 
 scripts:
   buildCommand: npm install && npm run build
-  runCommand: npm run start
+  runCommand: npm run start -w admin-portal
