@@ -1,5 +1,3 @@
-rootDirectory: apps/admin-portal
-
 scripts:
   buildCommand: npm install && npm run build
   runCommand: node .next/standalone/server.js
