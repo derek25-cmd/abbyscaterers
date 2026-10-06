@@ -2,12 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download } from 'lucide-react';
+import { Download, ChevronDown } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { TAX_DEFAULT_APPLIES, type TaxType } from '@/components/tax-settings/tax-settings';
 import { useAppSettings } from '@/lib/use-app-settings';
 import { exportDocumentToPdf } from '@/lib/pdf-export';
 import { InvoicePdfTemplate } from '@/components/pdf/invoice-pdf-template';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { StickyActionBar } from '@/components/pwa/sticky-action-bar';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface InvoiceItem {
   id: string;
@@ -197,33 +210,37 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const fmt = (n: number) => `TZS ${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold">Invoice {inv.id}</h1>
-            <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_CLASS[inv.status] ?? ''}`}>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Invoice {inv.id}</h1>
+            <Badge variant="outline" className={STATUS_CLASS[inv.status] ?? ''}>
               {STATUS_LABEL[inv.status] ?? inv.status}
-            </span>
+            </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             {inv.clients?.companyName ?? inv.clientId ?? '—'} · {inv.invoiceDate}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => exportPdf(inv)}
-          disabled={exporting || appSettingsQuery.isLoading}
-          className="inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
-        >
+        <Button type="button" variant="outline" className="hidden md:inline-flex" onClick={() => exportPdf(inv)} disabled={exporting || appSettingsQuery.isLoading}>
           <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
-        </button>
+        </Button>
       </div>
       {exportError && <p className="text-sm text-destructive">{exportError}</p>}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4 space-y-2">
-          <h2 className="font-medium">Tax Breakdown</h2>
+      <StickyActionBar>
+        <Button type="button" onClick={() => exportPdf(inv)} disabled={exporting || appSettingsQuery.isLoading}>
+          <Download className="h-4 w-4" /> {exporting ? 'Exporting…' : 'Export PDF'}
+        </Button>
+      </StickyActionBar>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tax Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
           <dl className="text-sm space-y-1">
             <Row label="Items subtotal" value={fmt(itemsSubtotal)} />
             {inv.multiplyByDays && <Row label={`× ${inv.numberOfDays ?? 1} days`} value={fmt(totalForDays)} />}
@@ -242,46 +259,55 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             {(whtApplies || vatWithholdingApplies) && <Row label="Net Payable" value={fmt(netPayable)} strong />}
           </dl>
 
-          <div className="pt-2 border-t border-border text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">How this is calculated</p>
-            {vatApplies ? (
-              <p>
-                VAT: {inv.vatType === 'exclusive'
-                  ? `${fmt(totalBeforeVat)} × ${vatRate}% = ${fmt(vatAmount)} (added on top, since this invoice is VAT-exclusive)`
-                  : `${fmt(totalBeforeVat)} is VAT-inclusive, so VAT = total − (total ÷ (1 + ${vatRate}%)) = ${fmt(vatAmount)}`}
-              </p>
-            ) : (
-              <p>VAT: this client is marked VAT-exempt in Tax Settings, so no VAT is charged.</p>
-            )}
-            {whtApplies ? (
-              <p>
-                WHT: {fmt(grandTotal)} (Grand Total) × {whtRate}% = {fmt(whtAmount)}, withheld by the client and
-                remitted to TRA on the company&apos;s behalf.
-              </p>
-            ) : (
-              <p>WHT: not configured for this client — set it in Tax Settings if they&apos;re a withholding agent.</p>
-            )}
-            {vatWithholdingApplies ? (
-              <p>
-                VAT Withholding: {fmt(vatAmount)} (VAT amount) × {vatWithholdingRate}% = {fmt(vatWithholdingAmount)},
-                withheld by the client instead of paid to the company.
-              </p>
-            ) : (
-              <p>
-                VAT Withholding: not configured for this client — set it in Tax Settings if they&apos;re a
-                government/appointed withholding agent.
-              </p>
-            )}
-            {(whtApplies || vatWithholdingApplies) && (
-              <p className="text-foreground font-medium">
-                Net Payable = Grand Total − WHT − VAT Withholding = {fmt(netPayable)}
-              </p>
-            )}
-          </div>
-        </div>
+          <Collapsible className="pt-2 border-t border-border">
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium text-foreground data-[state=open]:[&>svg]:rotate-180">
+              How this is calculated
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="text-xs text-muted-foreground space-y-1 pt-1">
+              {vatApplies ? (
+                <p>
+                  VAT: {inv.vatType === 'exclusive'
+                    ? `${fmt(totalBeforeVat)} × ${vatRate}% = ${fmt(vatAmount)} (added on top, since this invoice is VAT-exclusive)`
+                    : `${fmt(totalBeforeVat)} is VAT-inclusive, so VAT = total − (total ÷ (1 + ${vatRate}%)) = ${fmt(vatAmount)}`}
+                </p>
+              ) : (
+                <p>VAT: this client is marked VAT-exempt in Tax Settings, so no VAT is charged.</p>
+              )}
+              {whtApplies ? (
+                <p>
+                  WHT: {fmt(grandTotal)} (Grand Total) × {whtRate}% = {fmt(whtAmount)}, withheld by the client and
+                  remitted to TRA on the company&apos;s behalf.
+                </p>
+              ) : (
+                <p>WHT: not configured for this client — set it in Tax Settings if they&apos;re a withholding agent.</p>
+              )}
+              {vatWithholdingApplies ? (
+                <p>
+                  VAT Withholding: {fmt(vatAmount)} (VAT amount) × {vatWithholdingRate}% = {fmt(vatWithholdingAmount)},
+                  withheld by the client instead of paid to the company.
+                </p>
+              ) : (
+                <p>
+                  VAT Withholding: not configured for this client — set it in Tax Settings if they&apos;re a
+                  government/appointed withholding agent.
+                </p>
+              )}
+              {(whtApplies || vatWithholdingApplies) && (
+                <p className="text-foreground font-medium">
+                  Net Payable = Grand Total − WHT − VAT Withholding = {fmt(netPayable)}
+                </p>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-card p-4 space-y-2">
-          <h2 className="font-medium">Payment</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
           <dl className="text-sm space-y-1">
             <Row label="Status" value={STATUS_LABEL[inv.status] ?? inv.status} />
             <Row label="Amount paid" value={fmt(inv.amountPaid ?? 0)} />
@@ -291,34 +317,39 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           <p className="text-xs text-muted-foreground pt-2 border-t border-border">
             Payments are recorded in the catering system — this view is read-only and updates live.
           </p>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="font-medium mb-2">Items</h2>
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">Date</th>
-              <th className="py-2">Meal</th>
-              <th className="py-2 text-right">Pax</th>
-              <th className="py-2 text-right">Unit price</th>
-              <th className="py-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle>Items</CardTitle>
+        </CardHeader>
+        <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Meal</TableHead>
+              <TableHead className="text-right">Pax</TableHead>
+              <TableHead className="text-right">Unit price</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(inv.items ?? []).map((item) => (
-              <tr key={item.id} className="border-b border-border last:border-0">
-                <td className="py-2">{item.date ?? '—'}</td>
-                <td className="py-2">{item.mealType || item.eventType}</td>
-                <td className="py-2 text-right">{item.pax}</td>
-                <td className="py-2 text-right">TZS {item.unitPrice.toLocaleString()}</td>
-                <td className="py-2 text-right">TZS {item.total.toLocaleString()}</td>
-              </tr>
+              <TableRow key={item.id}>
+                <TableCell>{item.date ?? '—'}</TableCell>
+                <TableCell>{item.mealType || item.eventType}</TableCell>
+                <TableCell className="text-right">{item.pax}</TableCell>
+                <TableCell className="text-right">TZS {item.unitPrice.toLocaleString()}</TableCell>
+                <TableCell className="text-right">TZS {item.total.toLocaleString()}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+        </CardContent>
+      </Card>
 
       {appSettingsQuery.data && (
         <div style={{ position: 'fixed', top: 0, left: '-10000px', zIndex: -1 }} aria-hidden="true">

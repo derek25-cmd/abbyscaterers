@@ -6,6 +6,16 @@ import { useSupabaseClient } from '@/lib/supabase-client';
 import { ReportAccessGate } from '@/components/reports/report-access-gate';
 import { DateRangeFilter, defaultDateRange, type DateRange } from '@/components/reports/date-range-filter';
 import { exportToCsv } from '@/lib/csv-export';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 interface AttendanceRow {
   employee_id: string;
@@ -58,14 +68,15 @@ function AttendanceReport() {
   }, [query.data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Attendance Report</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Attendance Report</h1>
           <p className="text-sm text-muted-foreground">Presence/absence by period.</p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() =>
             exportToCsv(
               `attendance-report-${range.from}-to-${range.to}.csv`,
@@ -73,51 +84,52 @@ function AttendanceReport() {
               (query.data ?? []).map((r) => [nameById.get(r.employee_id) ?? r.employee_id, r.date, r.status])
             )
           }
-          className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted"
         >
           Export CSV
-        </button>
+        </Button>
       </div>
 
       <DateRangeFilter value={range} onChange={setRange} />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {Object.entries(byStatus).map(([status, count]) => (
-          <div key={status} className="rounded-lg border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground">{status}</p>
-            <p className="text-2xl font-semibold mt-1">{count}</p>
-          </div>
+          <Card key={status}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">{status}</p>
+              <p className="text-2xl font-semibold mt-1">{count}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground border-b border-border">
-            <tr>
-              <th className="py-2">Employee</th>
-              <th className="py-2">Date</th>
-              <th className="py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Employee</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(query.data ?? []).map((r, i) => (
-              <tr key={`${r.employee_id}-${r.date}-${i}`} className="border-b border-border last:border-0">
-                <td className="py-2">{nameById.get(r.employee_id) ?? r.employee_id}</td>
-                <td className="py-2">{r.date}</td>
-                <td className="py-2">{r.status}</td>
-              </tr>
+              <TableRow key={`${r.employee_id}-${r.date}-${i}`}>
+                <TableCell>{nameById.get(r.employee_id) ?? r.employee_id}</TableCell>
+                <TableCell>{r.date}</TableCell>
+                <TableCell>{r.status}</TableCell>
+              </TableRow>
             ))}
             {(query.data ?? []).length === 0 && (
-              <tr>
-                <td colSpan={3} className="py-4 text-center text-muted-foreground">
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
                   No attendance records in this period.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );

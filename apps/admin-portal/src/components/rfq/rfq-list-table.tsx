@@ -9,7 +9,25 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import { PlusCircle } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useRevealWindow } from '@/hooks/use-reveal-window';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { RfqCard } from '@/components/rfq/rfq-card';
+import { PullToRefresh } from '@/components/pwa/pull-to-refresh';
+import { SortSheet } from '@/components/pwa/sort-sheet';
+import { FilterSheet } from '@/components/pwa/filter-sheet';
+import { LoadMoreButton } from '@/components/pwa/load-more-button';
+import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
+
+const STATUSES = ['draft', 'submitted', 'in_review', 'proforma_created', 'approved', 'closed', 'cancelled'] as const;
+type SortValue = 'date_desc' | 'date_asc';
 
 interface RfqRow {
   id: string;
@@ -25,6 +43,16 @@ interface RfqRow {
   region: string | null;
   created_at: string;
 }
+
+const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  draft: 'outline',
+  submitted: 'secondary',
+  in_review: 'secondary',
+  proforma_created: 'default',
+  approved: 'default',
+  closed: 'outline',
+  cancelled: 'destructive',
+};
 
 const columns: ColumnDef<RfqRow>[] = [
   {
@@ -50,9 +78,10 @@ const columns: ColumnDef<RfqRow>[] = [
   {
     accessorKey: 'status',
     header: 'Status',
-    cell: (c) => (
-      <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.getValue<string>()}</span>
-    ),
+    cell: (c) => {
+      const status = c.getValue<string>();
+      return <Badge variant={STATUS_VARIANT[status] ?? 'outline'}>{status}</Badge>;
+    },
   },
   {
     id: 'servicePeriod',
@@ -68,10 +97,13 @@ const columns: ColumnDef<RfqRow>[] = [
 export function RfqListTable() {
   const supabase = useSupabaseClient();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [, setLiveTick] = useState(0);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState<SortValue>('date_desc');
 
-  const { data: rfqs, isLoading, error } = useQuery({
+  const { data: rfqs, isLoading, error, refetch } = useQuery({
     queryKey: ['rfqs'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -107,80 +139,143 @@ export function RfqListTable() {
   }, [supabase, queryClient]);
 
   const filteredRfqs = useMemo(() => {
-    if (!search.trim()) return rfqs ?? [];
-    const q = search.trim().toLowerCase();
-    return (rfqs ?? []).filter((r) => {
-      const client = r.clients?.companyName ?? r.client_name_freetext ?? r.client_id ?? '';
-      return r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || client.toLowerCase().includes(q);
-    });
-  }, [rfqs, search]);
+    let rows = rfqs ?? [];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      rows = rows.filter((r) => {
+        const client = r.clients?.companyName ?? r.client_name_freetext ?? r.client_id ?? '';
+        return r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || client.toLowerCase().includes(q);
+      });
+    }
+    if (statusFilter.length > 0) {
+      rows = rows.filter((r) => statusFilter.includes(r.status));
+    }
+    return rows;
+  }, [rfqs, search, statusFilter]);
+
+  const sortedRfqs = useMemo(() => {
+    const rows = [...filteredRfqs];
+    rows.sort((a, b) =>
+      sort === 'date_desc'
+        ? b.created_at.localeCompare(a.created_at)
+        : a.created_at.localeCompare(b.created_at)
+    );
+    return rows;
+  }, [filteredRfqs, sort]);
+
+  const { visibleItems, hasMore, loadMore } = useRevealWindow(sortedRfqs, 20);
 
   const table = useReactTable({
-    data: filteredRfqs,
+    data: visibleItems,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading RFQs…</p>;
   if (error) return <p className="text-sm text-destructive">Failed to load RFQs: {(error as Error).message}</p>;
-  if (!rfqs || rfqs.length === 0) {
-    return <p className="text-sm text-muted-foreground">No RFQs yet. Create the first one.</p>;
-  }
 
   return (
     <div className="space-y-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by ID, title, or client…"
-        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+        className="max-w-sm"
       />
-      <div className="rounded-lg border border-border bg-card overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="border-b border-border text-left text-muted-foreground">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th key={header.id} className="p-3 font-medium">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
-            </tr>
+      <div className="flex flex-wrap gap-2">
+        <SortSheet
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: 'date_desc', label: 'Newest first' },
+            { value: 'date_asc', label: 'Oldest first' },
+          ]}
+        />
+        <FilterSheet activeCount={statusFilter.length} onClear={() => setStatusFilter([])}>
+          {STATUSES.map((status) => (
+            <div key={status} className="flex items-center gap-2 rounded-md p-2">
+              <Checkbox
+                id={`rfq-status-${status}`}
+                checked={statusFilter.includes(status)}
+                onCheckedChange={(checked) =>
+                  setStatusFilter((prev) => (checked ? [...prev, status] : prev.filter((s) => s !== status)))
+                }
+              />
+              <Label htmlFor={`rfq-status-${status}`} className="font-normal capitalize">
+                {status.replace(/_/g, ' ')}
+              </Label>
+            </div>
           ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-b border-border last:border-0 hover:bg-muted/40">
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="p-3">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-          {filteredRfqs.length === 0 && (
-            <tr>
-              <td colSpan={columns.length} className="p-4 text-center text-muted-foreground">
-                No RFQs match &quot;{search}&quot;.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+        </FilterSheet>
       </div>
+
+      {isLoading ? (
+        isMobile ? <SkeletonCards /> : (
+          <div className="rounded-md border shadow-sm bg-card">
+            <Table>
+              <TableBody><SkeletonTableRows columns={columns.length} /></TableBody>
+            </Table>
+          </div>
+        )
+      ) : !rfqs || rfqs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No RFQs yet. Create the first one.</p>
+      ) : (
+        <PullToRefresh onRefresh={async () => { await refetch(); }}>
+          {isMobile ? (
+            <div className="space-y-2">
+              {visibleItems.map((rfq) => (
+                <RfqCard key={rfq.id} rfq={rfq} />
+              ))}
+              {filteredRfqs.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">No RFQs match &quot;{search}&quot;.</p>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-md border shadow-sm bg-card">
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                  {filteredRfqs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                        No RFQs match &quot;{search}&quot;.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          {hasMore && <div className="pt-2"><LoadMoreButton onClick={loadMore} /></div>}
+        </PullToRefresh>
+      )}
     </div>
   );
 }
 
 export function NewRfqLink() {
   return (
-    <Link
-      href="/rfqs/new"
-      className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"
-    >
-      New RFQ
-    </Link>
+    <Button asChild>
+      <Link href="/rfqs/new">
+        <PlusCircle className="mr-2 h-4 w-4" />
+        New RFQ
+      </Link>
+    </Button>
   );
 }

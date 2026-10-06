@@ -1,11 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceToNow, startOfMonth, endOfMonth, subMonths, addDays } from 'date-fns';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
+
+// recharts is the single biggest dependency in admin-portal — only the
+// Dashboard uses it, so keep it out of this route's initial JS.
+const DashboardCharts = dynamic(() => import('./dashboard-charts').then((m) => m.DashboardCharts), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <SkeletonCards count={4} />
+    </div>
+  ),
+});
 
 interface InvoiceRow extends InvoiceTotalFields {
   id: string;
@@ -31,8 +50,24 @@ interface ActivityItem {
 
 const fmtMoney = (n: number) => `TZS ${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
+const RFQ_STATUS_LABEL: Record<string, string> = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  in_review: 'In Review',
+  proforma_created: 'Proforma Created',
+  approved: 'Approved',
+  closed: 'Closed',
+  cancelled: 'Cancelled',
+};
+
+const PROFORMA_STATUS_LABEL: Record<string, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
+const INVOICE_STATUS_LABEL: Record<string, string> = { outstanding: 'Outstanding', paid: 'Paid', 'partially paid': 'Partially Paid' };
+
 export function DashboardContent() {
   const supabase = useSupabaseClient();
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const [refreshing, setRefreshing] = useState(false);
 
   const rfqsQuery = useQuery({
     queryKey: ['dashboard-rfqs'],
@@ -44,6 +79,17 @@ export function DashboardContent() {
         .order('created_at', { ascending: true });
       if (error) throw error;
       return data as { id: string; status: string; created_at: string }[];
+    },
+  });
+
+  // All-status RFQ counts, separate from the pending-only query above, just
+  // for the status-breakdown chart.
+  const rfqAllStatusQuery = useQuery({
+    queryKey: ['dashboard-rfqs-all-status'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('rfqs').select('status');
+      if (error) throw error;
+      return data as { status: string }[];
     },
   });
 
@@ -59,6 +105,15 @@ export function DashboardContent() {
     },
   });
 
+  const proformaAllStatusQuery = useQuery({
+    queryKey: ['dashboard-proformas-all-status'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('proforma_invoices').select('"reviewStatus"');
+      if (error) throw error;
+      return data as { reviewStatus: string }[];
+    },
+  });
+
   const invoicesQuery = useQuery({
     queryKey: ['dashboard-invoices'],
     queryFn: async () => {
@@ -69,6 +124,19 @@ export function DashboardContent() {
       return data as unknown as InvoiceRow[];
     },
   });
+
+  // Same admin-configured rate Tax Settings and invoice-detail.tsx use —
+  // computeInvoiceGrandTotal defaults to 18% otherwise, which goes stale
+  // the moment the admin changes the rate.
+  const vatRateQuery = useQuery({
+    queryKey: ['dashboard-vat-rate'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('invoice_tax_rates').select('tax_type, rate').eq('tax_type', 'vat').maybeSingle();
+      if (error) throw error;
+      return data?.rate ?? 18;
+    },
+  });
+  const vatRate = vatRateQuery.data ?? 18;
 
   const ordersQuery = useQuery({
     queryKey: ['dashboard-orders'],
@@ -121,10 +189,32 @@ export function DashboardContent() {
     },
   });
 
+  const allQueries = [
+    rfqsQuery,
+    rfqAllStatusQuery,
+    proformasQuery,
+    proformaAllStatusQuery,
+    invoicesQuery,
+    vatRateQuery,
+    ordersQuery,
+    rfqHistoryQuery,
+    invoiceRequestsQuery,
+    costingRequestsQuery,
+  ];
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all(allQueries.map((q) => q.refetch()));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const outstanding = useMemo(() => {
     const rows = (invoicesQuery.data ?? []).filter((i) => i.status === 'outstanding');
-    return { count: rows.length, total: rows.reduce((sum, i) => sum + computeInvoiceGrandTotal(i), 0) };
-  }, [invoicesQuery.data]);
+    return { count: rows.length, total: rows.reduce((sum, i) => sum + computeInvoiceGrandTotal(i, vatRate), 0) };
+  }, [invoicesQuery.data, vatRate]);
 
   const revenue = useMemo(() => {
     const now = new Date();
@@ -137,11 +227,44 @@ export function DashboardContent() {
     let prevMonth = 0;
     for (const inv of invoicesQuery.data ?? []) {
       const d = new Date(inv.invoiceDate);
-      const total = computeInvoiceGrandTotal(inv);
+      const total = computeInvoiceGrandTotal(inv, vatRate);
       if (d >= thisStart && d <= thisEnd) thisMonth += total;
       else if (d >= lastStart && d <= lastEnd) prevMonth += total;
     }
     return { thisMonth, prevMonth };
+  }, [invoicesQuery.data, vatRate]);
+
+  // Last 6 months of invoiced revenue, monthly buckets — same shape as
+  // reports/revenue-trend/page.tsx's bucketing, inlined for this one extra
+  // consumer rather than extracted into a shared lib.
+  const revenueTrendData = useMemo(() => {
+    const months = Array.from({ length: 6 }).map((_, i) => startOfMonth(subMonths(new Date(), 5 - i)));
+    const buckets = months.map((m) => ({ key: format(m, 'yyyy-MM'), label: format(m, 'MMM'), revenue: 0 }));
+    const byKey = new Map(buckets.map((b) => [b.key, b]));
+    for (const inv of invoicesQuery.data ?? []) {
+      const key = format(new Date(inv.invoiceDate), 'yyyy-MM');
+      const bucket = byKey.get(key);
+      if (bucket) bucket.revenue += computeInvoiceGrandTotal(inv, vatRate);
+    }
+    return buckets;
+  }, [invoicesQuery.data, vatRate]);
+
+  const rfqStatusData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of rfqAllStatusQuery.data ?? []) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+    return Array.from(counts.entries()).map(([status, count]) => ({ status: RFQ_STATUS_LABEL[status] ?? status, count }));
+  }, [rfqAllStatusQuery.data]);
+
+  const proformaStatusData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of proformaAllStatusQuery.data ?? []) counts.set(p.reviewStatus, (counts.get(p.reviewStatus) ?? 0) + 1);
+    return Array.from(counts.entries()).map(([status, count]) => ({ status: PROFORMA_STATUS_LABEL[status] ?? status, count }));
+  }, [proformaAllStatusQuery.data]);
+
+  const invoiceStatusData = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const inv of invoicesQuery.data ?? []) counts.set(inv.status, (counts.get(inv.status) ?? 0) + 1);
+    return Array.from(counts.entries()).map(([status, count]) => ({ status: INVOICE_STATUS_LABEL[status] ?? status, count }));
   }, [invoicesQuery.data]);
 
   const upcomingEvents = useMemo(() => {
@@ -215,17 +338,30 @@ export function DashboardContent() {
   ];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map((kpi) => {
           const content = (
-            <div className="rounded-lg border border-border bg-card p-4 h-full hover:bg-muted/40 transition-colors">
-              <p className="text-xs text-muted-foreground">{kpi.label}</p>
-              <p className="text-2xl font-semibold mt-1">{kpi.value}</p>
-              {kpi.sub && <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>}
-            </div>
+            <Card className="h-full transition-shadow hover:shadow-elegant">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                <p className="text-2xl font-semibold mt-1">{kpi.value}</p>
+                {kpi.sub && <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>}
+              </CardContent>
+            </Card>
           );
           return kpi.href ? (
             <Link key={kpi.label} href={kpi.href}>
@@ -237,46 +373,107 @@ export function DashboardContent() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">Upcoming Events (next 7 days)</h2>
-          {ordersQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : upcomingEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No events in the next 7 days.</p>
-          ) : (
-            <ul className="text-sm space-y-2">
-              {upcomingEvents.map((o) => (
-                <li key={o.id} className="flex justify-between">
-                  <span>{o.name}</span>
-                  <span className="text-muted-foreground">
-                    {o.start_date} – {o.end_date}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <DashboardCharts
+        revenueTrendData={revenueTrendData}
+        rfqStatusData={rfqStatusData}
+        proformaStatusData={proformaStatusData}
+        invoiceStatusData={invoiceStatusData}
+      />
 
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="font-medium mb-2">Recent Activity</h2>
-          {activity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent activity.</p>
-          ) : (
-            <ul className="text-sm space-y-2 max-h-80 overflow-y-auto">
-              {activity.map((a) => (
-                <li key={a.id}>
-                  <Link href={a.href} className="hover:underline">
-                    {a.label}
-                  </Link>
-                  <span className="block text-xs text-muted-foreground">
-                    {new Date(a.timestamp).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Upcoming Events (next 7 days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {ordersQuery.isLoading ? (
+              isMobile ? <SkeletonCards count={3} /> : (
+                <Table><TableBody><SkeletonTableRows count={3} columns={3} /></TableBody></Table>
+              )
+            ) : upcomingEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No events in the next 7 days.</p>
+            ) : isMobile ? (
+              <div className="space-y-2">
+                {upcomingEvents.map((o) => (
+                  <Card key={o.id}>
+                    <CardContent className="p-3">
+                      <p className="text-sm font-medium text-foreground">{o.name}</p>
+                      <p className="text-xs text-muted-foreground">{o.start_date} – {o.end_date}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Dates</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {upcomingEvents.map((o) => (
+                    <TableRow key={o.id}>
+                      <TableCell className="font-medium">{o.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{o.start_date} – {o.end_date}</TableCell>
+                      <TableCell className="text-muted-foreground capitalize">{o.status ?? '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            ) : isMobile ? (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {activity.map((a) => (
+                  <Card key={a.id}>
+                    <CardContent className="p-3">
+                      <Link href={a.href} className="text-sm hover:underline">
+                        {a.label}
+                      </Link>
+                      <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.timestamp).toLocaleString()}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>When</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activity.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">{new Date(a.timestamp).toLocaleString()}</TableCell>
+                        <TableCell className="capitalize">{a.kind.replace(/_/g, ' ')}</TableCell>
+                        <TableCell>
+                          <Link href={a.href} className="hover:underline">
+                            {a.label}
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUser } from '@clerk/nextjs';
 import { useSupabaseClient } from '@/lib/supabase-client';
+import { Button } from '@/components/ui/button';
 
 export interface CostingRequestSummary {
   status: 'pending' | 'fulfilled' | 'rejected';
@@ -68,14 +69,9 @@ export function RequestCostingButton({ rfqId, latestRequest }: { rfqId: string; 
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <button
-        type="button"
-        onClick={requestCosting}
-        disabled={busy}
-        className="rounded-md border border-input px-2.5 py-1 text-xs hover:bg-muted disabled:opacity-50"
-      >
+      <Button type="button" size="sm" variant="outline" onClick={requestCosting} disabled={busy}>
         {busy ? 'Requesting…' : 'Request Costing'}
-      </button>
+      </Button>
       {latestRequest?.status === 'rejected' && (
         <p className="text-xs text-destructive">
           Previous request rejected{latestRequest.rejectionReason ? `: ${latestRequest.rejectionReason}` : ''}

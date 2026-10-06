@@ -5,6 +5,18 @@ import { useUser } from '@clerk/nextjs';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
 import { usePortalRole } from '@/lib/portal-role';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 export type TaxType = 'vat' | 'wht' | 'vat_withholding';
 
@@ -162,11 +174,14 @@ export function TaxSettings() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <h2 className="font-medium">Tax Rates</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tax Rates</CardTitle>
+        </CardHeader>
+        <CardContent>
         {ratesQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
@@ -178,92 +193,95 @@ export function TaxSettings() {
                 <div key={taxType} className="flex items-center gap-3">
                   <span className="w-48 text-sm">{TAX_TYPE_LABEL[taxType]}</span>
                   <div className="relative">
-                    <input
+                    <Input
                       type="number"
                       step="0.01"
                       min={0}
                       value={draft ?? current?.rate ?? ''}
                       onChange={(e) => setRateDrafts((prev) => ({ ...prev, [taxType]: e.target.value }))}
-                      className="w-28 rounded-md border border-input bg-background px-3 py-1.5 text-sm pr-6"
+                      className="w-28 pr-6"
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                       %
                     </span>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => saveRate(taxType)}
                     disabled={savingRate === taxType || draft === undefined}
-                    className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
                   >
                     {savingRate === taxType ? 'Saving…' : 'Save'}
-                  </button>
+                  </Button>
                 </div>
               );
             })}
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-start justify-between gap-4">
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
           <div>
-            <h2 className="font-medium">Client Tax Applicability</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <CardTitle>Client Tax Applicability</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1.5">
               VAT applies to every client by default — untick it only for VAT-exempt clients. WHT and VAT
               Withholding are off by default and only apply to the clients you tick (e.g. government or
               appointed withholding agents).
             </p>
           </div>
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search clients…"
-            className="w-56 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+            className="w-56"
           />
-        </div>
+        </CardHeader>
+        <CardContent>
         {clientsQuery.isLoading || clientTaxQuery.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <div className="max-h-[28rem] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-card text-left text-muted-foreground border-b border-border">
-                <tr>
-                  <th className="py-2">Client</th>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
                   {TAX_TYPES.map((taxType) => (
-                    <th key={taxType} className="py-2 text-center">
+                    <TableHead key={taxType} className="text-center">
                       {TAX_TYPE_LABEL[taxType]}
-                    </th>
+                    </TableHead>
                   ))}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {filteredClients.map((client) => (
-                  <tr key={client.id} className="border-b border-border last:border-0">
-                    <td className="py-2">{client.companyName}</td>
+                  <TableRow key={client.id}>
+                    <TableCell>{client.companyName}</TableCell>
                     {TAX_TYPES.map((taxType) => (
-                      <td key={taxType} className="py-2 text-center">
-                        <input
-                          type="checkbox"
+                      <TableCell key={taxType} className="text-center">
+                        <Checkbox
                           checked={appliesMap.get(`${client.id}:${taxType}`) ?? TAX_DEFAULT_APPLIES[taxType]}
-                          onChange={(e) => toggleClientTax(client.id, taxType, e.target.checked)}
+                          onCheckedChange={(checked) => toggleClientTax(client.id, taxType, checked === true)}
                         />
-                      </td>
+                      </TableCell>
                     ))}
-                  </tr>
+                  </TableRow>
                 ))}
                 {filteredClients.length === 0 && (
-                  <tr>
-                    <td colSpan={TAX_TYPES.length + 1} className="py-4 text-center text-muted-foreground">
+                  <TableRow>
+                    <TableCell colSpan={TAX_TYPES.length + 1} className="text-center text-muted-foreground">
                       No clients found.
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

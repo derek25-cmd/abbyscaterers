@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { DollarSign, Receipt, GitBranch, CalendarDays, FileText, Wallet, Clock, TrendingUp, Users } from 'lucide-react';
 import { usePortalRole } from '@/lib/portal-role';
+import { Card } from '@/components/ui/card';
 
 const REPORTS = [
   {
@@ -41,9 +42,9 @@ export default function ReportsPage() {
   const { role } = usePortalRole();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-semibold">Reports Centre</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Reports Centre</h1>
         <p className="text-sm text-muted-foreground">Financial, operational, HR, and management reports.</p>
       </div>
 
@@ -53,16 +54,14 @@ export default function ReportsPage() {
             <h2 className="text-sm font-semibold text-muted-foreground uppercase mb-3">{section.section}</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {section.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg border border-border bg-card p-4 hover:bg-muted/40 transition-colors flex items-start gap-3"
-                >
-                  <item.icon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm">{item.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                  </div>
+                <Link key={item.href} href={item.href}>
+                  <Card className="p-4 hover:bg-muted/40 transition-colors flex items-start gap-3 h-full">
+                    <item.icon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">{item.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                    </div>
+                  </Card>
                 </Link>
               ))}
             </div>

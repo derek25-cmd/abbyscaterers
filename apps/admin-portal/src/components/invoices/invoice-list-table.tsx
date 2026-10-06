@@ -4,15 +4,35 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useSupabaseClient } from '@/lib/supabase-client';
-import { computeInvoiceGrandTotal, type InvoiceTotalFields } from '@/lib/invoice-math';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useRevealWindow } from '@/hooks/use-reveal-window';
+import { computeInvoiceGrandTotal } from '@/lib/invoice-math';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
+import { InvoiceCard, type InvoiceCardData } from '@/components/invoices/invoice-card';
+import { PullToRefresh } from '@/components/pwa/pull-to-refresh';
+import { SortSheet } from '@/components/pwa/sort-sheet';
+import { FilterSheet } from '@/components/pwa/filter-sheet';
+import { LoadMoreButton } from '@/components/pwa/load-more-button';
+import { SkeletonCards, SkeletonTableRows } from '@/components/pwa/skeleton-list';
+import { Button } from '@/components/ui/button';
+import { exportToCsv } from '@/lib/csv-export';
+import { X } from 'lucide-react';
 
-interface InvoiceListItem extends InvoiceTotalFields {
-  id: string;
-  invoiceDate: string;
-  clientId: string | null;
-  clients: { companyName: string } | null;
-  status: 'outstanding' | 'paid' | 'partially paid';
-}
+type InvoiceListItem = InvoiceCardData;
+
+const STATUSES = ['outstanding', 'paid', 'partially paid'] as const;
+type SortValue = 'date_desc' | 'date_asc';
 
 const STATUS_LABEL: Record<string, string> = {
   outstanding: 'Outstanding',
@@ -28,7 +48,12 @@ const STATUS_CLASS: Record<string, string> = {
 
 export function InvoiceListTable() {
   const supabase = useSupabaseClient();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [sort, setSort] = useState<SortValue>('date_desc');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const invoicesQuery = useQuery({
     queryKey: ['invoices-list'],
@@ -47,68 +72,181 @@ export function InvoiceListTable() {
   const invoices = useMemo(() => invoicesQuery.data ?? [], [invoicesQuery.data]);
 
   const filteredInvoices = useMemo(() => {
-    if (!search.trim()) return invoices;
-    const q = search.trim().toLowerCase();
-    return invoices.filter((inv) => {
-      const client = inv.clients?.companyName ?? inv.clientId ?? '';
-      return inv.id.toLowerCase().includes(q) || client.toLowerCase().includes(q);
-    });
-  }, [invoices, search]);
+    let rows = invoices;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      rows = rows.filter((inv) => {
+        const client = inv.clients?.companyName ?? inv.clientId ?? '';
+        return inv.id.toLowerCase().includes(q) || client.toLowerCase().includes(q);
+      });
+    }
+    if (statusFilter.length > 0) {
+      rows = rows.filter((inv) => statusFilter.includes(inv.status));
+    }
+    return rows;
+  }, [invoices, search, statusFilter]);
 
-  if (invoicesQuery.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  const sortedInvoices = useMemo(() => {
+    const rows = [...filteredInvoices];
+    rows.sort((a, b) =>
+      sort === 'date_desc' ? b.invoiceDate.localeCompare(a.invoiceDate) : a.invoiceDate.localeCompare(b.invoiceDate)
+    );
+    return rows;
+  }, [filteredInvoices, sort]);
+
+  const { visibleItems, hasMore, loadMore } = useRevealWindow(sortedInvoices, 20);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      if (next.size === 0) setSelectMode(false);
+      return next;
+    });
+  };
+
+  const exportSelected = () => {
+    const rows = invoices.filter((inv) => selectedIds.has(inv.id));
+    exportToCsv(
+      `invoices-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Invoice No.', 'Client', 'Date', 'Status', 'Total (TZS)'],
+      rows.map((inv) => [inv.id, inv.clients?.companyName ?? inv.clientId ?? '', inv.invoiceDate, inv.status, computeInvoiceGrandTotal(inv)])
+    );
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
   if (invoicesQuery.error) {
     return <p className="text-sm text-destructive">Failed to load invoices: {(invoicesQuery.error as Error).message}</p>;
   }
 
-  if (invoices.length === 0) {
-    return <p className="text-sm text-muted-foreground">No invoices yet.</p>;
-  }
-
   return (
     <div className="space-y-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by invoice number or client…"
-        className="w-full max-w-sm rounded-md border border-input bg-background px-3 py-2 text-sm"
+        className="max-w-sm"
       />
-      <table className="w-full text-sm">
-        <thead className="text-left text-muted-foreground border-b border-border">
-          <tr>
-            <th className="py-2">Invoice No.</th>
-            <th className="py-2">Client</th>
-            <th className="py-2">Date</th>
-            <th className="py-2 text-right">Grand Total</th>
-            <th className="py-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredInvoices.map((inv) => (
-            <tr key={inv.id} className="border-b border-border last:border-0">
-              <td className="py-2 font-mono text-xs">
-                <Link href={`/invoices/${inv.id}`} className="text-primary hover:underline">
-                  {inv.id}
-                </Link>
-              </td>
-              <td className="py-2">{inv.clients?.companyName ?? inv.clientId ?? '—'}</td>
-              <td className="py-2">{inv.invoiceDate}</td>
-              <td className="py-2 text-right">TZS {computeInvoiceGrandTotal(inv).toLocaleString()}</td>
-              <td className="py-2">
-                <span className={`inline-block rounded-full px-2 py-0.5 text-xs ${STATUS_CLASS[inv.status] ?? ''}`}>
-                  {STATUS_LABEL[inv.status] ?? inv.status}
-                </span>
-              </td>
-            </tr>
+      <div className="flex flex-wrap gap-2">
+        <SortSheet
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: 'date_desc', label: 'Newest first' },
+            { value: 'date_asc', label: 'Oldest first' },
+          ]}
+        />
+        <FilterSheet activeCount={statusFilter.length} onClear={() => setStatusFilter([])}>
+          {STATUSES.map((status) => (
+            <div key={status} className="flex items-center gap-2 rounded-md p-2">
+              <Checkbox
+                id={`invoice-status-${status}`}
+                checked={statusFilter.includes(status)}
+                onCheckedChange={(checked) =>
+                  setStatusFilter((prev) => (checked ? [...prev, status] : prev.filter((s) => s !== status)))
+                }
+              />
+              <Label htmlFor={`invoice-status-${status}`} className="font-normal">
+                {STATUS_LABEL[status]}
+              </Label>
+            </div>
           ))}
-          {filteredInvoices.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-4 text-center text-muted-foreground">
-                No invoices match &quot;{search}&quot;.
-              </td>
-            </tr>
+        </FilterSheet>
+      </div>
+
+      {invoicesQuery.isLoading ? (
+        isMobile ? <SkeletonCards /> : (
+          <Table>
+            <TableBody><SkeletonTableRows columns={5} /></TableBody>
+          </Table>
+        )
+      ) : invoices.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No invoices yet.</p>
+      ) : (
+        <PullToRefresh onRefresh={async () => { await invoicesQuery.refetch(); }}>
+          {isMobile ? (
+            <div className="space-y-2">
+              {visibleItems.map((inv) => (
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(inv.id)}
+                  onEnterSelectMode={(id) => {
+                    setSelectMode(true);
+                    setSelectedIds(new Set([id]));
+                  }}
+                  onToggleSelected={toggleSelected}
+                />
+              ))}
+              {filteredInvoices.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">No invoices match &quot;{search}&quot;.</p>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice No.</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Grand Total</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleItems.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-mono text-xs">
+                      <Link href={`/invoices/${inv.id}`} className="text-primary hover:underline">
+                        {inv.id}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{inv.clients?.companyName ?? inv.clientId ?? '—'}</TableCell>
+                    <TableCell>{inv.invoiceDate}</TableCell>
+                    <TableCell className="text-right">TZS {computeInvoiceGrandTotal(inv).toLocaleString()}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={STATUS_CLASS[inv.status] ?? ''}>
+                        {STATUS_LABEL[inv.status] ?? inv.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredInvoices.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No invoices match &quot;{search}&quot;.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
-        </tbody>
-      </table>
+          {hasMore && <div className="pt-2"><LoadMoreButton onClick={loadMore} /></div>}
+        </PullToRefresh>
+      )}
+
+      {selectMode && (
+        <div className="fixed inset-x-0 bottom-14 z-30 flex items-center justify-between gap-2 border-t border-border bg-background p-3 md:hidden">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setSelectMode(false);
+              setSelectedIds(new Set());
+            }}
+            aria-label="Cancel selection"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <Button type="button" className="flex-1" disabled={selectedIds.size === 0} onClick={exportSelected}>
+            Export {selectedIds.size} selected
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

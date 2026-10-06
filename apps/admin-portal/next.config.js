@@ -1,5 +1,71 @@
+const path = require('path');
+
+const withPWA = require('@ducanh2912/next-pwa').default({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+  register: true,
+  cacheOnFrontEndNav: true,
+  customWorkerSrc: 'service-worker',
+  workboxOptions: {
+    runtimeCaching: [
+      // Clerk auth — never cache.
+      {
+        urlPattern: /^https:\/\/[^/]*clerk[^/]*\/.*/i,
+        handler: 'NetworkOnly',
+      },
+      // Supabase REST/RPC data reads — always try fresh, fall back to a
+      // short-lived cache when offline. Full IndexedDB record caching with
+      // LRU eviction is a later phase; this is just the runtime-caching layer.
+      {
+        urlPattern: /^https:\/\/[^/]*supabase[^/]*\/rest\/v1\/.*/i,
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'supabase-api',
+          expiration: { maxEntries: 100, maxAgeSeconds: 5 * 60 },
+          networkTimeoutSeconds: 8,
+        },
+      },
+      // Static assets — icons, fonts, images rarely change.
+      {
+        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff2?)$/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'static-assets',
+          expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 },
+        },
+      },
+      // App shell — HTML/JS/CSS: serve cached instantly, refresh in background.
+      {
+        urlPattern: /^https?:\/\/.*\/(?:_next\/static|_next\/image).*/i,
+        handler: 'StaleWhileRevalidate',
+        options: { cacheName: 'app-shell' },
+      },
+      // Navigations are authenticated HTML (and Clerk handshake redirects) —
+      // never serve them stale, or a signed-out user could see a cached portal
+      // page. Network first, short timeout, cache only as an offline fallback.
+      {
+        urlPattern: ({ request }) => request.mode === 'navigate',
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'pages',
+          networkTimeoutSeconds: 8,
+          expiration: { maxEntries: 32, maxAgeSeconds: 24 * 60 * 60 },
+        },
+      },
+    ],
+  },
+});
+
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  experimental: {
+    outputFileTracingRoot: path.join(__dirname, '../../'),
+  },
   transpilePackages: [
     '@abbyscaterers/database',
     '@abbyscaterers/types',
@@ -7,4 +73,4 @@ const nextConfig = {
   ],
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(withPWA(nextConfig));
