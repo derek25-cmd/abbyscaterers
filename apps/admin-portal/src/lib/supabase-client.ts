@@ -27,7 +27,17 @@ export function useSupabaseClient(): SupabaseClient {
       createPortalSupabaseClient({
         url: SUPABASE_URL,
         anonKey: SUPABASE_ANON_KEY,
-        getAccessToken: async () => (await getTokenRef.current({ template: 'supabase' })) ?? null,
+        getAccessToken: async () => {
+          try {
+            return (await getTokenRef.current({ template: 'supabase' })) ?? null;
+          } catch (err) {
+            // Typically: no "supabase" JWT template in this Clerk instance.
+            // Fall back to an anonymous request so queries fail fast under RLS
+            // instead of hanging on a rejected token promise.
+            console.error('[supabase-client] Clerk getToken({ template: "supabase" }) failed:', err);
+            return null;
+          }
+        },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [userId]
