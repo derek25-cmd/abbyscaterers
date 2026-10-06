@@ -70,7 +70,7 @@ export function InvoiceCard({
       <button
         type="button"
         onClick={() => onToggleSelected?.(invoice.id)}
-        className="block w-full text-left"
+        className="block w-full select-none text-left"
         {...longPress}
       >
         {cardBody}
@@ -79,7 +79,7 @@ export function InvoiceCard({
   }
 
   return (
-    <Link href={`/invoices/${invoice.id}`} {...longPress}>
+    <Link href={`/invoices/${invoice.id}`} className="block select-none [-webkit-touch-callout:none]" draggable={false} {...longPress}>
       {cardBody}
     </Link>
   );

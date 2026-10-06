@@ -211,10 +211,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
   return (
     <div className="space-y-6 animate-fade-in pb-20 md:pb-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Invoice {inv.id}</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="break-all text-xl font-bold tracking-tight text-foreground sm:text-3xl">Invoice {inv.id}</h1>
             <Badge variant="outline" className={STATUS_CLASS[inv.status] ?? ''}>
               {STATUS_LABEL[inv.status] ?? inv.status}
             </Badge>
@@ -326,7 +326,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           <CardTitle>Items</CardTitle>
         </CardHeader>
         <CardContent>
-        <Table>
+        <Table className="min-w-[520px]">
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
@@ -385,9 +385,9 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className={`flex justify-between ${strong ? 'font-medium border-t border-border pt-1' : ''}`}>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
+    <div className={`flex justify-between gap-4 ${strong ? 'font-medium border-t border-border pt-1' : ''}`}>
+      <dt className="min-w-0 text-muted-foreground">{label}</dt>
+      <dd className="shrink-0 text-right">{value}</dd>
     </div>
   );
 }
