@@ -54,6 +54,11 @@ export function usePortalRole(): PortalRoleState {
           loading: false,
           error: null,
         });
+      }, (err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        console.error('[portal-role] portal_users lookup threw:', err);
+        setState({ role: null, isActive: false, loading: false, error: message });
       });
 
     return () => {
