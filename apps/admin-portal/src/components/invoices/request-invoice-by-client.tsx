@@ -66,9 +66,15 @@ export function RequestInvoiceByClient() {
     },
   });
 
+  // The requests lookup depends on the proforma ids, so it must wait for them
+  // and re-run when they change — otherwise it runs against an empty list,
+  // caches an empty map for the stale window, and every "Request" button
+  // shows as never requested.
+  const proformaIdsKey = (proformasQuery.data ?? []).map((p) => p.id).join(',');
+
   const requestsQuery = useQuery({
-    queryKey: ['client-invoice-requests', clientId],
-    enabled: !!clientId,
+    queryKey: ['client-invoice-requests', clientId, proformaIdsKey],
+    enabled: !!clientId && !!proformasQuery.data,
     queryFn: async () => {
       const proformaIds = (proformasQuery.data ?? []).map((p) => p.id);
       if (proformaIds.length === 0) return new Map<string, InvoiceRequestSummary>();
@@ -119,7 +125,7 @@ export function RequestInvoiceByClient() {
       </div>
 
       {clientId && (
-        <Card className="overflow-x-auto">
+        <Card className="overflow-x-auto [&_table]:min-w-[560px]">
           {proformasQuery.isLoading ? (
             <p className="p-4 text-sm text-muted-foreground">Loading proformas…</p>
           ) : proformasQuery.error ? (
