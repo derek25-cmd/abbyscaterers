@@ -7,11 +7,17 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 // public or PWA installability breaks.
 const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/api/send-push', '/manifest.json']);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
+// signInUrl here (not just on <ClerkProvider>, which only affects the browser)
+// is what makes auth.protect() redirect to our own /sign-in page instead of
+// Clerk's hosted Account Portal.
+export default clerkMiddleware(
+  async (auth, req) => {
+    if (!isPublicRoute(req)) {
+      await auth.protect();
+    }
+  },
+  { signInUrl: '/sign-in', signUpUrl: '/sign-in' }
+);
 
 export const config = {
   matcher: ['/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)', '/(api|trpc)(.*)'],
