@@ -13,6 +13,7 @@ import { useSupabaseClient } from '@/lib/supabase-client';
 export function useUnreadNotificationCount() {
   const supabase = useSupabaseClient();
   const { user } = useUser();
+  const userId = user?.id;
   const queryClient = useQueryClient();
 
   const { data: count } = useQuery({
@@ -29,17 +30,17 @@ export function useUnreadNotificationCount() {
   });
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const channel = supabase
       .channel('portal-notifications-unread-count-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'portal_notifications' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['portal-notifications-unread-count', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['portal-notifications-unread-count', userId] });
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, queryClient, user]);
+  }, [supabase, queryClient, userId]);
 
   return count ?? 0;
 }

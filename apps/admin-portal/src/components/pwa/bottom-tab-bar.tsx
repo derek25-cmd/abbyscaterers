@@ -122,7 +122,7 @@ export function BottomTabBar() {
               type="button"
               onClick={() => {
                 setMoreOpen(false);
-                signOut(() => router.push('/sign-in'));
+                signOut({ redirectUrl: '/sign-in' });
               }}
               className="flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-lg border border-border p-3 text-center text-xs text-destructive hover:bg-destructive/10"
             >

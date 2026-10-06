@@ -40,7 +40,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signInFallbackRedirectUrl="/dashboard"
+      afterSignOutUrl="/sign-in"
+    >
       <html lang="en" suppressHydrationWarning>
         <body className={`${inter.variable} antialiased font-sans bg-background`}>
           <Providers>{children}</Providers>

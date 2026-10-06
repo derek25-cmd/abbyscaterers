@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import webpush from 'web-push';
 import { createSupabaseAdminClient } from '@/lib/supabase-admin';
 
@@ -8,6 +9,13 @@ const PUSH_WEBHOOK_SECRET = process.env.PUSH_WEBHOOK_SECRET;
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails('mailto:admin@abbyscaterers.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+}
+
+function secretsMatch(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 interface NotificationRecord {
@@ -31,7 +39,7 @@ interface WebhookPayload {
 // portal_notifications. Not Clerk-gated (exempted in middleware.ts) since
 // the caller has no user session; a shared secret stands in for auth.
 export async function POST(req: Request) {
-  if (!PUSH_WEBHOOK_SECRET || req.headers.get('x-webhook-secret') !== PUSH_WEBHOOK_SECRET) {
+  if (!PUSH_WEBHOOK_SECRET || !secretsMatch(req.headers.get('x-webhook-secret'), PUSH_WEBHOOK_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {

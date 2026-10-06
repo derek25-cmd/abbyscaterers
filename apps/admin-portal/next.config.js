@@ -40,10 +40,17 @@ const withPWA = require('@ducanh2912/next-pwa').default({
         handler: 'StaleWhileRevalidate',
         options: { cacheName: 'app-shell' },
       },
+      // Navigations are authenticated HTML (and Clerk handshake redirects) —
+      // never serve them stale, or a signed-out user could see a cached portal
+      // page. Network first, short timeout, cache only as an offline fallback.
       {
         urlPattern: ({ request }) => request.mode === 'navigate',
-        handler: 'StaleWhileRevalidate',
-        options: { cacheName: 'pages' },
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'pages',
+          networkTimeoutSeconds: 8,
+          expiration: { maxEntries: 32, maxAgeSeconds: 24 * 60 * 60 },
+        },
       },
     ],
   },

@@ -85,7 +85,7 @@ function SidebarLogo() {
 
 function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { role, isActive, loading } = usePortalRole();
+  const { role, isActive, loading, error: roleError } = usePortalRole();
   const visibleManagementItems = managementItems.filter((item) => role && item.roles.includes(role));
   useKeyboardAwareScroll();
 
@@ -108,7 +108,12 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
               <NavLink key={item.href} {...item} pathname={pathname} />
             ))}
           </SidebarMenu>
-          {!loading && !isActive && (
+          {!loading && roleError && (
+            <div className="m-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+              Couldn&apos;t verify your portal access ({roleError}). Try signing out and back in; if it persists, check the Clerk &quot;supabase&quot; JWT template.
+            </div>
+          )}
+          {!loading && !roleError && !isActive && (
             <div className="m-2 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
               Your account isn&apos;t provisioned for portal access yet. Ask a super admin to add you in Users.
             </div>
@@ -127,7 +132,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
-              <UserButton afterSignOutUrl="/sign-in" />
+              <UserButton />
             </div>
           </div>
         </header>

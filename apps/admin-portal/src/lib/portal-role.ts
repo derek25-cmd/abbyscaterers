@@ -9,6 +9,7 @@ export interface PortalRoleState {
   role: PortalRole | null;
   isActive: boolean;
   loading: boolean;
+  error?: string | null;
 }
 
 /**
@@ -21,12 +22,13 @@ export interface PortalRoleState {
  */
 export function usePortalRole(): PortalRoleState {
   const { user, isLoaded } = useUser();
+  const userId = user?.id;
   const supabase = useSupabaseClient();
   const [state, setState] = useState<PortalRoleState>({ role: null, isActive: false, loading: true });
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (!user) {
+    if (!userId) {
       setState({ role: null, isActive: false, loading: false });
       return;
     }
@@ -35,21 +37,29 @@ export function usePortalRole(): PortalRoleState {
     supabase
       .from('portal_users')
       .select('role, is_active')
-      .eq('id', user.id)
+      .eq('id', userId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return;
+        if (error) {
+          // Distinct from "not provisioned": the lookup itself failed (bad JWT
+          // template, expired token, network).
+          console.error('[portal-role] portal_users lookup failed:', error.message);
+          setState({ role: null, isActive: false, loading: false, error: error.message });
+          return;
+        }
         setState({
           role: (data?.role as PortalRole) ?? null,
           isActive: data?.is_active ?? false,
           loading: false,
+          error: null,
         });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, user, supabase]);
+  }, [isLoaded, userId, supabase]);
 
   return state;
 }
