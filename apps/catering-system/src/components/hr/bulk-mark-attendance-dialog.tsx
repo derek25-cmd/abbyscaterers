@@ -64,7 +64,7 @@ export function BulkMarkAttendanceDialog({ isOpen, setIsOpen, employees, default
         <DialogHeader>
           <DialogTitle>Bulk Mark Attendance</DialogTitle>
           <DialogDescription>
-            Applies to your pending changes — review and click Save Changes on the grid to persist.
+            Applies to your pending changes — review and click Save Changes on the grid to persist. Leave is not listed: it comes from approved leave requests, and people on approved leave that day are skipped.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
@@ -80,7 +80,6 @@ export function BulkMarkAttendanceDialog({ isOpen, setIsOpen, employees, default
                 <SelectContent>
                   <SelectItem value="Present">Present</SelectItem>
                   <SelectItem value="Absent">Absent</SelectItem>
-                  <SelectItem value="Leave">Leave</SelectItem>
                   <SelectItem value="Half Day">Half Day</SelectItem>
                   <SelectItem value="Late">Late</SelectItem>
                 </SelectContent>

@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 import { AttendanceSchema, type AttendanceFormData } from '@/lib/schemas';
 import type { Attendance, Employee } from '@/types';
 
@@ -28,9 +28,12 @@ interface EditAttendanceDialogProps {
   date: string; // yyyy-MM-dd
   record: Attendance | null; // existing record for this employee/date, if any
   onSave: (data: AttendanceFormData) => Promise<void>;
+  /** Set when this day belongs to an approved leave request: the dialog becomes read-only. */
+  lockedReason?: string;
+  canManageHr?: boolean;
 }
 
-export function EditAttendanceDialog({ isOpen, setIsOpen, employee, date, record, onSave }: EditAttendanceDialogProps) {
+export function EditAttendanceDialog({ isOpen, setIsOpen, employee, date, record, onSave, lockedReason, canManageHr = false }: EditAttendanceDialogProps) {
   const employeeName = `${employee.firstName} ${employee.lastName}`;
 
   const form = useForm<AttendanceFormData>({
@@ -64,6 +67,9 @@ export function EditAttendanceDialog({ isOpen, setIsOpen, employee, date, record
   }, [isOpen, employee.id, date, record]);
 
   const submitting = form.formState.isSubmitting;
+  // Leave is set by approved leave requests, not by hand. An old manual Leave
+  // row is still shown (read-only for everyone except HR) rather than dropped.
+  const hasManualLeave = record?.status === 'Leave';
 
   const handleSubmit = async (data: AttendanceFormData) => {
     try {
@@ -83,20 +89,26 @@ export function EditAttendanceDialog({ isOpen, setIsOpen, employee, date, record
               <DialogTitle>Attendance — {employeeName}</DialogTitle>
               <DialogDescription>{date}</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            {lockedReason && (
+              <p className="mt-3 flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> <span>{lockedReason}</span>
+              </p>
+            )}
+            <fieldset disabled={!!lockedReason} className="grid gap-4 py-4">
               <FormField control={form.control} name="status" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={hasManualLeave && !canManageHr}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       <SelectItem value="Present">Present</SelectItem>
                       <SelectItem value="Absent">Absent</SelectItem>
-                      <SelectItem value="Leave">Leave</SelectItem>
+                      {hasManualLeave && <SelectItem value="Leave">Leave</SelectItem>}
                       <SelectItem value="Half Day">Half Day</SelectItem>
                       <SelectItem value="Late">Late</SelectItem>
                     </SelectContent>
                   </Select>
+                  {hasManualLeave && !canManageHr && <p className="text-xs text-muted-foreground">This day was marked Leave by hand. Only HR can change it.</p>}
                   <FormMessage />
                 </FormItem>
               )} />
@@ -123,15 +135,17 @@ export function EditAttendanceDialog({ isOpen, setIsOpen, employee, date, record
                   <FormMessage />
                 </FormItem>
               )} />
-            </div>
+            </fieldset>
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline">{lockedReason ? 'Close' : 'Cancel'}</Button>
               </DialogClose>
-              <Button type="submit" disabled={submitting}>
-                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save
-              </Button>
+              {!lockedReason && (
+                <Button type="submit" disabled={submitting}>
+                  {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </Form>

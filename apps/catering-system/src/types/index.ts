@@ -389,6 +389,8 @@ export interface Attendance {
     notes?: string;
     clock_in_time?: string | null;
     clock_out_time?: string | null;
+    /** Set on days created by an approved leave request; those rows are locked (see Phase 2 leave). */
+    leave_request_id?: string | null;
     createdAt: string;
     updatedAt: string;
 }
