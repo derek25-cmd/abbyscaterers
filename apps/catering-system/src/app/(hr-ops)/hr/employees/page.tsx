@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DEPARTMENTS } from "@/lib/schemas";
 import { getErrorDescription } from "@/lib/service-validation";
 import { useToast } from "@/hooks/use-toast";
+import { RequirePermission } from "@/components/auth/require-permission";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { format } from "date-fns";
@@ -385,16 +386,18 @@ export default function EmployeesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => openViewDialog(employee)}>View Details</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
-                          {employee.status === 'Active' && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openFireDialog(employee)}>
-                                <UserMinus className="mr-2 h-4 w-4" />
-                                Fire / End Employment
-                              </DropdownMenuItem>
-                            </>
-                          )}
+                          <RequirePermission permission="hr.manage">
+                            <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
+                            {employee.status === 'Active' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => openFireDialog(employee)}>
+                                  <UserMinus className="mr-2 h-4 w-4" />
+                                  Fire / End Employment
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </RequirePermission>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

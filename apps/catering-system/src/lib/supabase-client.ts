@@ -1,5 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
+import { createPermissionAwareFetch } from '@/lib/permission-feedback';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -10,5 +11,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         persistSession: true,
         detectSessionInUrl: false, // Next.js handles routing — don't parse URL for auth fragments
         storageKey: 'abbys-caterers-auth',
+    },
+    global: {
+        fetch: createPermissionAwareFetch(),
     },
 });
