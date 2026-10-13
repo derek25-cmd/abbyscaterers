@@ -1,12 +1,14 @@
 -- RLS test for the Phase 1 HR/Ops access model.
 --
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
--- migrations through 20261014000300 are applied:
+-- migrations through 20261014000400 are applied:
 --     psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/hr_ops_rls.sql
 -- Works with the hosted Supabase `postgres` role (no superuser needed): it can
 -- bypass RLS and SET ROLE authenticated, which is all this script uses.
 --
--- Everything runs in one transaction that is rolled back, so nothing persists.
+-- The whole script is ONE statement that always ends in an exception (PASS: or
+-- FAIL:), which rolls back everything it created. Read the result from the
+-- error message; PASS and FAIL are both reported that way.
 -- For each of the five roles (plus a deactivated user) it switches to the
 -- `authenticated` DB role with that user's JWT claims and checks SELECT /
 -- INSERT / UPDATE / DELETE on every in-scope table against the matrix. Tables
@@ -23,13 +25,26 @@
 --    cannot be seeded from generic values (e.g. a CHECK on a status column)
 --    is reported as SKIPPED, and the run says so.
 
-BEGIN;
+DO $test$
+DECLARE
+  hr_tables  constant text[] := ARRAY['employees','attendance','positions','training_participants','training_evaluations','payroll'];
+  ops_tables constant text[] := ARRAY['products','stock_logs','assets','issuance'];
+  roles      constant text[] := ARRAY['admin','general_manager','hr_manager','finance','staff'];
+  all_tables text[] := hr_tables || ops_tables;
+  today      date := (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date;
 
-CREATE TEMP TABLE rls_results (who text, tbl text, op text, expected boolean, actual boolean) ON COMMIT DROP;
+  uids jsonb := '{}'::jsonb;
+  r text; t text; uid uuid; ov jsonb; tov jsonb; rid text;
+  can_hr boolean; exp_select boolean; exp_write boolean; exp_update boolean;
+  n int; ok boolean; ok2 boolean; ok3 boolean; ok4 boolean;
+  failures int; skipped int := 0; checks int;
+  lbl text; exp boolean;
+BEGIN
 
--- ── Helpers (created inside the transaction, rolled back with it) ───────────
-
--- Stable per-table test key for a row, shaped to the table's id column type.
+  -- Helper functions are created INSIDE this block (and rolled back with it), so
+  -- nothing is left behind however the SQL editor handles transactions.
+  CREATE TEMP TABLE rls_results (who text, tbl text, op text, expected boolean, actual boolean) ON COMMIT DROP;
+  EXECUTE $mk$
 CREATE FUNCTION public._rlstest_id(tbl text, suffix text) RETURNS text LANGUAGE plpgsql AS $f$
 DECLARE dt text;
 BEGIN
@@ -39,9 +54,8 @@ BEGIN
   IF dt IN ('integer', 'bigint', 'smallint') THEN RETURN (abs(hashtext('rlstest-' || tbl || suffix)))::text; END IF;
   RETURN 'rlstest-' || suffix;
 END $f$;
-
--- INSERT statement filling every required column with a generic value;
--- `ov` (column -> value) overrides any column it names.
+  $mk$;
+  EXECUTE $mk$
 CREATE FUNCTION public._rlstest_insert_sql(tbl text, suffix text, ov jsonb) RETURNS text LANGUAGE plpgsql AS $f$
 DECLARE cols text; vals text;
 BEGIN
@@ -69,20 +83,15 @@ BEGIN
   ) x;
   RETURN format('INSERT INTO public.%I (%s) VALUES (%s)', tbl, cols, vals);
 END $f$;
-
--- Act as `uid`. auth.uid() prefers request.jwt.claim.sub over request.jwt.claims,
--- so BOTH must be set every time or a stale value from an earlier check wins.
+  $mk$;
+  EXECUTE $mk$
 CREATE FUNCTION public._rlstest_login(uid uuid) RETURNS void LANGUAGE plpgsql AS $f$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', uid::text, true);
 END $f$;
-
--- Single-column foreign keys of `tbl` -> {column: key of a parent row}. Each
--- test row gets its OWN parent (seeded under the same suffix) so tables with
--- unique constraints over the FK (attendance employee_id+date, participants
--- training_id+employee_id) do not collide. Must run as the table owner: under
--- `authenticated`, RLS would hide the parent rows.
+  $mk$;
+  EXECUTE $mk$
 CREATE FUNCTION public._rlstest_fk_ov(tbl text, suffix text) RETURNS jsonb LANGUAGE plpgsql AS $f$
 DECLARE fk RECORD; v text; res jsonb := '{}'::jsonb;
 BEGIN
@@ -107,8 +116,8 @@ BEGIN
   END LOOP;
   RETURN res;
 END $f$;
-
--- Insert a row as the table owner. true = row exists afterwards.
+  $mk$;
+  EXECUTE $mk$
 CREATE FUNCTION public._rlstest_seed(tbl text, suffix text, ov jsonb) RETURNS boolean LANGUAGE plpgsql AS $f$
 DECLARE found int;
 BEGIN
@@ -120,22 +129,8 @@ BEGIN
   EXECUTE format('SELECT count(*) FROM public.%I WHERE id::text = %L', tbl, public._rlstest_id(tbl, suffix)) INTO found;
   RETURN found > 0;
 END $f$;
+  $mk$;
 
-DO $test$
-DECLARE
-  hr_tables  constant text[] := ARRAY['employees','attendance','positions','training_participants','training_evaluations','payroll'];
-  ops_tables constant text[] := ARRAY['products','stock_logs','assets','issuance'];
-  roles      constant text[] := ARRAY['admin','general_manager','hr_manager','finance','staff'];
-  all_tables text[] := hr_tables || ops_tables;
-  today      date := (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date;
-
-  uids jsonb := '{}'::jsonb;
-  r text; t text; uid uuid; ov jsonb; tov jsonb; rid text;
-  can_hr boolean; exp_select boolean; exp_write boolean; exp_update boolean;
-  n int; ok boolean; ok2 boolean; ok3 boolean; ok4 boolean;
-  failures int; skipped int := 0; checks int;
-  lbl text; exp boolean;
-BEGIN
   -- ── Users ────────────────────────────────────────────────────────────────
   FOREACH r IN ARRAY roles || ARRAY['inactive'] LOOP
     uid := md5('rlstest-user-' || r)::uuid;
@@ -346,23 +341,16 @@ BEGIN
   SELECT count(*) INTO checks FROM rls_results;
   SELECT count(*) INTO failures FROM rls_results WHERE expected IS DISTINCT FROM actual;
 
-  FOR r, t, lbl, exp, ok IN
-    SELECT who, tbl, op, expected, actual FROM rls_results WHERE expected IS DISTINCT FROM actual ORDER BY tbl, who, op
-  LOOP
-    RAISE WARNING 'FAIL  role=% target=% op=%  expected=% actual=%', r, t, lbl, exp, ok;
-  END LOOP;
-
-  RAISE NOTICE '% checks, % failed, % table(s) skipped (could not seed)', checks, failures, skipped;
+  -- Always end with an exception: it rolls back every row, user and function
+  -- this script created, whatever the editor does with transactions. The
+  -- message starts with PASS or FAIL; the "error" itself is intentional.
   IF failures > 0 THEN
-    -- The Supabase SQL editor shows only the error, not WARNING/NOTICE output,
-    -- so the failing checks go in the message itself ("role/target/op: expected->actual").
-    RAISE EXCEPTION 'hr_ops_rls: % of % checks failed (% tables skipped). Failures: %', failures, checks, skipped,
+    RAISE EXCEPTION 'FAIL: % of % checks failed (% tables skipped). Failures: %', failures, checks, skipped,
       (SELECT string_agg(who || '/' || tbl || '/' || op || ': ' || expected || '->' || actual, E'
 ' ORDER BY tbl, who, op)
        FROM rls_results WHERE expected IS DISTINCT FROM actual);
   END IF;
-  RAISE NOTICE 'hr_ops_rls: all checks passed';
+  RAISE EXCEPTION 'PASS: all % checks passed (% table(s) skipped, could not seed). This error is intentional: it rolls everything back.', checks, skipped;
 END
 $test$;
 
-ROLLBACK;
