@@ -68,6 +68,7 @@ BEGIN
         WHEN c.column_name = 'id' THEN quote_literal(public._rlstest_id(tbl, suffix))
         WHEN ov ? c.column_name THEN quote_nullable(ov ->> c.column_name)
         WHEN c.data_type IN ('text', 'character varying', 'character') THEN quote_literal('t-' || suffix)
+        WHEN c.column_name = 'score' THEN '3'  -- training_evaluations_score_check rejects 0
         WHEN c.data_type IN ('integer', 'bigint', 'smallint', 'numeric', 'double precision', 'real') THEN '0'
         WHEN c.data_type = 'date' THEN quote_literal(current_date::text)
         WHEN c.data_type LIKE 'timestamp%' THEN 'now()'
