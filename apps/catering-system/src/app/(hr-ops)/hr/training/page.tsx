@@ -11,7 +11,7 @@ import { AddTrainingDialog } from "@/components/hr/add-training-dialog";
 import { EditTrainingDialog } from "@/components/hr/edit-training-dialog";
 import { ViewTrainingDialog } from "@/components/hr/view-training-dialog";
 import { getTrainingSessions, addTrainingSession, updateTrainingSession, addTrainingParticipants, getEvaluationsBySession, updateSessionStatus } from "@/services/trainingService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { ManageParticipantsDialog } from "@/components/hr/manage-participants-dialog";
 import { cn } from "@/lib/utils";
 import { TrainingSession } from "@/types";
@@ -41,7 +41,7 @@ export default function TrainingPage() {
       setLoading(true);
       const [sessionsData, employeesData] = await Promise.all([
         getTrainingSessions(),
-        getEmployees()
+        getEmployeeDirectory()
       ]);
       setSessions(sessionsData);
       setEmployees(employeesData);

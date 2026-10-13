@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAttendanceRecords } from "@/services/attendanceService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { 
@@ -89,7 +89,7 @@ export default function AttendanceReportPage() {
         // error shown.
         const [recs, emps] = await Promise.all([
             getAttendanceRecords({ startDate: format(dateRange.start, 'yyyy-MM-dd'), endDate: format(dateRange.end, 'yyyy-MM-dd') }),
-            getEmployees()
+            getEmployeeDirectory()
         ]);
         setRecords(recs);
         setEmployees(emps);

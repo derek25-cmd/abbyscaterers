@@ -33,7 +33,7 @@ import {
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getAttendanceRecords, upsertAttendanceRecords, checkForConflicts } from "@/services/attendanceService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { Attendance, AttendanceStatus, Employee } from "@/types";
 import type { AttendanceFormData } from "@/lib/schemas";
 import { useToast } from "@/hooks/use-toast";
@@ -75,7 +75,7 @@ export function AttendancePageComponent() {
         const monthEnd = endOfMonth(new Date(currentYear, currentMonth, 1));
         const [recordsData, employeesData] = await Promise.all([
             getAttendanceRecords({ startDate: format(monthStart, 'yyyy-MM-dd'), endDate: format(monthEnd, 'yyyy-MM-dd') }),
-            getEmployees()
+            getEmployeeDirectory()
         ]);
         setRecords(recordsData);
         setEmployees(employeesData);

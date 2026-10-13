@@ -22,6 +22,21 @@ export const getEmployees = async (): Promise<Employee[]> => {
     return all;
 };
 
+/**
+ * Name/department/status only, via the get_employee_directory() RPC. Use this
+ * for pickers and name lookups: plain staff have no SELECT on employees (it
+ * holds ID, bank and salary data), so getEmployees() returns nothing for
+ * them. Fields beyond those six are absent despite the Employee type.
+ */
+export const getEmployeeDirectory = async (): Promise<Employee[]> => {
+    const { data, error } = await supabase.rpc('get_employee_directory');
+    if (error) {
+        console.error('Error fetching employee directory:', error);
+        return [];
+    }
+    return (data ?? []) as Employee[];
+};
+
 export const addEmployee = async (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee> => {
     const validated = validate(EmployeeSchema, employee);
     const { data, error } = await supabase.from('employees').insert([validated]).select();

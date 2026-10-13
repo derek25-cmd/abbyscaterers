@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Order, Issuance, Asset, Employee } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { getAssets } from "@/services/assetService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { getIssuances } from "@/services/issuanceService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function OrderIssuanceSection({ targetOrders }: { targetOrders: Order[] }
              try {
                 const [assetData, employeeData, allIssuances] = await Promise.all([
                     getAssets(),
-                    getEmployees(),
+                    getEmployeeDirectory(),
                     getIssuances()
                 ]);
                 setAssets(assetData);

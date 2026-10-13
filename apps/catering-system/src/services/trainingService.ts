@@ -1,6 +1,7 @@
 
 import { supabase } from '@/lib/supabase-client';
 import { TrainingSession, TrainingEvaluation } from '@/types';
+import { getEmployeeDirectory } from '@/services/employeeService';
 
 export const getTrainingSessions = async (): Promise<TrainingSession[]> => {
     const { data, error } = await supabase.from('positions').select('*');
@@ -34,22 +35,23 @@ export const updateTrainingSession = async (id: string, updatedSession: Partial<
 
 // Participant Management
 export const getTrainingParticipants = async (trainingId: string): Promise<any[]> => {
-    const { data, error } = await supabase
-        .from('training_participants')
-        .select(`
-            *,
-            employees:employee_id (firstName, lastName)
-        `)
-        .eq('training_id', trainingId);
-    
+    // Names come from the employee directory rather than an embedded
+    // employees(...) join: plain staff have no SELECT on employees (it holds
+    // salary/ID data), so the embed would silently return null names.
+    const [{ data, error }, directory] = await Promise.all([
+        supabase.from('training_participants').select('*').eq('training_id', trainingId),
+        getEmployeeDirectory(),
+    ]);
+
     if (error) {
         console.error('Error fetching training participants:', error);
         return [];
     }
-    
-    return data.map(p => ({
+
+    const names = new Map(directory.map(e => [e.id, `${e.firstName} ${e.lastName}`]));
+    return (data ?? []).map(p => ({
         ...p,
-        employee_name: `${p.employees?.firstName} ${p.employees?.lastName}`
+        employee_name: names.get(p.employee_id) ?? 'Unknown employee'
     }));
 };
 
@@ -67,13 +69,7 @@ export const addTrainingParticipants = async (trainingId: string, employeeIds: s
         return false;
     }
 
-    // Update applicant count in positions table
-    const { data: countData } = await supabase
-        .from('training_participants')
-        .select('id', { count: 'exact' })
-        .eq('training_id', trainingId);
-    
-    await supabase.from('positions').update({ applicants: countData?.length || 0 }).eq('id', trainingId);
+    // positions.applicants is maintained by the sync_training_applicants DB trigger.
     
     return true;
 };
@@ -93,13 +89,7 @@ export const deleteParticipant = async (id: string, trainingId: string): Promise
         return false;
     }
 
-    // Update applicant count
-    const { data: countData } = await supabase
-        .from('training_participants')
-        .select('id', { count: 'exact' })
-        .eq('training_id', trainingId);
-    
-    await supabase.from('positions').update({ applicants: countData?.length || 0 }).eq('id', trainingId);
+    // positions.applicants is maintained by the sync_training_applicants DB trigger.
 
     return true;
 };
@@ -173,26 +163,29 @@ export const updateSessionStatus = async (id: string, status: 'Upcoming' | 'In P
 };
 
 export const getEvaluationsByDate = async (date: string): Promise<any[]> => {
-    const { data, error } = await supabase
-        .from('training_evaluations')
-        .select(`
-            *,
-            training_participants:participant_id (
-              employees:employee_id (firstName, lastName)
-            ),
-            positions:training_id (title)
-        `)
-        .eq('evaluation_date', date)
-        .order('created_at', { ascending: false });
+    const [{ data, error }, directory] = await Promise.all([
+        supabase
+            .from('training_evaluations')
+            .select(`
+                *,
+                training_participants:participant_id (employee_id),
+                positions:training_id (title)
+            `)
+            .eq('evaluation_date', date)
+            .order('created_at', { ascending: false }),
+        getEmployeeDirectory(),
+    ]);
 
     if (error) {
         console.error('Error fetching daily evaluations:', error);
         return [];
     }
-    
-    return data.map(e => ({
+
+    // Names from the directory, not an embedded employees(...) join — see getTrainingParticipants.
+    const names = new Map(directory.map(e => [e.id, `${e.firstName} ${e.lastName}`]));
+    return (data ?? []).map(e => ({
         ...e,
-        trainee_name: `${e.training_participants?.employees?.firstName} ${e.training_participants?.employees?.lastName}`,
+        trainee_name: names.get(e.training_participants?.employee_id) ?? 'Unknown employee',
         training_title: e.positions?.title
     }));
 };
