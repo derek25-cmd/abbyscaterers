@@ -344,7 +344,12 @@ BEGIN
 
   RAISE NOTICE '% checks, % failed, % table(s) skipped (could not seed)', checks, failures, skipped;
   IF failures > 0 THEN
-    RAISE EXCEPTION 'hr_ops_rls: % check(s) failed', failures;
+    -- The Supabase SQL editor shows only the error, not WARNING/NOTICE output,
+    -- so the failing checks go in the message itself ("role/target/op: expected->actual").
+    RAISE EXCEPTION 'hr_ops_rls: % of % checks failed (% tables skipped). Failures: %', failures, checks, skipped,
+      (SELECT string_agg(who || '/' || tbl || '/' || op || ': ' || expected || '->' || actual, E'
+' ORDER BY tbl, who, op)
+       FROM rls_results WHERE expected IS DISTINCT FROM actual);
   END IF;
   RAISE NOTICE 'hr_ops_rls: all checks passed';
 END
