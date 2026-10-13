@@ -3,7 +3,8 @@
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
 -- migrations through 20261014000300 are applied:
 --     psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/tests/hr_ops_rls.sql
--- Needs a role that can SET session_replication_role (superuser / postgres).
+-- Works with the hosted Supabase `postgres` role (no superuser needed): it can
+-- bypass RLS and SET ROLE authenticated, which is all this script uses.
 --
 -- Everything runs in one transaction that is rolled back, so nothing persists.
 -- For each of the five roles (plus a deactivated user) it switches to the
@@ -16,9 +17,11 @@
 --    Postgres checks RLS before NOT NULL / CHECK / FK, so any other error
 --    means RLS let the row through and counts as allowed.
 --  * UPDATE / DELETE is "denied" when it affects 0 rows or raises 42501.
---  * Rows are seeded with session_replication_role = replica to bypass FKs and
---    triggers. A table whose row cannot be seeded from generic values (e.g. a
---    CHECK on a status column) is reported as SKIPPED, and the run says so.
+--  * Rows are seeded as the table owner (bypassing RLS). Foreign-key columns
+--    are filled from a real parent row, seeding one if needed. Triggers fire
+--    normally and are rolled back with everything else. A table whose row
+--    cannot be seeded from generic values (e.g. a CHECK on a status column)
+--    is reported as SKIPPED, and the run says so.
 
 BEGIN;
 
@@ -67,18 +70,42 @@ BEGIN
   RETURN format('INSERT INTO public.%I (%s) VALUES (%s)', tbl, cols, vals);
 END $f$;
 
--- Insert a row as the table owner with FKs/triggers off. true = row exists afterwards.
+-- Single-column foreign keys of `tbl` -> {column: key of a real parent row}.
+-- Seeds a parent row first if the referenced table is empty. Must run as the
+-- table owner: under `authenticated`, RLS would hide the parent rows.
+CREATE FUNCTION public._rlstest_fk_ov(tbl text) RETURNS jsonb LANGUAGE plpgsql AS $f$
+DECLARE fk RECORD; v text; res jsonb := '{}'::jsonb;
+BEGIN
+  FOR fk IN
+    SELECT a.attname AS col, c.confrelid::regclass::text AS parent, pa.attname AS parent_col,
+           pc.relname AS parent_name
+    FROM pg_constraint c
+    JOIN pg_attribute a  ON a.attrelid = c.conrelid  AND a.attnum = c.conkey[1]
+    JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attnum = c.confkey[1]
+    JOIN pg_class pc ON pc.oid = c.confrelid
+    WHERE c.contype = 'f' AND c.conrelid = ('public.' || quote_ident(tbl))::regclass
+      AND array_length(c.conkey, 1) = 1
+      AND pc.relnamespace = 'public'::regnamespace            -- skip auth.users etc.
+  LOOP
+    EXECUTE format('SELECT %I::text FROM %s ORDER BY 1 LIMIT 1', fk.parent_col, fk.parent) INTO v;
+    IF v IS NULL THEN
+      PERFORM public._rlstest_seed(fk.parent_name, 'fkparent', '{}'::jsonb);
+      EXECUTE format('SELECT %I::text FROM %s ORDER BY 1 LIMIT 1', fk.parent_col, fk.parent) INTO v;
+    END IF;
+    IF v IS NOT NULL THEN res := res || jsonb_build_object(fk.col, v); END IF;
+  END LOOP;
+  RETURN res;
+END $f$;
+
+-- Insert a row as the table owner. true = row exists afterwards.
 CREATE FUNCTION public._rlstest_seed(tbl text, suffix text, ov jsonb) RETURNS boolean LANGUAGE plpgsql AS $f$
 DECLARE found int;
 BEGIN
-  PERFORM set_config('session_replication_role', 'replica', true);
   BEGIN
-    EXECUTE public._rlstest_insert_sql(tbl, suffix, ov) || ' ON CONFLICT DO NOTHING';
+    EXECUTE public._rlstest_insert_sql(tbl, suffix, public._rlstest_fk_ov(tbl) || ov) || ' ON CONFLICT DO NOTHING';
   EXCEPTION WHEN OTHERS THEN
-    PERFORM set_config('session_replication_role', 'origin', true);
     RETURN false;
   END;
-  PERFORM set_config('session_replication_role', 'origin', true);
   EXECUTE format('SELECT count(*) FROM public.%I WHERE id::text = %L', tbl, public._rlstest_id(tbl, suffix)) INTO found;
   RETURN found > 0;
 END $f$;
@@ -92,22 +119,24 @@ DECLARE
   today      date := (now() AT TIME ZONE 'Africa/Dar_es_Salaam')::date;
 
   uids jsonb := '{}'::jsonb;
-  r text; t text; uid uuid; ov jsonb; rid text;
+  r text; t text; uid uuid; ov jsonb; tov jsonb; rid text;
   can_hr boolean; exp_select boolean; exp_write boolean; exp_update boolean;
   n int; ok boolean; ok2 boolean; ok3 boolean; ok4 boolean;
   failures int; skipped int := 0; checks int;
   lbl text; exp boolean;
 BEGIN
   -- ── Users ────────────────────────────────────────────────────────────────
-  PERFORM set_config('session_replication_role', 'replica', true);  -- skip auth.users FK
   FOREACH r IN ARRAY roles || ARRAY['inactive'] LOOP
     uid := md5('rlstest-user-' || r)::uuid;
     uids := uids || jsonb_build_object(r, uid);
+    -- staff_users.id and audit_log.actor_id reference auth.users.
+    INSERT INTO auth.users (id, email, aud, role)
+    VALUES (uid, r || '@rlstest.local', 'authenticated', 'authenticated')
+    ON CONFLICT (id) DO NOTHING;
     INSERT INTO public.staff_users (id, email, role, is_active)
     VALUES (uid, r || '@rlstest.local', CASE WHEN r = 'inactive' THEN 'staff' ELSE r END, r <> 'inactive')
     ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, is_active = EXCLUDED.is_active;
   END LOOP;
-  PERFORM set_config('session_replication_role', 'origin', true);
 
   -- ── Per-role, per-table matrix ───────────────────────────────────────────
   FOREACH r IN ARRAY roles || ARRAY['inactive'] LOOP
@@ -131,6 +160,7 @@ BEGIN
       -- attendance: anyone active may update their OWN row from today (seeded that way here)
       exp_update := CASE WHEN t = 'attendance' THEN r <> 'inactive' ELSE exp_write END;
 
+      tov := public._rlstest_fk_ov(t) || ov;   -- as owner: parents hidden from `authenticated` by RLS
       IF NOT public._rlstest_seed(t, 'sel-' || r, ov) THEN
         RAISE NOTICE 'SKIPPED % — could not seed a row from generic values', t;
         skipped := skipped + 1;
@@ -148,7 +178,7 @@ BEGIN
       END;
       -- INSERT
       BEGIN
-        EXECUTE public._rlstest_insert_sql(t, 'ins-' || r, ov);
+        EXECUTE public._rlstest_insert_sql(t, 'ins-' || r, tov);
         ok2 := true;
       EXCEPTION
         WHEN insufficient_privilege THEN ok2 := false;
@@ -229,11 +259,9 @@ BEGIN
   END IF;
 
   -- ── audit_log: who can read it, and no direct writes ─────────────────────
-  PERFORM set_config('session_replication_role', 'replica', true);
   INSERT INTO public.audit_log (actor_id, action, table_name, record_id) VALUES
     ((uids ->> 'staff')::uuid, 'employees.update', 'employees', 'rlstest-audit-hr'),
     ((uids ->> 'staff')::uuid, 'products.update',  'products',  'rlstest-audit-ops');
-  PERFORM set_config('session_replication_role', 'origin', true);
 
   FOREACH r IN ARRAY roles LOOP
     uid := (uids ->> r)::uuid;
