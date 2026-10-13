@@ -238,7 +238,7 @@ export const updatePayroll = async (id: string, updatedPayroll: Partial<Payroll>
     // Audit entry (payroll.update) is written by the audit_row_change DB trigger,
     // so it can only ever reflect a write that actually reached the database.
 
- — callers (e.g. "Mark as Paid") need to know
+    // Report the real outcome — callers (e.g. "Mark as Paid") need to know
     // if the change actually reached the shared database, not just that a
     // localStorage copy was updated.
     return dbUpdateSucceeded;
