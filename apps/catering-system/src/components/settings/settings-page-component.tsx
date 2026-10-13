@@ -11,12 +11,16 @@ import { uploadFile } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { Loader2, UploadCloud, Hash, RefreshCw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useStaffRole } from "@/hooks/use-staff-role";
+import { UsersAccessTab } from "@/components/settings/users-access-tab";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
 
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
     const { toast } = useToast();
+    const { canManageSettings } = useStaffRole();
     const [uploading, setUploading] = useState<Partial<Record<ImageKey, boolean>>>({});
     const [localSettings, setLocalSettings] = useState<AppSettings>({});
 
@@ -107,27 +111,40 @@ export function SettingsPageComponent() {
                 Application Settings
             </h1>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Appearance</CardTitle>
-                    <CardDescription>Customize the look of your application, including the login screen and invoice templates.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <ImageUploader imageKey="loginImageUrl" label="Login Screen Image" />
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="general" className="space-y-6">
+                <TabsList>
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    {canManageSettings && <TabsTrigger value="users">Users &amp; Access</TabsTrigger>}
+                </TabsList>
+                <TabsContent value="general" className="space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Appearance</CardTitle>
+                            <CardDescription>Customize the look of your application, including the login screen and invoice templates.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <ImageUploader imageKey="loginImageUrl" label="Login Screen Image" />
+                        </CardContent>
+                    </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Invoice & Proforma Customization</CardTitle>
-                    <CardDescription>Upload images to be displayed on your generated PDF documents.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ImageUploader imageKey="headerUrl" label="Header Image" />
-                    <ImageUploader imageKey="footerUrl" label="Footer Image" />
-                    <ImageUploader imageKey="signatureUrl" label="Signature Image" />
-                </CardContent>
-            </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Invoice & Proforma Customization</CardTitle>
+                            <CardDescription>Upload images to be displayed on your generated PDF documents.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <ImageUploader imageKey="headerUrl" label="Header Image" />
+                            <ImageUploader imageKey="footerUrl" label="Footer Image" />
+                            <ImageUploader imageKey="signatureUrl" label="Signature Image" />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                {canManageSettings && (
+                    <TabsContent value="users">
+                        <UsersAccessTab />
+                    </TabsContent>
+                )}
+            </Tabs>
         </div>
     )
 }
