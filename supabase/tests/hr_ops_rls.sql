@@ -70,10 +70,20 @@ BEGIN
   RETURN format('INSERT INTO public.%I (%s) VALUES (%s)', tbl, cols, vals);
 END $f$;
 
--- Single-column foreign keys of `tbl` -> {column: key of a real parent row}.
--- Seeds a parent row first if the referenced table is empty. Must run as the
--- table owner: under `authenticated`, RLS would hide the parent rows.
-CREATE FUNCTION public._rlstest_fk_ov(tbl text) RETURNS jsonb LANGUAGE plpgsql AS $f$
+-- Act as `uid`. auth.uid() prefers request.jwt.claim.sub over request.jwt.claims,
+-- so BOTH must be set every time or a stale value from an earlier check wins.
+CREATE FUNCTION public._rlstest_login(uid uuid) RETURNS void LANGUAGE plpgsql AS $f$
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  PERFORM set_config('request.jwt.claim.sub', uid::text, true);
+END $f$;
+
+-- Single-column foreign keys of `tbl` -> {column: key of a parent row}. Each
+-- test row gets its OWN parent (seeded under the same suffix) so tables with
+-- unique constraints over the FK (attendance employee_id+date, participants
+-- training_id+employee_id) do not collide. Must run as the table owner: under
+-- `authenticated`, RLS would hide the parent rows.
+CREATE FUNCTION public._rlstest_fk_ov(tbl text, suffix text) RETURNS jsonb LANGUAGE plpgsql AS $f$
 DECLARE fk RECORD; v text; res jsonb := '{}'::jsonb;
 BEGIN
   FOR fk IN
@@ -87,9 +97,10 @@ BEGIN
       AND array_length(c.conkey, 1) = 1
       AND pc.relnamespace = 'public'::regnamespace            -- skip auth.users etc.
   LOOP
-    EXECUTE format('SELECT %I::text FROM %s ORDER BY 1 LIMIT 1', fk.parent_col, fk.parent) INTO v;
-    IF v IS NULL THEN
-      PERFORM public._rlstest_seed(fk.parent_name, 'fkparent', '{}'::jsonb);
+    IF fk.parent_col = 'id' THEN
+      PERFORM public._rlstest_seed(fk.parent_name, 'fk-' || suffix, '{}'::jsonb);
+      v := public._rlstest_id(fk.parent_name, 'fk-' || suffix);
+    ELSE
       EXECUTE format('SELECT %I::text FROM %s ORDER BY 1 LIMIT 1', fk.parent_col, fk.parent) INTO v;
     END IF;
     IF v IS NOT NULL THEN res := res || jsonb_build_object(fk.col, v); END IF;
@@ -102,7 +113,7 @@ CREATE FUNCTION public._rlstest_seed(tbl text, suffix text, ov jsonb) RETURNS bo
 DECLARE found int;
 BEGIN
   BEGIN
-    EXECUTE public._rlstest_insert_sql(tbl, suffix, public._rlstest_fk_ov(tbl) || ov) || ' ON CONFLICT DO NOTHING';
+    EXECUTE public._rlstest_insert_sql(tbl, suffix, public._rlstest_fk_ov(tbl, suffix) || ov) || ' ON CONFLICT DO NOTHING';
   EXCEPTION WHEN OTHERS THEN
     RETURN false;
   END;
@@ -160,7 +171,7 @@ BEGIN
       -- attendance: anyone active may update their OWN row from today (seeded that way here)
       exp_update := CASE WHEN t = 'attendance' THEN r <> 'inactive' ELSE exp_write END;
 
-      tov := public._rlstest_fk_ov(t) || ov;   -- as owner: parents hidden from `authenticated` by RLS
+      tov := public._rlstest_fk_ov(t, 'ins-' || r) || ov;   -- as owner: parents hidden from `authenticated` by RLS
       IF NOT public._rlstest_seed(t, 'sel-' || r, ov) THEN
         RAISE NOTICE 'SKIPPED % — could not seed a row from generic values', t;
         skipped := skipped + 1;
@@ -168,8 +179,7 @@ BEGIN
       END IF;
 
       -- SELECT
-      PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
-      PERFORM set_config('request.jwt.claim.sub', uid::text, true);
+      PERFORM public._rlstest_login(uid);
       SET LOCAL ROLE authenticated;
       BEGIN
         EXECUTE format('SELECT count(*) FROM public.%I WHERE id::text = %L', t, public._rlstest_id(t, 'sel-' || r)) INTO n;
@@ -229,7 +239,7 @@ BEGIN
           'date', CASE WHEN rid = 'att-own-yday' THEN today - 1 ELSE today END)) THEN
         CONTINUE;
       END IF;
-      PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+      PERFORM public._rlstest_login(uid);
       SET LOCAL ROLE authenticated;
       BEGIN
         UPDATE public.attendance SET created_by = created_by WHERE id::text = public._rlstest_id('attendance', rid);
@@ -246,7 +256,7 @@ BEGIN
   IF to_regclass('public.employees') IS NOT NULL AND public._rlstest_seed('employees', 'dir', '{}'::jsonb) THEN
     FOREACH r IN ARRAY roles || ARRAY['inactive'] LOOP
       uid := (uids ->> r)::uuid;
-      PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+      PERFORM public._rlstest_login(uid);
       SET LOCAL ROLE authenticated;
       BEGIN
         SELECT count(*) INTO n FROM public.get_employee_directory();
@@ -265,7 +275,7 @@ BEGIN
 
   FOREACH r IN ARRAY roles LOOP
     uid := (uids ->> r)::uuid;
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+    PERFORM public._rlstest_login(uid);
     SET LOCAL ROLE authenticated;
     SELECT count(*) INTO n FROM public.audit_log WHERE record_id = 'rlstest-audit-hr';
     ok := n = 1;
@@ -292,7 +302,7 @@ BEGIN
   IF to_regclass('public.positions') IS NOT NULL AND public._rlstest_seed('positions', 'trg', '{}'::jsonb) THEN
     uid := (uids ->> 'hr_manager')::uuid;
     rid := public._rlstest_id('positions', 'trg');
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+    PERFORM public._rlstest_login(uid);
     SET LOCAL ROLE authenticated;
     UPDATE public.positions SET created_by = (uids ->> 'admin')::uuid WHERE id::text = rid;
     RESET ROLE;
@@ -320,7 +330,7 @@ BEGIN
   -- ── staff_users: only admin manages users ────────────────────────────────
   FOREACH r IN ARRAY roles LOOP
     uid := (uids ->> r)::uuid;
-    PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+    PERFORM public._rlstest_login(uid);
     SET LOCAL ROLE authenticated;
     BEGIN
       UPDATE public.staff_users SET role = role WHERE id = (uids ->> 'finance')::uuid;
