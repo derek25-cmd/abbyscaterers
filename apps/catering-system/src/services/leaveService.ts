@@ -336,3 +336,16 @@ export const getUnpaidLeaveReport = async (periodStart: string, periodEnd: strin
   }
   return [...byEmployee.values()].sort((a, b) => a.employee_name.localeCompare(b.employee_name));
 };
+
+// ── Attendance on the days of a request ────────────────────────────────────
+
+export interface AttendanceDay { date: string; status: string; leave_request_id: string | null }
+
+/** What attendance already says about an employee between two dates. */
+export const getAttendanceForRange = async (employeeId: string, from: string, to: string): Promise<AttendanceDay[]> => {
+  const { data, error } = await supabase
+    .from('attendance').select('date, status, leave_request_id')
+    .eq('employee_id', employeeId).gte('date', from).lte('date', to).order('date');
+  if (error) throw toError(error, 'Could not check the attendance records.');
+  return (data ?? []) as AttendanceDay[];
+};
