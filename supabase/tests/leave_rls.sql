@@ -264,6 +264,10 @@ BEGIN
     EXISTS (SELECT 1 FROM public.audit_log WHERE action = 'leave_requests.approve' AND record_id = req1::text AND actor_id = (u ->> 'hr')::uuid));
   INSERT INTO rls_results VALUES ('hr', 'audit_log', 'attendance rows created by approval are audited', true,
     EXISTS (SELECT 1 FROM public.audit_log WHERE action = 'attendance.insert' AND table_name = 'attendance' AND metadata -> 'new' ->> 'leave_request_id' = req1::text));
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT * FROM public.audit_log WHERE action = %L AND record_id = %L', 'leave_requests.approve', req1::text));
+  INSERT INTO rls_results VALUES ('hr', 'audit_log', 'HR Manager can read the leave approval', true, res LIKE 'ok:%' AND res <> 'ok:0');
+  res := public._lt_as((u ->> 'staffA')::uuid, format('SELECT * FROM public.audit_log WHERE action = %L AND record_id = %L', 'leave_requests.approve', req1::text));
+  INSERT INTO rls_results VALUES ('staffA', 'audit_log', 'staff cannot read the audit trail', false, res LIKE 'ok:%' AND res <> 'ok:0');
   INSERT INTO rls_results VALUES ('staffA', 'hr_notifications', 'requester told of the decision', true,
     EXISTS (SELECT 1 FROM public.hr_notifications WHERE recipient_id = (u ->> 'staffA')::uuid AND type = 'leave_decision'));
 
