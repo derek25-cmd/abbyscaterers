@@ -146,6 +146,10 @@ CREATE TRIGGER leave_request_guard
   BEFORE UPDATE OR DELETE ON public.leave_requests
   FOR EACH ROW EXECUTE FUNCTION public.leave_request_guard();
 
+-- The leave.rpc flag below lets the guard trigger know a change comes from one
+-- of these functions. It is transaction-local and cleared again before each
+-- function returns, so a later statement in the same transaction cannot ride on it.
+
 -- ── 3. Approve / reject ────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.review_leave_request(
   p_id uuid, p_decision text, p_note text DEFAULT NULL, p_replace_absent boolean DEFAULT false
@@ -194,6 +198,7 @@ BEGIN
      WHERE id = p_id RETURNING * INTO req;
     PERFORM public.leave_notify_requester(req, 'Leave request rejected',
       format('Your %s leave from %s to %s was rejected: %s', lt.name, req.start_date, req.end_date, trim(p_note)));
+    PERFORM set_config('leave.rpc', '', true);
     RETURN req;
   END IF;
 
@@ -255,6 +260,7 @@ BEGIN
 
   PERFORM public.leave_notify_requester(req, 'Leave request approved',
     format('Your %s leave from %s to %s (%s day(s)) was approved.', lt.name, req.start_date, req.end_date, req.days));
+  PERFORM set_config('leave.rpc', '', true);
   RETURN req;
 END;
 $$;
@@ -305,6 +311,7 @@ BEGIN
 
   PERFORM public.leave_notify_requester(req, 'Leave request cancelled',
     format('The %s leave from %s to %s was cancelled.', lt.name, req.start_date, req.end_date));
+  PERFORM set_config('leave.rpc', '', true);
   RETURN req;
 END;
 $$;
