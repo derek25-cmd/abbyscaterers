@@ -37,7 +37,7 @@ DECLARE
   r text; t text; uid uuid; ov jsonb; tov jsonb; rid text;
   can_hr boolean; exp_select boolean; exp_write boolean; exp_update boolean;
   n int; ok boolean; ok2 boolean; ok3 boolean; ok4 boolean;
-  failures int; skipped int := 0; checks int;
+  failures int; skipped int := 0; checks int; skipped_tables text[] := '{}';
   lbl text; exp boolean;
 BEGIN
 
@@ -170,6 +170,7 @@ END $f$;
       IF NOT public._rlstest_seed(t, 'sel-' || r, ov) THEN
         RAISE NOTICE 'SKIPPED % — could not seed a row from generic values', t;
         skipped := skipped + 1;
+        IF NOT t = ANY (skipped_tables) THEN skipped_tables := skipped_tables || t; END IF;
         CONTINUE;
       END IF;
 
@@ -345,12 +346,12 @@ END $f$;
   -- this script created, whatever the editor does with transactions. The
   -- message starts with PASS or FAIL; the "error" itself is intentional.
   IF failures > 0 THEN
-    RAISE EXCEPTION 'FAIL: % of % checks failed (% tables skipped). Failures: %', failures, checks, skipped,
+    RAISE EXCEPTION 'FAIL: % of % checks failed (% skipped: %). Failures: %', failures, checks, skipped, skipped_tables,
       (SELECT string_agg(who || '/' || tbl || '/' || op || ': ' || expected || '->' || actual, E'
 ' ORDER BY tbl, who, op)
        FROM rls_results WHERE expected IS DISTINCT FROM actual);
   END IF;
-  RAISE EXCEPTION 'PASS: all % checks passed (% table(s) skipped, could not seed). This error is intentional: it rolls everything back.', checks, skipped;
+  RAISE EXCEPTION 'PASS: all % checks passed (% role/table combos skipped, could not seed; untested tables: %). This error is intentional: it rolls everything back.', checks, skipped, COALESCE(array_to_string(skipped_tables, ', '), 'none');
 END
 $test$;
 
