@@ -4,7 +4,7 @@
  * must only ever be run from a trusted machine/CI, never shipped client-side.
  *
  * Usage: node scripts/invite-staff.js someone@abbyscaterers.com [role]
- *   role defaults to "staff"; valid values: admin, finance, staff
+ *   role defaults to "staff"; valid values: admin, general_manager, hr_manager, finance, staff
  */
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
@@ -16,8 +16,8 @@ if (!email) {
   console.error('Usage: node scripts/invite-staff.js <email> [role]');
   process.exit(1);
 }
-if (!['admin', 'finance', 'staff'].includes(role)) {
-  console.error(`Invalid role "${role}". Must be one of: admin, finance, staff.`);
+if (!['admin', 'general_manager', 'hr_manager', 'finance', 'staff'].includes(role)) {
+  console.error(`Invalid role "${role}". Must be one of: admin, general_manager, hr_manager, finance, staff.`);
   process.exit(1);
 }
 
