@@ -265,7 +265,8 @@ export const getEmployeeBalances = async (employeeId: string, year: number) => {
       const entitled = row?.entitled ?? t.days_per_year;
       const carried = row?.carried_forward ?? 0;
       const taken = row?.taken ?? 0;
-      return { type: t, entitled, carried_forward: carried, taken, remaining: balanceRemaining({ entitled, carried_forward: carried, taken }) };
+      const opening = row?.opening_taken ?? 0;
+      return { type: t, entitled, carried_forward: carried, taken, opening_taken: opening, remaining: balanceRemaining({ entitled, carried_forward: carried, taken, opening_taken: opening }) };
     });
 };
 

@@ -57,10 +57,10 @@ export function EmployeeLeaveTab({ employeeId, employeeName }: { employeeId: str
                 <div key={b.type.id} className="rounded-md border p-3">
                   <div className="flex items-baseline justify-between">
                     <span className="font-medium">{b.type.name}</span>
-                    <span className="text-sm text-muted-foreground">{formatDays(b.taken)} taken</span>
+                    <span className="text-sm text-muted-foreground">{formatDays(b.taken + b.opening_taken)} taken{b.opening_taken > 0 ? ` (${formatDays(b.opening_taken)} before go-live)` : ''}</span>
                   </div>
                   <p className="mt-1"><span className="text-2xl font-bold">{b.remaining}</span> <span className="text-sm text-muted-foreground">of {total} days left</span></p>
-                  <Progress value={total > 0 ? Math.min(100, (b.taken / total) * 100) : 0} className="mt-2 h-1.5" />
+                  <Progress value={total > 0 ? Math.min(100, ((b.taken + b.opening_taken) / total) * 100) : 0} className="mt-2 h-1.5" />
                 </div>
               );
             })}
