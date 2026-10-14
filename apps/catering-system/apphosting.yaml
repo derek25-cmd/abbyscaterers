@@ -1,0 +1,29 @@
+# Firebase App Hosting config for the catering system (backend "studio").
+#
+# The backend builds and runs from apps/catering-system. Without a file here it
+# picked up the repository root's apphosting.yaml, which builds and starts the
+# ADMIN PORTAL (node .next/standalone/apps/admin-portal/server.js). The build
+# "succeeded" but every new revision then failed to start with "Cannot find
+# module .../standalone/apps/admin-portal/server.js", so Cloud Run kept serving
+# an old build. The admin portal's own files (../admin-portal/apphosting.yaml
+# and the root one) are left unchanged.
+#
+# next.config.js sets output: 'standalone' and no outputFileTracingRoot, so
+# Next.js writes the server to .next/standalone/server.js. A standalone build
+# does not include the static assets or public/; they are copied next to it.
+
+scripts:
+  buildCommand: npm ci && npm run build && cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public
+  runCommand: node .next/standalone/server.js
+
+runConfig:
+  # The default (100) asks for more CPU than the region's quota allows (20).
+  maxInstances: 10
+
+env:
+  # Listen on all interfaces. The standalone server binds to HOSTNAME when it
+  # is set, and Cloud Run's health check must be able to reach port 8080.
+  - variable: HOSTNAME
+    value: 0.0.0.0
+    availability:
+      - RUNTIME
