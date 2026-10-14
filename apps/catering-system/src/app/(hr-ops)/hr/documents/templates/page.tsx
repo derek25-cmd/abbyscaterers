@@ -15,16 +15,32 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { LetterPreview } from '@/components/hr/letter-preview';
 import { useToast } from '@/hooks/use-toast';
-import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, REGISTRY } from '@/lib/hr-docs/registry';
+import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, REGISTRY, type LetterRelated } from '@/lib/hr-docs/registry';
 import { PLACEHOLDER_REFERENCE, buildRenderContext, formatLongDate, listPlaceholders, renderTemplate } from '@/lib/hr-docs/render';
 import {
   getLetterSettings, listDocumentTypes, listTemplates, saveTemplateVersion, todayInDar, updateDocumentType, type LetterSettings,
 } from '@/services/hrDocumentService';
-import type { Employee, HrDocTypeCode, HrDocumentTemplate, HrDocumentType } from '@/types';
+import type { Candidate, Employee, HrDocTypeCode, HrDocumentTemplate, HrDocumentType } from '@/types';
 
 const SAMPLE_EMPLOYEE: Partial<Employee> = {
   id: 'EMP-000', firstName: 'Amina', lastName: 'Juma', role: 'Head Chef', department: 'Kitchen' as Employee['department'],
   employmentStartDate: '2024-03-03', employmentEndDate: '2026-12-31', address: 'Mikocheni, Dar es Salaam', monthlySalary: 1200000,
+  employmentEndReason: 'End of contract: the fixed-term contract was not renewed.',
+};
+
+// Sample records so every letter type previews with realistic values.
+const SAMPLE_CANDIDATE: Partial<Candidate> = { full_name: 'Baraka Mwakyusa', address: 'Sinza, Dar es Salaam', position: 'Cook', department: 'Kitchen' };
+const SAMPLE_RELATED: LetterRelated = {
+  candidate: SAMPLE_CANDIDATE as Candidate,
+  contract: {
+    id: 'sample', employee_id: 'EMP-000', contract_type: 'fixed_term', start_date: '2025-11-01', end_date: '2026-10-31', position: 'Head Chef',
+    salary: 1200000, probation_months: 0, notice_days: 30, status: 'active', parent_contract_id: null, document_id: null, source: 'letter', created_at: '',
+  },
+  warnings: [{ id: 'w', employee_id: 'EMP-000', level: 'final_written', offence_category: 'Lateness', incident_date: '2026-02-03', expires_on: '2027-02-03', status: 'active', document_id: 'd', created_at: '' }],
+  contracts: [
+    { id: 'a', employee_id: 'EMP-000', contract_type: 'fixed_term', start_date: '2023-03-01', end_date: '2024-06-30', position: 'Cook', salary: null, probation_months: null, notice_days: null, status: 'extended', parent_contract_id: null, document_id: null, source: 'legacy', created_at: '' },
+    { id: 'b', employee_id: 'EMP-000', contract_type: 'fixed_term', start_date: '2024-07-01', end_date: '2026-10-31', position: 'Head Chef', salary: null, probation_months: null, notice_days: null, status: 'terminated', parent_contract_id: 'a', document_id: null, source: 'letter', created_at: '' },
+  ],
 };
 
 export default function TemplatesPage() {
@@ -87,13 +103,21 @@ function Editor() {
 
   const preview = useMemo(() => {
     if (!settings) return null;
+    const sample = def?.sampleData ?? {};
+    const forCandidate = def?.person === 'candidate';
     const context = buildRenderContext({
-      company: settings.company, employee: SAMPLE_EMPLOYEE, date: todayInDar(), subject: 'Sample subject',
-      signatory: { name: 'Neema Mushi', title: 'HR Manager' }, data: def?.sampleData ?? {},
+      company: settings.company, employee: forCandidate ? null : SAMPLE_EMPLOYEE, candidate: forCandidate ? SAMPLE_CANDIDATE : null,
+      date: todayInDar(), subject: 'Sample subject',
+      signatory: { name: 'Neema Mushi', title: 'HR Manager' }, data: sample,
+      extra: def?.buildContext ? def.buildContext(sample, SAMPLE_RELATED, SAMPLE_EMPLOYEE) : {},
     });
     const r = renderTemplate(body, context);
     return {
-      rendered: { subject: 'Sample subject', addressee: ['Amina Juma', 'Head Chef, Kitchen', 'Mikocheni, Dar es Salaam'], paragraphs: r.paragraphs },
+      rendered: {
+        subject: def?.defaultSubject || 'Sample subject',
+        addressee: forCandidate ? ['Baraka Mwakyusa', 'Sinza, Dar es Salaam'] : ['Amina Juma', 'Head Chef, Kitchen', 'Mikocheni, Dar es Salaam'],
+        paragraphs: r.paragraphs,
+      },
       missing: r.missing,
     };
   }, [body, settings, def]);
@@ -170,10 +194,16 @@ function Editor() {
                 <div>
                   <p className="mb-1 text-sm font-medium">Click to add a detail to the wording</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {def && <PlaceholderChip label="Text written for each letter" text="{{{body}}}" onInsert={insert} />}
-                    {PLACEHOLDER_REFERENCE.filter((p) => p.path !== 'doc.subject').map((p) => (
-                      <PlaceholderChip key={p.path} label={p.description} text={`{{${p.path}}}`} onInsert={insert} />
+                    {selected === 'general_letter' && <PlaceholderChip label="Text written for each letter" text="{{{body}}}" onInsert={insert} />}
+                    {(def?.placeholders ?? []).map((p) => (
+                      <PlaceholderChip key={p.path} label={p.description} text={p.description.includes('{{{') ? `{{{${p.path}}}}` : `{{${p.path}}}`} onInsert={insert} highlight />
                     ))}
+                    {PLACEHOLDER_REFERENCE
+                      .filter((p) => p.path !== 'doc.subject')
+                      .filter((p) => def?.person !== 'candidate' || !p.path.startsWith('employee.'))
+                      .map((p) => (
+                        <PlaceholderChip key={p.path} label={p.description} text={`{{${p.path}}}`} onInsert={insert} />
+                      ))}
                   </div>
                 </div>
 
@@ -282,11 +312,11 @@ function Editor() {
   );
 }
 
-function PlaceholderChip({ label, text, onInsert }: { label: string; text: string; onInsert: (t: string) => void }) {
+function PlaceholderChip({ label, text, onInsert, highlight }: { label: string; text: string; onInsert: (t: string) => void; highlight?: boolean }) {
   return (
     <button type="button" title={text} onClick={() => onInsert(text)}
-      className="rounded-full border bg-muted/40 px-2.5 py-1 text-xs transition-colors hover:bg-primary/10">
-      {label}
+      className={`rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-primary/10 ${highlight ? 'border-primary/40 bg-primary/5' : 'bg-muted/40'}`}>
+      {label.replace(/\s*\(.*\)\s*$/, '')}
     </button>
   );
 }

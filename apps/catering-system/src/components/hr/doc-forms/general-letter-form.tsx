@@ -2,6 +2,7 @@
 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import type { Candidate, Employee } from '@/types';
 
 export interface DocFormProps {
   value: Record<string, unknown>;
@@ -9,6 +10,8 @@ export interface DocFormProps {
   /** Field errors from the type's schema, keyed by field name. */
   errors?: Record<string, string>;
   disabled?: boolean;
+  /** Who the letter is for, so a form can check current records (Phase 4). The general letter ignores it. */
+  person?: { employee?: Employee | null; candidate?: Candidate | null };
 }
 
 /** The type-specific part of a general letter: who it is addressed to (optional) and what it says. */

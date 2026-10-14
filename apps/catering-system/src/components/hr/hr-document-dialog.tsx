@@ -14,12 +14,13 @@ import { NewDocumentWizard } from '@/components/hr/new-document-wizard';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { PENDING_REF, PLACEHOLDER_REFERENCE, formatLongDate } from '@/lib/hr-docs/render';
+import { REGISTRY } from '@/lib/hr-docs/registry';
 import {
-  MissingFieldsError, approve, deleteDraft, getDocument, getDocumentHistory, getDownloadUrl, issue, listDocumentTypes,
-  loadRenderInputs, renderDocument, returnToDraft, submit, todayInDar, verifyDocumentIntegrity, voidDocument,
-  type HistoryEntry, type IntegrityResult, type RenderInputs,
+  MissingFieldsError, approve, deleteDraft, getDocument, getDocumentHistory, getDownloadUrl, getNewerTemplate, issue,
+  listDocumentTypes, loadRenderInputs, renderDocument, returnToDraft, submit, todayInDar, updateToLatestTemplate,
+  verifyDocumentIntegrity, voidDocument, type HistoryEntry, type IntegrityResult, type RenderInputs,
 } from '@/services/hrDocumentService';
-import type { HrDocumentType, HrDocumentView } from '@/types';
+import type { HrDocTypeCode, HrDocumentTemplate, HrDocumentType, HrDocumentView } from '@/types';
 
 export type DocIntent = 'approve' | 'issue' | 'void' | 'return' | null;
 type Confirm = 'approve' | 'issue' | 'void' | 'return' | 'delete' | null;
@@ -33,10 +34,24 @@ interface Props {
   onChanged?: () => void;
 }
 
-const describeField = (path: string) => {
-  const known = PLACEHOLDER_REFERENCE.find((p) => p.path === path);
+const describeField = (path: string, docType?: HrDocTypeCode) => {
+  const known = PLACEHOLDER_REFERENCE.find((p) => p.path === path)
+    ?? (docType ? REGISTRY[docType]?.placeholders?.find((p) => p.path === path) : undefined);
   return known ? `${known.description} (${path})` : path;
 };
+
+/** What voiding an ISSUED letter of this type undoes, in plain words. */
+function voidConsequence(docType: HrDocTypeCode): string | null {
+  switch (docType) {
+    case 'offer': return 'The candidate goes back to "no offer".';
+    case 'contract': return 'The contract it created is marked void.';
+    case 'extension': return 'The extension contract is marked void, and the contract it extended becomes active again.';
+    case 'termination': return 'The employee is NOT reactivated. If they should be employed again, reactivate them by hand afterwards.';
+    case 'warning': return 'The warning is marked void and no longer counts.';
+    case 'recognition': return 'The recognition record is marked void; a cash reward not yet paid is removed from the pending list.';
+    default: return null;
+  }
+}
 
 const when = (iso: string) => format(parseISO(iso), 'd MMM yyyy, HH:mm');
 
@@ -54,6 +69,7 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
   const [note, setNote] = useState('');
   const [integrity, setIntegrity] = useState<IntegrityResult | null>(null);
   const [editing, setEditing] = useState(false);
+  const [newer, setNewer] = useState<HrDocumentTemplate | null>(null);
 
   const load = useCallback(async () => {
     if (!documentId) return;
@@ -62,6 +78,8 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
       const [i, types, h] = await Promise.all([loadRenderInputs(d), listDocumentTypes(), getDocumentHistory(documentId)]);
       setDoc(d); setInputs(i); setHistory(h);
       setType(types.find((t) => t.doc_type === d.doc_type) ?? null);
+      // A draft still on an older template can move to the newest one.
+      setNewer(d.status === 'draft' ? await getNewerTemplate(d).catch(() => null) : null);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load the document.');
@@ -97,7 +115,7 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
       onChanged?.();
     } catch (err) {
       setError(err instanceof MissingFieldsError
-        ? `${err.message.split(':')[0]}: ${err.missing.map(describeField).join('; ')}.`
+        ? `${err.message.split(':')[0]}: ${err.missing.map((m) => describeField(m, doc?.doc_type)).join('; ')}.`
         : err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setBusy(null); setConfirm(null);
@@ -155,10 +173,20 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
                 {rendered.r.missing.length > 0 && doc.status !== 'issued' && doc.status !== 'void' && (
                   <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900">
                     <p className="font-medium">Details still missing</p>
-                    <ul className="mt-1 list-disc pl-5">{rendered.r.missing.map((m) => <li key={m}>{describeField(m)}</li>)}</ul>
+                    <ul className="mt-1 list-disc pl-5">{rendered.r.missing.map((m) => <li key={m}>{describeField(m, doc.doc_type)}</li>)}</ul>
                   </div>
                 )}
 
+                {newer && doc.status === 'draft' && (
+                  <div className="rounded-md border border-blue-300 bg-blue-50 p-3 text-blue-900">
+                    <p className="font-medium">A newer template exists</p>
+                    <p>This letter uses version {doc.template_version}; version {newer.version} is now the standard wording.</p>
+                    <Button size="sm" variant="outline" className="mt-2" disabled={!!busy}
+                      onClick={() => run('latest', async () => { await updateToLatestTemplate(doc.id); return `Now using template version ${newer.version}.`; })}>
+                      {busy === 'latest' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Update to latest
+                    </Button>
+                  </div>
+                )}
                 {doc.return_note && doc.status === 'draft' && (
                   <div className="rounded-md border border-orange-300 bg-orange-50 p-3 text-orange-900">
                     <p className="font-medium">Returned for changes</p><p>“{doc.return_note}”</p>
@@ -315,9 +343,12 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
             <DialogDescription>
               {confirm === 'return'
                 ? 'It goes back to the author as a draft, with your note.'
-                : doc?.ref_no
-                  ? `${doc.ref_no} stays on record and is never reused. Voiding cannot be undone; if the letter is still needed, write a new one.`
-                  : 'Voiding cannot be undone; if the letter is still needed, write a new one.'}
+                : <>
+                    {doc?.ref_no
+                      ? `${doc.ref_no} stays on record and is never reused. Voiding cannot be undone; if the letter is still needed, write a new one.`
+                      : 'Voiding cannot be undone; if the letter is still needed, write a new one.'}
+                    {doc?.status === 'issued' && voidConsequence(doc.doc_type) && <strong className="mt-2 block">{voidConsequence(doc.doc_type)}</strong>}
+                  </>}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
@@ -331,7 +362,11 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
               disabled={note.trim().length < 3 || !!busy}
               onClick={() => run(confirm as string, async () => {
                 if (confirm === 'return') { await returnToDraft(doc!.id, note); setNote(''); return 'Returned to the author.'; }
-                await voidDocument(doc!.id, note); setNote(''); return 'Document voided.';
+                const wasIssuedTermination = doc!.status === 'issued' && doc!.doc_type === 'termination';
+                await voidDocument(doc!.id, note); setNote('');
+                return wasIssuedTermination
+                  ? 'Document voided. The employee was NOT reactivated; if that is intended, reactivate them on the Employees page.'
+                  : 'Document voided.';
               })}
             >
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{confirm === 'return' ? 'Return' : 'Void'}

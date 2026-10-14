@@ -1,5 +1,5 @@
 import { formatTZS } from '@/lib/formatCurrency';
-import type { Employee } from '@/types';
+import type { Candidate, Employee } from '@/types';
 
 /**
  * Letter template renderer.
@@ -32,6 +32,19 @@ export interface RenderResult {
 
 export type RenderContext = Record<string, unknown>;
 
+/**
+ * The value of an OPTIONAL detail that was left empty on purpose (e.g. "other
+ * terms" on an offer, or the reason for leaving when HR chose not to include
+ * it). It prints as nothing, a paragraph made only of it disappears, and it is
+ * never reported as missing. Anything else that is empty still blocks the letter.
+ */
+export const OMIT: unique symbol = Symbol('omit');
+export type Optional<T> = T | typeof OMIT;
+
+/** OMIT when blank, the trimmed text otherwise. */
+export const optionalText = (v: unknown): string | typeof OMIT =>
+  typeof v === 'string' && v.trim() !== '' ? v.trim() : OMIT;
+
 export interface CompanyDetails {
   name?: string | null;
   address?: string | null;
@@ -48,12 +61,15 @@ const PLACEHOLDER = /\{\{\{?\s*([A-Za-z_][\w]*(?:\.[\w]+)*)\s*\}?\}\}/g;
 const BLOCK_PLACEHOLDER = /^\{\{\{\s*([A-Za-z_][\w]*(?:\.[\w]+)*)\s*\}\}\}$/;
 const PARAGRAPH_BREAK = /\r?\n[ \t]*\r?\n/;
 
+const OMITTED = '\u0000omit\u0000';
+
 function lookup(context: RenderContext, path: string): string | null {
   let value: unknown = context;
   for (const key of path.split('.')) {
     if (value === null || typeof value !== 'object') return null;
     value = (value as Record<string, unknown>)[key];
   }
+  if (value === OMIT) return OMITTED;
   if (typeof value === 'string') return value.trim() === '' ? null : value;
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
@@ -92,6 +108,7 @@ export function renderTemplate(body: string, context: RenderContext): RenderResu
         if (!seen.has(path)) { seen.add(path); missing.push(path); }
         return '';
       }
+      if (value === OMITTED) return '';
       // A multi-line value (e.g. an address) reads as one line inside a sentence.
       return value.replace(/\s*\r?\n\s*/g, ', ');
     });
@@ -109,6 +126,7 @@ export function renderTemplate(body: string, context: RenderContext): RenderResu
         if (!seen.has(m[1])) { seen.add(m[1]); missing.push(m[1]); }
         return [];
       }
+      if (value === OMITTED) return [];
       return expandBlocks(split(value), depth + 1);
     });
 
@@ -185,9 +203,27 @@ export function formatLongDate(value: string | null | undefined): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+/** "Mar 2023", for ranges such as positions held. */
+export function formatMonthYear(value: string | null | undefined): string {
+  if (!value) return '';
+  const m = /^(\d{4})-(\d{2})/.exec(value);
+  if (!m) return value;
+  return new Date(Number(m[1]), Number(m[2]) - 1, 1).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+}
+
+/** TZS money for letters; blank stays blank (so a required amount is reported missing). */
+export const formatMoney = (v: unknown): string | undefined => {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : NaN;
+  return Number.isFinite(n) ? formatTZS(n) : undefined;
+};
+
 export interface BuildContextInput {
   company?: CompanyDetails;
   employee?: Partial<Employee> | null;
+  /** For letters written to a job candidate (offers). */
+  candidate?: Partial<Candidate> | null;
+  /** Type-specific namespaces (contract.*, service.* ...). Built-in names win over these. */
+  extra?: Record<string, unknown>;
   /** Omit before issue: the reference prints as PENDING_REF. */
   refNo?: string | null;
   /** yyyy-MM-dd */
@@ -199,7 +235,7 @@ export interface BuildContextInput {
 }
 
 export function buildRenderContext(input: BuildContextInput): RenderContext {
-  const { company = {}, employee, signatory, data = {} } = input;
+  const { company = {}, employee, signatory, data = {}, candidate, extra = {} } = input;
 
   const emp: Record<string, unknown> = {};
   if (employee) {
@@ -216,9 +252,23 @@ export function buildRenderContext(input: BuildContextInput): RenderContext {
     emp.salary = typeof employee.monthlySalary === 'number' ? formatTZS(employee.monthlySalary) : undefined;
   }
 
+  const cand: Record<string, unknown> = {};
+  if (candidate) {
+    const name = (candidate.full_name ?? '').trim();
+    cand.fullName = name;
+    cand.firstName = name.split(/\s+/)[0] ?? '';
+    cand.address = candidate.address;
+    cand.phone = candidate.phone;
+    cand.email = candidate.email;
+    cand.position = candidate.position;
+    cand.department = candidate.department;
+  }
+
   return {
     ...data,
     data,
+    ...extra,
+    candidate: cand,
     company: { ...company },
     doc: { refNo: input.refNo || PENDING_REF, date: formatLongDate(input.date), subject: input.subject },
     employee: emp,
