@@ -686,10 +686,12 @@ END;
 $$;
 
 -- Offers whose acceptance deadline (from the offer letter) has passed.
-CREATE OR REPLACE FUNCTION public.expire_offers()
+-- p_today defaults to today in Dar es Salaam (the daily job passes its own day).
+CREATE OR REPLACE FUNCTION public.expire_offers(p_today date DEFAULT NULL)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   n integer;
+  today date := coalesce(p_today, public.hr_today());
 BEGIN
   IF NOT (public.can_manage_hr() OR auth.role() = 'service_role') THEN
     RAISE EXCEPTION 'Only HR can expire offers.' USING ERRCODE = '42501';
@@ -698,7 +700,7 @@ BEGIN
   UPDATE public.candidates c SET offer_status = 'expired'
     FROM public.hr_documents d
    WHERE c.offer_status = 'offered' AND d.id = c.offer_document_id
-     AND nullif(d.data ->> 'acceptanceDeadline', '')::date < public.hr_today();
+     AND nullif(d.data ->> 'acceptanceDeadline', '')::date < today;
   GET DIAGNOSTICS n = ROW_COUNT;
   PERFORM set_config('hr_docs.rpc', '', true);
   RETURN n;
@@ -831,7 +833,7 @@ BEGIN
   UPDATE public.employment_contracts SET status = 'expired' WHERE status = 'active' AND end_date < today;
   GET DIAGNOSTICS expired_contracts = ROW_COUNT;
 
-  expired_offers := public.expire_offers();
+  expired_offers := public.expire_offers(today);
 
   UPDATE public.disciplinary_records SET status = 'expired' WHERE status = 'active' AND expires_on < today;
   GET DIAGNOSTICS expired_warnings = ROW_COUNT;
@@ -865,7 +867,7 @@ BEGIN
   END LOOP;
 
   FOREACH f IN ARRAY ARRAY[
-    'public.expire_offers()',
+    'public.expire_offers(date)',
     'public.contracts_due_for_reminder(date)',
     'public.run_contract_expiry_job(date)'
   ] LOOP
