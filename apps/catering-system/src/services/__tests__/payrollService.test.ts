@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockQueryResult } from './test-utils';
 
-// updatePayroll used to log an audit_log 'payroll.update' event even when
-// the database write failed (it only warns and falls through rather than
-// throwing) — the audit trail could claim an update happened when only
-// localStorage changed. This test pins the fix: no audit event on failure.
-// It also used to always `return true` regardless of outcome — now returns
-// the real success/failure so callers (e.g. "Mark as Paid") aren't misled.
+// updatePayroll used to always `return true` regardless of outcome — now it
+// returns the real success/failure so callers (e.g. "Mark as Paid") aren't
+// misled. Audit logging for payroll moved to the audit_row_change DB trigger
+// (20261014000300), so the service must no longer call logAuditEvent itself
+// (it would double-log).
 
 const fromMock = vi.fn();
 const logAuditEventMock = vi.fn();
@@ -41,7 +40,7 @@ describe('payrollService.updatePayroll', () => {
     logAuditEventMock.mockReset();
   });
 
-  it('does NOT log an audit event when the database update fails, and returns false', async () => {
+  it('returns false when the database update fails', async () => {
     const { updatePayroll } = await import('../payrollService');
 
     fromMock.mockImplementation(() =>
@@ -54,19 +53,14 @@ describe('payrollService.updatePayroll', () => {
     expect(result).toBe(false);
   });
 
-  it('logs an audit event and returns true when the database update succeeds', async () => {
+  it('returns true when the database update succeeds, without logging client-side', async () => {
     const { updatePayroll } = await import('../payrollService');
 
     fromMock.mockImplementation(() => mockQueryResult({ data: null, error: null }));
 
     const result = await updatePayroll('payroll-1', { status: 'Paid' });
 
-    expect(logAuditEventMock).toHaveBeenCalledWith(
-      'payroll.update',
-      'payroll',
-      'payroll-1',
-      expect.objectContaining({ fields: expect.any(Array) })
-    );
+    expect(logAuditEventMock).not.toHaveBeenCalled();
     expect(result).toBe(true);
   });
 });

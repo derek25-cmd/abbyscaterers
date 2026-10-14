@@ -9,9 +9,10 @@ import { useState, useEffect, useMemo } from "react";
 import { format, parseISO, isBefore, isToday, isAfter } from "date-fns";
 import { AddTrainingDialog } from "@/components/hr/add-training-dialog";
 import { EditTrainingDialog } from "@/components/hr/edit-training-dialog";
+import { RequirePermission } from "@/components/auth/require-permission";
 import { ViewTrainingDialog } from "@/components/hr/view-training-dialog";
 import { getTrainingSessions, addTrainingSession, updateTrainingSession, addTrainingParticipants, getEvaluationsBySession, updateSessionStatus } from "@/services/trainingService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { ManageParticipantsDialog } from "@/components/hr/manage-participants-dialog";
 import { cn } from "@/lib/utils";
 import { TrainingSession } from "@/types";
@@ -41,7 +42,7 @@ export default function TrainingPage() {
       setLoading(true);
       const [sessionsData, employeesData] = await Promise.all([
         getTrainingSessions(),
-        getEmployees()
+        getEmployeeDirectory()
       ]);
       setSessions(sessionsData);
       setEmployees(employeesData);
@@ -191,7 +192,9 @@ export default function TrainingPage() {
                         <DropdownMenuContent align="end" className="w-[180px]">
                           <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground opacity-50">Operations</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => openViewDialog(session)} className="cursor-pointer font-semibold">View Details</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(session)} className="cursor-pointer font-semibold">Edit Session</DropdownMenuItem>
+                          <RequirePermission permission="hr.manage">
+                            <DropdownMenuItem onClick={() => openEditDialog(session)} className="cursor-pointer font-semibold">Edit Session</DropdownMenuItem>
+                          </RequirePermission>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => openManageParticipants(session)} className="cursor-pointer font-bold text-primary">Manage Attendees</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openManageParticipants(session, true)} className="cursor-pointer font-bold text-green-600">

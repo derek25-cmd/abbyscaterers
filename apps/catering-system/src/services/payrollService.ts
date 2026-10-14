@@ -1,6 +1,5 @@
 import { supabase } from '@/lib/supabase-client';
 import { Payroll } from '@/types';
-import { logAuditEvent } from '@/lib/audit-log';
 import { calculatePayroll, type PayrollBreakdown } from '@/lib/payrollEngine';
 import { getActiveTaxRates } from '@/services/taxRatesService';
 import { getEmployees } from '@/services/employeeService';
@@ -197,11 +196,7 @@ export const addPayroll = async (input: AddPayrollInput): Promise<string> => {
     local.push({ ...data, id: data.id } as Payroll);
     saveLocalPayrolls(local);
 
-    void logAuditEvent('payroll.create', 'payroll', data.id, {
-        employeeId: input.employeeId,
-        netSalary: breakdown.netSalary,
-        grossSalary: breakdown.grossSalary,
-    });
+    // Audit entry (payroll.insert) is written by the audit_row_change DB trigger.
 
     return data.id;
 };
@@ -240,13 +235,8 @@ export const updatePayroll = async (id: string, updatedPayroll: Partial<Payroll>
         saveLocalPayrolls(local);
     }
 
-    // Only log the audit event if the database write actually succeeded —
-    // an audit log entry claiming an update happened when it didn't (the
-    // change only landed in localStorage, which never syncs anywhere) would
-    // be worse than no entry at all.
-    if (dbUpdateSucceeded) {
-        void logAuditEvent('payroll.update', 'payroll', id, { fields: Object.keys(dbUpdate) });
-    }
+    // Audit entry (payroll.update) is written by the audit_row_change DB trigger,
+    // so it can only ever reflect a write that actually reached the database.
 
     // Report the real outcome — callers (e.g. "Mark as Paid") need to know
     // if the change actually reached the shared database, not just that a

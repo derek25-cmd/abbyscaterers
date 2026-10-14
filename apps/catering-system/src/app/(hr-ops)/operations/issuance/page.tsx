@@ -13,7 +13,7 @@ import { ViewIssuanceDialog } from "@/components/hr/view-issuance-dialog";
 import { ReturnIssuanceDialog } from "@/components/hr/return-issuance-dialog";
 import { getIssuances, addIssuance, updateIssuance } from "@/services/issuanceService";
 import { getAssets, updateAsset } from "@/services/assetService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { getOrders } from "@/services/orderService";
 import { excludeCancelledOrders } from "@/lib/order-utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -46,7 +46,7 @@ export default function IssuancePage() {
         const [logsData, assetsData, employeesData, ordersData] = await Promise.all([
             getIssuances(),
             getAssets(),
-            getEmployees(),
+            getEmployeeDirectory(),
             getOrders()
         ]);
         setLog(logsData);

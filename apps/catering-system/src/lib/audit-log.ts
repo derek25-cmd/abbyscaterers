@@ -13,16 +13,15 @@ export async function logAuditEvent(
   metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return; // no session to attribute this to — nothing to log
-
-    const { error } = await supabase.from('audit_log').insert([{
-      actor_id: user.id,
-      action,
-      table_name: tableName,
-      record_id: recordId,
-      metadata: metadata ?? null,
-    }]);
+    // SECURITY DEFINER RPC stamps actor_id from the session itself, so a
+    // caller can't log on someone else's behalf (direct INSERT on audit_log
+    // was removed in 20261014000300).
+    const { error } = await supabase.rpc('log_audit_event', {
+      p_action: action,
+      p_table: tableName,
+      p_record_id: recordId,
+      p_metadata: metadata ?? null,
+    });
     if (error) console.error('[audit-log] failed to record event:', error.message);
   } catch (err) {
     console.error('[audit-log] unexpected error recording event:', err);

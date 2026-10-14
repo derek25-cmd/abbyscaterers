@@ -3,14 +3,28 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import { useAuth } from '@/hooks/useAuth';
+import { hasPermission, isStaffRole, type Permission, type StaffRole } from '@/lib/permissions';
 
-export type StaffRole = 'admin' | 'finance' | 'staff';
+export type { StaffRole };
 
 interface StaffRoleState {
   role: StaffRole | null;
   isAdmin: boolean;
   isActiveStaff: boolean;
   isLoading: boolean;
+  canManageHr: boolean;
+  canManageOps: boolean;
+  canManageSettings: boolean;
+  can: (permission: Permission) => boolean;
+}
+
+function derive(role: StaffRole | null) {
+  return {
+    canManageHr: hasPermission(role, 'hr.manage'),
+    canManageOps: hasPermission(role, 'ops.manage'),
+    canManageSettings: hasPermission(role, 'settings.manage'),
+    can: (permission: Permission) => hasPermission(role, permission),
+  };
 }
 
 /**
@@ -18,8 +32,9 @@ interface StaffRoleState {
  * supabase/migrations/20260714000000_add_roles.sql) for client-side role
  * gating. Nothing client-side read this table before — it was RLS-only.
  * This is UI gating only, not a security boundary by itself: the real
- * enforcement is the RLS policies (is_admin()/is_active_staff()) on each
- * table, which apply regardless of what this hook returns.
+ * enforcement is the RLS policies (can_manage_hr() and friends) on each
+ * table, which apply regardless of what this hook returns. The role →
+ * permission map lives in src/lib/permissions.ts.
  */
 export function useStaffRole(): StaffRoleState {
   const { user } = useAuth();
@@ -28,13 +43,14 @@ export function useStaffRole(): StaffRoleState {
     isAdmin: false,
     isActiveStaff: false,
     isLoading: true,
+    ...derive(null),
   });
 
   useEffect(() => {
     let active = true;
 
     if (!user) {
-      setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false });
+      setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false, ...derive(null) });
       return;
     }
 
@@ -48,14 +64,16 @@ export function useStaffRole(): StaffRoleState {
       .then(({ data, error }) => {
         if (!active) return;
         if (error || !data || !data.is_active) {
-          setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false });
+          setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false, ...derive(null) });
           return;
         }
+        const role = isStaffRole(data.role) ? data.role : null;
         setState({
-          role: data.role as StaffRole,
-          isAdmin: data.role === 'admin',
-          isActiveStaff: true,
+          role,
+          isAdmin: role === 'admin',
+          isActiveStaff: role !== null,
           isLoading: false,
+          ...derive(role),
         });
       });
 

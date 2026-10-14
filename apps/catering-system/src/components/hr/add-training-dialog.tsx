@@ -24,7 +24,7 @@ import {
   Search, Loader2, X, Plus, ChevronRight, ChevronLeft, 
   GraduationCap, Users, BookOpen, Zap, Sparkles, ShieldCheck
 } from "lucide-react";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { DEFAULT_TRAINING_SKILLS } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +59,7 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }: any) {
     if (isOpen) {
       const fetchEmployees = async () => {
         setLoadingEmployees(true);
-        const data = await getEmployees();
+        const data = await getEmployeeDirectory();
         setEmployees(data || []);
         setLoadingEmployees(false);
       };

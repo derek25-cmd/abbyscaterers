@@ -33,7 +33,7 @@ import { AssetStatusChart } from "@/components/dashboard/asset-status-chart";
 import { RecentStockLogs } from "@/components/dashboard/recent-stock-logs";
 import { getAssets } from "@/services/assetService";
 import { getAttendanceRecords } from "@/services/attendanceService";
-import { getEmployees } from "@/services/employeeService";
+import { getEmployeeDirectory } from "@/services/employeeService";
 import { Asset, Attendance, Employee, Invoice } from "@/types";
 import { calculateGrandTotal } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,7 +69,7 @@ export default function DashboardPage() {
         const [assetsData, attendanceData, empsData] = await Promise.all([
             getAssets(),
             getAttendanceRecords({ startDate: todayStr, endDate: todayStr }),
-            getEmployees()
+            getEmployeeDirectory()
         ]);
         setAssets(assetsData || []);
         setAttendance(attendanceData || []);

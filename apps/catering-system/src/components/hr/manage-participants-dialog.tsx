@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { RequirePermission } from "@/components/auth/require-permission";
 import {
   Dialog,
   DialogContent,
@@ -185,14 +186,16 @@ export function ManageParticipantsDialog({ isOpen, setIsOpen, session, onUpdate 
                             <Badge variant="outline" className="bg-background text-[9px] font-black uppercase tracking-tighter py-0.5">{p.status}</Badge>
                         </TableCell>
                         <TableCell className="text-right px-6">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-red-500 hover:bg-red-50 rounded-xl" 
-                                onClick={() => handleDeleteParticipant(p.id)}
-                            >
-                            <UserMinus className="h-4 w-4" />
-                            </Button>
+                            <RequirePermission permission="hr.manage">
+                              <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-red-500 hover:bg-red-50 rounded-xl" 
+                                  onClick={() => handleDeleteParticipant(p.id)}
+                              >
+                              <UserMinus className="h-4 w-4" />
+                              </Button>
+                            </RequirePermission>
                         </TableCell>
                         </TableRow>
                     ))}

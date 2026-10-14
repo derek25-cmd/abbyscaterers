@@ -13,7 +13,8 @@ import {
   Package,
   History,
   CreditCard,
-  GraduationCap
+  GraduationCap,
+  ScrollText
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -21,6 +22,7 @@ import {
   SidebarMenuButton
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useStaffRole } from "@/hooks/use-staff-role";
 
 
 const mainNav = [
@@ -77,9 +79,19 @@ const hrNav = [
   }
 ];
 
+// Visible only to roles with the audit.view permission (hr_manager,
+// general_manager, admin); the page and the audit_log RLS enforce it too.
+const auditNavItem = {
+  href: "/hr/audit-trail",
+  label: "Audit Trail",
+  icon: ScrollText,
+};
+
 export function SidebarNav() {
   const pathname = usePathname();
   const { open } = useSidebar();
+  const { can } = useStaffRole();
+  const visibleHrNav = can('audit.view') ? [...hrNav, auditNavItem] : hrNav;
 
   return (
     <div className="flex flex-col gap-2">
@@ -117,7 +129,7 @@ export function SidebarNav() {
       <div className="p-2">
         {open && <p className="px-2 py-1 text-xs font-semibold text-muted-foreground">Human Resources</p>}
         <SidebarMenu>
-          {hrNav.map((item) => (
+          {visibleHrNav.map((item) => (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href}>
                 <SidebarMenuButton isActive={pathname.startsWith(item.href)} tooltip={{children: item.label, side: 'right'}}>

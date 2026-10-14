@@ -13,6 +13,7 @@ import Link from 'next/link';
 
 import { GeneratePayslipDialog } from "@/components/hr/generate-payslip-dialog";
 import { EditPayslipDialog } from "@/components/hr/edit-payslip-dialog";
+import { RequirePermission } from "@/components/auth/require-permission";
 import { ViewPayslipDialog } from "@/components/hr/view-payslip-dialog";
 import { getPayrolls, addPayroll, updatePayroll } from "@/services/payrollService";
 import { getEmployees } from "@/services/employeeService";
@@ -270,11 +271,13 @@ export function PayrollPageComponent() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => openViewDialog(p)}>View Details</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openEditDialog(p)}>Edit</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {p.status !== 'Paid' && (
-                                <DropdownMenuItem onClick={() => handleMarkAsPaid(p.id)}>Mark as Paid</DropdownMenuItem>
-                            )}
+                            <RequirePermission permission="payroll.manage">
+                              <DropdownMenuItem onClick={() => openEditDialog(p)}>Edit</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {p.status !== 'Paid' && (
+                                  <DropdownMenuItem onClick={() => handleMarkAsPaid(p.id)}>Mark as Paid</DropdownMenuItem>
+                              )}
+                            </RequirePermission>
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
