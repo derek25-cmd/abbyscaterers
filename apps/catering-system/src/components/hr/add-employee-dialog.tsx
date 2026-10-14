@@ -13,11 +13,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DEPARTMENTS } from "@/lib/schemas";
 
-export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
+/**
+ * initialValues: pre-fills the form (Candidates → Convert to employee).
+ * title / description: override the heading for that case.
+ */
+interface AddEmployeeDialogProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  onAddEmployee: (employee: Record<string, unknown>) => Promise<unknown>;
+  initialValues?: Record<string, unknown> | null;
+  title?: string | null;
+  description?: string | null;
+}
+
+export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee, initialValues = null, title = null, description = null }: AddEmployeeDialogProps) {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -71,6 +84,12 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
     });
   }
 
+  // Each time the dialog opens with values to pre-fill, start from them.
+  useEffect(() => {
+    if (isOpen && initialValues) setFormData((prev) => ({ ...prev, ...initialValues, status: 'Active' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialValues]);
+
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({ ...prev, [id]: value }));
@@ -89,7 +108,9 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
 
     setSubmitting(true);
     try {
-      await onAddEmployee({...formData, monthlySalary: Number(formData.monthlySalary)});
+      // A new employee is always Active: employment is ended only through a
+      // termination letter or "End employment without a letter".
+      await onAddEmployee({...formData, status: 'Active', monthlySalary: Number(formData.monthlySalary)});
       resetForm();
       setIsOpen(false);
     } catch {
@@ -105,9 +126,9 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
       <DialogContent className="sm:max-w-3xl">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add New Employee</DialogTitle>
+            <DialogTitle>{title ?? 'Add New Employee'}</DialogTitle>
             <DialogDescription>
-              Enter the details for the new employee.
+              {description ?? 'Enter the details for the new employee.'}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[60vh] p-4">
@@ -222,15 +243,7 @@ export function AddEmployeeDialog({ isOpen, setIsOpen, onAddEmployee }) {
                     </div>
                     <div>
                         <Label htmlFor="status">Status</Label>
-                        <Select onValueChange={(value) => handleSelectChange('status', value)} value={formData.status}>
-                            <SelectTrigger>
-                            <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <p id="status" className="flex h-10 items-center text-sm text-muted-foreground">Active (new employees always start as Active)</p>
                     </div>
                 </div>
 
