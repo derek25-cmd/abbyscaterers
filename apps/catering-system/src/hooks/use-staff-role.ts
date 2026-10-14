@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import { useAuth } from '@/hooks/useAuth';
 import { hasPermission, isStaffRole, type Permission, type StaffRole } from '@/lib/permissions';
+import { setReportingRole } from '@/lib/permission-feedback';
 
 export type { StaffRole };
 
@@ -78,6 +79,7 @@ export function useStaffRole(): StaffRoleState {
           return;
         }
         const role = isStaffRole(data.role) ? data.role : null;
+        setReportingRole(role);
         setState({
           role,
           isAdmin: role === 'admin',
