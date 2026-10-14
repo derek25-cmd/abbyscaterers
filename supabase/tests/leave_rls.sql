@@ -2,7 +2,7 @@
 -- cancellation really move the balance and the attendance rows.
 --
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
--- migrations through 20261020000400 are applied. Same harness as
+-- migrations through 20261014000900 are applied. Same harness as
 -- hr_ops_rls.sql: ONE statement, works with the hosted `postgres` role, and it
 -- ALWAYS ends in an exception that starts with PASS: or FAIL: (and rolls back
 -- everything it created: users, employees, requests, attendance, notifications).
@@ -170,7 +170,7 @@ BEGIN
   SELECT id INTO paternity FROM public.leave_types WHERE name = 'Paternity';
   SELECT id INTO sick      FROM public.leave_types WHERE name = 'Sick';
   IF annual IS NULL OR paternity IS NULL OR sick IS NULL THEN
-    RAISE EXCEPTION 'FAIL: the seeded leave types are missing. Apply 20261020000100_leave_management.sql first.';
+    RAISE EXCEPTION 'FAIL: the seeded leave types are missing. Apply 20261014000600_leave_management.sql first.';
   END IF;
 
   -- Carry-forward fixtures must exist BEFORE the first open_leave_year call.

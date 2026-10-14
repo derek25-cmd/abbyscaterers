@@ -4,7 +4,7 @@
 -- the different-approver rule, and that DRAFT template wording is never issued.
 --
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
--- migrations through 20261115000200 are applied. Same harness as the other
+-- migrations through 20261014001800 are applied. Same harness as the other
 -- files in this folder: ONE statement that works with the hosted `postgres`
 -- role and ALWAYS ends in an exception that starts with PASS: or FAIL:, which
 -- rolls back everything it created (including template versions it saves).

@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase-client';
 // Leave documents are medical/family records: the bucket is private and a file
 // is only ever opened through a short-lived signed URL, never getPublicUrl
 // (which is what storageService.ts returns and is why it is not used here).
-// See supabase/migrations/20261020000300_leave_attachments.sql.
+// See supabase/migrations/20261014000800_leave_attachments.sql.
 
 export const LEAVE_ATTACHMENT_BUCKET = 'leave-attachments';
 export const LEAVE_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;

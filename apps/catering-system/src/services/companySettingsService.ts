@@ -3,7 +3,7 @@ import type { CompanyDetails } from '@/lib/hr-docs/render';
 
 // Company details live on the shared app_settings row and are printed on HR
 // letters. Reads are open to staff; writes are limited to an Admin by a trigger
-// (20261101000000), so a refusal here is a real permission error, not a glitch.
+// (20261014001100), so a refusal here is a real permission error, not a glitch.
 
 export const getCompanyDetails = async (): Promise<Required<{ [K in keyof CompanyDetails]: string }>> => {
   const { data, error } = await supabase

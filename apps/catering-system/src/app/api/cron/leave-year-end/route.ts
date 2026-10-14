@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Runs at 01:00 UTC on 1 January (vercel.json) and opens the new leave year:
  * creates every active employee's balances and carries unused days over up to
- * each leave type's limit (open_leave_year, supabase/migrations/20261020000200).
+ * each leave type's limit (open_leave_year, supabase/migrations/20261014000700).
  *
  * At that moment the new leave year is the current calendar year, so that is
  * what is opened. open_leave_year only adds missing rows, so a repeat run, or a

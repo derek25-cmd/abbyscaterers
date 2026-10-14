@@ -1,7 +1,7 @@
 /**
  * Leave rules shared by the apply dialog, the review dialog, the calendar and
  * the attendance grid. The database enforces the same rules (see
- * supabase/migrations/20261020000100_leave_management.sql: leave_year_of(),
+ * supabase/migrations/20261014000600_leave_management.sql: leave_year_of(),
  * leave_working_dates(), and the leave_settings row); the client copy exists so
  * people see the day count and any problem BEFORE they submit.
  *

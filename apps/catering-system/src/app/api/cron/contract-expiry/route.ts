@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Runs daily at 04:00 UTC, 07:00 in Dar es Salaam (vercel.json), and does the
  * contract housekeeping in one database call (run_contract_expiry_job,
- * supabase/migrations/20261115000100), in this order:
+ * supabase/migrations/20261014001700), in this order:
  *  1. 60/30/7-day reminders to HR, then one "overdue" notice, at most once per
  *     contract and threshold (contract_expiry_notices);
  *  2. contracts past their end date are marked expired;

@@ -10,7 +10,7 @@ export interface HrNotification {
   created_at: string;
 }
 
-// Rows are created by database functions (see 20261020000400_hr_notifications.sql)
+// Rows are created by database functions (see 20261014000900_hr_notifications.sql)
 // and RLS lets each person see and mark only their own.
 
 /** Latest notifications for the signed-in user. Returns [] if the table is not there yet. */
