@@ -88,7 +88,10 @@ BEGIN
         JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attnum = c.confkey[1]
         JOIN pg_class pc ON pc.oid = c.confrelid
         WHERE c.contype = 'f' AND c.conrelid = ('public.' || quote_ident(tbl))::regclass
-          AND array_length(c.conkey, 1) = 1 AND pc.relnamespace = 'public'::regnamespace
+          AND array_length(c.conkey, 1) = 1
+          -- Only REQUIRED foreign keys need a parent. Nullable ones (e.g. attendance.leave_request_id)
+          -- stay NULL: pointing them at a made-up parent would make the insert fail.
+          AND a.attnotnull AND pc.relnamespace = 'public'::regnamespace
       LOOP
         IF fk.parent_col = 'id' THEN
           PERFORM public._rlstest_seed(fk.parent_name, 'fk-' || suffix, '{}'::jsonb);

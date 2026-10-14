@@ -105,6 +105,9 @@ BEGIN
     JOIN pg_class pc ON pc.oid = c.confrelid
     WHERE c.contype = 'f' AND c.conrelid = ('public.' || quote_ident(tbl))::regclass
       AND array_length(c.conkey, 1) = 1
+          -- Only REQUIRED foreign keys need a parent. Nullable ones (e.g. attendance.leave_request_id)
+          -- stay NULL: pointing them at a made-up parent would make the insert fail.
+          AND a.attnotnull
       AND pc.relnamespace = 'public'::regnamespace            -- skip auth.users etc.
   LOOP
     IF fk.parent_col = 'id' THEN
