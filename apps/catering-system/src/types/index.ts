@@ -803,3 +803,66 @@ export interface LeaveSettings {
     /** ISO weekday numbers, 1 = Monday ... 7 = Sunday. */
     working_days: number[];
 }
+
+// --- HR DOCUMENTS (Phase 3) ---
+export type HrDocTypeCode =
+    | 'general_letter' | 'offer' | 'contract' | 'extension'
+    | 'termination' | 'warning' | 'recognition' | 'certificate_of_service';
+
+export type HrDocumentStatus = 'draft' | 'pending_approval' | 'approved' | 'issued' | 'void';
+
+export interface HrDocumentType {
+    doc_type: HrDocTypeCode;
+    code: string;
+    label: string;
+    requires_different_approver: boolean;
+    confidential_default: boolean;
+}
+
+export interface HrDocumentTemplate {
+    id: string;
+    doc_type: HrDocTypeCode;
+    version: number;
+    title: string;
+    body: string;
+    use_stored_signature: boolean;
+    is_active: boolean;
+    created_at: string;
+    created_by?: string | null;
+}
+
+export interface HrDocument {
+    id: string;
+    /** Null until a number is reserved for issue. */
+    ref_no: string | null;
+    doc_type: HrDocTypeCode;
+    employee_id: string | null;
+    candidate_id: string | null;
+    template_id: string;
+    template_version: number;
+    subject: string;
+    data: Record<string, unknown>;
+    status: HrDocumentStatus;
+    return_note: string | null;
+    void_reason: string | null;
+    voided_by: string | null;
+    voided_at: string | null;
+    signatory_name: string | null;
+    signatory_title: string | null;
+    pdf_path: string | null;
+    pdf_sha256: string | null;
+    confidential: boolean;
+    issued_at: string | null;
+    created_at: string;
+    created_by: string | null;
+    approved_by: string | null;
+    approved_at: string | null;
+}
+
+/** A document with the names the screens need already filled in. */
+export interface HrDocumentView extends HrDocument {
+    type_label: string;
+    person_name: string;
+    author_email: string | null;
+    approver_email: string | null;
+}

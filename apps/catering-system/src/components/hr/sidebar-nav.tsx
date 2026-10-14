@@ -15,7 +15,8 @@ import {
   CreditCard,
   GraduationCap,
   ScrollText,
-  CalendarDays
+  CalendarDays,
+  FileText
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -85,6 +86,14 @@ const hrNav = [
   }
 ];
 
+// Letters, templates and the reference-number register: HR roles only
+// (hr.manage). The pages and the database enforce it too.
+const documentsNavItem = {
+  href: "/hr/documents",
+  label: "HR Documents",
+  icon: FileText,
+};
+
 // Visible only to roles with the audit.view permission (hr_manager,
 // general_manager, admin); the page and the audit_log RLS enforce it too.
 const auditNavItem = {
@@ -97,7 +106,7 @@ export function SidebarNav() {
   const pathname = usePathname();
   const { open } = useSidebar();
   const { can } = useStaffRole();
-  const visibleHrNav = can('audit.view') ? [...hrNav, auditNavItem] : hrNav;
+  const visibleHrNav = [...hrNav, ...(can('hr.manage') ? [documentsNavItem] : []), ...(can('audit.view') ? [auditNavItem] : [])];
 
   return (
     <div className="flex flex-col gap-2">
