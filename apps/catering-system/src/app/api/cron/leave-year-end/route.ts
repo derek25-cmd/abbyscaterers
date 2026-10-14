@@ -1,12 +1,13 @@
 import { getAdminClient } from '@/lib/supabase-admin';
 import { logger } from '@/lib/logger';
+import { isHrModuleOnServer } from '@/lib/hr-modules-server';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Runs at 01:00 UTC on 1 January (vercel.json) and opens the new leave year:
  * creates every active employee's balances and carries unused days over up to
- * each leave type's limit (open_leave_year, supabase/migrations/20261020000200).
+ * each leave type's limit (open_leave_year, supabase/migrations/20261014000700).
  *
  * At that moment the new leave year is the current calendar year, so that is
  * what is opened. open_leave_year only adds missing rows, so a repeat run, or a
@@ -31,6 +32,12 @@ export async function GET(request: Request) {
   } catch (err) {
     logger.error({ err }, 'cron: leave-year-end cannot run without the service-role key');
     return Response.json({ success: false, error: 'SUPABASE_SERVICE_ROLE_KEY is not configured on the server' }, { status: 500 });
+  }
+
+  // HR module switch (app_settings.hr_modules): when 'leave' is off, do nothing.
+  if (!(await isHrModuleOnServer(client, 'leave'))) {
+    logger.info({ module: 'leave' }, 'cron: module switched off, nothing done');
+    return Response.json({ success: true, skipped: 'The leave module is switched off.' });
   }
 
   const { data, error } = await client.rpc('open_leave_year', { p_year: year });

@@ -187,7 +187,7 @@ export function BalancesTable({ refreshKey, types, onChanged }: BalancesTablePro
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Adjust balance</DialogTitle>
-            <DialogDescription>{editing?.employee_name} · {editing?.leave_type_name} · {year}. Already taken: {editing ? formatDays(editing.taken) : ''}.</DialogDescription>
+            <DialogDescription>{editing?.employee_name} · {editing?.leave_type_name} · {year}. Already taken: {editing ? formatDays(editing.taken + (editing.opening_taken ?? 0)) : ''}{editing?.opening_taken ? ` (${formatDays(editing.opening_taken)} before go-live)` : ''}.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label htmlFor="adj-entitled">Days per year</Label><Input id="adj-entitled" type="number" min={0} step="0.5" value={entitled} onChange={(e) => setEntitled(e.target.value)} /></div>

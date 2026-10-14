@@ -3,7 +3,7 @@
 -- Admin-only company settings.
 --
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
--- migrations through 20261101000400 are applied. Same harness as
+-- migrations through 20261014001500 are applied. Same harness as
 -- hr_ops_rls.sql and leave_rls.sql: ONE statement that works with the hosted
 -- `postgres` role and ALWAYS ends in an exception that starts with PASS: or
 -- FAIL:, which rolls back everything it created.
@@ -26,6 +26,12 @@ DECLARE
   have_storage boolean := true;
   notes text[] := '{}'; failures integer; checks integer;
 BEGIN
+  -- Go-live guard (Phase 5): these tests create and roll back test rows. Once
+  -- go-live is recorded (app_settings.hr_go_live_at) they must not run on this
+  -- database any more; use the read-only checks in docs/hr-ops instead.
+  IF (SELECT to_jsonb(s) ->> 'hr_go_live_at' FROM public.app_settings s WHERE s.id = true) IS NOT NULL THEN
+    RAISE EXCEPTION 'REFUSED: go-live has been recorded (app_settings.hr_go_live_at), so the SQL tests no longer run on this database. Use docs/hr-ops/postflight.sql and monitoring.sql.';
+  END IF;
   CREATE TEMP TABLE rls_results (who text, tbl text, op text, expected boolean, actual boolean) ON COMMIT DROP;
 
   -- ── Helpers (inside this block; rolled back with it) ─────────────────────
@@ -157,7 +163,7 @@ BEGIN
 
   SELECT id, version INTO tpl, tpl_version FROM public.hr_document_templates WHERE doc_type = 'general_letter' AND is_active;
   IF tpl IS NULL THEN
-    RAISE EXCEPTION 'FAIL: no active general_letter template. Apply 20261101000400_hr_documents_seed.sql first.';
+    RAISE EXCEPTION 'FAIL: no active general_letter template. Apply 20261014001500_hr_documents_seed.sql first.';
   END IF;
 
   -- A draft created by the owner, so there is something for the denied roles to fail to see.

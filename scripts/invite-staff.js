@@ -6,7 +6,11 @@
  * Usage: node scripts/invite-staff.js someone@abbyscaterers.com [role]
  *   role defaults to "staff"; valid values: admin, general_manager, hr_manager, finance, staff
  */
-require('dotenv').config();
+// Environment: real variables first, then .env and apps/catering-system/.env.local if present (Node 20.12+).
+// (dotenv is not installed in this repo.)
+for (const file of ['.env', 'apps/catering-system/.env.local']) {
+  try { process.loadEnvFile(file); } catch { /* not there: fine */ }
+}
 const { createClient } = require('@supabase/supabase-js');
 
 const email = process.argv[2];

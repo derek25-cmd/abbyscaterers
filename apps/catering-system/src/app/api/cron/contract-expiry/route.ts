@@ -1,12 +1,13 @@
 import { getAdminClient } from '@/lib/supabase-admin';
 import { logger } from '@/lib/logger';
+import { isHrModuleOnServer } from '@/lib/hr-modules-server';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Runs daily at 04:00 UTC, 07:00 in Dar es Salaam (vercel.json), and does the
  * contract housekeeping in one database call (run_contract_expiry_job,
- * supabase/migrations/20261115000100), in this order:
+ * supabase/migrations/20261014001700), in this order:
  *  1. 60/30/7-day reminders to HR, then one "overdue" notice, at most once per
  *     contract and threshold (contract_expiry_notices);
  *  2. contracts past their end date are marked expired;
@@ -35,6 +36,12 @@ export async function GET(request: Request) {
   } catch (err) {
     logger.error({ err }, 'cron: contract-expiry cannot run without the service-role key');
     return Response.json({ success: false, error: 'SUPABASE_SERVICE_ROLE_KEY is not configured on the server' }, { status: 500 });
+  }
+
+  // HR module switch (app_settings.hr_modules): when 'letters' is off, do nothing.
+  if (!(await isHrModuleOnServer(client, 'letters'))) {
+    logger.info({ module: 'letters' }, 'cron: module switched off, nothing done');
+    return Response.json({ success: true, skipped: 'The letters module is switched off.' });
   }
 
   const { data, error } = await client.rpc('run_contract_expiry_job', { p_today: today });

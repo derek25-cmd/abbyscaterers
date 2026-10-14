@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { addDays, format } from 'date-fns';
-import { CalendarCheck, CalendarClock, CalendarPlus, Inbox, Loader2 } from 'lucide-react';
+import { CalendarCheck, CalendarClock, CalendarPlus, Inbox, Loader2, Upload } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApplyLeaveDialog } from '@/components/hr/apply-leave-dialog';
+import { ImportOpeningBalancesDialog } from '@/components/hr/import-dialogs';
 import { ReviewLeaveDialog } from '@/components/hr/review-leave-dialog';
 import { BalancesTable } from '@/components/leave/balances-table';
 import { LeaveCalendar } from '@/components/leave/leave-calendar';
@@ -29,6 +30,7 @@ export default function LeavePage() {
   const [tab, setTab] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [applyOpen, setApplyOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<LeaveRequestView | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
 
@@ -69,7 +71,12 @@ export default function LeavePage() {
               : 'Apply for leave, follow your requests, and see your balance.'}
           </p>
         </div>
-        <Button onClick={() => setApplyOpen(true)}><CalendarPlus className="mr-2 h-4 w-4" />Apply for leave</Button>
+        <div className="flex flex-wrap gap-2">
+          {canManageHr && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="mr-2 h-4 w-4" />Import opening balances</Button>
+          )}
+          <Button onClick={() => setApplyOpen(true)}><CalendarPlus className="mr-2 h-4 w-4" />Apply for leave</Button>
+        </div>
       </div>
 
       {reference.error && <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">{reference.error}</p>}
@@ -112,6 +119,7 @@ export default function LeavePage() {
       </Tabs>
 
       <ApplyLeaveDialog isOpen={applyOpen} setIsOpen={setApplyOpen} onSubmitted={refresh} />
+      <ImportOpeningBalancesDialog isOpen={importOpen} setIsOpen={setImportOpen} onImported={refresh} />
       <ReviewLeaveDialog request={selected} isOpen={!!selected} setIsOpen={(o) => !o && setSelected(null)} onChanged={refresh} />
     </div>
   );

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useStaffRole } from "@/hooks/use-staff-role";
+import { isHrModuleOn, useHrModules } from "@/lib/hr-modules";
 
 
 const mainNav = [
@@ -113,7 +114,15 @@ export function SidebarNav() {
   const pathname = usePathname();
   const { open } = useSidebar();
   const { can } = useStaffRole();
-  const visibleHrNav = [...hrNav, ...(can('hr.manage') ? [candidatesNavItem, documentsNavItem] : []), ...(can('audit.view') ? [auditNavItem] : [])];
+  // HR module switch: hidden modules drop out of the menu (pages say "Not available yet").
+  const modules = useHrModules();
+  const on = (m: Parameters<typeof isHrModuleOn>[1]) => !!modules && isHrModuleOn(modules, m);
+  const visibleHrNav = [
+    ...hrNav.filter((item) => item.href !== '/hr/leave' || on('leave')),
+    ...(can('hr.manage') && on('candidates') ? [candidatesNavItem] : []),
+    ...(can('hr.manage') && on('documents') ? [documentsNavItem] : []),
+    ...(can('audit.view') && on('audit') ? [auditNavItem] : []),
+  ];
 
   return (
     <div className="flex flex-col gap-2">

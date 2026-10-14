@@ -791,6 +791,8 @@ export interface LeaveBalance {
     entitled: number;
     carried_forward: number;
     taken: number;
+    /** Taken before go-live (imported; Phase 5). Absent before that migration. */
+    opening_taken?: number;
 }
 
 export interface PublicHoliday {

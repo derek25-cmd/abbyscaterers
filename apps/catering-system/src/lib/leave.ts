@@ -1,7 +1,7 @@
 /**
  * Leave rules shared by the apply dialog, the review dialog, the calendar and
  * the attendance grid. The database enforces the same rules (see
- * supabase/migrations/20261020000100_leave_management.sql: leave_year_of(),
+ * supabase/migrations/20261014000600_leave_management.sql: leave_year_of(),
  * leave_working_dates(), and the leave_settings row); the client copy exists so
  * people see the day count and any problem BEFORE they submit.
  *
@@ -114,11 +114,17 @@ export interface BalanceFigures {
   entitled: number;
   carried_forward: number;
   taken: number;
+  /** Leave taken before go-live (imported opening balance; Phase 5). */
+  opening_taken?: number;
 }
 
+/** Same formula as the database: entitled + carried - opening_taken - taken. */
 export function balanceRemaining(b: BalanceFigures): number {
-  return b.entitled + b.carried_forward - b.taken;
+  return b.entitled + b.carried_forward - (b.opening_taken ?? 0) - b.taken;
 }
+
+/** Everything taken this year: before go-live plus through the system. */
+export const totalTaken = (b: BalanceFigures): number => (b.opening_taken ?? 0) + b.taken;
 
 /** "1 day", "2 days", "2.5 days". */
 export function formatDays(n: number): string {

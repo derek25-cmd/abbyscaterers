@@ -20,6 +20,8 @@ import { DEPARTMENTS } from "@/lib/schemas";
 import { getErrorDescription } from "@/lib/service-validation";
 import { useToast } from "@/hooks/use-toast";
 import { RequirePermission } from "@/components/auth/require-permission";
+import { HrModuleOnly } from "@/components/hr/hr-module-gate";
+import { ImportContractsDialog } from "@/components/hr/import-dialogs";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { format } from "date-fns";
@@ -49,6 +51,7 @@ export default function EmployeesPage() {
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false);
   const [isViewEmployeeDialogOpen, setIsViewEmployeeDialogOpen] = useState(false);
   const [isFireDialogOpen, setIsFireDialogOpen] = useState(false);
+  const [isImportContractsOpen, setIsImportContractsOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -292,6 +295,14 @@ export default function EmployeesPage() {
                     <DropdownMenuItem onClick={() => handleExportExcel(true)}>Active Only</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <HrModuleOnly module="letters">
+                  <RequirePermission permission="hr.manage">
+                    <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setIsImportContractsOpen(true)}>
+                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Import existing contracts</span>
+                    </Button>
+                  </RequirePermission>
+                </HrModuleOnly>
                 <Button size="sm" className="h-8 gap-1" onClick={() => setIsAddEmployeeDialogOpen(true)}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
@@ -435,6 +446,7 @@ export default function EmployeesPage() {
           </CardContent>
         </Card>
       
+      <ImportContractsDialog isOpen={isImportContractsOpen} setIsOpen={setIsImportContractsOpen} />
       <AddEmployeeDialog 
         isOpen={isAddEmployeeDialogOpen}
         setIsOpen={setIsAddEmployeeDialogOpen}
