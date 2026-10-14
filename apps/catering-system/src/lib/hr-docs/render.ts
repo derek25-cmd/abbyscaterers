@@ -4,9 +4,12 @@ import type { Employee } from '@/types';
 /**
  * Letter template renderer.
  *
- * A template is plain text with two features and nothing else (no logic, no
+ * A template is plain text with three features and nothing else (no logic, no
  * HTML, so a template can never do anything but print words):
- *   {{path.to.field}}   a value filled in from the document
+ *   {{path.to.field}}   a value filled in from the document, inside a sentence
+ *   {{{path.to.field}}} on a line of its own: a whole block of text written by
+ *                       the author (several paragraphs, **bold** and {{fields}}
+ *                       allowed), as used for the body of a general letter
  *   **bold**            bold text
  * Paragraphs are separated by a blank line; a single line break stays a line break.
  *
@@ -40,7 +43,10 @@ export interface CompanyDetails {
 
 // ── Rendering ──────────────────────────────────────────────────────────────
 
-const PLACEHOLDER = /\{\{\s*([A-Za-z_][\w]*(?:\.[\w]+)*)\s*\}\}/g;
+// {{x}} and, when it is not on a line of its own, {{{x}}} (treated like {{x}}).
+const PLACEHOLDER = /\{\{\{?\s*([A-Za-z_][\w]*(?:\.[\w]+)*)\s*\}?\}\}/g;
+const BLOCK_PLACEHOLDER = /^\{\{\{\s*([A-Za-z_][\w]*(?:\.[\w]+)*)\s*\}\}\}$/;
+const PARAGRAPH_BREAK = /\r?\n[ \t]*\r?\n/;
 
 function lookup(context: RenderContext, path: string): string | null {
   let value: unknown = context;
@@ -90,10 +96,23 @@ export function renderTemplate(body: string, context: RenderContext): RenderResu
       return value.replace(/\s*\r?\n\s*/g, ', ');
     });
 
-  const paragraphs: Paragraph[] = body
-    .split(/\r?\n[ \t]*\r?\n/)
-    .map((p) => p.trim())
-    .filter((p) => p !== '')
+  const split = (text: string) => text.split(PARAGRAPH_BREAK).map((p) => p.trim()).filter((p) => p !== '');
+
+  // A {{{block}}} alone on a line becomes the paragraphs the author wrote. One
+  // level only: a block inside a block is read as an ordinary inline value.
+  const expandBlocks = (list: string[], depth: number): string[] =>
+    list.flatMap((p) => {
+      const m = depth === 0 ? BLOCK_PLACEHOLDER.exec(p) : null;
+      if (!m) return [p];
+      const value = lookup(context, m[1]);
+      if (value === null) {
+        if (!seen.has(m[1])) { seen.add(m[1]); missing.push(m[1]); }
+        return [];
+      }
+      return expandBlocks(split(value), depth + 1);
+    });
+
+  const paragraphs: Paragraph[] = expandBlocks(split(body), 0)
     .map((p) => toSegments(p).map((s) => ({ ...s, text: fill(s.text) })))
     // A paragraph that was only unfilled placeholders is left out rather than printed empty.
     .filter((segments) => segments.some((s) => s.text.trim() !== ''));

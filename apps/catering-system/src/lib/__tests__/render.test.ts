@@ -99,6 +99,46 @@ describe('renderTemplate: bold', () => {
   });
 });
 
+describe('renderTemplate: {{{block}}} placeholders', () => {
+  const body = 'Dear {{name}},\n\n{{{body}}}\n\nThank you.';
+
+  it('expands a block into the paragraphs the author wrote', () => {
+    const r = renderTemplate(body, { name: 'Amina', body: 'First paragraph.\n\nSecond one,\nwith a line break.' });
+    expect(r.missing).toEqual([]);
+    expect(r.paragraphs.map(paragraphText)).toEqual(['Dear Amina,', 'First paragraph.', 'Second one,\nwith a line break.', 'Thank you.']);
+  });
+
+  it('allows **bold** and {{fields}} inside the block', () => {
+    const r = renderTemplate('{{{body}}}', { name: 'Amina', body: 'Please note **{{name}}** is away.' });
+    expect(r.paragraphs[0]).toEqual([
+      { text: 'Please note ', bold: false }, { text: 'Amina', bold: true }, { text: ' is away.', bold: false },
+    ]);
+  });
+
+  it('reports a field missing inside the block', () => {
+    expect(renderTemplate('{{{body}}}', { body: 'Hello {{who}}' }).missing).toEqual(['who']);
+  });
+
+  it('reports the block itself when it is empty or absent', () => {
+    expect(renderTemplate(body, { name: 'A', body: '   ' }).missing).toEqual(['body']);
+    expect(renderTemplate(body, { name: 'A' }).missing).toEqual(['body']);
+  });
+
+  it('does not expand a block inside the block (no loops)', () => {
+    const r = renderTemplate('{{{body}}}', { body: 'Start\n\n{{{body}}}' });
+    expect(r.paragraphs.length).toBe(2);
+    expect(paragraphText(r.paragraphs[1])).toContain('Start');
+  });
+
+  it('treats {{{x}}} in the middle of a sentence like {{x}}', () => {
+    expect(renderTemplate('Hello {{{n}}}!', { n: 'Amina' }).paragraphs.map(paragraphText)).toEqual(['Hello Amina!']);
+  });
+
+  it('lists the block placeholder once in listPlaceholders', () => {
+    expect(listPlaceholders('{{a}}\n\n{{{body}}}\n\n{{a}}')).toEqual(['a', 'body']);
+  });
+});
+
 describe('listPlaceholders', () => {
   it('lists each path once, in order of first use', () => {
     expect(listPlaceholders('{{b}} {{a.c}} **{{b}}** {{ d }}')).toEqual(['b', 'a.c', 'd']);
