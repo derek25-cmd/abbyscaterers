@@ -33,6 +33,12 @@ DECLARE
   draft_tpl uuid;
   failures integer; checks integer; notes text[] := '{}';
 BEGIN
+  -- Go-live guard (Phase 5): these tests create and roll back test rows. Once
+  -- go-live is recorded (app_settings.hr_go_live_at) they must not run on this
+  -- database any more; use the read-only checks in docs/hr-ops instead.
+  IF (SELECT to_jsonb(s) ->> 'hr_go_live_at' FROM public.app_settings s WHERE s.id = true) IS NOT NULL THEN
+    RAISE EXCEPTION 'REFUSED: go-live has been recorded (app_settings.hr_go_live_at), so the SQL tests no longer run on this database. Use docs/hr-ops/postflight.sql and monitoring.sql.';
+  END IF;
   CREATE TEMP TABLE rls_results (who text, tbl text, op text, expected boolean, actual boolean) ON COMMIT DROP;
 
   -- ── Helpers (inside this block; rolled back with it) ─────────────────────
