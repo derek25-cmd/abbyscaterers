@@ -255,7 +255,7 @@ BEGIN
   res := public._p4_issue(dWarn, hr, adm);
   INSERT INTO rls_results VALUES ('adm', 'warning', 'issued after another person approves (' || res || ')', true, res LIKE 'ok:%');
   SELECT * INTO drow FROM public.hr_documents WHERE id = dWarn;
-  INSERT INTO rls_results VALUES ('hr', 'warning', 'reference has the ALC/HR/WAR/<year>/<nnnn> shape', true, drow.ref_no ~ ref_re AND drow.ref_no LIKE 'ALC/HR/WAR/%');
+  INSERT INTO rls_results VALUES ('hr', 'warning', 'reference has the ALC/HR/WRN/<year>/<nnnn> shape', true, drow.ref_no ~ ref_re AND drow.ref_no LIKE 'ALC/HR/WRN/%');
   SELECT count(*) INTO n FROM public.disciplinary_records WHERE document_id = dWarn;
   SELECT id INTO wRec FROM public.disciplinary_records WHERE document_id = dWarn;
   INSERT INTO rls_results VALUES ('hr', 'disciplinary_records', 'issuing creates one record', true, n = 1);
