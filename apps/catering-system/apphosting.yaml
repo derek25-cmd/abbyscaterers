@@ -21,6 +21,14 @@ runConfig:
   maxInstances: 10
 
 env:
+  # `next build` needs more than Node's default ~2 GB heap for this app (with
+  # the Sentry plugin): App Hosting builds failed with "JavaScript heap out of
+  # memory". Build step only; the running server keeps the default.
+  - variable: NODE_OPTIONS
+    value: --max-old-space-size=4096
+    availability:
+      - BUILD
+
   # Listen on all interfaces. The standalone server binds to HOSTNAME when it
   # is set, and Cloud Run's health check must be able to reach port 8080.
   - variable: HOSTNAME
