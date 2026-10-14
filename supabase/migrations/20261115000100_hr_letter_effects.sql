@@ -687,6 +687,8 @@ $$;
 
 -- Offers whose acceptance deadline (from the offer letter) has passed.
 -- p_today defaults to today in Dar es Salaam (the daily job passes its own day).
+-- An earlier draft of this file had no parameter; drop it so calls are not ambiguous.
+DROP FUNCTION IF EXISTS public.expire_offers();
 CREATE OR REPLACE FUNCTION public.expire_offers(p_today date DEFAULT NULL)
 RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
