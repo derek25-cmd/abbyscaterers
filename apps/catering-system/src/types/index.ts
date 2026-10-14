@@ -866,3 +866,71 @@ export interface HrDocumentView extends HrDocument {
     author_email: string | null;
     approver_email: string | null;
 }
+
+// --- HR LETTER RECORDS (Phase 4) ---
+export type OfferStatus = 'none' | 'offered' | 'accepted' | 'declined' | 'expired' | 'withdrawn';
+
+export interface Candidate {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    position: string | null;
+    department: string | null;
+    proposed_salary: number | null;
+    proposed_start_date: string | null;
+    notes: string | null;
+    offer_status: OfferStatus;
+    offer_document_id: string | null;
+    responded_at: string | null;
+    employee_id: string | null;
+    created_at: string;
+}
+
+export type ContractType = 'permanent' | 'fixed_term' | 'probation' | 'casual';
+export type ContractStatus = 'active' | 'extended' | 'terminated' | 'expired' | 'void';
+
+export interface EmploymentContract {
+    id: string;
+    employee_id: string;
+    contract_type: ContractType;
+    start_date: string;
+    end_date: string | null;
+    position: string | null;
+    salary: number | null;
+    probation_months: number | null;
+    notice_days: number | null;
+    status: ContractStatus;
+    parent_contract_id: string | null;
+    document_id: string | null;
+    source: 'letter' | 'legacy';
+    created_at: string;
+}
+
+export type WarningLevel = 'verbal' | 'first_written' | 'final_written';
+
+export interface DisciplinaryRecord {
+    id: string;
+    employee_id: string;
+    level: WarningLevel;
+    offence_category: string;
+    incident_date: string;
+    expires_on: string;
+    status: 'active' | 'expired' | 'void';
+    document_id: string;
+    created_at: string;
+}
+
+export interface RecognitionRecord {
+    id: string;
+    employee_id: string;
+    category: 'performance' | 'long_service' | 'conduct' | 'customer_praise' | 'other';
+    reward_type: 'none' | 'cash' | 'voucher' | 'gift' | 'time_off';
+    amount: number | null;
+    payroll_status: 'not_applicable' | 'pending' | 'paid';
+    paid_in_payroll_id: string | null;
+    status: 'active' | 'void';
+    document_id: string;
+    created_at: string;
+}

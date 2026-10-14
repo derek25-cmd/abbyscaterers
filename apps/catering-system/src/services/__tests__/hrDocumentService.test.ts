@@ -222,9 +222,18 @@ describe('createDraft', () => {
     expect(fromMock).not.toHaveBeenCalled();
   });
 
-  it('refuses a type that is not available yet', async () => {
+  it('refuses an offer written to an employee (offers go to candidates)', async () => {
     const { createDraft } = await import('../hrDocumentService');
-    await expect(createDraft({ docType: 'offer', employeeId: 'EMP-1', subject: 'Offer of employment', data: {} })).rejects.toThrow(/not available yet/);
+    const offer = { position: 'Cook', salary: 500000, startDate: '2026-11-02', acceptanceDeadline: '2026-10-30' };
+    await expect(createDraft({ docType: 'offer', employeeId: 'EMP-1', subject: 'Offer of employment', data: offer })).rejects.toThrow(/job candidate/);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses an employee letter written to a candidate', async () => {
+    const { createDraft } = await import('../hrDocumentService');
+    await expect(createDraft({
+      docType: 'general_letter', candidateId: '11111111-1111-1111-1111-111111111111', subject: 'Hello there', data: { body: 'x' },
+    })).rejects.toThrow(/written to an employee/);
   });
 
   it('needs a person', async () => {

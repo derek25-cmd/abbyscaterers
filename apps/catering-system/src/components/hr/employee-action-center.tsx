@@ -5,7 +5,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CreditCard, Truck, CalendarCheck, History, FilePlus2 } from "lucide-react";
+import { CreditCard, Truck, CalendarCheck, History, FilePlus2, Award } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, docTypeAppliesTo } from "@/lib/hr-docs/registry";
 import { useState } from "react";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { NewDocumentWizard } from "@/components/hr/new-document-wizard";
@@ -14,7 +16,12 @@ import { useRouter } from "next/navigation";
 
 export function EmployeeActionCenter({ employee }) {
     const router = useRouter();
-    const [letterOpen, setLetterOpen] = useState(false);
+    // null = closed; otherwise the letter type chosen from the menu.
+    const [letterType, setLetterType] = useState(null);
+    // Only the letters that make sense for this person right now (a certificate
+    // of service once employment has ended, the others while Active).
+    const letterTypes = DOC_TYPE_ORDER.filter((t) => t === 'general_letter' || docTypeAppliesTo(t, employee));
+    const hasLeft = employee.status === 'Inactive' && !!employee.employmentEndDate;
 
     const handleCreatePayslip = () => {
         router.push(`/hr/payroll?createPayslipFor=${employee.id}`);
@@ -49,13 +56,29 @@ export function EmployeeActionCenter({ employee }) {
                     </Link>
                 </Button>
                 <RequirePermission permission="hr.manage">
-                    <Button variant="outline" onClick={() => setLetterOpen(true)}>
-                        <FilePlus2 className="mr-2 h-4 w-4" />
-                        Generate letter
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline">
+                                <FilePlus2 className="mr-2 h-4 w-4" />
+                                Generate letter
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Letters for {employee.firstName}</DropdownMenuLabel>
+                            {letterTypes.map((t) => (
+                                <DropdownMenuItem key={t} onClick={() => setLetterType(t)}>{DOC_TYPE_LABELS[t]}</DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {hasLeft && (
+                        <Button onClick={() => setLetterType('certificate_of_service')}>
+                            <Award className="mr-2 h-4 w-4" />
+                            Generate Certificate of Service
+                        </Button>
+                    )}
                 </RequirePermission>
             </CardContent>
-            <NewDocumentWizard isOpen={letterOpen} setIsOpen={setLetterOpen} defaultEmployeeId={employee.id} />
+            <NewDocumentWizard isOpen={!!letterType} setIsOpen={(o) => !o && setLetterType(null)} defaultEmployeeId={employee.id} defaultDocType={letterType ?? undefined} />
         </Card>
     )
 }

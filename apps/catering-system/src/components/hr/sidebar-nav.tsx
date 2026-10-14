@@ -16,7 +16,8 @@ import {
   GraduationCap,
   ScrollText,
   CalendarDays,
-  FileText
+  FileText,
+  UserPlus
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -88,6 +89,12 @@ const hrNav = [
 
 // Letters, templates and the reference-number register: HR roles only
 // (hr.manage). The pages and the database enforce it too.
+const candidatesNavItem = {
+  href: "/hr/candidates",
+  label: "Candidates",
+  icon: UserPlus,
+};
+
 const documentsNavItem = {
   href: "/hr/documents",
   label: "HR Documents",
@@ -106,7 +113,7 @@ export function SidebarNav() {
   const pathname = usePathname();
   const { open } = useSidebar();
   const { can } = useStaffRole();
-  const visibleHrNav = [...hrNav, ...(can('hr.manage') ? [documentsNavItem] : []), ...(can('audit.view') ? [auditNavItem] : [])];
+  const visibleHrNav = [...hrNav, ...(can('hr.manage') ? [candidatesNavItem, documentsNavItem] : []), ...(can('audit.view') ? [auditNavItem] : [])];
 
   return (
     <div className="flex flex-col gap-2">

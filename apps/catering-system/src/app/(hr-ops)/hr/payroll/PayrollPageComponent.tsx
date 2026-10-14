@@ -23,6 +23,7 @@ import { getErrorDescription } from "@/lib/service-validation";
 import type { PayrollFormData } from "@/lib/schemas";
 import type { Payroll } from "@/types";
 import { formatTZS } from "@/lib/formatCurrency";
+import { PendingCashRewardsPanel } from "@/components/hr/pending-cash-rewards-panel";
 
 export function PayrollPageComponent() {
     const searchParams = useSearchParams();
@@ -217,6 +218,9 @@ export function PayrollPageComponent() {
             </Card>
         </div>
 
+        <RequirePermission permission="payroll.manage">
+            <PendingCashRewardsPanel payrolls={payrolls} />
+        </RequirePermission>
 
         <Card>
           <CardHeader>

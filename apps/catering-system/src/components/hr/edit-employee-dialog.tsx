@@ -219,15 +219,26 @@ export function EditEmployeeDialog({ isOpen, setIsOpen, employee, onEditEmployee
                     </div>
                     <div>
                         <Label htmlFor="status">Status</Label>
-                        <Select onValueChange={(value) => handleSelectChange('status', value)} value={formData.status}>
-                            <SelectTrigger>
-                            <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {employee.status === 'Inactive' ? (
+                          <>
+                            <Select onValueChange={(value) => handleSelectChange('status', value)} value={formData.status}>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select a status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                <SelectItem value="Inactive">Inactive</SelectItem>
+                                <SelectItem value="Active">Active (reactivate)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {formData.status === 'Active' && (
+                              <p className="mt-1 text-xs text-amber-700">Reactivating clears the employment end date and reason. It is recorded in the Audit Trail.</p>
+                            )}
+                          </>
+                        ) : (
+                          <p id="status" className="flex h-10 items-center text-sm text-muted-foreground">
+                            Active. To end employment use “Fire / End Employment”.
+                          </p>
+                        )}
                     </div>
                 </div>
 

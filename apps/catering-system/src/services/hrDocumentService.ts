@@ -3,14 +3,15 @@ import { validate } from '@/lib/service-validation';
 import { logAuditEvent } from '@/lib/audit-log';
 import { getEmployeeDirectory } from '@/services/employeeService';
 import { DraftBaseSchema } from '@/lib/hr-docs/schema';
-import { getDocTypeDefinition } from '@/lib/hr-docs/registry';
+import { getDocTypeDefinition, personKindOf, type LetterRelated } from '@/lib/hr-docs/registry';
 import { buildNumberLedger, type LedgerRow } from '@/lib/hr-docs/ledger';
 import {
   buildRenderContext, renderTemplate, type CompanyDetails, type Paragraph,
 } from '@/lib/hr-docs/render';
 import { buildLetterPdf, loadImageAsDataUrl, sha256, type Letterhead } from '@/lib/hr-docs/letterPdf';
 import type {
-  Employee, HrDocTypeCode, HrDocument, HrDocumentStatus, HrDocumentTemplate, HrDocumentType, HrDocumentView,
+  Candidate, DisciplinaryRecord, Employee, EmploymentContract, HrDocTypeCode, HrDocument, HrDocumentStatus,
+  HrDocumentTemplate, HrDocumentType, HrDocumentView,
 } from '@/types';
 
 // The lifecycle rules (who may approve, what freezes, how numbers are given out)
@@ -136,18 +137,25 @@ export interface DocumentFilters {
 }
 
 async function toViews(rows: HrDocument[]): Promise<HrDocumentView[]> {
-  const [types, people, staff] = await Promise.all([
+  const candidateIds = [...new Set(rows.map((r) => r.candidate_id).filter(Boolean) as string[])];
+  const [types, people, staff, candidates] = await Promise.all([
     listDocumentTypes(),
     getEmployeeDirectory(),
     supabase.from('staff_users').select('id, email'),
+    candidateIds.length
+      ? supabase.from('candidates').select('id, full_name').in('id', candidateIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
   ]);
   const label = new Map(types.map((t) => [t.doc_type, t.label]));
   const person = new Map(people.map((e: Employee) => [e.id, `${e.firstName} ${e.lastName}`]));
   const email = new Map((staff.data ?? []).map((s: { id: string; email: string }) => [s.id, s.email]));
+  const candidateName = new Map(((candidates.data ?? []) as { id: string; full_name: string }[]).map((c) => [c.id, c.full_name]));
   return rows.map((d) => ({
     ...d,
     type_label: label.get(d.doc_type) ?? d.doc_type,
-    person_name: d.employee_id ? (person.get(d.employee_id) ?? 'Unknown employee') : 'Candidate',
+    person_name: d.employee_id
+      ? (person.get(d.employee_id) ?? 'Unknown employee')
+      : `${candidateName.get(d.candidate_id ?? '') ?? 'Unknown'} (candidate)`,
     author_email: d.created_by ? (email.get(d.created_by) ?? null) : null,
     approver_email: d.approved_by ? (email.get(d.approved_by) ?? null) : null,
   }));
@@ -240,6 +248,12 @@ export interface CreateDraftInput {
 export const createDraft = async (input: CreateDraftInput): Promise<HrDocument> => {
   const base = validate(DraftBaseSchema, input);
   const def = getDocTypeDefinition(base.docType);
+  if (personKindOf(base.docType) === 'candidate' && (!base.candidateId || base.employeeId)) {
+    throw new Error('This letter is written to a job candidate. Choose the candidate.');
+  }
+  if (personKindOf(base.docType) === 'employee' && (!base.employeeId || base.candidateId)) {
+    throw new Error('This letter is written to an employee. Choose the employee.');
+  }
   const data = validate(def.schema, base.data) as Record<string, unknown>;
 
   const [template, types] = await Promise.all([getActiveTemplate(base.docType), listDocumentTypes()]);
@@ -292,6 +306,24 @@ export const updateDraft = async (id: string, patch: UpdateDraftInput): Promise<
   return data as HrDocument;
 };
 
+/** The active template version for this document's type, when it is newer than the one the document uses. */
+export const getNewerTemplate = async (doc: Pick<HrDocument, 'doc_type' | 'template_id' | 'template_version'>): Promise<HrDocumentTemplate | null> => {
+  const active = await getActiveTemplate(doc.doc_type);
+  return active && active.id !== doc.template_id && active.version > doc.template_version ? active : null;
+};
+
+/** Moves a DRAFT onto the newest template version (the database refuses this once it has left draft). */
+export const updateToLatestTemplate = async (id: string): Promise<HrDocument> => {
+  const { data: doc, error } = await supabase.from('hr_documents').select('id, doc_type, status, template_id, template_version').eq('id', id).maybeSingle();
+  if (error || !doc) throw new Error('Document not found.');
+  if (doc.status !== 'draft') throw new Error('Only a draft can move to a newer template. Return it to draft first.');
+  const newer = await getNewerTemplate(doc as HrDocument);
+  if (!newer) throw new Error('This letter already uses the newest template.');
+  const { data, error: upError } = await supabase.from('hr_documents').update({ template_id: newer.id }).eq('id', id).select().single();
+  if (upError) throw toError(upError, 'Could not update the template.');
+  return data as HrDocument;
+};
+
 export const deleteDraft = async (id: string): Promise<void> => {
   const { data, error } = await supabase.from('hr_documents').delete().eq('id', id).select('id');
   if (error) throw toError(error, 'Could not delete the draft.');
@@ -305,6 +337,8 @@ export interface RenderInputs {
   template: HrDocumentTemplate;
   employee: Employee | null;
   settings: LetterSettings;
+  /** Records the letter type needs (candidate, contract, warnings ...). Empty for the general letter. */
+  related?: LetterRelated;
 }
 
 export interface RenderedLetter {
@@ -317,22 +351,60 @@ export interface RenderedLetter {
 /** Today in Dar es Salaam, as yyyy-mm-dd. */
 export const todayInDar = (): string => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Dar_es_Salaam' });
 
+/**
+ * The records a letter type declares it needs (DocTypeDefinition.needs), read
+ * now so the letter shows the current state: the candidate for an offer, the
+ * contract being extended, the warnings a termination refers to, and every
+ * contract for a certificate of service.
+ */
+export async function loadRelated(doc: Pick<HrDocument, 'doc_type' | 'employee_id' | 'candidate_id' | 'data'>): Promise<LetterRelated> {
+  const needs = getDocTypeDefinition(doc.doc_type).needs ?? [];
+  const related: LetterRelated = {};
+  const data = doc.data ?? {};
+  await Promise.all(needs.map(async (need) => {
+    if (need === 'candidate' && doc.candidate_id) {
+      const { data: c } = await supabase.from('candidates').select('*').eq('id', doc.candidate_id).maybeSingle();
+      related.candidate = (c as Candidate | null) ?? null;
+    }
+    if (need === 'contractToExtend' && typeof data.contractId === 'string' && data.contractId) {
+      const { data: k } = await supabase.from('employment_contracts').select('*').eq('id', data.contractId).maybeSingle();
+      related.contract = (k as EmploymentContract | null) ?? null;
+    }
+    if (need === 'linkedWarnings') {
+      const ids = Array.isArray(data.warningIds) ? (data.warningIds as string[]) : [];
+      if (ids.length) {
+        const { data: w } = await supabase.from('disciplinary_records').select('*').in('id', ids);
+        related.warnings = (w ?? []) as DisciplinaryRecord[];
+      } else {
+        related.warnings = [];
+      }
+    }
+    if (need === 'allContracts' && doc.employee_id) {
+      const { data: all } = await supabase.from('employment_contracts').select('*').eq('employee_id', doc.employee_id).order('start_date');
+      related.contracts = (all ?? []) as EmploymentContract[];
+    }
+  }));
+  return related;
+}
+
 export async function loadRenderInputs(doc: HrDocument): Promise<RenderInputs> {
-  const [{ data: template, error: tErr }, settings, employee] = await Promise.all([
+  const [{ data: template, error: tErr }, settings, employee, related] = await Promise.all([
     supabase.from('hr_document_templates').select('*').eq('id', doc.template_id).maybeSingle(),
     getLetterSettings(),
     doc.employee_id
       ? supabase.from('employees').select('*').eq('id', doc.employee_id).maybeSingle().then((r) => (r.data as Employee | null) ?? null)
       : Promise.resolve(null),
+    loadRelated(doc),
   ]);
   if (tErr || !template) throw new Error('The template this document was written from could not be loaded.');
-  return { doc, template: template as HrDocumentTemplate, employee, settings };
+  return { doc, template: template as HrDocumentTemplate, employee, settings, related };
 }
 
 /** Bundles the pieces a render needs when the caller already has them (the wizard preview). */
 export const loadRenderInputsFor = (
   doc: HrDocument, template: HrDocumentTemplate, employee: Employee | null, settings: LetterSettings,
-): RenderInputs => ({ doc, template, employee, settings });
+  related: LetterRelated = {},
+): RenderInputs => ({ doc, template, employee, settings, related });
 
 /**
  * Fills the template for a document. `refNo` is the real number only at issue;
@@ -341,12 +413,15 @@ export const loadRenderInputsFor = (
  */
 export function renderDocument(inputs: RenderInputs, opts: { refNo?: string | null; date?: string; final?: boolean } = {}): RenderedLetter {
   const { doc, template, employee, settings } = inputs;
+  const related = inputs.related ?? {};
   const def = getDocTypeDefinition(doc.doc_type);
   const final = opts.final ?? false;
 
   const context = buildRenderContext({
     company: settings.company,
     employee,
+    candidate: related.candidate ?? null,
+    extra: def.buildContext ? def.buildContext(doc.data ?? {}, related, employee) : {},
     refNo: opts.refNo ?? doc.ref_no,
     date: opts.date ?? todayInDar(),
     subject: doc.subject,
@@ -364,7 +439,7 @@ export function renderDocument(inputs: RenderInputs, opts: { refNo?: string | nu
 
   return {
     subject: subjectText || doc.subject,
-    addressee: def.addressee(employee, doc.data),
+    addressee: def.addressee(employee, doc.data, related),
     paragraphs: body.paragraphs,
     missing,
   };
@@ -422,16 +497,32 @@ export interface IssueResult { refNo: string; path: string; sha256: string }
  * hashed, and that exact file is what gets issued. Nothing is ever uploaded over
  * an existing file, and "issued" never exists without a file.
  */
+const expectedPath = (doc: Pick<HrDocument, 'employee_id' | 'candidate_id'>, refNo: string) =>
+  `${doc.employee_id ?? `candidate-${doc.candidate_id}`}/${refNo.replace(/\//g, '_')}.pdf`;
+
 export const issue = async (id: string): Promise<IssueResult> => {
+  // An earlier attempt may have finished on the server even though the answer
+  // never reached the browser. If this very document is already issued with its
+  // own number at its own path, that IS success; anything else is not.
+  const current = await getDocument(id);
+  if (current.status === 'issued' && current.ref_no && current.pdf_sha256
+      && current.pdf_path === expectedPath(current, current.ref_no)) {
+    return { refNo: current.ref_no, path: current.pdf_path, sha256: current.pdf_sha256 };
+  }
+
   const { doc, inputs } = await requireComplete(id);
   if (doc.status !== 'approved') throw new Error(`Only an approved document can be issued. This one is ${doc.status.replace('_', ' ')}.`);
+
+  // The type's checks (e.g. the contract being extended is still active) run
+  // BEFORE a number is reserved, so a letter that cannot be issued costs nothing.
+  const { error: checkError } = await supabase.rpc('validate_hr_document', { p_id: id });
+  if (checkError) throw toError(checkError, 'This letter cannot be issued yet.');
 
   const { data: ref, error: refError } = await supabase.rpc('reserve_hr_document_ref', { p_id: id });
   if (refError) throw toError(refError, 'Could not reserve a reference number.');
   const refNo = String(ref);
 
-  const folder = doc.employee_id ?? `candidate-${doc.candidate_id}`;
-  const path = `${folder}/${refNo.replace(/\//g, '_')}.pdf`;
+  const path = expectedPath(doc, refNo);
   const storage = supabase.storage.from(HR_DOCUMENTS_BUCKET);
 
   // A retry finds the file already stored; reuse exactly that file.
