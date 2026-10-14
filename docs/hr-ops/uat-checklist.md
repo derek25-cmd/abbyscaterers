@@ -28,7 +28,7 @@ Other test people: UAT-006 (contract ends within 30 days), UAT-007 (contract alr
 
 | # | Test | Steps | Expected result | Pass/Fail | Tester | Date | Notes |
 |---|---|---|---|---|---|---|---|
-| S1 | Apply for leave | Leave → Apply for leave → Annual, 2 working days next month → Submit | Request shows as "Pending"; days counted automatically | | | | |
+| S1 | Apply for leave | Leave → Apply for leave → Annual, 2 working days next month → Send request | Request shows as "Pending"; days counted automatically | | | | |
 | S2 | Cannot edit after submitting | Open the pending request | No way to change dates or type; only "Cancel" | | | | |
 | S3 | Cancel own pending request | Cancel the request from S1 | Status "Cancelled"; balance unchanged | | | | |
 | S4 | Sick leave needs a document | Apply for Sick leave without attaching a file | Refused with a clear message | | | | |
@@ -77,10 +77,10 @@ Before starting: Documents → Templates. Each letter type starts on **DRAFT** w
 | L7 | Void and reissue | Void the extension from L6 with a reason, then issue a corrected one | Void keeps its number and reason; the old contract is active again; the new letter gets the next number | | | | |
 | L8 | Warning — self-approval refused | Prepare a warning for UAT-010, send it, try to approve it yourself | Refused; GM approves; issue → Disciplinary tab shows it | | | | |
 | L9 | Recognition with cash | UAT-010 → Letter of recognition, cash 50,000 → approve → issue | Recognition tab shows it; Finance sees it as pending (F1) | | | | |
-| L10 | Termination — self-approval refused | UAT-008 → End employment → Prepare termination letter, last day in 2 weeks; approve it yourself | Refused; employee stays Active until GM approves and you issue | | | | |
+| L10 | Termination — self-approval refused | UAT-008 → Fire / End Employment → Prepare termination letter, last day in 2 weeks; approve it yourself | Refused; employee stays Active until GM approves and you issue | | | | |
 | L11 | Termination ends leave | Before L10 is issued, give UAT-008 approved leave after the last day; then issue | Employee Inactive; contract terminated; that leave cancelled (or shortened) and listed in the HR notification | | | | |
 | L12 | Certificate of service | UAT-008 (now left) → Generate Certificate of Service → issue | Dates and positions come from the records | | | | |
-| L13 | End employment without a letter | UAT-010 → End employment → without a letter, give a reason | Inactive immediately, reason kept; recorded in the Audit Trail | | | | |
+| L13 | End employment without a letter | UAT-010 → Fire / End Employment → End employment without a letter, give a reason | Inactive immediately, reason kept; recorded in the Audit Trail | | | | |
 | L14 | Inactive only by those two ways | Edit an Active UAT employee | No "Inactive" option. An Inactive one can be reactivated (end date cleared) | | | | |
 
 ### 3c. Contracts, reminders, importer
@@ -115,7 +115,7 @@ Before starting: Documents → Templates. Each letter type starts on **DRAFT** w
 | D1 | Users & Access | Settings → Users & Access | UAT logins listed with their roles | | | | |
 | D2 | Company details | Settings → General → Company details | Editable by Admin only; shown on letters | | | | |
 | D3 | HR module switch | Settings → HR modules: switch "Leave" off, reload | Leave menu item and tab gone; /hr/leave says "Not available yet". Switch it back on | | | | |
-| D4 | Switch never hides end-of-employment | Switch "Letter types" off; open End employment | "End employment without a letter" still offered. Switch back on | | | | |
+| D4 | Switch never hides end-of-employment | Switch "Letter types" off; open Fire / End Employment | "End employment without a letter" still offered. Switch back on | | | | |
 
 ## 6. Admin portal (anyone with access)
 

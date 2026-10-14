@@ -145,7 +145,7 @@ node scripts/setup-uat.js --base-email <your-address@domain>
 
 It prints what it created. Invitations go to `<you>+uat-admin@…`, `+uat-general-manager@…`, `+uat-hr-manager@…`, `+uat-finance@…`, `+uat-staff@…` (they arrive in your normal inbox). Running it again changes nothing that already exists.
 
-Then the HR Manager (with the UAT login): Leave → Balances → set up the current year if any UAT employee has no balance.
+Then the HR Manager (with the UAT login): Leave → Balances → **Set up <year> balances** if any UAT employee has no balance.
 
 ---
 
