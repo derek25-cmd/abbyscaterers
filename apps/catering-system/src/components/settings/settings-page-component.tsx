@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStaffRole } from "@/hooks/use-staff-role";
 import { UsersAccessTab } from "@/components/settings/users-access-tab";
 import { CompanyDetailsCard } from "@/components/settings/company-details-card";
+import { HrModulesCard } from "@/components/settings/hr-modules-card";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
 
@@ -119,6 +120,7 @@ export function SettingsPageComponent() {
                 </TabsList>
                 <TabsContent value="general" className="space-y-6">
                     {canManageSettings && <CompanyDetailsCard />}
+                    {canManageSettings && <HrModulesCard />}
                     <Card>
                         <CardHeader>
                             <CardTitle>Appearance</CardTitle>

@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeLeaveTab } from "@/components/leave/employee-leave-tab";
 import { EmployeeDocumentsTab } from "@/components/hr/employee-documents-tab";
 import { RequirePermission } from "@/components/auth/require-permission";
+import { HrModuleOnly } from "@/components/hr/hr-module-gate";
 import { ActiveWarningsBadge, EmployeeContractsTab, EmployeeDisciplinaryTab, EmployeeRecognitionTab } from "@/components/hr/employee-records-tabs";
 
 export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
@@ -54,7 +55,7 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
             <DialogTitle className="flex flex-wrap items-center gap-2">
               Employee Details
               {employee.status !== 'Active' && <Badge variant="outline">{employee.status}</Badge>}
-              <RequirePermission permission="hr.manage"><ActiveWarningsBadge employeeId={employee.id} /></RequirePermission>
+              <HrModuleOnly module="letters"><RequirePermission permission="hr.manage"><ActiveWarningsBadge employeeId={employee.id} /></RequirePermission></HrModuleOnly>
             </DialogTitle>
             <DialogDescription>
               Viewing details for {getFullName(employee)}.
@@ -63,12 +64,14 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
           <Tabs defaultValue="details">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="leave">Leave</TabsTrigger>
+            <HrModuleOnly module="leave"><TabsTrigger value="leave">Leave</TabsTrigger></HrModuleOnly>
             <RequirePermission permission="hr.manage">
-              <TabsTrigger value="contracts">Contracts</TabsTrigger>
-              <TabsTrigger value="disciplinary">Disciplinary</TabsTrigger>
-              <TabsTrigger value="recognition">Recognition</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <HrModuleOnly module="letters">
+                <TabsTrigger value="contracts">Contracts</TabsTrigger>
+                <TabsTrigger value="disciplinary">Disciplinary</TabsTrigger>
+                <TabsTrigger value="recognition">Recognition</TabsTrigger>
+              </HrModuleOnly>
+              <HrModuleOnly module="documents"><TabsTrigger value="documents">Documents</TabsTrigger></HrModuleOnly>
             </RequirePermission>
           </TabsList>
           <TabsContent value="details">

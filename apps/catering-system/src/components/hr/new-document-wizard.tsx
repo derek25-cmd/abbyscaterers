@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, REGISTRY, getDocTypeDefinition, isDocTypeEnabled, personKindOf } from '@/lib/hr-docs/registry';
 import { PENDING_REF, PLACEHOLDER_REFERENCE, formatLongDate } from '@/lib/hr-docs/render';
 import { OFFER_STATUS_LABEL } from '@/lib/hr-docs/types/shared';
+import { isHrModuleOn, moduleOfDocType, useHrModules } from '@/lib/hr-modules';
 import { getEmployees } from '@/services/employeeService';
 import { listCandidates } from '@/services/candidateService';
 import {
@@ -56,6 +57,7 @@ const canReceiveOffer = (c: Candidate) => !c.employee_id && c.offer_status !== '
  */
 export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeId, defaultCandidateId, defaultDocType, editing }: WizardProps) {
   const { toast } = useToast();
+  const hrModules = useHrModules();
   const [step, setStep] = useState(0);
   const [docType, setDocType] = useState<HrDocTypeCode | null>(null);
   const [employeeId, setEmployeeId] = useState('');
@@ -246,7 +248,7 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
 
         {step === 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
-            {DOC_TYPE_ORDER.map((t) => {
+            {DOC_TYPE_ORDER.filter((t) => !!hrModules && isHrModuleOn(hrModules, moduleOfDocType(t))).map((t) => {
               const enabled = isDocTypeEnabled(t);
               return (
                 <button

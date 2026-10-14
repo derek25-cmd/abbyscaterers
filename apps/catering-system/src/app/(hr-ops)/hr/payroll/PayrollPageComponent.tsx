@@ -24,6 +24,7 @@ import type { PayrollFormData } from "@/lib/schemas";
 import type { Payroll } from "@/types";
 import { formatTZS } from "@/lib/formatCurrency";
 import { PendingCashRewardsPanel } from "@/components/hr/pending-cash-rewards-panel";
+import { HrModuleOnly } from "@/components/hr/hr-module-gate";
 
 export function PayrollPageComponent() {
     const searchParams = useSearchParams();
@@ -218,9 +219,11 @@ export function PayrollPageComponent() {
             </Card>
         </div>
 
-        <RequirePermission permission="payroll.manage">
+        <HrModuleOnly module="letters">
+          <RequirePermission permission="payroll.manage">
             <PendingCashRewardsPanel payrolls={payrolls} />
-        </RequirePermission>
+          </RequirePermission>
+        </HrModuleOnly>
 
         <Card>
           <CardHeader>

@@ -12,6 +12,7 @@ import { useState } from "react";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { NewDocumentWizard } from "@/components/hr/new-document-wizard";
 import { useRouter } from "next/navigation";
+import { isHrModuleOn, moduleOfDocType, useHrModules } from "@/lib/hr-modules";
 
 
 export function EmployeeActionCenter({ employee }) {
@@ -20,8 +21,13 @@ export function EmployeeActionCenter({ employee }) {
     const [letterType, setLetterType] = useState(null);
     // Only the letters that make sense for this person right now (a certificate
     // of service once employment has ended, the others while Active).
-    const letterTypes = DOC_TYPE_ORDER.filter((t) => t === 'general_letter' || docTypeAppliesTo(t, employee));
-    const hasLeft = employee.status === 'Inactive' && !!employee.employmentEndDate;
+    // ...and only those whose HR module is switched on.
+    const modules = useHrModules();
+    const letterTypes = DOC_TYPE_ORDER
+        .filter((t) => t === 'general_letter' || docTypeAppliesTo(t, employee))
+        .filter((t) => !!modules && isHrModuleOn(modules, moduleOfDocType(t)));
+    const hasLeft = employee.status === 'Inactive' && !!employee.employmentEndDate
+        && !!modules && isHrModuleOn(modules, 'letters');
 
     const handleCreatePayslip = () => {
         router.push(`/hr/payroll?createPayslipFor=${employee.id}`);
@@ -56,6 +62,7 @@ export function EmployeeActionCenter({ employee }) {
                     </Link>
                 </Button>
                 <RequirePermission permission="hr.manage">
+                    {letterTypes.length > 0 && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline">
@@ -70,6 +77,7 @@ export function EmployeeActionCenter({ employee }) {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                     {hasLeft && (
                         <Button onClick={() => setLetterType('certificate_of_service')}>
                             <Award className="mr-2 h-4 w-4" />

@@ -43,6 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { ExpiringContractsCard } from "@/components/hr/expiring-contracts-card";
+import { HrModuleOnly } from "@/components/hr/hr-module-gate";
 
 const calculateInvoiceTotal = (inv: Invoice): number => calculateGrandTotal(inv);
 
@@ -219,9 +220,11 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* HR only: contracts ending soon */}
-        <RequirePermission permission="hr.manage">
+        <HrModuleOnly module="letters">
+          <RequirePermission permission="hr.manage">
             <ExpiringContractsCard />
-        </RequirePermission>
+          </RequirePermission>
+        </HrModuleOnly>
 
         {/* Balanced Financial Zone - Rebalanced to 1:2 ratio */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">

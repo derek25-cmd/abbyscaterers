@@ -20,6 +20,7 @@ import { FireEmployeeSchema, type FireEmployeeFormData } from '@/lib/schemas';
 import { format } from 'date-fns';
 import { NewDocumentWizard } from '@/components/hr/new-document-wizard';
 import type { Employee } from '@/types';
+import { useHrModule } from '@/lib/hr-modules';
 
 interface FireEmployeeDialogProps {
   isOpen: boolean;
@@ -41,6 +42,8 @@ export function FireEmployeeDialog({ isOpen, setIsOpen, employee, onConfirm }: F
   const [submitting, setSubmitting] = useState(false);
   const [path, setPath] = useState<'choose' | 'direct'>('choose');
   const [letterOpen, setLetterOpen] = useState(false);
+  // Letters switched off: only the direct path, which is never hidden.
+  const lettersOn = useHrModule('letters');
 
   const form = useForm<FireEmployeeFormData>({
     resolver: zodResolver(FireEmployeeSchema),
@@ -87,6 +90,7 @@ export function FireEmployeeDialog({ isOpen, setIsOpen, employee, onConfirm }: F
 
           {path === 'choose' ? (
             <div className="grid gap-3 py-2">
+              {lettersOn && (
               <button type="button" onClick={prepareLetter}
                 className="flex items-start gap-3 rounded-md border-2 border-primary bg-primary/5 p-4 text-left hover:bg-primary/10">
                 <FileText className="mt-0.5 h-5 w-5 text-primary" />
@@ -97,6 +101,7 @@ export function FireEmployeeDialog({ isOpen, setIsOpen, employee, onConfirm }: F
                   </span>
                 </span>
               </button>
+              )}
               <button type="button" onClick={() => setPath('direct')}
                 className="flex items-start gap-3 rounded-md border p-4 text-left hover:bg-muted/50">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-muted-foreground" />
