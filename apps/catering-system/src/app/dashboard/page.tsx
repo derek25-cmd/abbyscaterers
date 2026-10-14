@@ -41,6 +41,8 @@ import { generateBusinessInsightAction } from "@/lib/actions";
 import { BusinessInsightOutput } from "@/ai/flows/business-insight-flow";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { ExpiringContractsCard } from "@/components/hr/expiring-contracts-card";
 
 const calculateInvoiceTotal = (inv: Invoice): number => calculateGrandTotal(inv);
 
@@ -215,6 +217,11 @@ export default function DashboardPage() {
                 description="Assets available for deployment"
             />
         </motion.div>
+
+        {/* HR only: contracts ending soon */}
+        <RequirePermission permission="hr.manage">
+            <ExpiringContractsCard />
+        </RequirePermission>
 
         {/* Balanced Financial Zone - Rebalanced to 1:2 ratio */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
