@@ -11,6 +11,12 @@ import { formatTZS } from '@/lib/formatCurrency';
  * html2canvas capture pattern instead. Mirrors menuCostingPdf.ts.
  */
 export function exportPayslipPdf(payroll: Payroll, employee: Employee | null, companyName = "Abby's Legendary Caterers Limited") {
+    const { doc, filename } = buildPayslipPdf(payroll, employee, companyName);
+    doc.save(filename);
+}
+
+/** Builds the payslip without saving it (testable); exportPayslipPdf saves it. */
+export function buildPayslipPdf(payroll: Payroll, employee: Employee | null, companyName = "Abby's Legendary Caterers Limited") {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 14;
@@ -156,5 +162,5 @@ export function exportPayslipPdf(payroll: Payroll, employee: Employee | null, co
     }
 
     const filename = `Payslip_${payroll.employeeName.replace(/\s+/g, '_')}_${payroll.payPeriodStart}.pdf`;
-    doc.save(filename);
+    return { doc, filename };
 }

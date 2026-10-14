@@ -14,8 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import jsPDF from 'jspdf';
-import "jspdf-autotable";
+import { buildIssuanceNotePdf } from "@/lib/hrExportPdf";
 import { Separator } from "@/components/ui/separator";
 import type { Issuance, Order, Employee } from "@/types";
 
@@ -30,43 +29,7 @@ export function ViewIssuanceDialog({ isOpen, setIsOpen, logEntry }: ViewIssuance
   if (!logEntry) return null;
 
   const handlePrint = () => {
-    const doc = new jsPDF({ orientation: 'landscape' });
-    
-    doc.text("Issuance Note", 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Issue ID: ${logEntry.id}`, 14, 30);
-    doc.text(`Date: ${logEntry.date}`, 14, 35);
-    doc.text(`Issued To: ${logEntry.issuedTo}`, 150, 30);
-    doc.text(`Client Order: ${logEntry.order?.name || 'N/A'} (${logEntry.orderId})`, 150, 35);
-    
-    const tableColumn = ["Asset Name", "Type", "Issued", "Returned", "Unit Price", "Total Value"];
-    const tableRows = logEntry.items.map(item => [
-        item.name,
-        item.type,
-        item.quantityIssued,
-        item.quantityReturned || 0,
-        formatCurrency(item.unitPrice),
-        formatCurrency(item.unitPrice * item.quantityIssued)
-    ]);
-    
-    (doc as any).autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 45,
-        foot: [[
-            { content: `Grand Total Value: ${formatCurrency(logEntry.totalValue)}`, colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } }
-        ]],
-        showFoot: 'lastPage'
-    });
-
-    let finalY = (doc as any).autoTable.previous.finalY;
-
-    if (logEntry.notes) {
-      doc.text("Notes:", 14, finalY + 10);
-      doc.text(logEntry.notes, 14, finalY + 15, { maxWidth: 180 });
-    }
-
-    doc.save(`issuance-note-${logEntry.id}.pdf`);
+    buildIssuanceNotePdf(logEntry).save(`issuance-note-${logEntry.id}.pdf`);
   };
   
   const getFullName = (emp: Employee | undefined) => {

@@ -65,6 +65,28 @@ describe('buildLetterDoc', () => {
     expect(doc.getNumberOfPages()).toBe(1);
   });
 
+  it('prints the invoice signature and stamp as two images in the signature block', () => {
+    const png = { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', width: 200, height: 200 };
+    // Images placed on page 1 (each placement is a "/I<n> Do" drawing command).
+    const images = (doc: ReturnType<typeof buildLetterDoc>) => (pageText(doc, 1).match(/\/I\d+ Do/g) ?? []).length;
+    expect(images(buildLetterDoc(base({ letterhead: { company: { name: 'X' }, signature: png } })))).toBe(1);
+    const both = buildLetterDoc(base({ letterhead: { company: { name: 'X' }, signature: png, stamp: png } }));
+    expect(images(both)).toBe(2);
+    expect(both.getNumberOfPages()).toBe(1);
+    expect(pageText(both, 1)).toContain('Neema Mushi');
+  });
+
+  it('keeps the stamp with the signature when the letter fills the page', () => {
+    const png = { dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', width: 200, height: 200 };
+    for (let n = 1; n <= 8; n++) {
+      const doc = buildLetterDoc(base({ letterhead: { company: { name: 'X' }, signature: png, stamp: png }, paragraphs: longParagraphs(n) }));
+      const last = doc.getNumberOfPages();
+      // The name under the signature is always on the last page, together with the stamp image.
+      expect(pageText(doc, last)).toContain('Neema Mushi');
+      expect(pageText(doc, last)).toMatch(/\/I\d+ Do/);
+    }
+  });
+
   it('does not lose a paragraph that is one very long word', () => {
     const doc = buildLetterDoc(base({ paragraphs: [[{ text: 'x'.repeat(400), bold: false }]] }));
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);

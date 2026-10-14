@@ -22,8 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HrModuleOnly } from "@/components/hr/hr-module-gate";
 import { ImportContractsDialog } from "@/components/hr/import-dialogs";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { buildEmployeeDirectoryPdf, employeeDirectoryFileName } from "@/lib/hrExportPdf";
 import { format } from "date-fns";
 
 
@@ -156,43 +155,7 @@ export default function EmployeesPage() {
   };
 
   const handleExportPDF = (activeOnly: boolean) => {
-    const scoped = activeOnly ? employees.filter(e => e.status === 'Active') : employees;
-    const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`ABBY'S CATERERS — ${activeOnly ? 'ACTIVE STAFF DIRECTORY' : 'FULL STAFF DIRECTORY'}`, 14, 18);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
-    doc.text(`Total Employees: ${scoped.length}`, 14, 30);
-
-    (doc as any).autoTable({
-      startY: 36,
-      theme: 'grid',
-      head: [['ID', 'Name', 'Department', 'Role', 'Status', 'Email', 'Phone', 'Monthly Salary']],
-      body: scoped.map(emp => [
-        emp.id,
-        getFullName(emp),
-        emp.department,
-        emp.role,
-        emp.status,
-        emp.email || '-',
-        emp.phone || '-',
-        emp.monthlySalary ? emp.monthlySalary.toLocaleString() : '-'
-      ]),
-      styles: {
-        font: 'helvetica',
-        fontSize: 12
-      },
-      headStyles: {
-        font: 'helvetica',
-        fontSize: 12,
-        fillColor: [15, 23, 42],
-        textColor: 255
-      }
-    });
-
-    doc.save(`employee-directory-${activeOnly ? 'active-' : ''}${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    buildEmployeeDirectoryPdf(employees, { activeOnly }).save(employeeDirectoryFileName(activeOnly));
   };
 
   const handleExportExcel = async (activeOnly: boolean) => {
