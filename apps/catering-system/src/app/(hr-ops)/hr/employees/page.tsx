@@ -12,6 +12,7 @@ import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
 import { ViewEmployeeDialog } from "@/components/hr/view-employee-dialog";
 import { FireEmployeeDialog } from "@/components/hr/fire-employee-dialog";
 import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeService";
+import { endEmploymentWithoutLetter } from "@/services/hrRecordsService";
 import type { FireEmployeeFormData } from "@/lib/schemas";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -101,9 +102,13 @@ export default function EmployeesPage() {
   
   const handleEditEmployee = async (updatedEmployee: any) => {
     await updateEmployee(updatedEmployee.id, updatedEmployee);
+    // Reactivation: the database clears the end date and reason; show that too.
+    const shown = updatedEmployee.status === 'Active'
+      ? { ...updatedEmployee, employmentEndDate: null, employmentEndReason: null }
+      : updatedEmployee;
     setEmployees(prevEmployees => 
         prevEmployees.map(employee => 
-            employee.id === updatedEmployee.id ? updatedEmployee : employee
+            employee.id === updatedEmployee.id ? shown : employee
         )
     );
   };
@@ -111,12 +116,9 @@ export default function EmployeesPage() {
   const handleFireEmployee = async (data: FireEmployeeFormData) => {
     if (!selectedEmployee) return;
     try {
-      const success = await updateEmployee(selectedEmployee.id, {
-        status: 'Inactive',
-        employmentEndDate: data.employmentEndDate,
-        employmentEndReason: data.employmentEndReason,
-      });
-      if (!success) throw new Error('The database update did not succeed.');
+      // Same end-of-employment rules as a termination letter (contract terminated,
+      // later leave cancelled), done in the database and recorded in the Audit Trail.
+      const changes = await endEmploymentWithoutLetter(selectedEmployee.id, data.employmentEndDate, data.employmentEndReason);
       setEmployees(prevEmployees =>
         prevEmployees.map(employee =>
           employee.id === selectedEmployee.id
@@ -124,7 +126,7 @@ export default function EmployeesPage() {
             : employee
         )
       );
-      toast({ title: "Employment ended", description: `${getFullName(selectedEmployee)} has been marked Inactive.` });
+      toast({ title: "Employment ended", description: changes.join(' ') || `${getFullName(selectedEmployee)} has been marked Inactive.` });
     } catch (err) {
       toast({
         variant: "destructive",
