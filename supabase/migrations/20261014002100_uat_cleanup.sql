@@ -200,7 +200,7 @@ DECLARE
   counters jsonb := '[]'::jsonb;
   fk RECORD;
   n integer;
-  c RECORD;
+  ctr RECORD;   -- not "c": the queries below use c as a table alias
   new_value integer;
 BEGIN
   -- The service role (scripts) or the SQL editor (no signed-in user) only.
@@ -266,12 +266,12 @@ BEGIN
   END LOOP;
 
   -- Reference numbers each counter goes back to.
-  FOR c IN SELECT * FROM public.hr_document_counters LOOP
+  FOR ctr IN SELECT * FROM public.hr_document_counters LOOP
     SELECT coalesce(max(substring(d.ref_no FROM '[0-9]+$')::int), 0) INTO new_value
       FROM public.hr_documents d
-     WHERE d.doc_type = c.doc_type AND d.ref_no IS NOT NULL AND split_part(d.ref_no, '/', 4)::int = c.year
+     WHERE d.doc_type = ctr.doc_type AND d.ref_no IS NOT NULL AND split_part(d.ref_no, '/', 4)::int = ctr.year
        AND NOT (d.id = ANY (docs));
-    counters := counters || jsonb_build_object('doc_type', c.doc_type, 'year', c.year, 'from', c.last_value, 'to', new_value);
+    counters := counters || jsonb_build_object('doc_type', ctr.doc_type, 'year', ctr.year, 'from', ctr.last_value, 'to', new_value);
   END LOOP;
 
   IF p_dry_run THEN
@@ -312,8 +312,8 @@ BEGIN
   DELETE FROM public.staff_users WHERE id = ANY (logins);  -- in case a row had no auth user
   DELETE FROM public.employees WHERE id = ANY (emps);
 
-  FOR c IN SELECT * FROM jsonb_to_recordset(counters) AS t(doc_type text, year integer, "from" integer, "to" integer) LOOP
-    UPDATE public.hr_document_counters SET last_value = c."to" WHERE doc_type = c.doc_type AND year = c.year;
+  FOR ctr IN SELECT * FROM jsonb_to_recordset(counters) AS t(doc_type text, year integer, "from" integer, "to" integer) LOOP
+    UPDATE public.hr_document_counters SET last_value = ctr."to" WHERE doc_type = ctr.doc_type AND year = ctr.year;
   END LOOP;
 
   PERFORM set_config('leave.rpc', '', true);
