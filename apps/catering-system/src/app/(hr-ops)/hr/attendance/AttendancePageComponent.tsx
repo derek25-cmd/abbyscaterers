@@ -40,14 +40,27 @@ import { useToast } from "@/hooks/use-toast";
 import { EditAttendanceDialog } from "@/components/hr/edit-attendance-dialog";
 import { BulkMarkAttendanceDialog } from "@/components/hr/bulk-mark-attendance-dialog";
 import "./AttendanceRedesign.css";
+import { Lock } from "lucide-react";
+import { useStaffRole } from "@/hooks/use-staff-role";
+import { getRequestsByIds } from "@/services/leaveService";
+import { getAuditActors } from "@/services/auditService";
+import type { LeaveRequestView } from "@/types";
 
-const STATUS_ORDER: (AttendanceStatus | null)[] = ['Present', 'Absent', 'Leave', 'Half Day', 'Late', null];
+// "Leave" is deliberately not in this cycle: leave comes only from an approved
+// leave request (Leave page), so balances and approvals cannot be bypassed.
+// The database refuses a manual Leave from anyone but HR as well.
+const STATUS_ORDER: (AttendanceStatus | null)[] = ['Present', 'Absent', 'Half Day', 'Late', null];
 
 export function AttendancePageComponent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const employeeIdFilter = searchParams.get('employeeId');
     const { toast } = useToast();
+    const { canManageHr } = useStaffRole();
+
+    // Details of the leave requests behind locked cells, for the tooltip.
+    const [leaveById, setLeaveById] = useState<Record<string, LeaveRequestView>>({});
+    const [approverEmail, setApproverEmail] = useState<Record<string, string>>({});
 
     const [records, setRecords] = useState<Attendance[]>([]);
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -86,6 +99,30 @@ export function AttendancePageComponent() {
         fetchData();
     }, [fetchData]);
 
+    useEffect(() => {
+        const ids = [...new Set(records.map(r => r.leave_request_id).filter(Boolean) as string[])];
+        if (ids.length === 0) { setLeaveById({}); return; }
+        let active = true;
+        getRequestsByIds(ids)
+            .then(rows => { if (active) setLeaveById(Object.fromEntries(rows.map(r => [r.id, r]))); })
+            .catch(() => undefined);
+        getAuditActors().then(a => { if (active) setApproverEmail(Object.fromEntries(a.map(x => [x.id, x.email]))); });
+        return () => { active = false; };
+    }, [records]);
+
+    // The leave request that owns a cell, if any. Such cells are read-only here.
+    const leaveLockFor = useCallback((employeeId: string, date: string) => {
+        const record = records.find(r => r.employee_id === employeeId && r.date === date);
+        return record?.leave_request_id ? record.leave_request_id : null;
+    }, [records]);
+
+    const leaveLockText = useCallback((requestId: string) => {
+        const req = leaveById[requestId];
+        if (!req) return 'Approved leave. This day is locked.';
+        const who = req.approved_by ? (approverEmail[req.approved_by] ?? 'HR') : 'HR';
+        return `Approved ${req.leave_type_name} leave, ${req.start_date} to ${req.end_date} (approved by ${who}). Locked: cancel the leave request on the Leave page to change this day.`;
+    }, [leaveById, approverEmail]);
+
     const daysInMonth = useMemo(() => {
         const date = new Date(currentYear, currentMonth, 1);
         const start = startOfMonth(date);
@@ -113,7 +150,15 @@ export function AttendancePageComponent() {
     }, [employees, searchQuery, employeeIdFilter]);
 
     const handleToggleStatus = (employeeId: string, date: string, currentStatus?: AttendanceStatus) => {
-        const currentIndex = currentStatus ? STATUS_ORDER.indexOf(currentStatus) : 5;
+        const lock = leaveLockFor(employeeId, date);
+        if (lock) {
+            toast({ title: 'This day is approved leave', description: leaveLockText(lock) });
+            return;
+        }
+        const blank = STATUS_ORDER.indexOf(null);
+        const found = currentStatus ? STATUS_ORDER.indexOf(currentStatus) : blank;
+        // A legacy manual "Leave" is no longer in the cycle: step to the first status.
+        const currentIndex = found === -1 ? blank : found;
         const nextStatus = STATUS_ORDER[(currentIndex + 1) % STATUS_ORDER.length];
 
         const key = `${employeeId}:${date}`;
@@ -131,7 +176,8 @@ export function AttendancePageComponent() {
             const [employeeId, date] = key.split(':');
             const existing = records.find(r => r.employee_id === employeeId && r.date === date);
             return { employeeId, date, status, existing };
-        });
+        }).filter(c => !c.existing?.leave_request_id); // approved-leave days are never saved from here
+        if (cells.length === 0) { setPendingChanges({}); setSaving(false); return; }
 
         // Optimistic-concurrency pre-check: block the save (rather than
         // silently overwrite) if someone else changed one of these cells
@@ -189,13 +235,20 @@ export function AttendancePageComponent() {
     };
 
     const handleBulkApply = ({ date, status, employeeIds }: { date: string; status: AttendanceStatus; employeeIds: string[] }) => {
+        // People on approved leave that day keep their Leave; say who was skipped.
+        const onLeave = employeeIds.filter(id => leaveLockFor(id, date));
+        const targets = employeeIds.filter(id => !onLeave.includes(id));
         setPendingChanges(prev => {
             const next = { ...prev };
-            employeeIds.forEach(id => {
+            targets.forEach(id => {
                 next[`${id}:${date}`] = status;
             });
             return next;
         });
+        if (onLeave.length > 0) {
+            const names = onLeave.map(id => employees.find(e => e.id === id)).filter(Boolean).map(e => `${e!.firstName} ${e!.lastName}`).join(', ');
+            toast({ title: `${onLeave.length} skipped: on approved leave`, description: `${names} on approved leave on ${date}. Their Leave was kept.` });
+        }
     };
 
     const openCellDialog = (emp: Employee, date: Date) => {
@@ -397,11 +450,11 @@ export function AttendancePageComponent() {
                     <div className="mb-6 flex flex-wrap gap-6 border-b pb-6">
                         <div className="legend-item"><div className="legend-box attendance-cell p">P</div> <span>Present</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell a">A</div> <span>Absent</span></div>
-                        <div className="legend-item"><div className="legend-box attendance-cell l">L</div> <span>Leave</span></div>
+                        <div className="legend-item"><div className="legend-box attendance-cell l">L</div> <span>Leave (from an approved request, locked)</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell h">H</div> <span>Half Day</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell t">T</div> <span>Late</span></div>
                         <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            💡 Click to cycle status • Right-click for clock in/out & notes • <span className="text-destructive">●</span> Unsaved
+                            💡 Click to cycle status • Right-click for clock in/out & notes • <span className="text-destructive">●</span> Unsaved • Leave comes from <a className="underline" href="/hr/leave">approved leave requests</a>
                         </div>
                     </div>
 
@@ -434,6 +487,8 @@ export function AttendancePageComponent() {
                                             const info = getStatusInfo(emp.id, day);
                                             const status = info.status;
                                             const isUnsaved = info.isUnsaved;
+                                            const dayStr = format(day, "yyyy-MM-dd");
+                                            const lockId = leaveLockFor(emp.id, dayStr);
 
                                             return (
                                                 <td key={day.toString()} className={cn(isWknd && "attendance-weekend")}>
@@ -441,12 +496,16 @@ export function AttendancePageComponent() {
                                                         className={cn(
                                                             "attendance-cell",
                                                             status?.toLowerCase().replace(' ', ''),
-                                                            isUnsaved && "unsaved"
+                                                            isUnsaved && "unsaved",
+                                                            lockId && "locked-leave"
                                                         )}
+                                                        title={lockId ? leaveLockText(lockId) : undefined}
+                                                        aria-label={lockId ? leaveLockText(lockId) : undefined}
                                                         onClick={() => handleToggleStatus(emp.id, format(day, "yyyy-MM-dd"), (status || undefined) as AttendanceStatus | undefined)}
                                                         onContextMenu={(e) => { e.preventDefault(); openCellDialog(emp, day); }}
                                                     >
                                                         {status ? status.charAt(0) : ''}
+                                                        {lockId && <Lock className="locked-leave-icon" aria-hidden />}
                                                     </div>
                                                 </td>
                                             );
@@ -496,6 +555,8 @@ export function AttendancePageComponent() {
                     date={selectedCell.date}
                     record={selectedCell.record}
                     onSave={handleCellSave}
+                    lockedReason={selectedCell.record?.leave_request_id ? leaveLockText(selectedCell.record.leave_request_id) : undefined}
+                    canManageHr={canManageHr}
                 />
             )}
         </main>

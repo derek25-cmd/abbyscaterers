@@ -1,6 +1,10 @@
 import { supabase } from '@/lib/supabase-client';
 
-export const HR_AUDIT_TABLES = ['employees', 'attendance', 'positions', 'training_participants', 'training_evaluations', 'payroll'] as const;
+export const HR_AUDIT_TABLES = [
+  'employees', 'attendance', 'positions', 'training_participants', 'training_evaluations', 'payroll',
+  // Leave management (Phase 2)
+  'leave_requests', 'leave_balances', 'leave_types', 'leave_settings', 'public_holidays',
+] as const;
 export const OPS_AUDIT_TABLES = ['products', 'stock_logs', 'assets', 'issuance'] as const;
 
 export type AuditModule = 'all' | 'hr' | 'ops';

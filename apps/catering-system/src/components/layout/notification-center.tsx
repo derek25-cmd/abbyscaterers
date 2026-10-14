@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, RefreshCw, CheckCheck, Zap, Info } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, RefreshCw, CheckCheck, Zap, Info, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -12,6 +13,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useAppVersion } from "@/hooks/useAppVersion";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  getMyNotifications, markAllNotificationsRead, markNotificationRead, type HrNotification,
+} from "@/services/hrNotificationService";
+
+const HR_POLL_MS = 60_000;
 
 interface Notification {
   id: string;
@@ -21,12 +28,33 @@ interface Notification {
   timestamp: Date;
   action?: { label: string; onClick: () => void };
   read: boolean;
+  /** Set for notifications that come from the database (leave requests etc.). */
+  hr?: { link: string | null };
 }
 
 export function NotificationCenter() {
   const { updateAvailable, refreshApp } = useAppVersion();
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const { user } = useAuth();
+  const [hrItems, setHrItems] = useState<HrNotification[]>([]);
+
+  // HR notices (new leave request, leave decision) live in the database. They
+  // are refreshed every minute and whenever the bell is opened, so a request
+  // filed a moment ago is there when HR looks.
+  const loadHr = useCallback(async () => {
+    if (!user) { setHrItems([]); return; }
+    setHrItems(await getMyNotifications());
+  }, [user]);
+
+  useEffect(() => {
+    void loadHr();
+    const timer = setInterval(() => void loadHr(), HR_POLL_MS);
+    return () => clearInterval(timer);
+  }, [loadHr]);
+
+  useEffect(() => { if (open) void loadHr(); }, [open, loadHr]);
 
   const notifications: Notification[] = [
     ...(updateAvailable
@@ -48,16 +76,37 @@ export function NotificationCenter() {
           },
         ]
       : []),
+    ...hrItems.map((n) => ({
+      id: `hr-${n.id}`,
+      type: "info" as const,
+      title: n.title,
+      body: n.body ?? "",
+      timestamp: new Date(n.created_at),
+      read: !!n.read_at,
+      hr: { link: n.link },
+    })),
   ];
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => {
     setReadIds(new Set(notifications.map((n) => n.id)));
+    if (hrItems.some((n) => !n.read_at)) {
+      const now = new Date().toISOString();
+      setHrItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? now })));
+      void markAllNotificationsRead();
+    }
   };
 
-  const markRead = (id: string) => {
-    setReadIds((prev) => new Set([...prev, id]));
+  const markRead = (n: Notification) => {
+    setReadIds((prev) => new Set([...prev, n.id]));
+    if (n.hr) {
+      const dbId = n.id.replace(/^hr-/, "");
+      setHrItems((prev) => prev.map((x) => (x.id === dbId && !x.read_at ? { ...x, read_at: new Date().toISOString() } : x)));
+      void markNotificationRead(dbId);
+      // Take the person to the thing the notification is about.
+      if (n.hr.link) { setOpen(false); router.push(n.hr.link); }
+    }
   };
 
   const iconMap = {
@@ -138,7 +187,7 @@ export function NotificationCenter() {
                     !n.read && "bg-muted/20",
                     n.read && "opacity-70"
                   )}
-                  onClick={() => markRead(n.id)}
+                  onClick={() => markRead(n)}
                 >
                   <div className="flex gap-3">
                     <div
@@ -147,7 +196,7 @@ export function NotificationCenter() {
                         bgMap[n.type]
                       )}
                     >
-                      {iconMap[n.type]}
+                      {n.hr ? <CalendarDays className="h-4 w-4 text-blue-500" /> : iconMap[n.type]}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -186,7 +235,7 @@ export function NotificationCenter() {
         {/* Footer */}
         <div className="px-4 py-2.5 border-t border-border bg-muted/20">
           <p className="text-[10px] text-muted-foreground text-center">
-            Updates are checked automatically every 5 minutes
+            App updates are checked every 5 minutes. Leave notices refresh every minute.
           </p>
         </div>
       </PopoverContent>

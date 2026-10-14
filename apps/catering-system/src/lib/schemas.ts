@@ -478,6 +478,21 @@ export const AttendanceSchema = z.object({
 export type AttendanceFormData = z.infer<typeof AttendanceSchema>;
 
 
+// --- LEAVE ---
+export const LeaveRequestSchema = z.object({
+  employee_id: z.string().min(1, "Choose who the leave is for"),
+  leave_type_id: z.string().min(1, "Choose a type of leave"),
+  start_date: z.string().refine((d) => isValidDate(d), "Choose the first day of leave"),
+  end_date: z.string().refine((d) => isValidDate(d), "Choose the last day of leave"),
+  reason: z.string().max(500, "Please keep the reason under 500 characters").optional().or(z.literal('')),
+  attachment_path: z.string().nullable().optional(),
+}).superRefine((val, ctx) => {
+  if (val.start_date && val.end_date && val.end_date < val.start_date) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['end_date'], message: 'The last day cannot be before the first day' });
+  }
+});
+export type LeaveRequestFormData = z.infer<typeof LeaveRequestSchema>;
+
 // --- MENU COSTING ---
 export const CateringMenuSchema = z.object({
     name: z.string().min(1, "Menu name is required"),

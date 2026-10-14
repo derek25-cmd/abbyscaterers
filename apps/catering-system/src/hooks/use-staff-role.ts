@@ -12,6 +12,8 @@ interface StaffRoleState {
   isAdmin: boolean;
   isActiveStaff: boolean;
   isLoading: boolean;
+  /** employees.id of the employee this login is linked to (Users & Access), if any. */
+  employeeId: string | null;
   canManageHr: boolean;
   canManageOps: boolean;
   canManageSettings: boolean;
@@ -43,6 +45,7 @@ export function useStaffRole(): StaffRoleState {
     isAdmin: false,
     isActiveStaff: false,
     isLoading: true,
+    employeeId: null,
     ...derive(null),
   });
 
@@ -50,21 +53,28 @@ export function useStaffRole(): StaffRoleState {
     let active = true;
 
     if (!user) {
-      setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false, ...derive(null) });
+      setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false, employeeId: null, ...derive(null) });
       return;
     }
 
     setState((prev) => ({ ...prev, isLoading: true }));
 
-    supabase
-      .from('staff_users')
-      .select('role, is_active')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    // employee_id arrived with the Phase 2 migration. If the app is deployed
+    // before that migration, selecting it fails (42703) and would lock every
+    // user out, so fall back to the Phase 1 columns.
+    const load = async () => {
+      const full = await supabase.from('staff_users').select('role, is_active, employee_id').eq('id', user.id).maybeSingle();
+      if (full.error?.code === '42703') {
+        const basic = await supabase.from('staff_users').select('role, is_active').eq('id', user.id).maybeSingle();
+        return { data: basic.data ? { ...basic.data, employee_id: null } : null, error: basic.error };
+      }
+      return full;
+    };
+
+    load().then(({ data, error }) => {
         if (!active) return;
         if (error || !data || !data.is_active) {
-          setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false, ...derive(null) });
+          setState({ role: null, isAdmin: false, isActiveStaff: false, isLoading: false, employeeId: null, ...derive(null) });
           return;
         }
         const role = isStaffRole(data.role) ? data.role : null;
@@ -73,6 +83,7 @@ export function useStaffRole(): StaffRoleState {
           isAdmin: role === 'admin',
           isActiveStaff: role !== null,
           isLoading: false,
+          employeeId: (data.employee_id as string | null) ?? null,
           ...derive(role),
         });
       });

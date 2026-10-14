@@ -14,7 +14,8 @@ import {
   History,
   CreditCard,
   GraduationCap,
-  ScrollText
+  ScrollText,
+  CalendarDays
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -66,6 +67,11 @@ const hrNav = [
     href: "/hr/attendance",
     label: "Attendance",
     icon: CalendarCheck,
+  },
+  {
+    href: "/hr/leave",
+    label: "Leave",
+    icon: CalendarDays,
   },
   {
     href: "/hr/training",

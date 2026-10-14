@@ -389,6 +389,8 @@ export interface Attendance {
     notes?: string;
     clock_in_time?: string | null;
     clock_out_time?: string | null;
+    /** Set on days created by an approved leave request; those rows are locked (see Phase 2 leave). */
+    leave_request_id?: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -732,4 +734,72 @@ export interface SupervisorReport {
     signature?: string;
     created_at: string;
     updated_at: string;
+}
+
+// --- LEAVE MANAGEMENT (Phase 2) ---
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface LeaveType {
+    id: string;
+    name: string;
+    description?: string | null;
+    days_per_year: number;
+    is_paid: boolean;
+    /** false for Unpaid: no entitlement, no balance row. */
+    tracks_balance: boolean;
+    requires_attachment: boolean;
+    max_carry_forward: number;
+    is_active: boolean;
+    sort_order: number;
+}
+
+export interface LeaveRequest {
+    id: string;
+    employee_id: string;
+    leave_type_id: string;
+    start_date: string;
+    end_date: string;
+    /** Working days, computed by the database. */
+    days: number;
+    reason?: string | null;
+    /** Path in the private leave-attachments bucket; open it through a signed URL. */
+    attachment_path?: string | null;
+    status: LeaveRequestStatus;
+    decision_note?: string | null;
+    decided_by?: string | null;
+    decided_at?: string | null;
+    approved_by?: string | null;
+    approved_at?: string | null;
+    cancelled_by?: string | null;
+    cancelled_at?: string | null;
+    created_by?: string | null;
+    created_at: string;
+}
+
+/** A request with the names the screens need already filled in. */
+export interface LeaveRequestView extends LeaveRequest {
+    employee_name: string;
+    department?: string;
+    leave_type_name: string;
+}
+
+export interface LeaveBalance {
+    id: string;
+    employee_id: string;
+    leave_type_id: string;
+    year: number;
+    entitled: number;
+    carried_forward: number;
+    taken: number;
+}
+
+export interface PublicHoliday {
+    id: string;
+    holiday_date: string;
+    name: string;
+}
+
+export interface LeaveSettings {
+    /** ISO weekday numbers, 1 = Monday ... 7 = Sunday. */
+    working_days: number[];
 }

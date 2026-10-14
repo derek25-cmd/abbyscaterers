@@ -6,6 +6,8 @@ export interface StaffUser {
   email: string;
   role: StaffRole;
   is_active: boolean;
+  /** employees.id this login belongs to; null until the admin links it. */
+  employee_id: string | null;
   created_at: string | null;
 }
 
@@ -14,10 +16,16 @@ export interface StaffUser {
 // audit_staff_user_change trigger, so nothing is logged from here.
 
 export const getStaffUsers = async (): Promise<StaffUser[]> => {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('staff_users')
-    .select('id, email, role, is_active, created_at')
+    .select('id, email, role, is_active, employee_id, created_at')
     .order('email');
+  // Before the employee-link migration is applied the column does not exist.
+  if (error?.code === '42703') {
+    const basic = await supabase.from('staff_users').select('id, email, role, is_active, created_at').order('email');
+    data = (basic.data ?? []).map((u) => ({ ...u, employee_id: null })) as typeof data;
+    error = basic.error;
+  }
   if (error) {
     console.error('Error fetching staff users:', error);
     throw new Error(error.message);
@@ -25,7 +33,7 @@ export const getStaffUsers = async (): Promise<StaffUser[]> => {
   return (data ?? []).filter((u) => isStaffRole(u.role)) as StaffUser[];
 };
 
-async function updateStaffUser(id: string, patch: Partial<Pick<StaffUser, 'role' | 'is_active'>>): Promise<void> {
+async function updateStaffUser(id: string, patch: Partial<Pick<StaffUser, 'role' | 'is_active' | 'employee_id'>>): Promise<void> {
   // select() so a row RLS filtered out comes back empty instead of looking like success.
   const { data, error } = await supabase.from('staff_users').update(patch).eq('id', id).select('id');
   if (error) throw new Error(error.message);
@@ -33,5 +41,7 @@ async function updateStaffUser(id: string, patch: Partial<Pick<StaffUser, 'role'
 }
 
 export const updateStaffUserRole = (id: string, role: StaffRole) => updateStaffUser(id, { role });
+
+export const setStaffUserEmployee = (id: string, employeeId: string | null) => updateStaffUser(id, { employee_id: employeeId });
 
 export const setStaffUserActive = (id: string, isActive: boolean) => updateStaffUser(id, { is_active: isActive });

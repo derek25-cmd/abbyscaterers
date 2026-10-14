@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EmployeeActionCenter } from "./employee-action-center";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmployeeLeaveTab } from "@/components/leave/employee-leave-tab";
 
 export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
   if (!employee) return null;
@@ -51,6 +53,12 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
               Viewing details for {getFullName(employee)}.
             </DialogDescription>
           </DialogHeader>
+          <Tabs defaultValue="details">
+          <TabsList>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="leave">Leave</TabsTrigger>
+          </TabsList>
+          <TabsContent value="details">
           <ScrollArea className="h-[70vh] p-4">
             <div className="space-y-6">
                 <div>
@@ -109,6 +117,13 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
                  <EmployeeActionCenter employee={employee} />
             </div>
           </ScrollArea>
+          </TabsContent>
+          <TabsContent value="leave">
+            <ScrollArea className="h-[70vh] p-4">
+              <EmployeeLeaveTab employeeId={employee.id} employeeName={getFullName(employee)} />
+            </ScrollArea>
+          </TabsContent>
+          </Tabs>
           <DialogFooter className="pt-4">
             <DialogClose asChild>
               <Button type="button" variant="outline">Close</Button>
