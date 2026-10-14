@@ -15,12 +15,13 @@ export function TerminationForm(props: DocFormProps) {
   const { person, value, errors = {} } = props;
   const { date, number, area, choice, str, set } = useFormBits(props);
   const e = person?.employee;
+  const employeeId = e?.id;
   const [warnings, setWarnings] = useState<DisciplinaryRecord[]>([]);
 
   useEffect(() => {
-    if (!e) return;
-    listWarnings(e.id).then((all) => setWarnings(all.filter((w) => isWarningInForce(w)))).catch(() => setWarnings([]));
-  }, [e?.id]);
+    if (!employeeId) return;
+    listWarnings(employeeId).then((all) => setWarnings(all.filter((w) => isWarningInForce(w)))).catch(() => setWarnings([]));
+  }, [employeeId]);
 
   const linked = Array.isArray(value.warningIds) ? (value.warningIds as string[]) : [];
   const toggle = (id: string) => set('warningIds', linked.includes(id) ? linked.filter((x) => x !== id) : [...linked, id]);
