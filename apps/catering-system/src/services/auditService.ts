@@ -4,6 +4,8 @@ export const HR_AUDIT_TABLES = [
   'employees', 'attendance', 'positions', 'training_participants', 'training_evaluations', 'payroll',
   // Leave management (Phase 2)
   'leave_requests', 'leave_balances', 'leave_types', 'leave_settings', 'public_holidays',
+  // HR documents (Phase 3)
+  'hr_document_types', 'hr_document_templates', 'hr_documents', 'hr_document_counters',
 ] as const;
 export const OPS_AUDIT_TABLES = ['products', 'stock_logs', 'assets', 'issuance'] as const;
 

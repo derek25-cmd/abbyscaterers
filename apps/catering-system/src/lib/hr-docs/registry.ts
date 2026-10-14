@@ -18,6 +18,8 @@ export interface DocTypeDefinition {
   defaults: () => Record<string, unknown>;
   /** Suggested subject line, shown pre-filled in the wizard. */
   defaultSubject: string;
+  /** Example values, so the template editor can preview a realistic letter. */
+  sampleData: Record<string, unknown>;
   /** Lines of the addressee block; the author may override them in `data`. */
   addressee: (employee: Partial<Employee> | null, data: Record<string, unknown>) => string[];
 }

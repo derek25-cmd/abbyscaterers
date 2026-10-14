@@ -18,6 +18,8 @@ import { Separator } from "@/components/ui/separator";
 import { EmployeeActionCenter } from "./employee-action-center";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeLeaveTab } from "@/components/leave/employee-leave-tab";
+import { EmployeeDocumentsTab } from "@/components/hr/employee-documents-tab";
+import { RequirePermission } from "@/components/auth/require-permission";
 
 export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
   if (!employee) return null;
@@ -57,6 +59,7 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="leave">Leave</TabsTrigger>
+            <RequirePermission permission="hr.manage"><TabsTrigger value="documents">Documents</TabsTrigger></RequirePermission>
           </TabsList>
           <TabsContent value="details">
           <ScrollArea className="h-[70vh] p-4">
@@ -121,6 +124,11 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
           <TabsContent value="leave">
             <ScrollArea className="h-[70vh] p-4">
               <EmployeeLeaveTab employeeId={employee.id} employeeName={getFullName(employee)} />
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="documents">
+            <ScrollArea className="h-[70vh] p-4">
+              <EmployeeDocumentsTab employeeId={employee.id} employeeName={getFullName(employee)} />
             </ScrollArea>
           </TabsContent>
           </Tabs>

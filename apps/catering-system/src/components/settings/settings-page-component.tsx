@@ -14,6 +14,7 @@ import { Loader2, UploadCloud, Hash, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStaffRole } from "@/hooks/use-staff-role";
 import { UsersAccessTab } from "@/components/settings/users-access-tab";
+import { CompanyDetailsCard } from "@/components/settings/company-details-card";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl';
 
@@ -117,6 +118,7 @@ export function SettingsPageComponent() {
                     {canManageSettings && <TabsTrigger value="users">Users &amp; Access</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="general" className="space-y-6">
+                    {canManageSettings && <CompanyDetailsCard />}
                     <Card>
                         <CardHeader>
                             <CardTitle>Appearance</CardTitle>

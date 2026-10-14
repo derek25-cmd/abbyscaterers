@@ -28,6 +28,12 @@ export const generalLetter: DocTypeDefinition = {
   schema: GeneralLetterSchema,
   defaults: () => ({ body: '', addressee: '' }),
   defaultSubject: '',
+  sampleData: {
+    body:
+      'This is where the text written for each letter appears.\n\n'
+      + 'A second paragraph looks like this, and **bold words** are shown in bold.',
+    addressee: '',
+  },
   addressee: (employee, data) => {
     const override = typeof data.addressee === 'string' ? data.addressee.trim() : '';
     return override ? override.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : defaultAddresseeLines(employee);

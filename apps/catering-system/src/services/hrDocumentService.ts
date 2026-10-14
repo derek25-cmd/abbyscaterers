@@ -329,6 +329,11 @@ export async function loadRenderInputs(doc: HrDocument): Promise<RenderInputs> {
   return { doc, template: template as HrDocumentTemplate, employee, settings };
 }
 
+/** Bundles the pieces a render needs when the caller already has them (the wizard preview). */
+export const loadRenderInputsFor = (
+  doc: HrDocument, template: HrDocumentTemplate, employee: Employee | null, settings: LetterSettings,
+): RenderInputs => ({ doc, template, employee, settings });
+
 /**
  * Fills the template for a document. `refNo` is the real number only at issue;
  * before that the letter shows a placeholder, and the approver's name shows as

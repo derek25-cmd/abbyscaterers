@@ -5,12 +5,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CreditCard, Truck, CalendarCheck, History } from "lucide-react";
+import { CreditCard, Truck, CalendarCheck, History, FilePlus2 } from "lucide-react";
+import { useState } from "react";
+import { RequirePermission } from "@/components/auth/require-permission";
+import { NewDocumentWizard } from "@/components/hr/new-document-wizard";
 import { useRouter } from "next/navigation";
 
 
 export function EmployeeActionCenter({ employee }) {
     const router = useRouter();
+    const [letterOpen, setLetterOpen] = useState(false);
 
     const handleCreatePayslip = () => {
         router.push(`/hr/payroll?createPayslipFor=${employee.id}`);
@@ -44,7 +48,14 @@ export function EmployeeActionCenter({ employee }) {
                         Attendance History
                     </Link>
                 </Button>
+                <RequirePermission permission="hr.manage">
+                    <Button variant="outline" onClick={() => setLetterOpen(true)}>
+                        <FilePlus2 className="mr-2 h-4 w-4" />
+                        Generate letter
+                    </Button>
+                </RequirePermission>
             </CardContent>
+            <NewDocumentWizard isOpen={letterOpen} setIsOpen={setLetterOpen} defaultEmployeeId={employee.id} />
         </Card>
     )
 }
