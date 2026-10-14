@@ -468,7 +468,10 @@ export const issue = async (id: string): Promise<IssueResult> => {
   }
 
   const { error } = await supabase.rpc('issue_hr_document', { p_id: id, p_pdf_path: path, p_pdf_sha256: digest });
-  if (error) throw toError(error, 'The PDF was stored but the document could not be marked as issued. Press Issue again to finish.');
+  if (error) {
+    // The file is safely stored and the number reserved: issuing again resumes from here.
+    throw new Error(`${toError(error, 'Could not record the document as issued.').message} The PDF is stored and the reference number is kept, so press Issue again to finish.`);
+  }
   return { refNo, path, sha256: digest };
 };
 
