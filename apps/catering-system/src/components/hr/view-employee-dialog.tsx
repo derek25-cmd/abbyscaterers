@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeLeaveTab } from "@/components/leave/employee-leave-tab";
 import { EmployeeDocumentsTab } from "@/components/hr/employee-documents-tab";
 import { RequirePermission } from "@/components/auth/require-permission";
+import { ActiveWarningsBadge, EmployeeContractsTab, EmployeeDisciplinaryTab, EmployeeRecognitionTab } from "@/components/hr/employee-records-tabs";
 
 export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
   if (!employee) return null;
@@ -50,7 +51,11 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Employee Details</DialogTitle>
+            <DialogTitle className="flex flex-wrap items-center gap-2">
+              Employee Details
+              {employee.status !== 'Active' && <Badge variant="outline">{employee.status}</Badge>}
+              <RequirePermission permission="hr.manage"><ActiveWarningsBadge employeeId={employee.id} /></RequirePermission>
+            </DialogTitle>
             <DialogDescription>
               Viewing details for {getFullName(employee)}.
             </DialogDescription>
@@ -59,7 +64,12 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="leave">Leave</TabsTrigger>
-            <RequirePermission permission="hr.manage"><TabsTrigger value="documents">Documents</TabsTrigger></RequirePermission>
+            <RequirePermission permission="hr.manage">
+              <TabsTrigger value="contracts">Contracts</TabsTrigger>
+              <TabsTrigger value="disciplinary">Disciplinary</TabsTrigger>
+              <TabsTrigger value="recognition">Recognition</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+            </RequirePermission>
           </TabsList>
           <TabsContent value="details">
           <ScrollArea className="h-[70vh] p-4">
@@ -125,6 +135,15 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
             <ScrollArea className="h-[70vh] p-4">
               <EmployeeLeaveTab employeeId={employee.id} employeeName={getFullName(employee)} />
             </ScrollArea>
+          </TabsContent>
+          <TabsContent value="contracts">
+            <ScrollArea className="h-[70vh] p-4"><RequirePermission permission="hr.manage"><EmployeeContractsTab employee={employee} /></RequirePermission></ScrollArea>
+          </TabsContent>
+          <TabsContent value="disciplinary">
+            <ScrollArea className="h-[70vh] p-4"><RequirePermission permission="hr.manage"><EmployeeDisciplinaryTab employee={employee} /></RequirePermission></ScrollArea>
+          </TabsContent>
+          <TabsContent value="recognition">
+            <ScrollArea className="h-[70vh] p-4"><RequirePermission permission="hr.manage"><EmployeeRecognitionTab employee={employee} /></RequirePermission></ScrollArea>
           </TabsContent>
           <TabsContent value="documents">
             <ScrollArea className="h-[70vh] p-4">

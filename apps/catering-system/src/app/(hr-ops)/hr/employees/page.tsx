@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2, FileDown, FileSpreadsheet, ChevronDown, UserMinus } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
 import { EditEmployeeDialog } from "@/components/hr/edit-employee-dialog";
 import { ViewEmployeeDialog } from "@/components/hr/view-employee-dialog";
@@ -22,6 +23,22 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { format } from "date-fns";
 
+
+/**
+ * Links from notifications and the dashboard: /hr/employees?open=<id> opens that
+ * employee's profile. Kept in its own component inside <Suspense>, which Next
+ * requires for useSearchParams on a client page.
+ */
+function OpenEmployeeFromQuery({ employees, onOpen }: { employees: any[]; onOpen: (employee: any) => void }) {
+  const openId = useSearchParams().get('open');
+  useEffect(() => {
+    if (!openId || employees.length === 0) return;
+    const target = employees.find((e) => e.id === openId);
+    if (target) onOpen(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, employees.length]);
+  return null;
+}
 
 export default function EmployeesPage() {
   const { toast } = useToast();
@@ -237,6 +254,9 @@ export default function EmployeesPage() {
 
   return (
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <Suspense fallback={null}>
+          <OpenEmployeeFromQuery employees={employees} onOpen={(e) => { setSelectedEmployee(e); setIsViewEmployeeDialogOpen(true); }} />
+        </Suspense>
         <div className="flex items-center">
             <h1 className="font-headline text-2xl font-bold">Employee Records</h1>
             <div className="ml-auto flex items-center gap-2">
