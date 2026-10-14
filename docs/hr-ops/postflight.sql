@@ -133,7 +133,7 @@ SELECT n, section, item, status, reason FROM (
   SELECT 8, 'Leave balances', 'balances for ' || extract(year FROM now() AT TIME ZONE 'Africa/Dar_es_Salaam')::int,
          CASE WHEN missing = 0 THEN 'PASS' ELSE 'FAIL' END,
          CASE WHEN missing = 0 THEN 'every active employee has a balance for every tracked leave type'
-              ELSE missing || ' missing: open the leave year (runbook, "Open the leave year")' END
+              ELSE missing || ' missing: HR Manager → Leave → Balances → Set up <year> balances' END
     FROM (SELECT count(*) AS missing
             FROM public.employees e CROSS JOIN public.leave_types lt
            WHERE e.status = 'Active' AND lt.is_active AND lt.tracks_balance
