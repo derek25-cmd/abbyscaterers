@@ -35,7 +35,12 @@ fn(name, sig) AS (VALUES
   ('set_hr_modules', 'public.set_hr_modules(text[])'),
   ('set_opening_leave_taken', 'public.set_opening_leave_taken(text,uuid,integer,numeric)'),
   ('import_legacy_contracts', 'public.import_legacy_contracts(jsonb)'), ('import_opening_leave', 'public.import_opening_leave(jsonb)'),
-  ('cleanup_uat_data', 'public.cleanup_uat_data(boolean)')),
+  ('cleanup_uat_data', 'public.cleanup_uat_data(boolean)'),
+  -- Phase 6
+  ('delete_employee', 'public.delete_employee(text)'), ('employee_history', 'public.employee_history(text)'),
+  ('portal_pending_hr_documents', 'public.portal_pending_hr_documents()'),
+  ('portal_approve_hr_document', 'public.portal_approve_hr_document(uuid)'),
+  ('portal_return_hr_document', 'public.portal_return_hr_document(uuid,text)')),
 tbl(name) AS (VALUES
   ('staff_users'), ('audit_log'), ('leave_types'), ('leave_settings'), ('public_holidays'), ('leave_requests'),
   ('leave_balances'), ('hr_notifications'), ('hr_document_types'), ('hr_document_templates'), ('hr_documents'),
@@ -57,7 +62,11 @@ trg(tab, name) AS (VALUES
   ('hr_documents', 'hr_documents_guard'), ('hr_documents', 'audit_row_change'), ('hr_document_templates', 'hr_document_templates_guard'),
   ('candidates', 'candidates_guard'), ('employment_contracts', 'audit_row_change'), ('disciplinary_records', 'audit_row_change'),
   ('recognition_records', 'audit_row_change'), ('app_settings', 'guard_company_settings'), ('app_settings', 'guard_hr_settings'),
-  ('hr_notifications', 'hr_notifications_only_read'))
+  ('hr_notifications', 'hr_notifications_only_read'),
+  -- Phase 6: someone who has left is frozen; employees deleted only via delete_employee()
+  ('employees', 'employees_delete_guard'), ('leave_requests', 'hr_refuse_if_employee_inactive'),
+  ('attendance', 'hr_refuse_if_employee_inactive'), ('hr_documents', 'hr_refuse_if_employee_inactive'),
+  ('payroll', 'hr_refuse_if_employee_inactive'), ('hr_documents', 'hr_documents_notify_portal'))
 SELECT n, section, item, status, reason FROM (
 
   -- 1. Functions
