@@ -18,6 +18,7 @@ import {
 
 interface NotificationRow {
   id: string;
+  type: string;
   title: string;
   body: string | null;
   rfq_id: string | null;
@@ -38,7 +39,7 @@ export function NotificationBell() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('portal_notifications')
-        .select('id, title, body, rfq_id, proforma_id, is_read, created_at')
+        .select('id, type, title, body, rfq_id, proforma_id, is_read, created_at')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -66,7 +67,8 @@ export function NotificationBell() {
       await supabase.from('portal_notifications').update({ is_read: true }).eq('id', n.id);
       queryClient.invalidateQueries({ queryKey: ['portal-notifications', user?.id] });
     }
-    if (n.proforma_id) router.push(`/proformas/${n.proforma_id}`);
+    if (n.type.startsWith('hr_letter')) router.push('/hr-letters');
+    else if (n.proforma_id) router.push(`/proformas/${n.proforma_id}`);
     else if (n.rfq_id) router.push(`/rfqs/${n.rfq_id}`);
   };
 

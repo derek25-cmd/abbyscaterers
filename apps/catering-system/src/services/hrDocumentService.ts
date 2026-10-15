@@ -6,7 +6,7 @@ import { DraftBaseSchema } from '@/lib/hr-docs/schema';
 import { getDocTypeDefinition, personKindOf, type LetterRelated } from '@/lib/hr-docs/registry';
 import { buildNumberLedger, type LedgerRow } from '@/lib/hr-docs/ledger';
 import {
-  buildRenderContext, renderTemplate, type CompanyDetails, type Paragraph,
+  buildRenderContext, formatLongDate, renderTemplate, type CompanyDetails, type Paragraph,
 } from '@/lib/hr-docs/render';
 import { buildLetterPdf, loadImageAsDataUrl, sha256, type Letterhead } from '@/lib/hr-docs/letterPdf';
 import type {
@@ -463,8 +463,34 @@ async function requireComplete(id: string): Promise<{ doc: HrDocumentView; input
   return { doc, inputs };
 }
 
+/**
+ * What an approver sees in the admin portal (hr_documents.preview): the letter
+ * as it will print, minus the reference number (given at issue) and the
+ * approver's name (taken at approval). Saved just before sending for approval,
+ * while the letter is still a draft; the database freezes it with the rest.
+ */
+export interface LetterPreviewSnapshot {
+  v: 1;
+  date: string;
+  subject: string;
+  addressee: string[];
+  paragraphs: { text: string; bold: boolean }[][];
+  confidential: boolean;
+}
+
 export const submit = async (id: string): Promise<HrDocument> => {
-  await requireComplete(id);
+  const { doc, inputs } = await requireComplete(id);
+  const rendered = renderDocument(inputs);
+  const preview: LetterPreviewSnapshot = {
+    v: 1,
+    date: formatLongDate(todayInDar()),
+    subject: rendered.subject,
+    addressee: rendered.addressee,
+    paragraphs: rendered.paragraphs,
+    confidential: doc.confidential,
+  };
+  const saved = await supabase.from('hr_documents').update({ preview }).eq('id', id).eq('status', 'draft');
+  if (saved.error) throw toError(saved.error, 'Could not prepare the document for approval.');
   const { data, error } = await supabase.rpc('submit_hr_document', { p_id: id });
   if (error) throw toError(error, 'Could not send the document for approval.');
   return data as HrDocument;

@@ -90,7 +90,8 @@ export default function NotificationsPage() {
       await supabase.from('portal_notifications').update({ is_read: true }).eq('id', n.id);
       queryClient.invalidateQueries({ queryKey: ['portal-notifications-all', user?.id] });
     }
-    if (n.proforma_id) router.push(`/proformas/${n.proforma_id}`);
+    if (n.type.startsWith('hr_letter')) router.push('/hr-letters');
+    else if (n.proforma_id) router.push(`/proformas/${n.proforma_id}`);
     else if (n.rfq_id) router.push(`/rfqs/${n.rfq_id}`);
   };
 

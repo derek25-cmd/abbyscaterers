@@ -16,6 +16,7 @@ import {
   Percent,
   ShieldAlert,
   Users,
+  FileSignature,
   LogOut,
 } from 'lucide-react';
 import type { PortalRole } from '@abbyscaterers/types';
@@ -38,6 +39,7 @@ const moreItems: { href: string; label: string; icon: typeof House; roles?: Port
   { href: '/invoices', label: 'Invoices', icon: Receipt },
   { href: '/costing', label: 'Costing', icon: Calculator },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/hr-letters', label: 'HR Letters', icon: FileSignature, roles: ['super_admin', 'management'] },
   { href: '/tax-settings', label: 'Tax Settings', icon: Percent, roles: ['super_admin', 'finance'] },
   { href: '/audit-log', label: 'Audit Log', icon: ShieldAlert, roles: ['super_admin'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['super_admin'] },
