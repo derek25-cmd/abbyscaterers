@@ -166,7 +166,8 @@ BEGIN
   IF NOT public.is_portal_hr_approver() THEN
     RAISE EXCEPTION 'Only portal super admins and management can approve HR letters.' USING ERRCODE = '42501';
   END IF;
-  SELECT lower(email) INTO my_email FROM public.portal_users WHERE id = public.portal_uid();
+  -- Qualified: the result columns (id, ...) are variables inside this function.
+  SELECT lower(pu.email) INTO my_email FROM public.portal_users pu WHERE pu.id = public.portal_uid();
   RETURN QUERY
     SELECT d.id, d.doc_type, t.label, d.subject,
            coalesce(public.hr_employee_name(d.employee_id), c.full_name, '—'),
