@@ -253,7 +253,9 @@ BEGIN
     res LIKE 'ok:%' AND NOT EXISTS (SELECT 1 FROM public.employees WHERE id = empD)
     AND EXISTS (SELECT 1 FROM public.audit_log WHERE table_name = 'employees' AND record_id = empD AND action = 'employees.delete'));
 
-  INSERT INTO public.attendance (employee_id, employee, date, status) VALUES (empH, 'P6H Tester', today - 1, 'Present');
+  IF NOT public._rlstest_seed('attendance', 'p6-H-day', jsonb_build_object('employee_id', empH, 'date', (today - 1)::text, 'status', 'Present')) THEN
+    RAISE EXCEPTION 'FAIL: could not seed an attendance row (%)', current_setting('rlstest.last_err', true);
+  END IF;
   res := public._lt_as(hr, format('SELECT * FROM public.employee_history(%L)', empH));
   INSERT INTO rls_results VALUES ('hr', 'employee_history', 'lists what is recorded', true, res = 'ok:1');
   res := public._lt_as(hr, format('SELECT public.delete_employee(%L)', empH));
