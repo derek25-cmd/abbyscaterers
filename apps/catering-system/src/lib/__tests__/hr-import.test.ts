@@ -76,9 +76,9 @@ describe('checkContractRows', () => {
     expect(rows[0].errors).toEqual([]);
     expect(rows[1].errors).toEqual(['A second current contract for Amina Juma in this file.']);
   });
-  it('someone who has left can only have past contracts', () => {
-    expect(errs({ employee_id: 'E3' })[0]).toMatch(/not active/);
-    expect(errs({ employee_id: 'E3', end_date: '2026-05-31' })).toEqual([]);
+  it('nothing can be recorded for someone who has left (their record is closed)', () => {
+    expect(errs({ employee_id: 'E3' })).toEqual(['Chausiku Ally has left and their record is closed. Reactivate them first.']);
+    expect(errs({ employee_id: 'E3', end_date: '2026-05-31' })).toEqual(['Chausiku Ally has left and their record is closed. Reactivate them first.']);
   });
   it('numbers: salary with commas is fine, negatives are not', () => {
     expect(errs({ salary: '1,200,000' })).toEqual([]);
@@ -117,6 +117,10 @@ describe('checkOpeningRows', () => {
     expect(errs({ leave_type: 'Holiday' })).toEqual(['Unknown leave type "Holiday".']);
     expect(errs({ leave_type: 'Unpaid' })).toEqual(['Unpaid leave has no balance.']);
   });
+  it('nothing for someone who has left', () => {
+    expect(errs({ employee_id: 'E3' })).toEqual(['Chausiku Ally has left and their record is closed. Reactivate them first.']);
+  });
+
   it('the same employee and type twice', () => {
     const rows = checkOpeningRows([row({}), row({ taken_before_go_live: '1' })], ctx);
     expect(rows[1].errors).toEqual(['The same employee and leave type appear twice in this file.']);

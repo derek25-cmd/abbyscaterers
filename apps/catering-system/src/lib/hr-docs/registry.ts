@@ -77,6 +77,9 @@ export const personKindOf = (docType: HrDocTypeCode): 'employee' | 'candidate' =
 export function docTypeAppliesTo(docType: HrDocTypeCode, employee: Partial<Employee>): boolean {
   const def = REGISTRY[docType];
   if (!def || personKindOf(docType) !== 'employee') return false;
+  // Someone who has left is frozen until reactivated: no letters at all
+  // (the database refuses them too, migration 20261015000000).
+  if (employee.status !== 'Active') return false;
   return def.appliesTo ? def.appliesTo(employee) : true;
 }
 

@@ -230,7 +230,8 @@ END $f$;
       EXCEPTION WHEN OTHERS THEN ok := false;
       END;
       RESET ROLE;
-      INSERT INTO rls_results VALUES (r, t, 'DELETE', exp_write, ok);
+      -- Employees are deleted only through delete_employee() (20261015000000), never directly.
+      INSERT INTO rls_results VALUES (r, t, 'DELETE', exp_write AND t <> 'employees', ok);
     END LOOP;
   END LOOP;
 

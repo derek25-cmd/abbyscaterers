@@ -61,7 +61,7 @@ export function EmployeeContractsTab({ employee }: { employee: Employee }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-lg font-medium text-primary">Contracts</h3>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => setLegacyOpen(true)}>Record existing contract</Button>
+          {isActive && <Button size="sm" variant="outline" onClick={() => setLegacyOpen(true)}>Record existing contract</Button>}
           {isActive && active?.end_date && <Button size="sm" onClick={() => prepare('extension')}><FilePlus2 className="mr-2 h-4 w-4" />Prepare extension</Button>}
           {isActive && !active && <Button size="sm" onClick={() => prepare('contract')}><FilePlus2 className="mr-2 h-4 w-4" />Prepare contract</Button>}
         </div>

@@ -247,7 +247,7 @@ export function NewIssuanceDialog({ isOpen, setIsOpen, assets, employees, orders
                     <Select onValueChange={setIssuedTo} value={issuedTo}>
                         <SelectTrigger className="h-10 border-2"><SelectValue placeholder="Select an employee" /></SelectTrigger>
                         <SelectContent>
-                        {employees.map(employee => (
+                        {employees.filter(employee => employee.status === 'Active').map(employee => (
                             <SelectItem key={employee.id} value={employee.id}>{getFullName(employee)}</SelectItem>
                         ))}
                         </SelectContent>

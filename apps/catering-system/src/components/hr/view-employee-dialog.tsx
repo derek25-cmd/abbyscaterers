@@ -136,7 +136,7 @@ export function ViewEmployeeDialog({ isOpen, setIsOpen, employee }) {
           </TabsContent>
           <TabsContent value="leave">
             <ScrollArea className="h-[70vh] p-4">
-              <EmployeeLeaveTab employeeId={employee.id} employeeName={getFullName(employee)} />
+              <EmployeeLeaveTab employeeId={employee.id} employeeName={getFullName(employee)} canAct={employee.status === 'Active'} />
             </ScrollArea>
           </TabsContent>
           <TabsContent value="contracts">

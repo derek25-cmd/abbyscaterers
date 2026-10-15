@@ -494,10 +494,15 @@ BEGIN
   INSERT INTO rls_results VALUES ('hr', 'employees', 'voiding the termination does NOT reactivate the employee', true,
     res LIKE 'ok:%' AND EXISTS (SELECT 1 FROM public.employees WHERE id = empT AND status = 'Inactive'));
 
-  -- ── I. Certificate of service: only once employment has ended ────────────
-  dCert := public._p4_draft(hr, 'certificate_of_service', empT, NULL, 'P4-certificate', '{"includeReason": false}');
-  res := public._p4_issue(dCert, hr, hr);
-  INSERT INTO rls_results VALUES ('hr', 'certificate_of_service', 'issued for someone who has left (' || res || ')', true, res LIKE 'ok:%');
+  -- ── I. Certificate of service ────────────────────────────────────────────
+  -- Since 20261015000000 someone who has left is frozen until reactivated, so
+  -- no letter at all (a certificate included) can be written for them.
+  res := public._lt_as(hr, format(
+    'INSERT INTO public.hr_documents (doc_type, employee_id, template_id, subject, data) VALUES (%L, %L, %L, %L, %L)',
+    'certificate_of_service', empT,
+    (SELECT id FROM public.hr_document_templates WHERE doc_type = 'certificate_of_service' AND is_active),
+    'P4-certificate', '{"includeReason": false}'));
+  INSERT INTO rls_results VALUES ('hr', 'certificate_of_service', 'written for someone who has left (frozen)', false, res LIKE 'ok:%');
   dCert2 := public._p4_draft(hr, 'certificate_of_service', empW, NULL, 'P4-certificate-2', '{"includeReason": false}');
   res := public._lt_as(hr, format('SELECT public.submit_hr_document(%L)', dCert2));
   INSERT INTO rls_results VALUES ('hr', 'certificate_of_service', 'sent for an employee who is still Active', false, res LIKE 'ok:%');

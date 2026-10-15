@@ -67,9 +67,10 @@ describe('registry', () => {
       expect(docTypeAppliesTo(t, left), t).toBe(false);
     }
     expect(docTypeAppliesTo('certificate_of_service', active)).toBe(false);
-    expect(docTypeAppliesTo('certificate_of_service', left)).toBe(true);
-    // Inactive but no end date recorded: no certificate yet.
-    expect(docTypeAppliesTo('certificate_of_service', { ...left, employmentEndDate: undefined })).toBe(false);
+    // Someone who has left is frozen until reactivated: no letter of any kind,
+    // the certificate of service included.
+    expect(docTypeAppliesTo('certificate_of_service', left)).toBe(false);
+    expect(docTypeAppliesTo('general_letter', left)).toBe(false);
     expect(docTypeAppliesTo('general_letter', active)).toBe(true);
   });
 });
