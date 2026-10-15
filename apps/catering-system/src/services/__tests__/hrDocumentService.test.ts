@@ -179,6 +179,28 @@ describe('submit and approve', () => {
     expect(calls).toContain('rpc:submit_hr_document');
   });
 
+  it('saves the letter as it will print (for the admin-portal approvers) before sending it', async () => {
+    world({ doc: { status: 'draft' } });
+    const builders: { table: string; q: ReturnType<typeof mockQueryResult> }[] = [];
+    const base = fromMock.getMockImplementation()!;
+    fromMock.mockImplementation((table: string) => {
+      const q = base(table);
+      builders.push({ table, q });
+      q.update.mockImplementation(() => { calls.push(`update:${table}`); return q; });
+      return q;
+    });
+    const { submit } = await import('../hrDocumentService');
+    await submit('doc-1');
+    const write = builders.find((b) => b.table === 'hr_documents' && b.q.update.mock.calls.length > 0)!;
+    const preview = write.q.update.mock.calls[0][0].preview;
+    expect(preview).toMatchObject({ v: 1, subject: 'Confirmation of employment', confidential: false });
+    expect(preview.addressee[0]).toBe('Amina Juma');
+    expect(preview.paragraphs.map((p: { text: string }[]) => p.map((s) => s.text).join(''))).toEqual(['Dear Amina Juma,', 'Hello there.']);
+    // Only while still a draft, and before the letter is sent.
+    expect(write.q.eq).toHaveBeenCalledWith('status', 'draft');
+    expect(calls.indexOf('update:hr_documents')).toBeLessThan(calls.indexOf('rpc:submit_hr_document'));
+  });
+
   it('checks the letter is complete before approving', async () => {
     world({ doc: { status: 'pending_approval' }, template: { body: '{{employee.endDate}}' } });
     const { approve } = await import('../hrDocumentService');

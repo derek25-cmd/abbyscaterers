@@ -7,7 +7,7 @@ interface LetterPreviewProps {
   refNo: string;
   /** Already formatted, e.g. 14 October 2026. */
   date: string;
-  settings: Pick<LetterSettings, 'company' | 'headerUrl' | 'footerUrl'>;
+  settings: Pick<LetterSettings, 'company' | 'headerUrl' | 'footerUrl'> & Partial<Pick<LetterSettings, 'signatureUrl' | 'stampUrl'>>;
   signatory: { name: string; title: string };
   confidential: boolean;
   className?: string;
@@ -59,9 +59,22 @@ export function LetterPreview({ rendered, refNo, date, settings, signatory, conf
 
       <div className="mt-6">
         <p>Yours sincerely,</p>
-        <div className="mt-12 w-56 border-t border-black pt-1">
-          <p className="font-bold">{signatory.name}</p>
-          <p>{signatory.title}</p>
+        {/* Same signature and stamp as the invoices, as the PDF prints them. */}
+        <div className="relative">
+          <div className="flex h-12 items-end">
+            {settings.signatureUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={settings.signatureUrl} alt="Signature" className="max-h-12 w-auto object-contain mix-blend-multiply" />
+            )}
+          </div>
+          {settings.stampUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={settings.stampUrl} alt="Stamp" className="absolute left-60 top-0 h-28 w-28 object-contain mix-blend-multiply" />
+          )}
+          <div className="w-56 border-t border-black pt-1">
+            <p className="font-bold">{signatory.name}</p>
+            <p>{signatory.title}</p>
+          </div>
         </div>
       </div>
 

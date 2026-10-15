@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   Users,
   ChefHat,
+  FileSignature,
 } from 'lucide-react';
 import type { PortalRole } from '@abbyscaterers/types';
 import { usePortalRole } from '@/lib/portal-role';
@@ -48,6 +49,7 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard }[] 
 // sidebar footer) — role-gated admin functions separated from day-to-day
 // operational nav.
 const managementItems: { href: string; label: string; icon: typeof LayoutDashboard; roles: PortalRole[] }[] = [
+  { href: '/hr-letters', label: 'HR Letters', icon: FileSignature, roles: ['super_admin', 'management'] },
   { href: '/tax-settings', label: 'Tax Settings', icon: Percent, roles: ['super_admin', 'finance'] },
   { href: '/audit-log', label: 'Audit Log', icon: ShieldAlert, roles: ['super_admin'] },
   { href: '/users', label: 'Users', icon: Users, roles: ['super_admin'] },

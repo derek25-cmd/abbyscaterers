@@ -6,7 +6,7 @@ import { DraftBaseSchema } from '@/lib/hr-docs/schema';
 import { getDocTypeDefinition, personKindOf, type LetterRelated } from '@/lib/hr-docs/registry';
 import { buildNumberLedger, type LedgerRow } from '@/lib/hr-docs/ledger';
 import {
-  buildRenderContext, renderTemplate, type CompanyDetails, type Paragraph,
+  buildRenderContext, formatLongDate, renderTemplate, type CompanyDetails, type Paragraph,
 } from '@/lib/hr-docs/render';
 import { buildLetterPdf, loadImageAsDataUrl, sha256, type Letterhead } from '@/lib/hr-docs/letterPdf';
 import type {
@@ -52,12 +52,14 @@ export interface LetterSettings {
   headerUrl: string;
   footerUrl: string;
   signatureUrl: string;
+  /** The stamp invoices print (invoice_stamp_url). */
+  stampUrl: string;
 }
 
 export const getLetterSettings = async (): Promise<LetterSettings> => {
   const { data, error } = await supabase
     .from('app_settings')
-    .select('company_name, company_address, company_phone, company_email, company_tin, company_vrn, header_url, footer_url, signature_url')
+    .select('company_name, company_address, company_phone, company_email, company_tin, company_vrn, header_url, footer_url, signature_url, invoice_stamp_url')
     .eq('id', true)
     .maybeSingle();
   if (error) throw toError(error, 'Could not load the company settings.');
@@ -69,17 +71,23 @@ export const getLetterSettings = async (): Promise<LetterSettings> => {
     headerUrl: data?.header_url ?? '',
     footerUrl: data?.footer_url ?? '',
     signatureUrl: data?.signature_url ?? '',
+    stampUrl: data?.invoice_stamp_url ?? '',
   };
 };
 
-/** Loads the images the letter needs. Fails loudly: no silent letterhead-less letters. */
-export async function buildLetterhead(settings: LetterSettings, useStoredSignature: boolean): Promise<Letterhead> {
-  const [header, footer, signature] = await Promise.all([
+/**
+ * Loads the images the letter needs. Fails loudly: no silent letterhead-less letters.
+ * Every letter prints the same signature and stamp as the invoices (Settings →
+ * signature and invoice stamp), whatever the template says.
+ */
+export async function buildLetterhead(settings: LetterSettings): Promise<Letterhead> {
+  const [header, footer, signature, stamp] = await Promise.all([
     settings.headerUrl ? loadImageAsDataUrl(settings.headerUrl, 'letterhead header image') : null,
     settings.footerUrl ? loadImageAsDataUrl(settings.footerUrl, 'letterhead footer image') : null,
-    useStoredSignature && settings.signatureUrl ? loadImageAsDataUrl(settings.signatureUrl, 'stored signature image') : null,
+    settings.signatureUrl ? loadImageAsDataUrl(settings.signatureUrl, 'signature image') : null,
+    settings.stampUrl ? loadImageAsDataUrl(settings.stampUrl, 'invoice stamp image') : null,
   ]);
-  return { company: settings.company, header, footer, signature };
+  return { company: settings.company, header, footer, signature, stamp };
 }
 
 // ── Types and templates ────────────────────────────────────────────────────
@@ -455,8 +463,34 @@ async function requireComplete(id: string): Promise<{ doc: HrDocumentView; input
   return { doc, inputs };
 }
 
+/**
+ * What an approver sees in the admin portal (hr_documents.preview): the letter
+ * as it will print, minus the reference number (given at issue) and the
+ * approver's name (taken at approval). Saved just before sending for approval,
+ * while the letter is still a draft; the database freezes it with the rest.
+ */
+export interface LetterPreviewSnapshot {
+  v: 1;
+  date: string;
+  subject: string;
+  addressee: string[];
+  paragraphs: { text: string; bold: boolean }[][];
+  confidential: boolean;
+}
+
 export const submit = async (id: string): Promise<HrDocument> => {
-  await requireComplete(id);
+  const { doc, inputs } = await requireComplete(id);
+  const rendered = renderDocument(inputs);
+  const preview: LetterPreviewSnapshot = {
+    v: 1,
+    date: formatLongDate(todayInDar()),
+    subject: rendered.subject,
+    addressee: rendered.addressee,
+    paragraphs: rendered.paragraphs,
+    confidential: doc.confidential,
+  };
+  const saved = await supabase.from('hr_documents').update({ preview }).eq('id', id).eq('status', 'draft');
+  if (saved.error) throw toError(saved.error, 'Could not prepare the document for approval.');
   const { data, error } = await supabase.rpc('submit_hr_document', { p_id: id });
   if (error) throw toError(error, 'Could not send the document for approval.');
   return data as HrDocument;
@@ -535,7 +569,7 @@ export const issue = async (id: string): Promise<IssueResult> => {
     if (rendered.missing.length > 0) throw new MissingFieldsError(rendered.missing);
     if (!doc.signatory_name || !doc.signatory_title) throw new Error('This document has no signatory. Return it to draft and approve it again.');
 
-    const letterhead = await buildLetterhead(inputs.settings, inputs.template.use_stored_signature);
+    const letterhead = await buildLetterhead(inputs.settings);
     const blob = await buildLetterPdf({
       letterhead,
       refNo,

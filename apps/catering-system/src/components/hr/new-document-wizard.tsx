@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { DOC_FORMS } from '@/components/hr/doc-forms';
 import { LetterPreview } from '@/components/hr/letter-preview';
 import { useToast } from '@/hooks/use-toast';
-import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, REGISTRY, getDocTypeDefinition, isDocTypeEnabled, personKindOf } from '@/lib/hr-docs/registry';
+import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, REGISTRY, docTypeAppliesTo, getDocTypeDefinition, isDocTypeEnabled, personKindOf } from '@/lib/hr-docs/registry';
 import { PENDING_REF, PLACEHOLDER_REFERENCE, formatLongDate } from '@/lib/hr-docs/render';
 import { OFFER_STATUS_LABEL } from '@/lib/hr-docs/types/shared';
 import { isHrModuleOn, moduleOfDocType, useHrModules } from '@/lib/hr-modules';
@@ -130,7 +130,8 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
   // people who have left for a certificate of service, everyone for a general letter.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const applies = (e: Employee) => !docType || (REGISTRY[docType]?.appliesTo?.(e) ?? true);
+    // Includes the rule that someone who has left gets no letters until reactivated.
+    const applies = (e: Employee) => !docType || docTypeAppliesTo(docType, e);
     return employees
       .filter((e) => applies(e) || e.id === employeeId)
       .filter((e) => !q || `${e.firstName} ${e.lastName} ${e.department} ${e.role}`.toLowerCase().includes(q))

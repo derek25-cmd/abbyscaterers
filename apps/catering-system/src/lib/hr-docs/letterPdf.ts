@@ -21,6 +21,8 @@ const PARAGRAPH_GAP_MM = 3.2;
 const MAX_HEADER_MM = 38;
 const MAX_FOOTER_MM = 24;
 const SIGNATURE_SPACE_MM = 20;
+// The company stamp, beside the signature (as on invoices).
+const STAMP_MM = 32;
 const MAX_IMAGE_PX = 1600;
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -37,8 +39,10 @@ export interface Letterhead {
   company: CompanyDetails;
   header?: LoadedImage | null;
   footer?: LoadedImage | null;
-  /** Only set when the template asks for the stored signature. */
+  /** The signature image from Settings (the one invoices print). */
   signature?: LoadedImage | null;
+  /** The invoice stamp from Settings, printed beside the signature. */
+  stamp?: LoadedImage | null;
 }
 
 export interface LetterInput {
@@ -274,13 +278,18 @@ export function buildLetterDoc(input: LetterInput): jsPDF {
 
   // ── Signature block: kept together, and with at least a line of text above it ─
   const sigImg = letterhead.signature ? imageHeightMm(letterhead.signature, 45, SIGNATURE_SPACE_MM) : null;
-  const blockH = LINE_MM + 2 + SIGNATURE_SPACE_MM + 2 + LINE_MM * 2;
+  const stampImg = letterhead.stamp ? imageHeightMm(letterhead.stamp, STAMP_MM, STAMP_MM) : null;
+  // The stamp may reach below the signature line, beside the name and title.
+  const blockH = Math.max(LINE_MM + 2 + SIGNATURE_SPACE_MM + 2 + LINE_MM * 2, LINE_MM + 2 + (stampImg?.h ?? 0));
   ensure(blockH + 2);
   doc.setFont('helvetica', 'normal');
   doc.text('Yours sincerely,', MARGIN, y + LINE_MM);
   y += LINE_MM + 2;
   if (sigImg && letterhead.signature) {
     doc.addImage(letterhead.signature.dataUrl, 'PNG', MARGIN, y, sigImg.w, sigImg.h, 'letter-signature');
+  }
+  if (stampImg && letterhead.stamp) {
+    doc.addImage(letterhead.stamp.dataUrl, 'PNG', MARGIN + 66, y - 2, stampImg.w, stampImg.h, 'letter-stamp');
   }
   y += SIGNATURE_SPACE_MM;
   doc.setDrawColor(0, 0, 0);

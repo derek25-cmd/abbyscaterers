@@ -104,6 +104,7 @@ export function checkContractRows(rows: Record<(typeof CONTRACT_COLUMNS)[number]
     const type = v.contract_type.toLowerCase();
     if (!v.employee_id) errors.push('No employee id.');
     else if (!emp) errors.push(`Unknown employee "${v.employee_id}".`);
+    else if (emp.status !== 'Active') errors.push(`${emp.name} has left and their record is closed. Reactivate them first.`);
     if (!CONTRACT_TYPES.includes(type)) errors.push('Contract type must be permanent, fixed_term, probation or casual.');
     if (!isDate(v.start_date)) errors.push('Start date must be a real date written yyyy-mm-dd.');
     if (v.end_date && !isDate(v.end_date)) errors.push('End date must be a real date written yyyy-mm-dd.');
@@ -117,8 +118,7 @@ export function checkContractRows(rows: Record<(typeof CONTRACT_COLUMNS)[number]
 
     const active = !(v.end_date && isDate(v.end_date) && v.end_date < ctx.today);
     if (emp && active && errors.length === 0) {
-      if (emp.status !== 'Active') errors.push(`${emp.name} is not active, so this can only be a past contract (end date before today).`);
-      else if (ctx.withActiveContract.has(v.employee_id)) errors.push(`${emp.name} already has an active contract.`);
+      if (ctx.withActiveContract.has(v.employee_id)) errors.push(`${emp.name} already has an active contract.`);
       else if (activeInFile.has(v.employee_id)) errors.push(`A second current contract for ${emp.name} in this file.`);
       else activeInFile.add(v.employee_id);
     }
@@ -147,6 +147,7 @@ export function checkOpeningRows(rows: Record<(typeof OPENING_COLUMNS)[number], 
     const type = ctx.leaveTypes.get(v.leave_type.toLowerCase());
     if (!v.employee_id) errors.push('No employee id.');
     else if (!emp) errors.push(`Unknown employee "${v.employee_id}".`);
+    else if (emp.status !== 'Active') errors.push(`${emp.name} has left and their record is closed. Reactivate them first.`);
     if (!type) errors.push(`Unknown leave type "${v.leave_type}".`);
     else if (!type.tracksBalance) errors.push(`${type.name} leave has no balance.`);
     if (String(ctx.goLiveYear) !== v.year) errors.push(`Year must be ${ctx.goLiveYear} (the go-live year).`);

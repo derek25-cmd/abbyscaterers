@@ -207,13 +207,10 @@ function Editor() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <Label htmlFor="tpl-sig">Print the stored signature image</Label>
-                    <p className="text-xs text-muted-foreground">Off: the signature block has a line to sign by hand, under the approver&apos;s name and title.</p>
-                  </div>
-                  <Switch id="tpl-sig" checked={useSig} onCheckedChange={setUseSig} />
-                </div>
+                <p className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  Every letter prints the same signature and stamp as the invoices, beside the approver&apos;s name and title.
+                  Change them in Settings (Signature image and Invoice stamp).
+                </p>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <Button onClick={() => setConfirmSave(true)} disabled={!canSave || saving}>Save as new version</Button>

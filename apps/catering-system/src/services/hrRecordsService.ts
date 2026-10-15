@@ -126,3 +126,31 @@ export const endEmploymentWithoutLetter = async (employeeId: string, lastDay: st
   if (error) throw toError(error, 'Could not end the employment.');
   return (data ?? []) as string[];
 };
+
+// ── Reactivating and deleting ──────────────────────────────────────────────
+
+/**
+ * Re-hire someone who has left: the only change allowed on a closed record.
+ * The database clears their end date and reason (migration 20261015000000).
+ */
+export const reactivateEmployee = async (employeeId: string): Promise<void> => {
+  const { error } = await supabase.from('employees').update({ status: 'Active' }).eq('id', employeeId);
+  if (error) throw toError(error, 'Could not reactivate the employee.');
+};
+
+/** What is recorded for an employee, e.g. [{ what: 'attendance day(s)', records: 12 }]. HR only. */
+export const getEmployeeHistory = async (employeeId: string): Promise<{ what: string; records: number }[]> => {
+  const { data, error } = await supabase.rpc('employee_history', { p_employee: employeeId });
+  if (error) throw toError(error, 'Could not check the employee\'s records.');
+  return ((data ?? []) as { what: string; records: number }[]).map((r) => ({ what: r.what, records: Number(r.records) }));
+};
+
+/**
+ * Deletes an employee who has no history (added by mistake, never worked).
+ * Refused, with the reason, when anything is recorded for them: such people
+ * are ended (Inactive) instead, so no employment record is lost.
+ */
+export const deleteEmployee = async (employeeId: string): Promise<void> => {
+  const { error } = await supabase.rpc('delete_employee', { p_employee: employeeId });
+  if (error) throw toError(error, 'Could not delete the employee.');
+};

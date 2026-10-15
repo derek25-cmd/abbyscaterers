@@ -60,7 +60,7 @@ export function AddTrainingDialog({ isOpen, setIsOpen, onAddTraining }: any) {
       const fetchEmployees = async () => {
         setLoadingEmployees(true);
         const data = await getEmployeeDirectory();
-        setEmployees(data || []);
+        setEmployees((data || []).filter((e) => e.status === 'Active'));
         setLoadingEmployees(false);
       };
       fetchEmployees();

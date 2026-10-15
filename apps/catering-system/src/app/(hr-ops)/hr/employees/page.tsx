@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2, FileDown, FileSpreadsheet, ChevronDown, UserMinus } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Users, UserCheck, UserX, Briefcase, Loader2, FileDown, FileSpreadsheet, ChevronDown, UserMinus, RotateCcw, Trash2 } from "lucide-react";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AddEmployeeDialog } from "@/components/hr/add-employee-dialog";
@@ -21,9 +21,9 @@ import { getErrorDescription } from "@/lib/service-validation";
 import { useToast } from "@/hooks/use-toast";
 import { RequirePermission } from "@/components/auth/require-permission";
 import { HrModuleOnly } from "@/components/hr/hr-module-gate";
+import { EmployeeLifecycleDialog, type LifecycleAction } from "@/components/hr/employee-lifecycle-dialog";
 import { ImportContractsDialog } from "@/components/hr/import-dialogs";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import { buildEmployeeDirectoryPdf, employeeDirectoryFileName } from "@/lib/hrExportPdf";
 import { format } from "date-fns";
 
 
@@ -52,6 +52,8 @@ export default function EmployeesPage() {
   const [isViewEmployeeDialogOpen, setIsViewEmployeeDialogOpen] = useState(false);
   const [isFireDialogOpen, setIsFireDialogOpen] = useState(false);
   const [isImportContractsOpen, setIsImportContractsOpen] = useState(false);
+  // Reactivate (re-hire) someone who has left, or delete an employee with no history.
+  const [lifecycle, setLifecycle] = useState<{ action: LifecycleAction; employee: any } | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -156,43 +158,7 @@ export default function EmployeesPage() {
   };
 
   const handleExportPDF = (activeOnly: boolean) => {
-    const scoped = activeOnly ? employees.filter(e => e.status === 'Active') : employees;
-    const doc = new jsPDF({ orientation: 'landscape' });
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(`ABBY'S CATERERS — ${activeOnly ? 'ACTIVE STAFF DIRECTORY' : 'FULL STAFF DIRECTORY'}`, 14, 18);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text(`Generated: ${format(new Date(), "PPP")}`, 14, 25);
-    doc.text(`Total Employees: ${scoped.length}`, 14, 30);
-
-    (doc as any).autoTable({
-      startY: 36,
-      theme: 'grid',
-      head: [['ID', 'Name', 'Department', 'Role', 'Status', 'Email', 'Phone', 'Monthly Salary']],
-      body: scoped.map(emp => [
-        emp.id,
-        getFullName(emp),
-        emp.department,
-        emp.role,
-        emp.status,
-        emp.email || '-',
-        emp.phone || '-',
-        emp.monthlySalary ? emp.monthlySalary.toLocaleString() : '-'
-      ]),
-      styles: {
-        font: 'helvetica',
-        fontSize: 12
-      },
-      headStyles: {
-        font: 'helvetica',
-        fontSize: 12,
-        fillColor: [15, 23, 42],
-        textColor: 255
-      }
-    });
-
-    doc.save(`employee-directory-${activeOnly ? 'active-' : ''}${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    buildEmployeeDirectoryPdf(employees, { activeOnly }).save(employeeDirectoryFileName(activeOnly));
   };
 
   const handleExportExcel = async (activeOnly: boolean) => {
@@ -420,7 +386,15 @@ export default function EmployeesPage() {
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => openViewDialog(employee)}>View Details</DropdownMenuItem>
                           <RequirePermission permission="hr.manage">
-                            <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
+                            {/* Someone who has left is frozen: no edits until reactivated (re-hired). */}
+                            {employee.status === 'Active' ? (
+                              <DropdownMenuItem onClick={() => openEditDialog(employee)}>Edit</DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => setLifecycle({ action: 'reactivate', employee })}>
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Reactivate (re-hire)
+                              </DropdownMenuItem>
+                            )}
                             {employee.status === 'Active' && (
                               <>
                                 <DropdownMenuSeparator />
@@ -430,6 +404,11 @@ export default function EmployeesPage() {
                                 </DropdownMenuItem>
                               </>
                             )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setLifecycle({ action: 'delete', employee })}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete employee
+                            </DropdownMenuItem>
                           </RequirePermission>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -447,6 +426,20 @@ export default function EmployeesPage() {
         </Card>
       
       <ImportContractsDialog isOpen={isImportContractsOpen} setIsOpen={setIsImportContractsOpen} />
+      <EmployeeLifecycleDialog
+        action={lifecycle?.action ?? null}
+        employee={lifecycle?.employee ?? null}
+        onClose={() => setLifecycle(null)}
+        onDone={(action, emp) => {
+          if (action === 'delete') {
+            setEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+            toast({ title: 'Employee deleted', description: `${getFullName(emp)} was removed.` });
+          } else {
+            setEmployees((prev) => prev.map((e) => e.id === emp.id ? { ...e, status: 'Active', employmentEndDate: null, employmentEndReason: null } : e));
+            toast({ title: 'Employee reactivated', description: `${getFullName(emp)} is Active again.` });
+          }
+        }}
+      />
       <AddEmployeeDialog 
         isOpen={isAddEmployeeDialogOpen}
         setIsOpen={setIsAddEmployeeDialogOpen}

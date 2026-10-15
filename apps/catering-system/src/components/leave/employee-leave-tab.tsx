@@ -17,7 +17,8 @@ import type { LeaveRequestView } from '@/types';
 type BalanceCard = Awaited<ReturnType<typeof getEmployeeBalances>>[number];
 
 /** One employee's leave: balances for the year and every request they have made. */
-export function EmployeeLeaveTab({ employeeId, employeeName }: { employeeId: string; employeeName: string }) {
+/** canAct: false for someone who has left (their record is closed until reactivated). */
+export function EmployeeLeaveTab({ employeeId, employeeName, canAct = true }: { employeeId: string; employeeName: string; canAct?: boolean }) {
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
   const [balances, setBalances] = useState<BalanceCard[] | null>(null);
@@ -42,7 +43,7 @@ export function EmployeeLeaveTab({ employeeId, employeeName }: { employeeId: str
           <SelectTrigger className="w-28" aria-label="Year"><SelectValue /></SelectTrigger>
           <SelectContent>{[thisYear - 1, thisYear, thisYear + 1].map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
         </Select>
-        <Button size="sm" onClick={() => setApplyOpen(true)}><CalendarPlus className="mr-2 h-4 w-4" />Apply for leave</Button>
+        {canAct && <Button size="sm" onClick={() => setApplyOpen(true)}><CalendarPlus className="mr-2 h-4 w-4" />Apply for leave</Button>}
       </div>
 
       {error && <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">{error}</p>}

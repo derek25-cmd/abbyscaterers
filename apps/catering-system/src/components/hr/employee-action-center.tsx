@@ -5,7 +5,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CreditCard, Truck, CalendarCheck, History, FilePlus2, Award } from "lucide-react";
+import { CreditCard, Truck, CalendarCheck, History, FilePlus2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, docTypeAppliesTo } from "@/lib/hr-docs/registry";
 import { useState } from "react";
@@ -24,10 +24,10 @@ export function EmployeeActionCenter({ employee }) {
     // ...and only those whose HR module is switched on.
     const modules = useHrModules();
     const letterTypes = DOC_TYPE_ORDER
-        .filter((t) => t === 'general_letter' || docTypeAppliesTo(t, employee))
+        .filter((t) => docTypeAppliesTo(t, employee))
         .filter((t) => !!modules && isHrModuleOn(modules, moduleOfDocType(t)));
-    const hasLeft = employee.status === 'Inactive' && !!employee.employmentEndDate
-        && !!modules && isHrModuleOn(modules, 'letters');
+    // Someone who has left is frozen until reactivated (re-hired): only the history links remain.
+    const isActive = employee.status === 'Active';
 
     const handleCreatePayslip = () => {
         router.push(`/hr/payroll?createPayslipFor=${employee.id}`);
@@ -45,22 +45,31 @@ export function EmployeeActionCenter({ employee }) {
                         Payment History
                     </Link>
                 </Button>
+                {isActive && (
                 <Button variant="outline" onClick={handleCreatePayslip}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     Create Payslip
                 </Button>
+                )}
+                {isActive && (
                 <Button variant="outline" asChild>
                      <Link href={`/operations/issuance`}>
                         <Truck className="mr-2 h-4 w-4" />
                         Issue Assets
                     </Link>
                 </Button>
+                )}
                 <Button variant="outline" asChild>
                     <Link href={`/hr/attendance?employeeId=${employee.id}`}>
                         <CalendarCheck className="mr-2 h-4 w-4" />
                         Attendance History
                     </Link>
                 </Button>
+                {!isActive && (
+                    <p className="col-span-2 self-center text-sm text-muted-foreground md:col-span-2">
+                        Employment ended{employee.employmentEndDate ? ` on ${employee.employmentEndDate}` : ''}. The record is closed: reactivate (re-hire) to make changes.
+                    </p>
+                )}
                 <RequirePermission permission="hr.manage">
                     {letterTypes.length > 0 && (
                     <DropdownMenu>
@@ -77,12 +86,6 @@ export function EmployeeActionCenter({ employee }) {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    )}
-                    {hasLeft && (
-                        <Button onClick={() => setLetterType('certificate_of_service')}>
-                            <Award className="mr-2 h-4 w-4" />
-                            Generate Certificate of Service
-                        </Button>
                     )}
                 </RequirePermission>
             </CardContent>
