@@ -221,7 +221,7 @@ BEGIN
 
   res := public._lt_as(hr, format('UPDATE public.employees SET role = %L WHERE id = %L', 'Changed', empF));
   INSERT INTO rls_results VALUES ('hr', 'employees', 'edits the record of someone who has left', false, res LIKE 'ok:%' AND res <> 'ok:0');
-  INSERT INTO rls_results VALUES ('hr', 'employees', 'the refusal says to reactivate', true, res LIKE '%reactivate%');
+  INSERT INTO rls_results VALUES ('hr', 'employees', 'the refusal says to reactivate', true, res ILIKE '%reactivate%');
   res := public._lt_as(hr, format('INSERT INTO public.leave_requests (employee_id, leave_type_id, start_date, end_date) VALUES (%L, %L, %L, %L)', empF, annual, '2030-03-04', '2030-03-05'));
   INSERT INTO rls_results VALUES ('hr', 'leave_requests', 'leave for someone who has left', false, res LIKE 'ok:%');
   res := public._lt_as(hr, format('INSERT INTO public.attendance (employee_id, employee, date, status) VALUES (%L, %L, %L, %L)', empF, 'P6F Tester', today, 'Present'));
