@@ -80,3 +80,5 @@ storage-backup/
 .env.production.local
 # Audit query results: kept out until checked for personal data.
 docs/data-readiness/audit-output/
+# Written by `supabase link` (project ref, pooler URL); keep it local.
+supabase/.temp/
