@@ -54,3 +54,14 @@ jobs:
       - run: npm run typecheck --workspace=apps/admin-portal
 
       - run: npm run lint --workspace=apps/admin-portal
+
+      # apps/face-attendance is a root workspace (covered by the root npm ci
+      # above), like admin-portal.
+      - run: npm run typecheck --workspace=apps/face-attendance
+
+      - run: npm run lint --workspace=apps/face-attendance
+
+      - run: npm run build --workspace=apps/face-attendance
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
