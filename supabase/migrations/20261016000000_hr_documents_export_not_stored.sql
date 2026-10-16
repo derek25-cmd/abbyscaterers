@@ -16,6 +16,8 @@
 --     Files already there are left as they are, readable by HR roles.
 --   * Letters issued before this change keep pdf_path/pdf_sha256; the app
 --     exports them by rebuilding the letter from their template version.
+--   * The audit log records THAT the letter text changed, never the text:
+--     issued_content and preview (20261015000100) are masked like data.
 
 ALTER TABLE public.hr_documents ADD COLUMN IF NOT EXISTS issued_content jsonb;
 
@@ -192,3 +194,73 @@ GRANT EXECUTE ON FUNCTION public.issue_hr_document(uuid, jsonb) TO authenticated
 
 -- ── Storage: nothing new is uploaded ───────────────────────────────────────
 DROP POLICY IF EXISTS "hr_documents_storage_insert" ON storage.objects;
+
+-- ── Audit: letter text stays out of audit_log ──────────────────────────────
+-- Same body as 20261014001600; the hr_documents entry also masks preview and
+-- issued_content, which hold the letter's full text.
+CREATE OR REPLACE FUNCTION public.audit_row_change()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  -- table -> columns recorded as "changed", never as a value. '*' applies to
+  -- every audited table (the Phase 1 list); add a table's own entry to extend.
+  mask_map  constant jsonb := '{
+    "*": ["nationalId", "tin", "bankAccountNumber", "monthlySalary"],
+    "hr_documents": ["data", "preview", "issued_content"],
+    "candidates": ["proposed_salary"],
+    "employment_contracts": ["salary"],
+    "recognition_records": ["amount"]
+  }'::jsonb;
+  masked    text[] := ARRAY(SELECT jsonb_array_elements_text(mask_map -> '*'))
+                      || COALESCE(ARRAY(SELECT jsonb_array_elements_text(mask_map -> TG_TABLE_NAME)), ARRAY[]::text[]);
+  -- Bookkeeping columns that change on every write; logging them would make
+  -- every update look like it changed something.
+  noise     constant text[] := ARRAY['updated_by', 'updatedAt', 'updated_at'];
+  old_j     jsonb := CASE WHEN TG_OP = 'INSERT' THEN NULL ELSE to_jsonb(OLD) END;
+  new_j     jsonb := CASE WHEN TG_OP = 'DELETE' THEN NULL ELSE to_jsonb(NEW) END;
+  changed   text[];
+  op        text := lower(TG_OP);
+  rec_id    text;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    SELECT array_agg(k ORDER BY k) INTO changed FROM jsonb_object_keys(new_j) k WHERE k <> ALL (noise);
+  ELSIF TG_OP = 'DELETE' THEN
+    SELECT array_agg(k ORDER BY k) INTO changed FROM jsonb_object_keys(old_j) k WHERE k <> ALL (noise);
+  ELSE
+    SELECT array_agg(k ORDER BY k) INTO changed
+    FROM jsonb_object_keys(new_j) k
+    WHERE k <> ALL (noise) AND new_j -> k IS DISTINCT FROM old_j -> k;
+
+    -- An UPDATE that only touched bookkeeping columns is not worth a row.
+    IF changed IS NULL THEN
+      RETURN NULL;
+    END IF;
+
+    -- Approvals get their own action so they can be filtered on.
+    IF old_j ->> 'approved_at' IS NULL AND new_j ->> 'approved_at' IS NOT NULL THEN
+      op := 'approve';
+    END IF;
+  END IF;
+
+  -- The record's id; for tables keyed differently, its key ("type", "type/year"
+  -- or, for reminder notices, "contract/threshold").
+  rec_id := COALESCE(
+    new_j ->> 'id', old_j ->> 'id',
+    NULLIF(concat_ws('/', COALESCE(new_j ->> 'doc_type', old_j ->> 'doc_type'), COALESCE(new_j ->> 'year', old_j ->> 'year')), ''),
+    NULLIF(concat_ws('/', COALESCE(new_j ->> 'contract_id', old_j ->> 'contract_id'), COALESCE(new_j ->> 'threshold_days', old_j ->> 'threshold_days')), '')
+  );
+
+  -- Strip masked values from the snapshots (keys stay in changed_fields).
+  old_j := old_j - masked;
+  new_j := new_j - masked;
+
+  INSERT INTO public.audit_log (actor_id, action, table_name, record_id, metadata)
+  VALUES (
+    public.safe_auth_uid(),
+    TG_TABLE_NAME || '.' || op,
+    TG_TABLE_NAME,
+    rec_id,
+    jsonb_build_object('old', old_j, 'new', new_j, 'changed_fields', COALESCE(to_jsonb(changed), '[]'::jsonb))
+  );
+  RETURN NULL;
+END;
+$$;

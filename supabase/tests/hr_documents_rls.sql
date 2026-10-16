@@ -313,7 +313,7 @@ BEGIN
   -- final text, and the PDF is built from it whenever it is needed.
   content1 := jsonb_build_object(
     'v', 1, 'ref_no', ref1, 'date', '16 October 2026', 'addressee', jsonb_build_array('HD Tester'), 'subject', 'HD-1',
-    'paragraphs', jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'Hello', 'bold', false))),
+    'paragraphs', jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'SECRET-ISSUED-TEXT', 'bold', false))),
     'signatory', jsonb_build_object('name', 'Neema Mushi', 'title', 'HR Manager'), 'confidential', false);
   res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L)', d1, NULL));
   INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with no letter text', false, res LIKE 'ok:%');
@@ -332,6 +332,9 @@ BEGIN
   INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'issued with its text and time, and no stored file', true,
     EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'issued' AND issued_content = content1
             AND issued_at IS NOT NULL AND pdf_path IS NULL AND pdf_sha256 IS NULL));
+  INSERT INTO rls_results VALUES ('hr', 'audit_log', 'the issued letter text is not copied into the audit log', true,
+    EXISTS (SELECT 1 FROM public.audit_log WHERE table_name = 'hr_documents' AND record_id = d1::text AND metadata -> 'changed_fields' ? 'issued_content')
+    AND NOT EXISTS (SELECT 1 FROM public.audit_log WHERE table_name = 'hr_documents' AND metadata::text LIKE '%SECRET-ISSUED-TEXT%'));
 
   -- An issued document accepts nothing but a void with a reason.
   res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET subject = %L WHERE id = %L', 'Edited after issue', d1));
