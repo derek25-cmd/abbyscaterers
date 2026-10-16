@@ -32,7 +32,11 @@ import {
     RefreshCw,
     GraduationCap,
     TrendingUp,
-    Inbox
+    Inbox,
+    CalendarDays,
+    FileSignature,
+    UserPlus,
+    ScrollText
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -57,10 +61,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BarChart3 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useStaffRole } from "@/hooks/use-staff-role";
+import { isHrModuleOn, useHrModules, type HrModule } from "@/lib/hr-modules";
 import { PrivateRoute } from "./private-route";
 import { NotificationCenter } from "./notification-center";
 import { UnconfirmedOrdersReminder } from "@/components/orders/unconfirmed-orders-reminder";
@@ -94,8 +100,12 @@ const navItems = [
     subItems: [
         { href: "/hr/employees", label: "Employees", icon: Users },
         { href: "/hr/attendance", label: "Attendance", icon: CalendarCheck },
+        { href: "/hr/leave", label: "Leave", icon: CalendarDays },
         { href: "/hr/payroll", label: "Payroll", icon: CreditCard },
         { href: "/hr/training", label: "Staff Training", icon: GraduationCap },
+        { href: "/hr/documents", label: "HR Documents", icon: FileSignature },
+        { href: "/hr/candidates", label: "Candidates", icon: UserPlus },
+        { href: "/hr/audit-trail", label: "Audit Trail", icon: ScrollText },
         { href: "/operations/inventory", label: "Product Catalog", icon: Package },
         { href: "/operations/stock-logs", label: "Stock Logs", icon: History },
         { href: "/operations/assets", label: "Asset Management", icon: Truck },
@@ -105,6 +115,18 @@ const navItems = [
   },
 ];
 
+
+/**
+ * HR pages that only some roles use, and that the HR module switch
+ * (app_settings.hr_modules) can hide. The pages and the database enforce the
+ * same rules; this only keeps the menu to what the person can open.
+ */
+const HR_MENU_RULES: Record<string, { module: HrModule; permission?: Parameters<ReturnType<typeof useStaffRole>['can']>[0] }> = {
+  "/hr/leave": { module: "leave" },
+  "/hr/documents": { module: "documents", permission: "hr.manage" },
+  "/hr/candidates": { module: "candidates", permission: "hr.manage" },
+  "/hr/audit-trail": { module: "audit", permission: "audit.view" },
+};
 
 const managementItems = [
     { href: "/reports", label: "Reports", icon: BarChart3 },
@@ -216,6 +238,17 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { open } = useSidebar();
+  const { can } = useStaffRole();
+  const hrModules = useHrModules();
+  const visibleNavItems = useMemo(() => navItems.map((item) => {
+    if (!item.subItems) return item;
+    const subItems = item.subItems.filter((sub) => {
+      const rule = HR_MENU_RULES[sub.href];
+      if (!rule) return true;
+      return !!hrModules && isHrModuleOn(hrModules, rule.module) && (!rule.permission || can(rule.permission));
+    });
+    return { ...item, subItems };
+  }), [can, hrModules]);
 
   if (pathname === '/login') {
     return <main className="w-full">{children}</main>;
@@ -240,7 +273,7 @@ function LayoutContentWrapper({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
             <SidebarMenu>
-                {navItems.map((item) => (
+                {visibleNavItems.map((item) => (
                   <SidebarMenuItem key={item.label}>
                       <NavItem item={item} currentPathname={pathname} />
                   </SidebarMenuItem>
