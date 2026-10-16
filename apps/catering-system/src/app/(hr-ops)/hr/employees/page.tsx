@@ -15,6 +15,8 @@ import { getEmployees, addEmployee, updateEmployee } from "@/services/employeeSe
 import { endEmploymentWithoutLetter } from "@/services/hrRecordsService";
 import type { FireEmployeeFormData } from "@/lib/schemas";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS } from "@/lib/schemas";
 import { getErrorDescription } from "@/lib/service-validation";
@@ -25,6 +27,9 @@ import { EmployeeLifecycleDialog, type LifecycleAction } from "@/components/hr/e
 import { ImportContractsDialog } from "@/components/hr/import-dialogs";
 import { buildEmployeeDirectoryPdf, employeeDirectoryFileName } from "@/lib/hrExportPdf";
 import { format } from "date-fns";
+
+/** Remembered per browser: whether the list includes people who have left. */
+const SHOW_LEFT_KEY = 'hr.employees.showLeft';
 
 
 /**
@@ -58,6 +63,18 @@ export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  // People who have left are hidden by default, so HR works from the current staff.
+  const [showInactive, setShowInactive] = useState(false);
+
+  useEffect(() => {
+    try { setShowInactive(localStorage.getItem(SHOW_LEFT_KEY) === '1'); } catch { /* storage blocked: keep them hidden */ }
+  }, []);
+
+  const toggleShowInactive = (show: boolean) => {
+    setShowInactive(show);
+    if (!show) setStatusFilter('all');
+    try { localStorage.setItem(SHOW_LEFT_KEY, show ? '1' : '0'); } catch { /* not remembered, still applied */ }
+  };
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -77,10 +94,12 @@ export default function EmployeesPage() {
     return employees.filter(employee => {
         const matchesSearch = searchQuery ? getFullName(employee).toLowerCase().includes(searchQuery.toLowerCase()) : true;
         const matchesDept = departmentFilter !== 'all' ? employee.department === departmentFilter : true;
-        const matchesStatus = statusFilter !== 'all' ? employee.status === statusFilter : true;
+        const matchesStatus = !showInactive
+          ? employee.status === 'Active'
+          : statusFilter !== 'all' ? employee.status === statusFilter : true;
         return matchesSearch && matchesDept && matchesStatus;
     });
-  }, [employees, searchQuery, departmentFilter, statusFilter]);
+  }, [employees, searchQuery, departmentFilter, statusFilter, showInactive]);
 
   const stats = useMemo(() => {
     return {
@@ -312,7 +331,9 @@ export default function EmployeesPage() {
           <CardHeader>
             <CardTitle>Staff Directory</CardTitle>
             <CardDescription>
-              Manage and view details for all company personnel.
+              {showInactive
+                ? 'Everyone on record, including people who have left.'
+                : `Current staff.${stats.inactive > 0 ? ` ${stats.inactive} ${stats.inactive === 1 ? 'person who has left is' : 'people who have left are'} hidden.` : ''}`}
             </CardDescription>
           </CardHeader>
            <div className="p-6 pt-0 flex flex-col md:flex-row items-center gap-2">
@@ -335,6 +356,7 @@ export default function EmployeesPage() {
                   {DEPARTMENTS.map(dept => <SelectItem key={dept} value={dept}>{dept}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {showInactive && (
                <Select onValueChange={setStatusFilter} value={statusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Filter by Status" />
@@ -345,6 +367,11 @@ export default function EmployeesPage() {
                   <SelectItem value="Inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
+              )}
+              <div className="flex items-center gap-2 md:ml-auto">
+                <Switch id="show-left" checked={showInactive} onCheckedChange={toggleShowInactive} />
+                <Label htmlFor="show-left" className="cursor-pointer whitespace-nowrap text-sm font-normal">Show employees who have left</Label>
+              </div>
           </div>
           <CardContent>
             {loading ? (
@@ -416,7 +443,10 @@ export default function EmployeesPage() {
                   </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No employees found matching the filters.</TableCell>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          No employees found matching the filters.
+                          {!showInactive && stats.inactive > 0 && ' People who have left are hidden; switch on "Show employees who have left" to search them too.'}
+                        </TableCell>
                     </TableRow>
                 )}
               </TableBody>
