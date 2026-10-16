@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react';
 import { RequirePermission } from '@/components/auth/require-permission';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +18,14 @@ import { useToast } from '@/hooks/use-toast';
 import { DOC_TYPE_LABELS, DOC_TYPE_ORDER, REGISTRY, type LetterRelated } from '@/lib/hr-docs/registry';
 import { PLACEHOLDER_REFERENCE, buildRenderContext, formatLongDate, listPlaceholders, renderTemplate } from '@/lib/hr-docs/render';
 import {
-  getLetterSettings, listDocumentTypes, listTemplates, saveTemplateVersion, todayInDar, updateDocumentType, type LetterSettings,
+  DRAFT_TEMPLATE_MARKER, getLetterSettings, isDraftTemplate, listDocumentTypes, listTemplates, saveTemplateVersion, todayInDar,
+  updateDocumentType, type LetterSettings,
 } from '@/services/hrDocumentService';
 import type { Candidate, Employee, HrDocTypeCode, HrDocumentTemplate, HrDocumentType } from '@/types';
+
+/** The wording without the starter DRAFT line (and the blank line after it). */
+const withoutDraftLine = (body: string) =>
+  body.split(/\r?\n/).filter((line) => !line.includes(DRAFT_TEMPLATE_MARKER)).join('\n').replace(/^\s*\n/, '');
 
 const SAMPLE_EMPLOYEE: Partial<Employee> = {
   id: 'EMP-000', firstName: 'Amina', lastName: 'Juma', role: 'Head Chef', department: 'Kitchen' as Employee['department'],
@@ -91,6 +96,9 @@ function Editor() {
 
   const dirty = !active || title !== active.title || body !== active.body || useSig !== active.use_stored_signature;
   const canSave = dirty && title.trim().length > 0 && body.trim().length > 0;
+  // Starter wording: letters of this type cannot be sent until it is replaced.
+  const activeIsDraft = isDraftTemplate(active);
+  const editorIsDraft = body.includes(DRAFT_TEMPLATE_MARKER);
 
   const insert = (text: string) => {
     const el = bodyRef.current;
@@ -159,7 +167,9 @@ function Editor() {
               <button key={t} type="button" onClick={() => setSelected(t)}
                 className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ${selected === t ? 'bg-primary/10 font-medium' : 'hover:bg-muted'}`}>
                 {DOC_TYPE_LABELS[t]}
-                <span className="text-xs text-muted-foreground">{a ? `v${a.version}` : 'none'}</span>
+                {isDraftTemplate(a)
+                  ? <Badge variant="outline" className="border-amber-400 bg-amber-50 text-[10px] text-amber-900">Draft wording</Badge>
+                  : <span className="text-xs text-muted-foreground">{a ? `v${a.version}` : 'none'}</span>}
               </button>
             );
           })}
@@ -179,6 +189,22 @@ function Editor() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {activeIsDraft && (
+                  <div role="alert" className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="space-y-2">
+                      <p className="font-medium">This is the starter wording. Letters of this type cannot be sent for approval until it is replaced.</p>
+                      <ol className="list-decimal space-y-0.5 pl-5">
+                        <li>Remove the first line (&ldquo;DRAFT TEMPLATE — &hellip;&rdquo;).</li>
+                        <li>Change the text to the company&apos;s own wording. Keep the details in double braces; they are filled in for each letter.</li>
+                        <li>Press <span className="font-medium">Save as new version</span>. Drafts written earlier: open them and use &ldquo;Update to latest&rdquo;.</li>
+                      </ol>
+                      {editorIsDraft && (
+                        <Button size="sm" variant="outline" onClick={() => setBody(withoutDraftLine(body))}>Remove the DRAFT line</Button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label htmlFor="tpl-title">Template name</Label>
                   <Input id="tpl-title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -295,6 +321,11 @@ function Editor() {
             <AlertDialogTitle>Save as version {(versions[0]?.version ?? 0) + 1}?</AlertDialogTitle>
             <AlertDialogDescription>
               New letters will use this wording from now on. Letters already written, approved or issued keep the version they were made with, and the old version stays in the list.
+              {editorIsDraft && (
+                <span className="mt-2 block font-medium text-amber-800">
+                  The wording still has the DRAFT line, so letters of this type still cannot be sent. Remove it before saving.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
