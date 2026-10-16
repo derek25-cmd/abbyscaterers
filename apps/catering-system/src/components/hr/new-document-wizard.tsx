@@ -19,8 +19,8 @@ import { isHrModuleOn, moduleOfDocType, useHrModules } from '@/lib/hr-modules';
 import { getEmployees } from '@/services/employeeService';
 import { listCandidates } from '@/services/candidateService';
 import {
-  createDraft, getActiveTemplate, getLetterSettings, listDocumentTypes, loadRelated, loadRenderInputsFor, renderDocument,
-  submit, todayInDar, updateDraft, type LetterSettings, type RenderedLetter,
+  createAndSubmit, createDraft, getActiveTemplate, getLetterSettings, isDraftTemplate, listDocumentTypes, loadRelated, loadRenderInputsFor,
+  renderDocument, submit, todayInDar, updateDraft, type LetterSettings, type RenderedLetter,
 } from '@/services/hrDocumentService';
 import type { Candidate, Employee, HrDocTypeCode, HrDocument, HrDocumentTemplate, HrDocumentType } from '@/types';
 
@@ -179,10 +179,32 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
     : step === 2 ? detailsOk
     : false;
 
+  // Seeded wording that the HR Manager has not replaced yet: the letter could be
+  // saved, but never sent, approved or issued.
+  const templateIsDraft = isDraftTemplate(template);
+
   const save = async (andSend: boolean) => {
     if (!docType || !personChosen) return;
     setSaving(andSend ? 'send' : 'draft');
     setError(null);
+    if (andSend && !editing) {
+      // A new letter goes straight to approval; it is never left in Drafts.
+      try {
+        const doc = await createAndSubmit({
+          docType, employeeId: employee?.id, candidateId: candidate?.id, subject, data,
+          signatoryName: sigName, signatoryTitle: sigTitle, confidential,
+        });
+        toast({ title: 'Sent for approval', description: 'The approvers have been notified.' });
+        setIsOpen(false);
+        onSaved?.(doc, true);
+      } catch (err) {
+        // Nothing was kept; the wizard stays open so the problem can be fixed and sent again.
+        setError(`Not sent: ${err instanceof Error ? err.message : 'the letter could not be sent for approval.'}`);
+      } finally {
+        setSaving(null);
+      }
+      return;
+    }
     try {
       let doc: HrDocument;
       if (editing) {
@@ -230,7 +252,7 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
             {step === 0 && 'What kind of document is it?'}
             {step === 1 && 'Who is it for?'}
             {step === 2 && 'What does it say?'}
-            {step === 3 && 'Check how it will look, then save it or send it for approval.'}
+            {step === 3 && 'Check how it will look, then send it for approval. Keep it as a draft only if you want to finish it later.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -344,6 +366,15 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
 
         {step === 3 && (
           <div className="space-y-3">
+            {templateIsDraft && (
+              <div role="alert" className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  The wording for this type of letter is still the DRAFT template, so it cannot be sent for approval.
+                  The HR Manager saves the final wording under <span className="font-medium">HR Documents → Templates</span>; then send it.
+                </p>
+              </div>
+            )}
             {!preview ? <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
               <>
                 {preview.missing.length > 0 && (
@@ -383,8 +414,8 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
                 <Button variant="outline" onClick={() => save(false)} disabled={!!saving || !preview}>
                   {saving === 'draft' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save as draft
                 </Button>
-                <Button onClick={() => save(true)} disabled={!!saving || !preview || preview.missing.length > 0}>
-                  {saving === 'send' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save and send for approval
+                <Button onClick={() => save(true)} disabled={!!saving || !preview || preview.missing.length > 0 || templateIsDraft}>
+                  {saving === 'send' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Send for approval
                 </Button>
               </>
             )}
