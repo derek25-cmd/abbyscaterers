@@ -58,7 +58,7 @@ supabase storage cp -r ss:///hr-documents ./backup/hr-documents --experimental -
 supabase storage cp -r ss:///leave-attachments ./backup/leave-attachments --experimental --linked
 ```
 
-(Before go-live `hr-documents` holds only test letters; this matters most for later backups.)
+(HR letters are no longer stored as files since 20261016000000; `hr-documents` only holds files from before that change. Their text is in the database backup.)
 
 ### 1c. Apply the three Phase 5 migrations
 

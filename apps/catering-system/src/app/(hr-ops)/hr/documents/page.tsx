@@ -19,7 +19,7 @@ import { NewDocumentWizard } from '@/components/hr/new-document-wizard';
 import { NumberRegister } from '@/components/hr/number-register';
 import { useToast } from '@/hooks/use-toast';
 import { DOC_TYPE_LABELS, DOC_TYPE_ORDER } from '@/lib/hr-docs/registry';
-import { getDownloadUrl, listDocuments } from '@/services/hrDocumentService';
+import { exportDocumentPdf, listDocuments } from '@/services/hrDocumentService';
 import type { HrDocTypeCode, HrDocumentStatus, HrDocumentView } from '@/types';
 
 const ANY = '__any__';
@@ -80,8 +80,8 @@ function Register() {
   const openDoc = (id: string, why: DocIntent = null) => { setIntent(why); setOpenId(id); };
 
   const download = async (id: string) => {
-    try { window.open(await getDownloadUrl(id), '_blank', 'noopener'); }
-    catch (err) { toast({ variant: 'destructive', title: 'Could not open the PDF', description: err instanceof Error ? err.message : undefined }); }
+    try { await exportDocumentPdf(id); }
+    catch (err) { toast({ variant: 'destructive', title: 'Could not export the PDF', description: err instanceof Error ? err.message : undefined }); }
   };
 
   const anyFilter = !!(type || status || person || from || to);
@@ -179,7 +179,7 @@ function Register() {
                             <DropdownMenuItem onClick={() => openDoc(d.id, 'approve')}>Review and approve</DropdownMenuItem>
                           )}
                           {d.status === 'approved' && <DropdownMenuItem onClick={() => openDoc(d.id, 'issue')}>{d.ref_no ? 'Finish issuing' : 'Issue'}</DropdownMenuItem>}
-                          {d.status === 'issued' && <DropdownMenuItem onClick={() => download(d.id)}>Download PDF</DropdownMenuItem>}
+                          {d.status === 'issued' && <DropdownMenuItem onClick={() => download(d.id)}>Export PDF</DropdownMenuItem>}
                           {d.status !== 'void' && (
                             <>
                               <DropdownMenuSeparator />

@@ -70,10 +70,10 @@ Things found while building the HR & Operations module that should be fixed late
 - **Where:** `cleanup_uat_data()` (`supabase/migrations/20261014002100_uat_cleanup.sql`).
 - **Behaviour:** notifications sent to real approvers during UAT ("Document waiting for approval: …") carry only the letter's subject, so they cannot be matched to UAT data and remain in those people's notification lists. They are harmless and can be marked read.
 
-### 11. Files of voided letters are kept
+### 11. Letters are exported, not stored
 
-- **Where:** `hr-documents` storage bucket (write-once by design).
-- **Behaviour:** a voided letter's PDF is kept with the void record. Correct for an audit trail; plan a retention rule (e.g. how many years to keep HR letters) with HR.
+- **Where:** `hr_documents.issued_content` (`supabase/migrations/20261016000000_hr_documents_export_not_stored.sql`).
+- **Behaviour:** issuing saves the letter's final text; Export PDF builds the file in the browser, like invoices and delivery notes. The text is frozen, but the letterhead, signature and stamp come from the current settings, so an old letter exported after the stamp changes shows the new stamp. Files uploaded to the `hr-documents` bucket before this change are kept; nothing new is uploaded. Plan a retention rule (how many years to keep HR letters) with HR.
 
 ### 12. The module switch is read once per page load
 

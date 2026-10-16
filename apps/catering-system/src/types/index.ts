@@ -853,6 +853,8 @@ export interface HrDocument {
     signatory_title: string | null;
     pdf_path: string | null;
     pdf_sha256: string | null;
+    /** The letter text as issued (reference, date, paragraphs, signatory); exports are built from it. */
+    issued_content: unknown | null;
     confidential: boolean;
     issued_at: string | null;
     created_at: string;

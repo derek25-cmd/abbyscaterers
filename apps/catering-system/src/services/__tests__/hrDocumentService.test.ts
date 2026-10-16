@@ -72,69 +72,40 @@ beforeEach(() => {
 });
 
 describe('issue', () => {
-  it('reserves the number, then uploads, then issues, in that order', async () => {
+  it('reserves the number, then issues with the final text; nothing is uploaded', async () => {
     world();
     const { issue } = await import('../hrDocumentService');
 
     const result = await issue('doc-1');
 
-    expect(calls.filter((c) => ['rpc:reserve_hr_document_ref', 'upload', 'rpc:issue_hr_document'].includes(c)))
-      .toEqual(['rpc:reserve_hr_document_ref', 'upload', 'rpc:issue_hr_document']);
-    expect(result.refNo).toBe(REF);
-    expect(result.path).toBe(PATH);
+    expect(calls.filter((c) => ['rpc:validate_hr_document', 'rpc:reserve_hr_document_ref', 'rpc:issue_hr_document'].includes(c)))
+      .toEqual(['rpc:validate_hr_document', 'rpc:reserve_hr_document_ref', 'rpc:issue_hr_document']);
+    expect(calls).not.toContain('upload');
+    expect(result).toEqual({ refNo: REF });
   });
 
-  it('uploads once, never over an existing file, and records the hash of exactly what was uploaded', async () => {
+  it('sends the letter exactly as it will print, carrying its reference number and signatory', async () => {
     world();
     const { issue } = await import('../hrDocumentService');
-    const { sha256 } = await import('@/lib/hr-docs/letterPdf');
-
     await issue('doc-1');
 
-    const [path, blob, options] = uploadMock.mock.calls[0];
-    expect(path).toBe(PATH);
-    expect(options).toMatchObject({ upsert: false, contentType: 'application/pdf' });
-    const issueArgs = rpcCalls.find((c) => c.name === 'issue_hr_document')!.args;
-    expect(issueArgs).toEqual({ p_id: 'doc-1', p_pdf_path: PATH, p_pdf_sha256: await sha256(blob) });
+    const args = rpcCalls.find((c) => c.name === 'issue_hr_document')!.args;
+    expect(Object.keys(args)).toEqual(['p_id', 'p_content']);
+    expect(args.p_content).toMatchObject({
+      v: 1, ref_no: REF, subject: 'Confirmation of employment', confidential: false,
+      signatory: { name: 'Neema Mushi', title: 'HR Manager' },
+    });
+    expect(args.p_content.addressee[0]).toBe('Amina Juma');
+    expect(args.p_content.paragraphs.map((p: { text: string }[]) => p.map((x) => x.text).join(''))).toEqual(['Dear Amina Juma,', 'Hello there.']);
+    expect(args.p_content.date).toMatch(/^\d{1,2} [A-Z][a-z]+ \d{4}$/);
   });
 
-  it('does not mark the document issued when the upload fails', async () => {
-    world();
-    uploadMock.mockResolvedValue({ error: { message: 'network down', statusCode: '500' } });
+  it('treats a letter already issued (an earlier attempt that finished) as done', async () => {
+    world({ doc: { status: 'issued', ref_no: REF, issued_at: '2026-10-16T08:00:00Z' } });
     const { issue } = await import('../hrDocumentService');
-
-    await expect(issue('doc-1')).rejects.toThrow(/Could not store the PDF/);
-
-    expect(calls).toContain('rpc:reserve_hr_document_ref');
+    expect(await issue('doc-1')).toEqual({ refNo: REF });
+    expect(calls).not.toContain('rpc:reserve_hr_document_ref');
     expect(calls).not.toContain('rpc:issue_hr_document');
-  });
-
-  it('on a retry, reuses the file already stored for the reserved number instead of uploading again', async () => {
-    world({ doc: { ref_no: REF } });
-    const stored = new Blob(['%PDF-1.4 the earlier file'], { type: 'application/pdf' });
-    downloadMock.mockResolvedValue({ data: stored, error: null });
-    const { issue } = await import('../hrDocumentService');
-    const { sha256 } = await import('@/lib/hr-docs/letterPdf');
-
-    const result = await issue('doc-1');
-
-    expect(uploadMock).not.toHaveBeenCalled();
-    expect(result.sha256).toBe(await sha256(stored));
-    expect(rpcCalls.find((c) => c.name === 'issue_hr_document')!.args.p_pdf_path).toBe(PATH);
-  });
-
-  it('uses the file that won when two attempts race to upload', async () => {
-    world();
-    const winner = new Blob(['%PDF-1.4 the winner'], { type: 'application/pdf' });
-    downloadMock
-      .mockResolvedValueOnce({ data: null, error: { message: 'Object not found' } }) // first look: nothing there
-      .mockResolvedValueOnce({ data: winner, error: null });                         // after the clash
-    uploadMock.mockResolvedValue({ error: { message: 'The resource already exists', statusCode: '409' } });
-    const { issue } = await import('../hrDocumentService');
-    const { sha256 } = await import('@/lib/hr-docs/letterPdf');
-
-    const result = await issue('doc-1');
-    expect(result.sha256).toBe(await sha256(winner));
   });
 
   it('refuses a document that is not approved, before touching the number counter', async () => {
@@ -153,14 +124,13 @@ describe('issue', () => {
     expect(calls).not.toContain('rpc:reserve_hr_document_ref');
   });
 
-  it('tells the user to press Issue again when marking it issued fails after the upload', async () => {
+  it('tells the user to press Issue again when marking it issued fails', async () => {
     world();
     rpcResults.issue_hr_document = { data: null, error: { message: 'connection reset' } };
     const { issue } = await import('../hrDocumentService');
     const err = await issue('doc-1').catch((e) => e);
     expect(err.message).toContain('connection reset');
     expect(err.message).toMatch(/press Issue again/i);
-    expect(uploadMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -314,41 +284,47 @@ describe('createAndSubmit (send straight for approval)', () => {
   });
 });
 
-describe('downloads and integrity', () => {
-  it('records the download in the audit trail before handing out a signed link', async () => {
-    fromMock.mockImplementation(() => mockQueryResult({ data: { id: 'doc-1', ref_no: REF, status: 'issued', pdf_path: PATH }, error: null }));
-    signedUrlMock.mockResolvedValue({ data: { signedUrl: 'https://signed.example/doc.pdf' }, error: null });
-    const { getDownloadUrl } = await import('../hrDocumentService');
+describe('export (built from the record, never stored)', () => {
+  const CONTENT = {
+    v: 1, ref_no: REF, date: '16 October 2026', addressee: ['Amina Juma', 'Head Chef, Kitchen'], subject: 'Confirmation of employment',
+    paragraphs: [[{ text: 'As issued.', bold: false }]], signatory: { name: 'Neema Mushi', title: 'HR Manager' }, confidential: true,
+  };
 
-    const url = await getDownloadUrl('doc-1');
+  it('builds the PDF from the text saved when it was issued, names it after the reference, and records the export', async () => {
+    world({ doc: { status: 'issued', ref_no: REF, issued_at: '2026-10-16T08:00:00Z', issued_content: CONTENT } });
+    const { buildIssuedLetterPdf } = await import('../hrDocumentService');
+    const { buildLetterPdf } = await import('@/lib/hr-docs/letterPdf');
 
-    expect(url).toBe('https://signed.example/doc.pdf');
-    expect(auditMock).toHaveBeenCalledWith('hr_document.download', 'hr_documents', 'doc-1', { ref_no: REF });
-    expect(signedUrlMock).toHaveBeenCalledWith(PATH, 300);
-    // The download is on record before any link exists.
-    expect(calls.indexOf('audit')).toBeGreaterThanOrEqual(0);
-    expect(calls.indexOf('audit')).toBeLessThan(calls.indexOf('sign'));
+    const { blob, fileName } = await buildIssuedLetterPdf('doc-1');
+
+    expect(blob).toBeInstanceOf(Blob);
+    expect(fileName).toBe('ALC_HR_GEN_2026_0001.pdf');
+    expect(vi.mocked(buildLetterPdf).mock.calls.at(-1)![0]).toMatchObject({
+      refNo: REF, date: '16 October 2026', subject: 'Confirmation of employment', paragraphs: CONTENT.paragraphs,
+      signatory: CONTENT.signatory, confidential: true,
+    });
+    expect(auditMock).toHaveBeenCalledWith('hr_document.export', 'hr_documents', 'doc-1', { ref_no: REF });
+    expect(calls).not.toContain('download');
+    expect(calls).not.toContain('sign');
   });
 
-  it('has nothing to download before the letter is issued', async () => {
-    fromMock.mockImplementation(() => mockQueryResult({ data: { id: 'doc-1', ref_no: null, status: 'approved', pdf_path: null }, error: null }));
-    const { getDownloadUrl } = await import('../hrDocumentService');
-    await expect(getDownloadUrl('doc-1')).rejects.toThrow(/not been issued/);
+  it('rebuilds a letter issued before exports existed from its template version', async () => {
+    world({ doc: { status: 'issued', ref_no: REF, issued_at: '2026-10-14T08:00:00Z', issued_content: null, pdf_path: PATH } });
+    const { buildIssuedLetterPdf } = await import('../hrDocumentService');
+    const { buildLetterPdf } = await import('@/lib/hr-docs/letterPdf');
+
+    await buildIssuedLetterPdf('doc-1');
+
+    const sent = vi.mocked(buildLetterPdf).mock.calls.at(-1)![0];
+    expect(sent).toMatchObject({ refNo: REF, date: '14 October 2026', signatory: { name: 'Neema Mushi', title: 'HR Manager' } });
+    expect(sent.paragraphs.map((p) => p.map((x) => x.text).join(''))).toEqual(['Dear Amina Juma,', 'Hello there.']);
+  });
+
+  it('has nothing to export before the letter is issued', async () => {
+    world({ doc: { status: 'approved' } });
+    const { buildIssuedLetterPdf } = await import('../hrDocumentService');
+    await expect(buildIssuedLetterPdf('doc-1')).rejects.toThrow(/Only an issued letter can be exported/);
     expect(auditMock).not.toHaveBeenCalled();
-  });
-
-  it('confirms a stored file that matches its recorded hash, and flags one that does not', async () => {
-    const { sha256 } = await import('@/lib/hr-docs/letterPdf');
-    const file = new Blob(['%PDF the real file']);
-    const hash = await sha256(file);
-    const { verifyDocumentIntegrity } = await import('../hrDocumentService');
-    downloadMock.mockResolvedValue({ data: file, error: null });
-
-    fromMock.mockImplementation(() => mockQueryResult({ data: { pdf_path: PATH, pdf_sha256: 'a'.repeat(64) }, error: null }));
-    expect(await verifyDocumentIntegrity('doc-1')).toEqual({ ok: false, expected: 'a'.repeat(64), actual: hash });
-
-    fromMock.mockImplementation(() => mockQueryResult({ data: { pdf_path: PATH, pdf_sha256: hash }, error: null }));
-    expect((await verifyDocumentIntegrity('doc-1')).ok).toBe(true);
   });
 });
 

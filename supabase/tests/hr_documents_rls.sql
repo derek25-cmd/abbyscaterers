@@ -3,7 +3,7 @@
 -- Admin-only company settings.
 --
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
--- migrations through 20261014001500 are applied. Same harness as
+-- migrations through 20261016000000 are applied. Same harness as
 -- hr_ops_rls.sql and leave_rls.sql: ONE statement that works with the hosted
 -- `postgres` role and ALWAYS ends in an exception that starts with PASS: or
 -- FAIL:, which rolls back everything it created.
@@ -20,7 +20,7 @@ DECLARE
   nm text; uid uuid; res text; n integer; ok boolean; ok2 boolean;
   emp text; tpl uuid; tpl_version integer; prev_max integer;
   d0 uuid; d1 uuid; d2 uuid; d3 uuid; d4 uuid; d5 uuid; dforged uuid;
-  ref1 text; ref1b text; ref2 text; seq1 integer; seq2 integer; path1 text;
+  ref1 text; ref1b text; ref2 text; seq1 integer; seq2 integer; content1 jsonb;
   ref_re constant text := '^ALC/HR/GEN/[0-9]{4}/[0-9]{4,}$';
   sha constant text := 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
   have_storage boolean := true;
@@ -206,8 +206,9 @@ BEGIN
     INSERT INTO rls_results VALUES ('stf', 'storage.objects', 'uploads an HR document', false, res LIKE 'ok:%');
     res := public._lt_as((u ->> 'fin')::uuid, format('INSERT INTO storage.objects (bucket_id, name) VALUES (%L, %L)', 'hr-documents', 'x/forged.pdf'));
     INSERT INTO rls_results VALUES ('fin', 'storage.objects', 'uploads an HR document', false, res LIKE 'ok:%');
+    -- Letters are exported, not stored (20261016000000): nobody uploads any more.
     res := public._lt_as((u ->> 'hr')::uuid, format('INSERT INTO storage.objects (bucket_id, name) VALUES (%L, %L)', 'hr-documents', emp || '/hd-hr-upload.pdf'));
-    INSERT INTO rls_results VALUES ('hr', 'storage.objects', 'uploads an HR document', true, res LIKE 'ok:%');
+    INSERT INTO rls_results VALUES ('hr', 'storage.objects', 'uploads an HR document', false, res LIKE 'ok:%');
     -- Write-once: no policy lets anyone replace or remove a stored file.
     res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE storage.objects SET name = %L WHERE bucket_id = %L AND name = %L', emp || '/renamed.pdf', 'hr-documents', emp || '/hd-seed.pdf'));
     INSERT INTO rls_results VALUES ('hr', 'storage.objects', 'replaces a stored file', false, res LIKE 'ok:%' AND res <> 'ok:0');
@@ -307,47 +308,53 @@ BEGIN
   res := public._lt_as((u ->> 'hr')::uuid, 'UPDATE public.hr_document_counters SET last_value = 0');
   INSERT INTO rls_results VALUES ('hr', 'hr_document_counters', 'resets the counter', false, res LIKE 'ok:%' AND res <> 'ok:0');
 
-  -- ── G. issue: only with a real file at the right path ────────────────────
-  path1 := emp || '/' || replace(ref1, '/', '_') || '.pdf';
-  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L, %L)', d1, path1, sha));
-  INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with no file uploaded', false, res LIKE 'ok:%');
-  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L, %L)', d1, emp || '/some-other-file.pdf', sha));
-  INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with a path that does not match the number', false, res LIKE 'ok:%');
+  -- ── G. issue: with the final text, carrying its own number (nothing stored) ──
+  -- Since 20261016000000 a letter is exported, not stored: issuing saves its
+  -- final text, and the PDF is built from it whenever it is needed.
+  content1 := jsonb_build_object(
+    'v', 1, 'ref_no', ref1, 'date', '16 October 2026', 'addressee', jsonb_build_array('HD Tester'), 'subject', 'HD-1',
+    'paragraphs', jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'SECRET-ISSUED-TEXT', 'bold', false))),
+    'signatory', jsonb_build_object('name', 'Neema Mushi', 'title', 'HR Manager'), 'confidential', false);
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L)', d1, NULL));
+  INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with no letter text', false, res LIKE 'ok:%');
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L)', d1, content1 || '{"ref_no": "ALC/HR/GEN/2026/7777"}'));
+  INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with text carrying another number', false, res LIKE 'ok:%');
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L)', d1, content1 || '{"paragraphs": []}'));
+  INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with no paragraphs', false, res LIKE 'ok:%');
   INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'still approved after every failed attempt', true,
-    EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'approved' AND ref_no = ref1));
+    EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'approved' AND ref_no = ref1 AND issued_content IS NULL));
+  res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET issued_content = %L WHERE id = %L', content1, d1));
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'writes the issued text directly', false, res LIKE 'ok:%' AND res <> 'ok:0');
+  res := public._lt_as((u ->> 'stf')::uuid, format('SELECT public.issue_hr_document(%L, %L)', d1, content1));
+  INSERT INTO rls_results VALUES ('stf', 'issue_hr_document', 'staff issues', false, res LIKE 'ok:%');
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L)', d1, content1));
+  INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with the final text', true, res LIKE 'ok:%');
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'issued with its text and time, and no stored file', true,
+    EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'issued' AND issued_content = content1
+            AND issued_at IS NOT NULL AND pdf_path IS NULL AND pdf_sha256 IS NULL));
+  INSERT INTO rls_results VALUES ('hr', 'audit_log', 'the issued letter text is not copied into the audit log', true,
+    EXISTS (SELECT 1 FROM public.audit_log WHERE table_name = 'hr_documents' AND record_id = d1::text AND metadata -> 'changed_fields' ? 'issued_content')
+    AND NOT EXISTS (SELECT 1 FROM public.audit_log WHERE table_name = 'hr_documents' AND metadata::text LIKE '%SECRET-ISSUED-TEXT%'));
 
-  IF have_storage THEN
-    INSERT INTO storage.objects (bucket_id, name) VALUES ('hr-documents', path1);
-    res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L, %L)', d1, path1, 'not-a-hash'));
-    INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues with an invalid checksum (file present)', false, res LIKE 'ok:%');
-    INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'the checksum refusal says so', true, res LIKE '%checksum%');
-    res := public._lt_as((u ->> 'stf')::uuid, format('SELECT public.issue_hr_document(%L, %L, %L)', d1, path1, sha));
-    INSERT INTO rls_results VALUES ('stf', 'issue_hr_document', 'staff issues', false, res LIKE 'ok:%');
-    res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.issue_hr_document(%L, %L, %L)', d1, path1, sha));
-    INSERT INTO rls_results VALUES ('hr', 'issue_hr_document', 'issues once the file is stored', true, res LIKE 'ok:%');
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'issued with the file path, fingerprint and time', true,
-      EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'issued' AND pdf_path = path1 AND pdf_sha256 = sha AND issued_at IS NOT NULL));
-
-    -- An issued document accepts nothing but a void with a reason.
-    res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET subject = %L WHERE id = %L', 'Edited after issue', d1));
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'edits an issued document', false, res LIKE 'ok:%' AND res <> 'ok:0');
-    res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET pdf_sha256 = %L WHERE id = %L', repeat('0', 64), d1));
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'changes the recorded fingerprint', false, res LIKE 'ok:%' AND res <> 'ok:0');
-    res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET status = %L, void_reason = %L WHERE id = %L', 'void', 'by hand', d1));
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'voids by editing the row', false, res LIKE 'ok:%' AND res <> 'ok:0');
-    res := public._lt_as((u ->> 'hr')::uuid, format('DELETE FROM public.hr_documents WHERE id = %L', d1));
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'deletes an issued document', false, res LIKE 'ok:%' AND res <> 'ok:0');
-    res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.void_hr_document(%L, %L)', d1, '  '));
-    INSERT INTO rls_results VALUES ('hr', 'void_hr_document', 'voids without a reason', false, res LIKE 'ok:%');
-    res := public._lt_as((u ->> 'stf')::uuid, format('SELECT public.void_hr_document(%L, %L)', d1, 'because'));
-    INSERT INTO rls_results VALUES ('stf', 'void_hr_document', 'staff voids', false, res LIKE 'ok:%');
-    res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.void_hr_document(%L, %L)', d1, 'Wrong date on the letter'));
-    INSERT INTO rls_results VALUES ('hr', 'void_hr_document', 'voids an issued document with a reason', true, res LIKE 'ok:%');
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'a void keeps its number, file and reason', true,
-      EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'void' AND ref_no = ref1 AND pdf_path = path1 AND void_reason = 'Wrong date on the letter' AND voided_by IS NOT NULL));
-    res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET void_reason = %L WHERE id = %L', 'rewritten', d1));
-    INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'edits a voided document', false, res LIKE 'ok:%' AND res <> 'ok:0');
-  END IF;
+  -- An issued document accepts nothing but a void with a reason.
+  res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET subject = %L WHERE id = %L', 'Edited after issue', d1));
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'edits an issued document', false, res LIKE 'ok:%' AND res <> 'ok:0');
+  res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET issued_content = %L WHERE id = %L', content1 || '{"subject": "Changed"}', d1));
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'changes the issued text', false, res LIKE 'ok:%' AND res <> 'ok:0');
+  res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET status = %L, void_reason = %L WHERE id = %L', 'void', 'by hand', d1));
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'voids by editing the row', false, res LIKE 'ok:%' AND res <> 'ok:0');
+  res := public._lt_as((u ->> 'hr')::uuid, format('DELETE FROM public.hr_documents WHERE id = %L', d1));
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'deletes an issued document', false, res LIKE 'ok:%' AND res <> 'ok:0');
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.void_hr_document(%L, %L)', d1, '  '));
+  INSERT INTO rls_results VALUES ('hr', 'void_hr_document', 'voids without a reason', false, res LIKE 'ok:%');
+  res := public._lt_as((u ->> 'stf')::uuid, format('SELECT public.void_hr_document(%L, %L)', d1, 'because'));
+  INSERT INTO rls_results VALUES ('stf', 'void_hr_document', 'staff voids', false, res LIKE 'ok:%');
+  res := public._lt_as((u ->> 'hr')::uuid, format('SELECT public.void_hr_document(%L, %L)', d1, 'Wrong date on the letter'));
+  INSERT INTO rls_results VALUES ('hr', 'void_hr_document', 'voids an issued document with a reason', true, res LIKE 'ok:%');
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'a void keeps its number, text and reason', true,
+    EXISTS (SELECT 1 FROM public.hr_documents WHERE id = d1 AND status = 'void' AND ref_no = ref1 AND issued_content = content1 AND void_reason = 'Wrong date on the letter' AND voided_by IS NOT NULL));
+  res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.hr_documents SET void_reason = %L WHERE id = %L', 'rewritten', d1));
+  INSERT INTO rls_results VALUES ('hr', 'hr_documents', 'edits a voided document', false, res LIKE 'ok:%' AND res <> 'ok:0');
 
   -- ── H. numbers are never reused, and stay unique ─────────────────────────
   FOREACH nm IN ARRAY ARRAY['d2', 'd3'] LOOP
