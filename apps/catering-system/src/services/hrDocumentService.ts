@@ -8,20 +8,16 @@ import { buildNumberLedger, type LedgerRow } from '@/lib/hr-docs/ledger';
 import {
   buildRenderContext, formatLongDate, renderTemplate, type CompanyDetails, type Paragraph,
 } from '@/lib/hr-docs/render';
-import { buildLetterPdf, loadImageAsDataUrl, sha256, type Letterhead } from '@/lib/hr-docs/letterPdf';
+import { buildLetterPdf, loadImageAsDataUrl, type Letterhead } from '@/lib/hr-docs/letterPdf';
 import type {
   Candidate, DisciplinaryRecord, Employee, EmploymentContract, HrDocTypeCode, HrDocument, HrDocumentStatus,
   HrDocumentTemplate, HrDocumentType, HrDocumentView,
 } from '@/types';
 
 // The lifecycle rules (who may approve, what freezes, how numbers are given out)
-// live in the database: supabase/migrations/20261101000*. This file calls them,
-// builds the PDF in the browser, and turns refusals into messages a person can
-// act on. HR documents are private: files are only ever opened through a
-// short-lived signed URL (never getPublicUrl).
-
-export const HR_DOCUMENTS_BUCKET = 'hr-documents';
-const SIGNED_URL_SECONDS = 300;
+// live in the database. This file calls them, builds the PDF in the browser
+// when a letter is exported (nothing is stored as a file), and turns refusals
+// into messages a person can act on.
 
 // ── Errors ─────────────────────────────────────────────────────────────────
 
@@ -545,37 +541,41 @@ export const voidDocument = async (id: string, reason: string): Promise<HrDocume
   return data as HrDocument;
 };
 
-const isAlreadyThere = (err: { message?: string; statusCode?: string | number } | null) =>
-  !!err && (String(err.statusCode) === '409' || /already exists|duplicate/i.test(err.message ?? ''));
+/**
+ * The letter exactly as issued, saved on the record (hr_documents.issued_content).
+ * Exporting builds the PDF from it, so it reads the same every time; nothing is
+ * stored as a file, as with invoices and delivery notes.
+ */
+export interface IssuedContent {
+  v: 1;
+  ref_no: string;
+  date: string;
+  addressee: string[];
+  subject: string;
+  paragraphs: Paragraph[];
+  signatory: { name: string; title: string };
+  confidential: boolean;
+}
 
-export interface IssueResult { refNo: string; path: string; sha256: string }
+export interface IssueResult { refNo: string }
 
 /**
  * Issues an approved document:
- *   1. reserve its reference number (the same number every time it is asked)
- *   2. build the PDF with that number on it
- *   3. upload it to the private bucket at the one path the number dictates
- *   4. record it as issued, with the file's SHA-256
- * If step 3 or 4 fails the document stays approved with its number reserved, and
- * issuing again resumes: a file already stored at that path is read back and
- * hashed, and that exact file is what gets issued. Nothing is ever uploaded over
- * an existing file, and "issued" never exists without a file.
+ *   1. check it can be issued (before a number is used up)
+ *   2. reserve its reference number (the same number every time it is asked)
+ *   3. record it as issued, with the final text carrying that number
+ * If step 3 fails the document stays approved with its number reserved, and
+ * issuing again finishes the job with the same number.
  */
-const expectedPath = (doc: Pick<HrDocument, 'employee_id' | 'candidate_id'>, refNo: string) =>
-  `${doc.employee_id ?? `candidate-${doc.candidate_id}`}/${refNo.replace(/\//g, '_')}.pdf`;
-
 export const issue = async (id: string): Promise<IssueResult> => {
   // An earlier attempt may have finished on the server even though the answer
-  // never reached the browser. If this very document is already issued with its
-  // own number at its own path, that IS success; anything else is not.
+  // never reached the browser: an issued letter with its number IS success.
   const current = await getDocument(id);
-  if (current.status === 'issued' && current.ref_no && current.pdf_sha256
-      && current.pdf_path === expectedPath(current, current.ref_no)) {
-    return { refNo: current.ref_no, path: current.pdf_path, sha256: current.pdf_sha256 };
-  }
+  if (current.status === 'issued' && current.ref_no) return { refNo: current.ref_no };
 
   const { doc, inputs } = await requireComplete(id);
   if (doc.status !== 'approved') throw new Error(`Only an approved document can be issued. This one is ${doc.status.replace('_', ' ')}.`);
+  if (!doc.signatory_name || !doc.signatory_title) throw new Error('This document has no signatory. Return it to draft and approve it again.');
 
   // The type's checks (e.g. the contract being extended is still active) run
   // BEFORE a number is reserved, so a letter that cannot be issued costs nothing.
@@ -586,79 +586,80 @@ export const issue = async (id: string): Promise<IssueResult> => {
   if (refError) throw toError(refError, 'Could not reserve a reference number.');
   const refNo = String(ref);
 
-  const path = expectedPath(doc, refNo);
-  const storage = supabase.storage.from(HR_DOCUMENTS_BUCKET);
+  const rendered = renderDocument(inputs, { refNo, final: true });
+  if (rendered.missing.length > 0) throw new MissingFieldsError(rendered.missing);
+  const content: IssuedContent = {
+    v: 1,
+    ref_no: refNo,
+    date: renderedDate(),
+    addressee: rendered.addressee,
+    subject: rendered.subject,
+    paragraphs: rendered.paragraphs,
+    signatory: { name: doc.signatory_name, title: doc.signatory_title },
+    confidential: doc.confidential,
+  };
 
-  // A retry finds the file already stored; reuse exactly that file.
-  const existing = await storage.download(path);
-  let digest: string;
-  if (existing.data) {
-    digest = await sha256(existing.data);
-  } else {
-    const rendered = renderDocument(inputs, { refNo, final: true });
-    if (rendered.missing.length > 0) throw new MissingFieldsError(rendered.missing);
-    if (!doc.signatory_name || !doc.signatory_title) throw new Error('This document has no signatory. Return it to draft and approve it again.');
-
-    const letterhead = await buildLetterhead(inputs.settings);
-    const blob = await buildLetterPdf({
-      letterhead,
-      refNo,
-      date: renderedDate(),
-      addressee: rendered.addressee,
-      subject: rendered.subject,
-      paragraphs: rendered.paragraphs,
-      signatory: { name: doc.signatory_name, title: doc.signatory_title },
-      confidential: doc.confidential,
-    });
-    digest = await sha256(blob);
-
-    const { error: upError } = await storage.upload(path, blob, { contentType: 'application/pdf', upsert: false, cacheControl: '3600' });
-    if (upError && !isAlreadyThere(upError)) throw new Error(`Could not store the PDF: ${upError.message}`);
-    if (upError) {
-      // Lost a race with another attempt: use the file that won.
-      const won = await storage.download(path);
-      if (!won.data) throw new Error('Could not store the PDF. Please try again.');
-      digest = await sha256(won.data);
-    }
-  }
-
-  const { error } = await supabase.rpc('issue_hr_document', { p_id: id, p_pdf_path: path, p_pdf_sha256: digest });
+  const { error } = await supabase.rpc('issue_hr_document', { p_id: id, p_content: content });
   if (error) {
-    // The file is safely stored and the number reserved: issuing again resumes from here.
-    throw new Error(`${toError(error, 'Could not record the document as issued.').message} The PDF is stored and the reference number is kept, so press Issue again to finish.`);
+    throw new Error(`${toError(error, 'Could not record the document as issued.').message} The reference number is kept, so press Issue again to finish.`);
   }
-  return { refNo, path, sha256: digest };
+  return { refNo };
 };
 
-function renderedDate(): string {
+function renderedDate(iso?: string): string {
   // Same long form the {{doc.date}} placeholder uses.
-  const [y, m, d] = todayInDar().split('-').map(Number);
+  const [y, m, d] = (iso ?? todayInDar()).split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-/** A link that works for five minutes. The download is recorded in the audit trail first. */
-export const getDownloadUrl = async (id: string): Promise<string> => {
-  const { data: doc, error } = await supabase.from('hr_documents').select('id, ref_no, status, pdf_path').eq('id', id).maybeSingle();
-  if (error || !doc) throw new Error('Document not found.');
-  if (!doc.pdf_path) throw new Error('This document has not been issued, so there is no PDF yet.');
-
-  await logAuditEvent('hr_document.download', 'hr_documents', id, { ref_no: doc.ref_no });
-  const { data, error: urlError } = await supabase.storage.from(HR_DOCUMENTS_BUCKET).createSignedUrl(doc.pdf_path, SIGNED_URL_SECONDS);
-  if (urlError || !data?.signedUrl) throw new Error('You do not have permission to open this document, or the file is missing.');
-  return data.signedUrl;
-};
-
-export interface IntegrityResult { ok: boolean; expected: string; actual: string }
+/** The file name an exported letter gets: its reference number. */
+export const exportFileName = (refNo: string) => `${refNo.replace(/\//g, '_')}.pdf`;
 
 /**
- * Re-reads the stored PDF and compares its SHA-256 with the one recorded when it
- * was issued. A mismatch means the file in storage is not the file that was issued.
+ * Builds the PDF of an issued letter from its saved text, with the current
+ * letterhead, signature and stamp (as invoices do). Letters issued before
+ * letters stopped being stored have no saved text; they are rebuilt from the
+ * template version they were written with. The export is recorded in the
+ * Audit Trail.
  */
-export const verifyDocumentIntegrity = async (id: string): Promise<IntegrityResult> => {
-  const { data: doc, error } = await supabase.from('hr_documents').select('pdf_path, pdf_sha256').eq('id', id).maybeSingle();
-  if (error || !doc?.pdf_path || !doc.pdf_sha256) throw new Error('This document has no stored PDF to check.');
-  const { data, error: dlError } = await supabase.storage.from(HR_DOCUMENTS_BUCKET).download(doc.pdf_path);
-  if (dlError || !data) throw new Error('The stored PDF could not be read. It may be missing.');
-  const actual = await sha256(data);
-  return { ok: actual === doc.pdf_sha256, expected: doc.pdf_sha256, actual };
+export const buildIssuedLetterPdf = async (id: string): Promise<{ blob: Blob; fileName: string }> => {
+  const doc = await getDocument(id);
+  if (doc.status !== 'issued' || !doc.ref_no) {
+    throw new Error('Only an issued letter can be exported. Issue it first, so it has its reference number.');
+  }
+  const settings = await getLetterSettings();
+  let content = doc.issued_content as IssuedContent | null;
+  if (!content) {
+    const inputs = await loadRenderInputs(doc);
+    const rendered = renderDocument(inputs, { refNo: doc.ref_no, final: true });
+    content = {
+      v: 1, ref_no: doc.ref_no,
+      date: renderedDate(doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-CA', { timeZone: 'Africa/Dar_es_Salaam' }) : undefined),
+      addressee: rendered.addressee, subject: rendered.subject, paragraphs: rendered.paragraphs,
+      signatory: { name: doc.signatory_name ?? '', title: doc.signatory_title ?? '' }, confidential: doc.confidential,
+    };
+  }
+  const blob = await buildLetterPdf({
+    letterhead: await buildLetterhead(settings),
+    refNo: content.ref_no,
+    date: content.date,
+    addressee: content.addressee,
+    subject: content.subject,
+    paragraphs: content.paragraphs,
+    signatory: content.signatory,
+    confidential: content.confidential,
+  });
+  await logAuditEvent('hr_document.export', 'hr_documents', id, { ref_no: doc.ref_no });
+  return { blob, fileName: exportFileName(doc.ref_no) };
+};
+
+/** Exports an issued letter: builds the PDF and hands it to the browser to save. */
+export const exportDocumentPdf = async (id: string): Promise<void> => {
+  const { blob, fileName } = await buildIssuedLetterPdf(id);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 };

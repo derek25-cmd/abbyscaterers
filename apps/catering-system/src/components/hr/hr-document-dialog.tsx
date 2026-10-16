@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
-import { AlertCircle, CheckCircle2, Download, Loader2, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileDown, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,9 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { PENDING_REF, PLACEHOLDER_REFERENCE, formatLongDate } from '@/lib/hr-docs/render';
 import { REGISTRY } from '@/lib/hr-docs/registry';
 import {
-  MissingFieldsError, approve, deleteDraft, getDocument, getDocumentHistory, getDownloadUrl, getNewerTemplate, issue,
+  MissingFieldsError, approve, deleteDraft, getDocument, getDocumentHistory, exportDocumentPdf, getNewerTemplate, issue,
   listDocumentTypes, loadRenderInputs, renderDocument, returnToDraft, submit, todayInDar, updateToLatestTemplate,
-  verifyDocumentIntegrity, voidDocument, type HistoryEntry, type IntegrityResult, type RenderInputs,
+  voidDocument, type HistoryEntry, type RenderInputs,
 } from '@/services/hrDocumentService';
 import type { HrDocTypeCode, HrDocumentTemplate, HrDocumentType, HrDocumentView } from '@/types';
 
@@ -67,7 +67,6 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
   const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [note, setNote] = useState('');
-  const [integrity, setIntegrity] = useState<IntegrityResult | null>(null);
   const [editing, setEditing] = useState(false);
   const [newer, setNewer] = useState<HrDocumentTemplate | null>(null);
 
@@ -87,7 +86,7 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
   }, [documentId]);
 
   useEffect(() => {
-    setDoc(null); setInputs(null); setHistory([]); setError(null); setNote(''); setIntegrity(null); setConfirm(null); setLoadError(null);
+    setDoc(null); setInputs(null); setHistory([]); setError(null); setNote(''); setConfirm(null); setLoadError(null);
     if (isOpen && documentId) void load();
   }, [isOpen, documentId, load]);
 
@@ -122,19 +121,12 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
     }
   };
 
-  const openPdf = async () => {
+  // Built from the letter as issued, like an invoice; nothing is stored as a file.
+  const exportPdf = async () => {
     if (!doc) return;
-    setBusy('download'); setError(null);
-    try { window.open(await getDownloadUrl(doc.id), '_blank', 'noopener'); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Could not open the PDF.'); }
-    finally { setBusy(null); }
-  };
-
-  const check = async () => {
-    if (!doc) return;
-    setBusy('verify'); setError(null);
-    try { setIntegrity(await verifyDocumentIntegrity(doc.id)); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Could not check the file.'); }
+    setBusy('export'); setError(null);
+    try { await exportDocumentPdf(doc.id); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not export the PDF.'); }
     finally { setBusy(null); }
   };
 
@@ -239,21 +231,9 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
                     </Button>
                   )}
                   {doc.status === 'issued' && (
-                    <>
-                      <Button className="w-full" disabled={!!busy} onClick={openPdf}>
-                        {busy === 'download' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Download PDF
-                      </Button>
-                      <Button variant="outline" className="w-full" disabled={!!busy} onClick={check}>
-                        {busy === 'verify' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}Check the file is unchanged
-                      </Button>
-                      {integrity && (
-                        <p className={`rounded-md border p-2 text-xs ${integrity.ok ? 'border-green-300 bg-green-50 text-green-900' : 'border-red-300 bg-red-50 text-red-900'}`}>
-                          {integrity.ok
-                            ? 'The stored PDF matches the fingerprint recorded when it was issued.'
-                            : 'WARNING: the stored PDF does NOT match the fingerprint recorded when it was issued.'}
-                        </p>
-                      )}
-                    </>
+                    <Button className="w-full" disabled={!!busy} onClick={exportPdf}>
+                      {busy === 'export' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}Export PDF
+                    </Button>
                   )}
                   {doc.status !== 'void' && (
                     <Button variant="ghost" className="w-full text-red-700" disabled={!!busy} onClick={() => setConfirm('void')}>Void this document</Button>
@@ -265,7 +245,6 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
                   <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Approved by</dt><dd>{doc.approver_email ?? '—'}</dd></div>
                   <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Template</dt><dd>Version {doc.template_version}</dd></div>
                   {doc.issued_at && <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Issued</dt><dd>{when(doc.issued_at)}</dd></div>}
-                  {doc.pdf_sha256 && <div><dt className="text-muted-foreground">File fingerprint (SHA-256)</dt><dd className="break-all font-mono">{doc.pdf_sha256}</dd></div>}
                 </dl>
 
                 <div className="border-t pt-3">
@@ -307,8 +286,8 @@ export function HrDocumentDialog({ documentId, isOpen, setIsOpen, intent = null,
             <AlertDialogTitle>{retrying ? 'Finish issuing this letter?' : 'Issue this letter?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {retrying
-                ? `It keeps its reserved number ${doc?.ref_no}. The PDF will be completed and stored.`
-                : 'It gets its permanent reference number and the PDF is stored. After this the letter cannot be edited; it can only be voided and, if needed, replaced by a new letter.'}
+                ? `It keeps its reserved number ${doc?.ref_no}.`
+                : 'It gets its permanent reference number and its wording is fixed; export the PDF whenever you need it. After this the letter cannot be edited; it can only be voided and, if needed, replaced by a new letter.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

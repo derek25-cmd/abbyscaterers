@@ -30,7 +30,7 @@ objects(n, phase, label, ok) AS (VALUES
   (1, 'Phase 2', 'leave tables and review_leave_request()', to_regclass('public.leave_balances') IS NOT NULL AND to_regprocedure('public.review_leave_request(uuid,text,text,boolean)') IS NOT NULL),
   (1, 'Phase 2', 'hr_notifications',                    to_regclass('public.hr_notifications') IS NOT NULL),
   (1, 'Phase 3', 'company details on app_settings',     EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'app_settings' AND column_name = 'company_name')),
-  (1, 'Phase 3', 'hr_documents and issue_hr_document()', to_regclass('public.hr_documents') IS NOT NULL AND to_regprocedure('public.issue_hr_document(uuid,text,text)') IS NOT NULL),
+  (1, 'Phase 3', 'hr_documents and issue_hr_document()', to_regclass('public.hr_documents') IS NOT NULL AND (to_regprocedure('public.issue_hr_document(uuid,jsonb)') IS NOT NULL OR to_regprocedure('public.issue_hr_document(uuid,text,text)') IS NOT NULL)),
   (1, 'Phase 4', 'employment_contracts and run_contract_expiry_job()', to_regclass('public.employment_contracts') IS NOT NULL AND to_regprocedure('public.run_contract_expiry_job(date)') IS NOT NULL),
   (1, 'Phase 4', 'expire_offers(date) (no old no-argument copy)', to_regprocedure('public.expire_offers(date)') IS NOT NULL AND to_regprocedure('public.expire_offers()') IS NULL),
   (1, 'Phase 5', 'HR module switch (app_settings.hr_modules)', EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'app_settings' AND column_name = 'hr_modules')),

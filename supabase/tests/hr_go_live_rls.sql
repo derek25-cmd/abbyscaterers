@@ -3,10 +3,10 @@
 -- resets reference numbers, keeps real data).
 --
 -- Runs on the main database until go-live (it refuses afterwards), after all
--- migrations through 20261014002100. Same harness as the other files: ONE
+-- migrations through 20261016000000. Same harness as the other files: ONE
 -- statement that ALWAYS ends in an exception starting with PASS: or FAIL:,
 -- which rolls back everything it did, including what the cleanup removed.
--- Issuing a letter needs the postgres role to be able to write storage.objects.
+-- Issuing a letter saves its final text; nothing is stored as a file (20261016000000).
 
 DO $test$
 DECLARE
@@ -180,10 +180,12 @@ BEGIN
       res := public._lt_as(author, format('SELECT public.reserve_hr_document_ref(%L)', d));
       IF res NOT LIKE 'ok:%' THEN RETURN 'reserve ' || res; END IF;
       SELECT * INTO r FROM public.hr_documents WHERE id = d;
-      path := coalesce(r.employee_id, 'candidate-' || r.candidate_id::text) || '/' || replace(r.ref_no, '/', '_') || '.pdf';
-      INSERT INTO storage.objects (bucket_id, name) VALUES ('hr-documents', path) ON CONFLICT DO NOTHING;
-      res := public._lt_as(author, format('SELECT public.issue_hr_document(%L, %L, %L)', d, path,
-        'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789'));
+      -- The final text (20261016000000: letters are exported, not stored).
+      res := public._lt_as(author, format('SELECT public.issue_hr_document(%L, %L)', d, jsonb_build_object(
+        'v', 1, 'ref_no', r.ref_no, 'date', '16 October 2026', 'addressee', jsonb_build_array('Test person'), 'subject', r.subject,
+        'paragraphs', jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'Final text.', 'bold', false))),
+        'signatory', jsonb_build_object('name', coalesce(r.signatory_name, 'Test Signer'), 'title', coalesce(r.signatory_title, 'HR Manager')),
+        'confidential', r.confidential)));
       IF res NOT LIKE 'ok:%' THEN RETURN 'issue ' || res; END IF;
       RETURN res;
     END $f$;
@@ -222,11 +224,6 @@ BEGIN
   SELECT id INTO sick FROM public.leave_types WHERE name = 'Sick';
   UPDATE public.leave_types SET days_per_year = 28, max_carry_forward = 5 WHERE id = annual;
 
-  BEGIN
-    INSERT INTO storage.objects (bucket_id, name) VALUES ('hr-documents', 'p5test/probe.pdf');
-  EXCEPTION WHEN insufficient_privilege THEN
-    RAISE EXCEPTION 'FAIL: this test issues letters, which needs the postgres role to write storage.objects.';
-  END;
 
   -- ── A. The module switch: Admin only ─────────────────────────────────────
   SELECT hr_modules INTO saved_modules FROM public.app_settings WHERE id = true;

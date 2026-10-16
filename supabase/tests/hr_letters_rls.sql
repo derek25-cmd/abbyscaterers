@@ -4,14 +4,14 @@
 -- the different-approver rule, and that DRAFT template wording is never issued.
 --
 -- RUN AGAINST A LOCAL OR STAGING DATABASE ONLY, never production, after all
--- migrations through 20261014001800 are applied. Same harness as the other
+-- migrations through 20261016000000 are applied. Same harness as the other
 -- files in this folder: ONE statement that works with the hosted `postgres`
 -- role and ALWAYS ends in an exception that starts with PASS: or FAIL:, which
 -- rolls back everything it created (including template versions it saves).
 --
 -- It acts as: hr (hr_manager), adm (admin), fin (finance), stf (plain staff).
--- Issuing needs a stored file, so the postgres role must be able to write
--- storage.objects (as in hr_documents_rls.sql).
+-- Issuing saves the letter's final text; nothing is stored as a file
+-- (20261016000000).
 
 DO $test$
 DECLARE
@@ -187,10 +187,12 @@ BEGIN
       res := public._lt_as(author, format('SELECT public.reserve_hr_document_ref(%L)', d));
       IF res NOT LIKE 'ok:%' THEN RETURN 'reserve ' || res; END IF;
       SELECT * INTO r FROM public.hr_documents WHERE id = d;
-      path := coalesce(r.employee_id, 'candidate-' || r.candidate_id::text) || '/' || replace(r.ref_no, '/', '_') || '.pdf';
-      INSERT INTO storage.objects (bucket_id, name) VALUES ('hr-documents', path) ON CONFLICT DO NOTHING;
-      res := public._lt_as(author, format('SELECT public.issue_hr_document(%L, %L, %L)', d, path,
-        'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789'));
+      -- The final text (20261016000000: letters are exported, not stored).
+      res := public._lt_as(author, format('SELECT public.issue_hr_document(%L, %L)', d, jsonb_build_object(
+        'v', 1, 'ref_no', r.ref_no, 'date', '16 October 2026', 'addressee', jsonb_build_array('Test person'), 'subject', r.subject,
+        'paragraphs', jsonb_build_array(jsonb_build_array(jsonb_build_object('text', 'Final text.', 'bold', false))),
+        'signatory', jsonb_build_object('name', coalesce(r.signatory_name, 'Test Signer'), 'title', coalesce(r.signatory_title, 'HR Manager')),
+        'confidential', r.confidential)));
       IF res NOT LIKE 'ok:%' THEN RETURN 'issue ' || res; END IF;
       RETURN res;
     END $f$;
@@ -222,11 +224,6 @@ BEGIN
   empX := public._rlstest_id('employees', 'p4-X');
   empK := public._rlstest_id('employees', 'p4-K');
 
-  BEGIN
-    INSERT INTO storage.objects (bucket_id, name) VALUES ('hr-documents', 'p4test/probe.pdf');
-  EXCEPTION WHEN insufficient_privilege THEN
-    RAISE EXCEPTION 'FAIL: this test issues letters, which needs the postgres role to write storage.objects. Run it where hr_documents_rls.sql ran its storage checks.';
-  END;
 
   -- ── A. DRAFT template wording can never be issued ────────────────────────
   res := public._lt_as(hr, format('SELECT public.save_hr_template_version(%L, %L, %L)', 'warning', 'Warning letter',
@@ -268,7 +265,7 @@ BEGIN
   INSERT INTO rls_results VALUES ('hr', 'disciplinary_records', 'level and default 12-month expiry', true,
     EXISTS (SELECT 1 FROM public.disciplinary_records WHERE id = wRec AND level = 'final_written' AND status = 'active'
             AND incident_date = today - 5 AND expires_on = ((today - 5) + interval '12 months')::date));
-  res := public._lt_as(hr, format('SELECT public.issue_hr_document(%L, %L, %L)', dWarn, drow.pdf_path, sha));
+  res := public._lt_as(hr, format('SELECT public.issue_hr_document(%L, %L)', dWarn, drow.issued_content));
   PERFORM public.hr_doc_apply_effects(drow);
   SELECT count(*) INTO n FROM public.disciplinary_records WHERE document_id = dWarn;
   INSERT INTO rls_results VALUES ('hr', 'disciplinary_records', 'retrying the issue creates nothing more', true, res NOT LIKE 'ok:%' AND n = 1);
@@ -335,7 +332,7 @@ BEGIN
     n = 1 AND EXISTS (SELECT 1 FROM public.employment_contracts WHERE id = kC AND status = 'active' AND source = 'letter'
                       AND end_date = today + 30 AND position = 'Cook' AND salary = 800000));
   SELECT * INTO drow FROM public.hr_documents WHERE id = dCon;
-  res := public._lt_as(hr, format('SELECT public.issue_hr_document(%L, %L, %L)', dCon, drow.pdf_path, sha));
+  res := public._lt_as(hr, format('SELECT public.issue_hr_document(%L, %L)', dCon, drow.issued_content));
   PERFORM public.hr_doc_apply_effects(drow);
   SELECT count(*) INTO n FROM public.employment_contracts WHERE document_id = dCon;
   INSERT INTO rls_results VALUES ('hr', 'employment_contracts', 'retrying the issue creates nothing more', true, res NOT LIKE 'ok:%' AND n = 1);
@@ -414,8 +411,8 @@ BEGIN
   INSERT INTO rls_results VALUES ('hr', 'offer', 'issued to a candidate (' || res || ')', true, res LIKE 'ok:%');
   INSERT INTO rls_results VALUES ('hr', 'candidates', 'issuing marks the offer sent', true,
     EXISTS (SELECT 1 FROM public.candidates WHERE id = cand1 AND offer_status = 'offered' AND offer_document_id = dOffer));
-  INSERT INTO rls_results VALUES ('hr', 'offer', 'the file is filed under the candidate', true,
-    EXISTS (SELECT 1 FROM public.hr_documents WHERE id = dOffer AND pdf_path LIKE 'candidate-' || cand1 || '/ALC_HR_OFF_%'));
+  INSERT INTO rls_results VALUES ('hr', 'offer', 'the issued offer carries its OFF reference in its text', true,
+    EXISTS (SELECT 1 FROM public.hr_documents WHERE id = dOffer AND issued_content ->> 'ref_no' LIKE 'ALC/HR/OFF/%' AND pdf_path IS NULL));
   res := public._lt_as(hr, format('UPDATE public.candidates SET offer_status = %L WHERE id = %L', 'accepted', cand1));
   INSERT INTO rls_results VALUES ('hr', 'candidates', 'sets the offer status by hand', false, res LIKE 'ok:%' AND res <> 'ok:0');
   res := public._lt_as(hr, format('UPDATE public.candidates SET employee_id = %L WHERE id = %L', empK, cand1));

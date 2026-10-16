@@ -22,7 +22,7 @@ fn(name, sig) AS (VALUES
   -- Phase 3
   ('submit_hr_document', 'public.submit_hr_document(uuid)'), ('approve_hr_document', 'public.approve_hr_document(uuid)'),
   ('return_hr_document', 'public.return_hr_document(uuid,text)'), ('reserve_hr_document_ref', 'public.reserve_hr_document_ref(uuid)'),
-  ('issue_hr_document', 'public.issue_hr_document(uuid,text,text)'), ('void_hr_document', 'public.void_hr_document(uuid,text)'),
+  ('issue_hr_document', 'public.issue_hr_document(uuid,jsonb)'), ('void_hr_document', 'public.void_hr_document(uuid,text)'),
   ('save_hr_template_version', 'public.save_hr_template_version(text,text,text,boolean)'),
   -- Phase 4
   ('validate_hr_document', 'public.validate_hr_document(uuid)'),
