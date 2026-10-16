@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -371,7 +372,8 @@ export function NewDocumentWizard({ isOpen, setIsOpen, onSaved, defaultEmployeeI
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
                   The wording for this type of letter is still the DRAFT template, so it cannot be sent for approval.
-                  The HR Manager saves the final wording under <span className="font-medium">HR Documents → Templates</span>; then send it.
+                  The HR Manager saves the final wording under{' '}
+                  <Link href="/hr/documents/templates" className="font-medium underline">HR Documents → Templates</Link>; then send it.
                 </p>
               </div>
             )}
