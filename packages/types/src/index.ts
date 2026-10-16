@@ -241,3 +241,75 @@ export interface RfqProformaLink {
   linkedById?: string;
   linkedAt: string;
 }
+
+// ─── New: Face attendance types (apps/face-attendance) ────────────────────
+// Row shapes of the face attendance tables
+// (supabase/migrations/20261016000300_face_attendance_tables.sql), with the
+// database's snake_case names, as attendance rows already are in
+// catering-system. Face templates and setup codes have no type here on
+// purpose: no client ever reads them.
+
+export const ATTENDANCE_EVENT_KINDS = ['in', 'out'] as const;
+export type AttendanceEventKind = (typeof ATTENDANCE_EVENT_KINDS)[number];
+
+export const ATTENDANCE_EVENT_METHODS = ['face', 'pin', 'manual'] as const;
+export type AttendanceEventMethod = (typeof ATTENDANCE_EVENT_METHODS)[number];
+
+/** employees.face_status */
+export const FACE_STATUSES = ['none', 'active', 'suspended'] as const;
+export type FaceStatus = (typeof FACE_STATUSES)[number];
+
+/** What face_whoami() says the signed-in user is: HR reviewer, kiosk device, or neither. */
+export const FACE_IDENTITIES = ['hr', 'device', 'none'] as const;
+export type FaceIdentity = (typeof FACE_IDENTITIES)[number];
+
+export interface AttendanceEvent {
+  id: string;
+  employee_id: string;
+  device_id: string | null;
+  kind: AttendanceEventKind;
+  occurred_at: string; // ISO timestamp
+  method: AttendanceEventMethod;
+  match_score: number | null;
+  liveness_score: number | null;
+  booking_id: string | null;
+  lat: number | null;
+  lng: number | null;
+  needs_review: boolean;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  applied_at: string | null; // set once rolled up into the day's attendance row
+  created_at: string;
+}
+
+export interface AttendanceDevice {
+  id: string;
+  name: string;
+  site: string | null;
+  auth_user_id: string | null;
+  assigned_booking_id: string | null;
+  active: boolean;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface BiometricConsent {
+  id: string;
+  employee_id: string;
+  consented_at: string;
+  device_id: string | null;
+  consent_version: string;
+  withdrawn_at: string | null;
+  withdrawn_by: string | null;
+}
+
+export interface FaceAttendanceSettings {
+  match_threshold: number; // placeholder until the Phase 6 pilot
+  shift_start: string; // "HH:MM:SS", Africa/Dar_es_Salaam
+  late_grace_minutes: number;
+  max_pin_attempts: number;
+  pin_lock_minutes: number;
+  setup_code_ttl_days: number;
+  double_tap_seconds: number;
+}
