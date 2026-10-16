@@ -167,15 +167,17 @@ END $f$;
         CONTINUE;
       END IF;
 
+      -- attendance (20261016000200): HR only. Others read only their own
+      -- employee's rows, and these test logins are not linked to an employee.
       exp_select := CASE WHEN r = 'inactive' THEN false
                          WHEN t = 'employees' THEN can_hr OR r = 'finance'
+                         WHEN t = 'attendance' THEN can_hr
                          ELSE true END;
       exp_write  := CASE WHEN r = 'inactive' THEN false
                          WHEN t = ANY (ops_tables) THEN true            -- Ops unchanged in Phase 1
                          WHEN t = 'payroll' THEN can_hr OR r = 'finance'
                          ELSE can_hr END;
-      -- attendance: anyone active may update their OWN row from today (seeded that way here)
-      exp_update := CASE WHEN t = 'attendance' THEN r <> 'inactive' ELSE exp_write END;
+      exp_update := exp_write;
 
       tov := public._rlstest_fk_ov(t, 'ins-' || r) || ov;   -- as owner: parents hidden from `authenticated` by RLS
       IF NOT public._rlstest_seed(t, 'sel-' || r, ov) THEN
@@ -206,7 +208,7 @@ END $f$;
       END;
       RESET ROLE;
       INSERT INTO rls_results VALUES (r, t, 'SELECT', exp_select, ok);
-      INSERT INTO rls_results VALUES (r, t, 'INSERT', r <> 'inactive', ok2);
+      INSERT INTO rls_results VALUES (r, t, 'INSERT', r <> 'inactive' AND (t <> 'attendance' OR can_hr), ok2);
 
       -- UPDATE (fresh seed so earlier operations cannot interfere)
       PERFORM public._rlstest_seed(t, 'upd-' || r, ov);
@@ -235,12 +237,14 @@ END $f$;
     END LOOP;
   END LOOP;
 
-  -- ── attendance same-day rule for plain staff ─────────────────────────────
+  -- ── attendance: plain staff no longer correct even their own row ─────────
+  -- The same-day correction rule was removed in 20261016000200 (attendance is
+  -- recorded at the kiosk); all three cases are now refused.
   IF to_regclass('public.attendance') IS NOT NULL THEN
     uid := (uids ->> 'staff')::uuid;
     FOR lbl, rid, exp IN
       SELECT * FROM (VALUES
-        ('own row, today',          'att-own-today', true),
+        ('own row, today',          'att-own-today', false),
         ('own row, yesterday',      'att-own-yday',  false),
         ('another user''s, today',  'att-oth-today', false)
       ) v(label, id, expected)

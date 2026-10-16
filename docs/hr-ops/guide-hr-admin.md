@@ -12,7 +12,7 @@ Everyone signs in with their own login. Each login has one role:
 | **HR Manager** | All HR work: employees, leave, letters, candidates, contracts, Audit Trail |
 | **General Manager** | The same HR work as the HR Manager |
 | **Finance** | Payroll, and the list of cash rewards waiting to be paid. No letters, no warnings |
-| **Staff** | Apply for their own leave, record attendance and training. Cannot change anything after submitting it (attendance only on the same day) |
+| **Staff** | Apply for their own leave, record training, and see their own attendance. Attendance is recorded at the attendance kiosk; only HR roles enter or correct it here. Cannot change anything after submitting it |
 
 Two rules apply to everyone, including Admin:
 

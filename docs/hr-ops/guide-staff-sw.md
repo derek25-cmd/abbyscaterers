@@ -8,11 +8,16 @@ Ukurasa huu ni kwa kila mtu anayeingia kwenye mfumo kwa akaunti ya **Mfanyakazi 
 
 - **Kuomba likizo yako** na kufuatilia maombi yako.
 - **Kuona salio la likizo yako**: siku ngapi zimebaki mwaka huu.
-- **Kurekodi mahudhurio na mafunzo** pale kazi yako inapohitaji.
+- **Kuona mahudhurio yako**: siku na muda uliorekodiwa kwa ajili yako.
+- **Kurekodi mafunzo** pale kazi yako inapohitaji.
 
 ## Ukishawasilisha, imekwisha
 
-Ukishawasilisha kitu, huwezi kukibadilisha wala kukifuta. Isipokuwa kumbukumbu yako ya mahudhurio, ambayo unaweza kuirekebisha siku hiyo hiyo, kwa mfano kuongeza muda wa kutoka. Kama kuna kingine kimekosewa, mwombe HR akirekebishe.
+Ukishawasilisha kitu, huwezi kukibadilisha wala kukifuta. Kama kuna kitu kimekosewa, mwombe HR akirekebishe.
+
+## Mahudhurio yanarekodiwa kwenye kifaa cha mahudhurio
+
+Unaingia (clock in) unapofika na kutoka (clock out) unapoondoka, kwenye kifaa cha mahudhurio (tablet iliyopo kituoni kwako). Hauingizi wala kurekebisha mahudhurio wewe mwenyewe kwenye mfumo huu tena. Kwenye ukurasa wa Mahudhurio (Attendance) unaweza kuona siku zako. Kama siku fulani imekosewa, kwa mfano muda wa kutoka haupo, mwombe HR airekebishe.
 
 ## Jinsi ya kuomba likizo
 

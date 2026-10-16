@@ -56,7 +56,10 @@ export function AttendancePageComponent() {
     const router = useRouter();
     const employeeIdFilter = searchParams.get('employeeId');
     const { toast } = useToast();
-    const { canManageHr } = useStaffRole();
+    // Only HR edits this grid. Everyone else records attendance at the
+    // attendance kiosk and can read only their own days here (RLS,
+    // 20261016000200_attendance_close_policies.sql).
+    const { canManageHr, employeeId: myEmployeeId } = useStaffRole();
 
     // Details of the leave requests behind locked cells, for the tooltip.
     const [leaveById, setLeaveById] = useState<Record<string, LeaveRequestView>>({});
@@ -137,6 +140,9 @@ export function AttendancePageComponent() {
 
     const filteredEmployees = useMemo(() => {
         let result = employees.filter(e => e.status === 'Active');
+        if (!canManageHr) {
+            result = result.filter(e => e.id === myEmployeeId);
+        }
         if (employeeIdFilter) {
             result = result.filter(e => e.id === employeeIdFilter);
         }
@@ -147,9 +153,10 @@ export function AttendancePageComponent() {
             );
         }
         return result;
-    }, [employees, searchQuery, employeeIdFilter]);
+    }, [employees, searchQuery, employeeIdFilter, canManageHr, myEmployeeId]);
 
     const handleToggleStatus = (employeeId: string, date: string, currentStatus?: AttendanceStatus) => {
+        if (!canManageHr) return;
         const lock = leaveLockFor(employeeId, date);
         if (lock) {
             toast({ title: 'This day is approved leave', description: leaveLockText(lock) });
@@ -252,6 +259,7 @@ export function AttendancePageComponent() {
     };
 
     const openCellDialog = (emp: Employee, date: Date) => {
+        if (!canManageHr) return;
         const dateStr = format(date, "yyyy-MM-dd");
         const record = records.find(r => r.employee_id === emp.id && r.date === dateStr) || null;
         setSelectedCell({ employee: emp, date: dateStr, record });
@@ -380,11 +388,13 @@ export function AttendancePageComponent() {
                                 className="pl-10"
                             />
                         </div>
-                        <Button variant="outline" onClick={() => setIsBulkDialogOpen(true)} className="hidden md:flex">
-                            <Check className="mr-2 h-4 w-4" /> Bulk Mark
-                        </Button>
+                        {canManageHr && (
+                            <Button variant="outline" onClick={() => setIsBulkDialogOpen(true)} className="hidden md:flex">
+                                <Check className="mr-2 h-4 w-4" /> Bulk Mark
+                            </Button>
+                        )}
 
-                        {Object.keys(pendingChanges).length > 0 && (
+                        {canManageHr && Object.keys(pendingChanges).length > 0 && (
                             <Button className="btn-save" onClick={handleSave} disabled={saving}>
                                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                                 Save Changes ({Object.keys(pendingChanges).length})
@@ -453,9 +463,15 @@ export function AttendancePageComponent() {
                         <div className="legend-item"><div className="legend-box attendance-cell l">L</div> <span>Leave (from an approved request, locked)</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell h">H</div> <span>Half Day</span></div>
                         <div className="legend-item"><div className="legend-box attendance-cell t">T</div> <span>Late</span></div>
-                        <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            💡 Click to cycle status • Right-click for clock in/out & notes • <span className="text-destructive">●</span> Unsaved • Leave comes from <a className="underline" href="/hr/leave">approved leave requests</a>
-                        </div>
+                        {canManageHr ? (
+                            <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                💡 Click to cycle status • Right-click for clock in/out & notes • <span className="text-destructive">●</span> Unsaved • Leave comes from <a className="underline" href="/hr/leave">approved leave requests</a>
+                            </div>
+                        ) : (
+                            <div className="ml-auto text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                Your attendance is recorded at the attendance kiosk • If a day is wrong, ask HR to correct it
+                            </div>
+                        )}
                     </div>
 
                     <div className="attendance-table-container">

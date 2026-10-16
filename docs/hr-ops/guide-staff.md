@@ -6,11 +6,16 @@ This page is for everyone who signs in with a **Staff** login.
 
 - **Apply for your own leave** and follow your requests.
 - **See your leave balance**: how many days you have left this year.
-- **Record attendance and training** where your work needs it.
+- **See your attendance**: the days and times recorded for you.
+- **Record training** where your work needs it.
 
 ## Once you submit, it is final
 
-After you submit something, you cannot change it or delete it. The only exception is your own attendance entry, which you can correct on the same day, for example to add your clock-out time. If anything else is wrong, ask HR to correct it.
+After you submit something, you cannot change it or delete it. If something is wrong, ask HR to correct it.
+
+## Attendance is recorded at the attendance kiosk
+
+You clock in when you arrive and clock out when you leave, at the attendance kiosk (the tablet at your site). You no longer enter or correct attendance yourself in this system. On the Attendance page you can see your own days. If a day is wrong, for example a missing clock-out, ask HR to correct it.
 
 ## How to apply for leave
 

@@ -288,9 +288,14 @@ BEGIN
   res := public._lt_as((u ->> 'staffA')::uuid,
     public._rlstest_insert_sql('attendance', 'lt-manual', jsonb_build_object('employee_id', emp ->> 'A', 'date', '2030-06-04', 'status', 'Leave')));
   INSERT INTO rls_results VALUES ('staffA', 'attendance', 'marks Leave by hand', false, res LIKE 'ok:%');
+  -- Since 20261016000200 staff no longer write attendance at all (the kiosk does);
+  -- HR still marks a normal day by hand.
   res := public._lt_as((u ->> 'staffA')::uuid,
     public._rlstest_insert_sql('attendance', 'lt-present', jsonb_build_object('employee_id', emp ->> 'A', 'date', '2030-06-05', 'status', 'Present')));
-  INSERT INTO rls_results VALUES ('staffA', 'attendance', 'normal Present still works', true, res LIKE 'ok:%');
+  INSERT INTO rls_results VALUES ('staffA', 'attendance', 'marks own Present by hand', false, res LIKE 'ok:%');
+  res := public._lt_as((u ->> 'hr')::uuid,
+    public._rlstest_insert_sql('attendance', 'lt-present', jsonb_build_object('employee_id', emp ->> 'A', 'date', '2030-06-05', 'status', 'Present')));
+  INSERT INTO rls_results VALUES ('hr', 'attendance', 'normal Present still works', true, res LIKE 'ok:%');
   res := public._lt_as((u ->> 'hr')::uuid, format('UPDATE public.attendance SET notes = %L WHERE leave_request_id = %L', 'hr note', req1));
   INSERT INTO rls_results VALUES ('hr', 'attendance', 'HR can still edit a leave-backed day', true, res LIKE 'ok:%' AND res <> 'ok:0');
 
