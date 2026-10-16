@@ -270,6 +270,50 @@ describe('createDraft', () => {
   });
 });
 
+describe('createAndSubmit (send straight for approval)', () => {
+  function track(tables: Record<string, unknown>) {
+    const ops: string[] = [];
+    fromMock.mockImplementation((t: string) => {
+      const q = mockQueryResult({ data: tables[t] ?? null, error: null });
+      q.insert.mockImplementation(() => { ops.push(`insert:${t}`); return q; });
+      q.delete.mockImplementation(() => { ops.push(`delete:${t}`); return q; });
+      return q;
+    });
+    return ops;
+  }
+  const INPUT = { docType: 'general_letter' as const, employeeId: 'EMP-1', subject: 'Confirmation of employment', data: { body: 'Hello there.' } };
+  const TABLES = {
+    hr_document_templates: TEMPLATE, hr_document_types: [TYPE], hr_documents: { ...DOC, status: 'draft' },
+    app_settings: SETTINGS, employees: EMPLOYEE, staff_users: [],
+  };
+
+  it('writes the letter and sends it, leaving nothing in Drafts', async () => {
+    const ops = track(TABLES);
+    rpcResults.submit_hr_document = { data: { ...DOC, status: 'pending_approval' }, error: null };
+    const { createAndSubmit } = await import('../hrDocumentService');
+    const doc = await createAndSubmit(INPUT);
+    expect(doc.status).toBe('pending_approval');
+    expect(ops).toEqual(['insert:hr_documents']);
+    expect(calls).toContain('rpc:submit_hr_document');
+  });
+
+  it('removes the half-written draft when sending is refused, and passes the reason on', async () => {
+    const ops = track(TABLES);
+    rpcResults.submit_hr_document = { data: null, error: { message: 'P4W Tester has left and their record is closed.' } };
+    const { createAndSubmit } = await import('../hrDocumentService');
+    await expect(createAndSubmit(INPUT)).rejects.toThrow(/has left/);
+    expect(ops).toEqual(['insert:hr_documents', 'delete:hr_documents']);
+  });
+
+  it('writes nothing when the template still has the DRAFT wording', async () => {
+    const ops = track({ ...TABLES, hr_document_templates: { ...TEMPLATE, body: '**DRAFT TEMPLATE — HR Manager to replace this wording before use.** Dear x' } });
+    const { createAndSubmit } = await import('../hrDocumentService');
+    await expect(createAndSubmit(INPUT)).rejects.toThrow(/DRAFT template/);
+    expect(ops).toEqual([]);
+    expect(calls).not.toContain('rpc:submit_hr_document');
+  });
+});
+
 describe('downloads and integrity', () => {
   it('records the download in the audit trail before handing out a signed link', async () => {
     fromMock.mockImplementation(() => mockQueryResult({ data: { id: 'doc-1', ref_no: REF, status: 'issued', pdf_path: PATH }, error: null }));

@@ -496,6 +496,36 @@ export const submit = async (id: string): Promise<HrDocument> => {
   return data as HrDocument;
 };
 
+/**
+ * The line every seeded template starts with (hr_doc_draft_marker() in the
+ * database). A letter written from such wording is refused at every step, so
+ * the screens say so before anything is written.
+ */
+export const DRAFT_TEMPLATE_MARKER = 'DRAFT TEMPLATE — HR Manager to replace this wording before use.';
+export const isDraftTemplate = (t: Pick<HrDocumentTemplate, 'body'> | null | undefined): boolean =>
+  !!t && t.body.includes(DRAFT_TEMPLATE_MARKER);
+
+/**
+ * Writes a new letter and sends it for approval in one go, so it never sits in
+ * Drafts. If it cannot be sent (blanks, a DRAFT template, a database refusal)
+ * the half-written draft is removed again and the reason is passed on.
+ */
+export const createAndSubmit = async (input: CreateDraftInput & { confidential?: boolean }): Promise<HrDocument> => {
+  if (isDraftTemplate(await getActiveTemplate(input.docType))) {
+    throw new Error('This type of letter still has the DRAFT template wording. Ask the HR Manager to save the final wording under HR Documents → Templates first.');
+  }
+  let doc = await createDraft(input);
+  try {
+    if (input.confidential !== undefined && input.confidential !== doc.confidential) {
+      doc = await updateDraft(doc.id, { confidential: input.confidential });
+    }
+    return await submit(doc.id);
+  } catch (err) {
+    await deleteDraft(doc.id).catch(() => undefined);
+    throw err;
+  }
+};
+
 export const returnToDraft = async (id: string, note: string): Promise<HrDocument> => {
   const { data, error } = await supabase.rpc('return_hr_document', { p_id: id, p_note: note });
   if (error) throw toError(error, 'Could not return the document.');
