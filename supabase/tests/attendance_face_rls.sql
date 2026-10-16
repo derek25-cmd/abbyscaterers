@@ -8,7 +8,7 @@
 -- ALWAYS ends in an exception that starts with PASS: or FAIL: (and rolls back
 -- everything it created: users, employees, devices, punches, attendance).
 --
--- It acts as five logins: staffA (plain staff, employee A), staffB (plain
+-- It acts as six logins: staffA (plain staff, employee A), staffB (plain
 -- staff, employee B), hr (hr_manager, employee H), adm (admin, no employee),
 -- fin (finance, no employee) and dev (a kiosk device: an auth user with an
 -- attendance_devices row and NO staff_users row). All dates are in 2030 so
