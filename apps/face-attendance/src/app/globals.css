@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Same palette as apps/catering-system/src/app/globals.css (light theme). */
+@layer base {
+  :root {
+    --background: 48 83% 94%; /* Creamy Yellow */
+    --foreground: 0 11% 21%; /* Dark Brown */
+
+    --card: 45 100% 97%;
+    --card-foreground: 0 11% 21%;
+
+    --primary: 0 11% 21%; /* Dark Brown */
+    --primary-foreground: 45 100% 95%;
+
+    --secondary: 45 30% 92%;
+    --secondary-foreground: 0 11% 21%;
+
+    --muted: 45 40% 94%;
+    --muted-foreground: 0 10% 45%;
+
+    --accent: 45 30% 92%;
+    --accent-foreground: 0 11% 21%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 45 20% 88%;
+    --input: 45 20% 92%;
+    --ring: 0 11% 21%;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

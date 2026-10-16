@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "apps/admin-portal",
+    "apps/face-attendance",
     "packages/*"
   ],
   "scripts": {
