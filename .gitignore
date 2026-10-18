@@ -70,3 +70,17 @@ electron/dist/
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Data readiness (docs/data-readiness): database backups and dumps contain
+# client, payroll and tax data and must never be committed.
+backups/
+storage-backup/
+*.dump
+.env.staging
+.env.production.local
+# Audit query results: kept out until checked for personal data.
+docs/data-readiness/audit-output/
+# Written by `supabase link` (project ref, pooler URL); keep it local.
+supabase/.temp/
+# ML dataset exports (supabase/exports) — business data, never commit.
+ml-data/
