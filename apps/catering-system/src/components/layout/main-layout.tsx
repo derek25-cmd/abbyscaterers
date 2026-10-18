@@ -36,7 +36,8 @@ import {
     CalendarDays,
     FileSignature,
     UserPlus,
-    ScrollText
+    ScrollText,
+    Sparkles
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -82,6 +83,7 @@ const navItems = [
   { href: "/delivery-notes", label: "Delivery Notes", icon: Truck },
   { href: "/recipes", label: "Recipes", icon: ClipboardSignature },
   { href: "/menu-costing", label: "Menu Costing", icon: Calculator },
+  { href: "/abbys-ai", label: "Abby's AI", icon: Sparkles },
   { href: "/equipment", label: "Inventory", icon: ChefHat },
   { 
     label: "Invoicing", 

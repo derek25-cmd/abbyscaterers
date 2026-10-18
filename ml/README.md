@@ -56,7 +56,19 @@ The run is saved in `ml-data/models/<timestamp>/`:
 Each run also adds a line to `ml-data/models/history.csv`. Compare runs there
 to see whether the cleaner data helps.
 
-## 3. Use
+## 3. Publish to Abby's AI (the app)
+
+The cost model is shown in the catering system's Abby's AI page once
+published (the quote check and menu ideas there read live data). See
+`docs/abbys-ai.md`:
+
+```bash
+read -rsp "Target DB URL: " TARGET_DB_URL; echo; export TARGET_DB_URL
+scripts/db/publish-ai-model.sh            # latest run in ml-data/models/
+unset TARGET_DB_URL
+```
+
+## 4. Use from the command line
 
 ```bash
 ml/.venv/Scripts/python ml/use.py quote --client 000712 --meal "Breakfast+Lunch" --price 25000
