@@ -131,7 +131,13 @@ def main() -> None:
     for name, v in cm["scores"].items():
         report.append(f"| {name}{' (best)' if name == cm['best'] else ''} | {v['mae_tzs']:,.0f} | {pct(v['mape'])} | {v['r2']:.2f} |")
     per_plate = cost_model.dish_cost_per_plate(X, kitchen.stock_value, cm["best_alpha"])
-    per_plate.rename("est_cost_per_plate_tzs").round(0).to_csv(out / "dish_cost_per_plate.csv", index_label="dish")
+    def section_of(dish: str) -> str:
+        if dish.startswith("other ") and dish.endswith(" dish"):
+            return dish[len("other "):-len(" dish")].title()
+        return dish_sections.get(dish, "Other")
+
+    pd.DataFrame({"dish": per_plate.index, "meal_section": [section_of(d) for d in per_plate.index],
+                  "est_cost_per_plate_tzs": per_plate.round(0).to_numpy()}).to_csv(out / "dish_cost_per_plate.csv", index=False)
     recipes = cost_model.observed_recipes(kitchen, X, cm["best_alpha"])
     recipes.to_csv(out / "observed_recipes.csv", index=False)
     top_dishes = [c for c in X.columns if not c.startswith("other ")]
