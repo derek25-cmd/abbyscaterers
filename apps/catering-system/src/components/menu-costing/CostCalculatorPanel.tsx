@@ -7,6 +7,7 @@ import type { Branch, CateringMenu, CateringMenuRecipe, MenuCalculationResult, I
 import { BRANCHES } from "@/types";
 import { exportMenuCostingPdf } from "@/lib/menuCostingPdf";
 import { incompleteCostLabel } from "@/lib/costing/missing";
+import { todayInDar } from "@/lib/costing/price-date";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,7 +34,7 @@ interface CostCalculatorPanelProps {
     menuRecipes: CateringMenuRecipe[];
     calculationResult: MenuCalculationResult | null;
     isCalculating: boolean;
-    onCalculate: (people: number, useWastage: boolean, branch: Branch) => Promise<MenuCalculationResult | null>;
+    onCalculate: (people: number, useWastage: boolean, branch: Branch, asOfDate?: string) => Promise<MenuCalculationResult | null>;
     onClearResults: () => void;
 }
 
@@ -44,6 +45,8 @@ export function CostCalculatorPanel({
     const [people, setPeople] = useState<number>(menu.base_people);
     const [useWastage, setUseWastage] = useState(false);
     const [branch, setBranch] = useState<Branch>('Dar es Salaam');
+    // Today = the catalog's current prices; an earlier date uses the dated price history.
+    const [priceDate, setPriceDate] = useState<string>(() => todayInDar());
     const { toast } = useToast();
     const resultRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +60,8 @@ export function CostCalculatorPanel({
             return;
         }
         try {
-            const res = await onCalculate(people, useWastage, branch);
+            const asOfDate = priceDate && priceDate !== todayInDar() ? priceDate : undefined;
+            const res = await onCalculate(people, useWastage, branch, asOfDate);
             if (res) {
                 // Smooth scroll to results
                 setTimeout(() => {
@@ -166,6 +170,15 @@ export function CostCalculatorPanel({
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <Label htmlFor="price-date" className="text-sm font-bold mt-1">Price Date</Label>
+                            <Input
+                                id="price-date"
+                                type="date"
+                                className="h-9 rounded-xl"
+                                value={priceDate}
+                                max={todayInDar()}
+                                onChange={(e) => setPriceDate(e.target.value || todayInDar())}
+                            />
                         </div>
 
                         <div className={cn(
@@ -263,7 +276,7 @@ export function CostCalculatorPanel({
                                             <div className="h-8 w-px bg-muted" />
                                             <div className="flex flex-col">
                                                 <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Prices</span>
-                                                <span className="text-sm font-bold">{res.branch}</span>
+                                                <span className="text-sm font-bold">{res.branch} · {res.priceDate ?? "today"}</span>
                                             </div>
                                             {res.efficiencyFactor !== 1 && (
                                                 <>

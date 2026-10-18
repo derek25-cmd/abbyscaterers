@@ -369,12 +369,18 @@ const getEfficiencyInfo = (currentPax: number, basePax: number) => {
  * missingPrices instead, so the total is visibly incomplete rather than
  * silently too low. Scaling, wastage, efficiency and the planned comparison
  * are unchanged.
+ *
+ * asOfDate (YYYY-MM-DD, data-readiness Phase 3): price at the branch as it
+ * was on that date, from the dated price history (prices_on), instead of the
+ * catalog's current branch price. A product with no price on or before the
+ * date goes to missingPrices like any other unpriced product.
  */
 export const calculateMenuCost = async (
     menuId: string,
     selectedPeople: number,
     useWastage: boolean,
-    branch: Branch = 'Dar es Salaam'
+    branch: Branch = 'Dar es Salaam',
+    asOfDate?: string
 ): Promise<MenuCalculationResult> => {
     // Validate inputs
     if (selectedPeople < 1) {
@@ -406,6 +412,7 @@ export const calculateMenuCost = async (
             efficiencyStatus: "No Recipes Added",
             missingPrices: [],
             branch,
+            priceDate: asOfDate,
         };
     }
 
@@ -433,6 +440,20 @@ export const calculateMenuCost = async (
         productById.set(p.id, p);
     });
     const priceKey = BRANCH_KEYS[branch].price;
+
+    // Dated prices: the latest price per product on or before asOfDate.
+    let datedPrices: Map<string, { unitPrice: number; unit: string }> | null = null;
+    if (asOfDate) {
+        const { data: priceRows, error: pricesError } = await supabase.rpc('prices_on', { p_branch: branch, p_date: asOfDate });
+        if (pricesError) {
+            console.error('Error fetching dated prices:', pricesError);
+            throw new Error('Failed to fetch prices for that date');
+        }
+        datedPrices = new Map();
+        for (const row of (priceRows || []) as any[]) {
+            datedPrices.set(row.product_id, { unitPrice: Number(row.unit_price), unit: String(row.unit || '') });
+        }
+    }
 
     // 5. Compute scaling factor and efficiency
     const { factor: efficiencyFactor, status: efficiencyStatus } = getEfficiencyInfo(selectedPeople, menu.base_people);
@@ -476,13 +497,15 @@ export const calculateMenuCost = async (
             }
             const productName = String(product.name || product.id).trim();
 
-            const unitCost = Number(product[priceKey]);
+            const dated = datedPrices ? datedPrices.get(product.id) : undefined;
+            const unitCost = datedPrices ? Number(dated?.unitPrice) : Number(product[priceKey]);
             if (!(unitCost > 0)) {
                 missing.add(productName);
                 continue;
             }
 
-            const priceUnit = String(product.base_unit || product.unit || '').trim().toLowerCase();
+            // A dated price is in the unit it was recorded in.
+            const priceUnit = String((dated && dated.unit) || product.base_unit || product.unit || '').trim().toLowerCase();
             const scaledQty = line.quantity * totalItemScaling;
             let quantity: number;
             try {
@@ -602,5 +625,6 @@ export const calculateMenuCost = async (
         plannedComparison,
         missingPrices,
         branch,
+        priceDate: asOfDate,
     };
 };

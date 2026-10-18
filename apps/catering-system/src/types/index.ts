@@ -708,6 +708,8 @@ export interface MenuCalculationResult {
     missingPrices: string[];
     /** Branch whose prices were used. */
     branch: Branch;
+    /** Date the prices were taken from (YYYY-MM-DD); undefined = current catalog prices. */
+    priceDate?: string;
 }
 
 export interface PlannedVsCalculated {
