@@ -137,6 +137,38 @@ describe('calculateMenuCost', () => {
     expect(salt).toMatchObject({ totalQuantity: 500, unit: 'gms', unitCost: 2, totalCost: 1000 });
   });
 
+  it('flags recipes with no ingredients and recipes it cannot read, instead of a silent zero', async () => {
+    fromMock.mockImplementation((table: string) => {
+      switch (table) {
+        case 'catering_menus':
+          return mockQueryResult({ data: MENU, error: null });
+        case 'catering_menu_recipes':
+          return mockQueryResult({
+            data: [
+              { id: 'MR1', menu_id: 'M1', recipe_number: 'RN-EMPTY', recipes: { recipeName: 'Vegetable', recipeType: 'Lunch' } },
+              { id: 'MR2', menu_id: 'M1', recipe_number: 'RN-HIDDEN', recipes: null },
+            ],
+            error: null,
+          });
+        case 'recipes':
+          // RN-HIDDEN is not returned (e.g. owned by another user under RLS).
+          return mockQueryResult({ data: [{ recipeNumber: 'RN-EMPTY', recipeName: 'Vegetable', ingredients: [] }], error: null });
+        case 'ingredients':
+          return mockQueryResult({ data: ingredients, error: null });
+        case 'products':
+          return mockQueryResult({ data: products, error: null });
+        case 'menu_planned_ingredients':
+          return mockQueryResult({ data: [], error: null });
+        default:
+          throw new Error(`unexpected table ${table}`);
+      }
+    });
+    const { calculateMenuCost } = await import('../menuCostingService');
+    const res = await calculateMenuCost('M1', 10, false);
+    expect(res.totalCost).toBe(0);
+    expect(res.missingPrices).toEqual(['RN-HIDDEN (recipe not found)', 'Vegetable (no ingredients)']);
+  });
+
   it('keeps the wastage factor as before', async () => {
     const { calculateMenuCost } = await import('../menuCostingService');
     const res = await calculateMenuCost('M1', 10, true);

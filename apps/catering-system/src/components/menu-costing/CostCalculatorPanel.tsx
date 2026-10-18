@@ -341,7 +341,7 @@ export function CostCalculatorPanel({
                                         <div>
                                             <p className="text-sm font-black text-amber-900 uppercase tracking-tight">{incompleteCostLabel(res.missingPrices.length)}</p>
                                             <p className="text-xs text-amber-800 font-medium mt-1 leading-relaxed">
-                                                These ingredients are left out of the estimate: they are not linked to a product, the product has no {res.branch} price, or (unit) the recipe unit cannot be converted to the product&apos;s unit. The real cost is higher than shown.
+                                                Left out of the estimate: ingredients not linked to a product or with no {res.branch} price, &quot;(unit)&quot; where the recipe unit cannot be converted to the product&apos;s unit, and recipes with no ingredients or that could not be read. The real cost is higher than shown.
                                                 <br />
                                                 <span className="font-black">{res.missingPrices.join(", ")}</span>
                                             </p>

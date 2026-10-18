@@ -458,8 +458,23 @@ export const calculateMenuCost = async (
     const aggregated = new Map<string, IngredientSummaryItem>();
     const missing = new Set<string>();
 
+    // A recipe that contributes nothing would otherwise make the total look
+    // complete at zero: one that cannot be read (recipes are owner-only under
+    // RLS) or one with no ingredient lines yet.
+    const foundRecipes = new Set(recipes.map(r => r.recipeNumber));
+    for (const mr of menuRecipes) {
+        if (!foundRecipes.has(mr.recipe_number)) {
+            // The name may be unreadable too, so name it by its number.
+            missing.add(`${mr.recipe_number} (recipe not found)`);
+        }
+    }
+
     for (const recipe of recipes) {
-        const recipeIngredients = recipe.ingredients || [];
+        const recipeIngredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+        if (recipeIngredients.length === 0) {
+            missing.add(`${recipe.recipeName || recipe.recipeNumber} (no ingredients)`);
+            continue;
+        }
         for (const ing of recipeIngredients) {
             const ingredient = ingredientById.get(ing.ingredientId);
             const ingredientName = ingredient?.itemDescription || ing.ingredientId;

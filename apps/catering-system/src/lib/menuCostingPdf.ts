@@ -113,7 +113,7 @@ export function exportMenuCostingPdf(
 
         autoTable(doc, {
             startY: y,
-            head: [[`Ingredient (no product, no ${result.branch} price, or "(unit)" = unit cannot be converted)`]],
+            head: [[`Left out (no product or no ${result.branch} price; "(unit)" = unit cannot be converted; recipes with no ingredients or not found)`]],
             body: result.missingPrices.map(name => [name]),
             theme: 'striped',
             styles: { fontSize: 9, cellPadding: 2 },
