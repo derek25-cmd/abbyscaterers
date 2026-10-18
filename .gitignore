@@ -82,3 +82,5 @@ storage-backup/
 docs/data-readiness/audit-output/
 # Written by `supabase link` (project ref, pooler URL); keep it local.
 supabase/.temp/
+# ML dataset exports (supabase/exports) — business data, never commit.
+ml-data/
