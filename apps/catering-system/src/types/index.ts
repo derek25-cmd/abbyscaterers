@@ -701,6 +701,10 @@ export interface MenuCalculationResult {
     efficiencyFactor: number; // Dynamic scaling multiplier (1.0 = neutral)
     efficiencyStatus: string; // e.g., "Bulk Efficiency" or "Small Group Inefficiency"
     plannedComparison?: PlannedVsCalculated[];
+    /** Ingredients left out of totalCost: no product, no price at the branch, or " (unit)" when units cannot be converted. */
+    missingPrices: string[];
+    /** Branch whose prices were used. */
+    branch: Branch;
 }
 
 export interface PlannedVsCalculated {

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { MenuType, CateringMenu, CateringMenuRecipe, MenuCalculationResult, PlannedIngredient } from '@/types';
+import type { Branch, MenuType, CateringMenu, CateringMenuRecipe, MenuCalculationResult, PlannedIngredient } from '@/types';
 import {
     getMenuTypes as fetchMenuTypes,
     getCateringMenus as fetchMenus,
@@ -175,11 +175,11 @@ export function useMenuCostingStorage() {
     }, [selectedMenu, refreshPlannedIngredients]);
 
     // ─── Calculation ─────────────────────────────────────────
-    const runCalculation = useCallback(async (people: number, useWastage: boolean) => {
+    const runCalculation = useCallback(async (people: number, useWastage: boolean, branch: Branch = 'Dar es Salaam') => {
         if (!selectedMenu) return null;
         setIsCalculating(true);
         try {
-            const result = await calculate(selectedMenu.id, people, useWastage);
+            const result = await calculate(selectedMenu.id, people, useWastage, branch);
             setCalculationResult(result);
             return result;
         } catch (error) {

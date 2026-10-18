@@ -3,8 +3,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { CateringMenu, CateringMenuRecipe, MenuCalculationResult, IngredientSummaryItem, PlannedVsCalculated } from "@/types";
+import type { Branch, CateringMenu, CateringMenuRecipe, MenuCalculationResult, IngredientSummaryItem, PlannedVsCalculated } from "@/types";
+import { BRANCHES } from "@/types";
 import { exportMenuCostingPdf } from "@/lib/menuCostingPdf";
+import { incompleteCostLabel } from "@/lib/costing/missing";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -30,7 +33,7 @@ interface CostCalculatorPanelProps {
     menuRecipes: CateringMenuRecipe[];
     calculationResult: MenuCalculationResult | null;
     isCalculating: boolean;
-    onCalculate: (people: number, useWastage: boolean) => Promise<MenuCalculationResult | null>;
+    onCalculate: (people: number, useWastage: boolean, branch: Branch) => Promise<MenuCalculationResult | null>;
     onClearResults: () => void;
 }
 
@@ -40,6 +43,7 @@ export function CostCalculatorPanel({
 }: CostCalculatorPanelProps) {
     const [people, setPeople] = useState<number>(menu.base_people);
     const [useWastage, setUseWastage] = useState(false);
+    const [branch, setBranch] = useState<Branch>('Dar es Salaam');
     const { toast } = useToast();
     const resultRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +57,7 @@ export function CostCalculatorPanel({
             return;
         }
         try {
-            const res = await onCalculate(people, useWastage);
+            const res = await onCalculate(people, useWastage, branch);
             if (res) {
                 // Smooth scroll to results
                 setTimeout(() => {
@@ -149,7 +153,21 @@ export function CostCalculatorPanel({
                     </div>
 
                     {/* Options Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex flex-col justify-center gap-2 p-5 rounded-2xl border-2 border-muted bg-white">
+                            <Label htmlFor="branch-select" className="text-sm font-bold">Branch Prices</Label>
+                            <Select value={branch} onValueChange={(value) => setBranch(value as Branch)}>
+                                <SelectTrigger id="branch-select" className="h-9 rounded-xl">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {BRANCHES.map(b => (
+                                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className={cn(
                             "flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-300",
                             useWastage ? "border-primary bg-primary/5 shadow-sm" : "border-muted bg-white"
@@ -242,6 +260,11 @@ export function CostCalculatorPanel({
                                                     <span className="text-[10px] font-bold text-muted-foreground/60">{res.margin}% EST</span>
                                                 </div>
                                             </div>
+                                            <div className="h-8 w-px bg-muted" />
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Prices</span>
+                                                <span className="text-sm font-bold">{res.branch}</span>
+                                            </div>
                                             {res.efficiencyFactor !== 1 && (
                                                 <>
                                                     <div className="h-8 w-px bg-muted" />
@@ -276,10 +299,12 @@ export function CostCalculatorPanel({
                                         value={res.plannedTotalCost} 
                                         icon={ShoppingBasket} 
                                         suffix="TZS"
-                                        subtext={`EST: TZS ${res.totalCost.toLocaleString()}`}
+                                        subtext={res.missingPrices.length > 0
+                                            ? `EST: TZS ${res.totalCost.toLocaleString()} · ${incompleteCostLabel(res.missingPrices.length)}`
+                                            : `EST: TZS ${res.totalCost.toLocaleString()}`}
                                     />
-                                    <MetricCard 
-                                        label="Set Price (Revenue)" 
+                                    <MetricCard
+                                        label="Set Price (Revenue)"
                                         value={res.revenue} 
                                         icon={TrendingUp} 
                                         suffix="TZS"
@@ -304,8 +329,8 @@ export function CostCalculatorPanel({
                                     />
                                 </div>
 
-                                {/* Unpriced Warning */}
-                                {res.ingredientsSummary.some(i => i.unitCost === 0) && (
+                                {/* Missing prices: these ingredients are NOT in the estimate */}
+                                {res.missingPrices.length > 0 && (
                                     <motion.div 
                                         layout
                                         className="flex items-start gap-4 p-5 rounded-3xl border-2 border-amber-200 bg-amber-50/50 backdrop-blur-sm"
@@ -314,11 +339,11 @@ export function CostCalculatorPanel({
                                             <AlertTriangle className="h-5 w-5 text-amber-700" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Incomplete Data Detected</p>
+                                            <p className="text-sm font-black text-amber-900 uppercase tracking-tight">{incompleteCostLabel(res.missingPrices.length)}</p>
                                             <p className="text-xs text-amber-800 font-medium mt-1 leading-relaxed">
-                                                The following items lack pricing in your Product Catalog. Calculation assumes 0 cost for them:
+                                                These ingredients are left out of the estimate: they are not linked to a product, the product has no {res.branch} price, or (unit) the recipe unit cannot be converted to the product&apos;s unit. The real cost is higher than shown.
                                                 <br />
-                                                <span className="font-black">{res.ingredientsSummary.filter(i => i.unitCost === 0).map(i => i.ingredient).join(", ")}</span>
+                                                <span className="font-black">{res.missingPrices.join(", ")}</span>
                                             </p>
                                         </div>
                                     </motion.div>
@@ -405,6 +430,7 @@ export function CostCalculatorPanel({
                                                     <CalculatedIngredientsTable
                                                         ingredients={res.ingredientsSummary}
                                                         totalCost={res.totalCost}
+                                                        missingCount={res.missingPrices.length}
                                                     />
                                                 </TabsContent>
                                             </Tabs>
@@ -412,6 +438,7 @@ export function CostCalculatorPanel({
                                             <CalculatedIngredientsTable
                                                 ingredients={res.ingredientsSummary}
                                                 totalCost={res.totalCost}
+                                                missingCount={res.missingPrices.length}
                                             />
                                         )}
                                     </CardContent>
@@ -427,7 +454,7 @@ export function CostCalculatorPanel({
 
 // ─── Refined Tables ───
 
-function CalculatedIngredientsTable({ ingredients, totalCost }: { ingredients: IngredientSummaryItem[]; totalCost: number }) {
+function CalculatedIngredientsTable({ ingredients, totalCost, missingCount }: { ingredients: IngredientSummaryItem[]; totalCost: number; missingCount: number }) {
     return (
         <div className="overflow-x-auto">
             <Table>
@@ -458,7 +485,12 @@ function CalculatedIngredientsTable({ ingredients, totalCost }: { ingredients: I
                         </TableRow>
                     ))}
                     <TableRow className="bg-primary/5 hover:bg-primary/10 border-none">
-                        <TableCell colSpan={3} className="px-8 py-6 text-right font-black uppercase text-xs tracking-widest text-primary">Aggregate Menu Cost</TableCell>
+                        <TableCell colSpan={3} className="px-8 py-6 text-right font-black uppercase text-xs tracking-widest text-primary">
+                            Aggregate Menu Cost
+                            {missingCount > 0 && (
+                                <span className="block mt-1 normal-case tracking-normal text-amber-700">{incompleteCostLabel(missingCount)}</span>
+                            )}
+                        </TableCell>
                         <TableCell className="px-8 py-6 text-right font-mono text-xl font-black text-primary">
                             TZS {totalCost.toLocaleString()}
                         </TableCell>

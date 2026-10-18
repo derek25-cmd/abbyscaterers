@@ -1,6 +1,9 @@
 
 import { supabase } from '@/lib/supabase-client';
+import { toPriceUnit, UnitError } from '@/lib/costing/units';
+import { BRANCH_KEYS } from '@/types';
 import type {
+    Branch,
     MenuType,
     CateringMenu,
     CateringMenuRecipe,
@@ -328,33 +331,6 @@ export const syncPlannedIngredientsFromRecipes = async (menuId: string): Promise
     return true;
 };
 
-// ─── Unit Normalization ──────────────────────────────────────
-
-/**
- * Normalize a quantity to a base unit (kg for mass, liters for volume, pcs for count).
- * Returns { quantity, unit } in normalized form.
- */
-function normalizeUnit(quantity: number, unit: string): { quantity: number; unit: string } {
-    const u = unit.toLowerCase().trim();
-    switch (u) {
-        case 'g':
-        case 'gms':
-        case 'grams':
-            return { quantity: quantity / 1000, unit: 'kg' };
-        case 'ml':
-        case 'milliliters':
-            return { quantity: quantity / 1000, unit: 'liters' };
-        case 'kg':
-        case 'liters':
-        case 'pcs':
-        case 'bunch':
-        case 'item':
-            return { quantity, unit: u === 'item' ? 'pcs' : u };
-        default:
-            return { quantity, unit: u };
-    }
-}
-
 // ─── Calculation Engine ──────────────────────────────────────
 
 /**
@@ -384,10 +360,24 @@ const getEfficiencyInfo = (currentPax: number, basePax: number) => {
     return { factor, status };
 };
 
+/**
+ * Costs a catering menu for a number of people at one branch.
+ *
+ * Each recipe ingredient is priced through its linked product
+ * (ingredients.product_id) at that branch's price, with the quantity
+ * converted into the unit the product is priced in (products.base_unit,
+ * falling back to products.unit). Nothing is ever costed at zero: an
+ * ingredient with no product, a product with no price at the branch, or a
+ * unit that cannot be converted is left out of the total and listed in
+ * missingPrices instead, so the total is visibly incomplete rather than
+ * silently too low. Scaling, wastage, efficiency and the planned comparison
+ * are unchanged.
+ */
 export const calculateMenuCost = async (
     menuId: string,
     selectedPeople: number,
-    useWastage: boolean
+    useWastage: boolean,
+    branch: Branch = 'Dar es Salaam'
 ): Promise<MenuCalculationResult> => {
     // Validate inputs
     if (selectedPeople < 1) {
@@ -417,6 +407,8 @@ export const calculateMenuCost = async (
             plannedMargin: 100,
             efficiencyFactor: 1.0,
             efficiencyStatus: "No Recipes Added",
+            missingPrices: [],
+            branch,
         };
     }
 
@@ -434,26 +426,24 @@ export const calculateMenuCost = async (
 
     const recipes = (recipesData || []) as Recipe[];
 
-    // 4. Fetch all ingredients (for name lookup: ingredientId → itemDescription)
+    // 4. Fetch ingredients: name, linked product and piece weight.
     const { data: ingredientsData } = await supabase
         .from('ingredients')
-        .select('"itemNumber", "itemDescription"');
-    const ingredientLookup = new Map<string, string>();
+        .select('"itemNumber", "itemDescription", product_id, grams_per_item');
+    const ingredientById = new Map<string, Pick<Ingredient, 'itemNumber' | 'itemDescription' | 'product_id' | 'grams_per_item'>>();
     (ingredientsData || []).forEach((ing: any) => {
-        ingredientLookup.set(ing.itemNumber, ing.itemDescription);
+        ingredientById.set(ing.itemNumber, ing);
     });
 
-    // 5. Fetch all products (for pricing: name → unitPrice)
+    // 5. Fetch products: price unit and the per-branch prices.
     const { data: productsData } = await supabase
         .from('products')
-        .select('name, "unitPrice", unit');
-    const productLookup = new Map<string, { unitPrice: number; unit: string }>();
+        .select('id, name, unit, base_unit, "unitPrice_dar", "unitPrice_arusha", "unitPrice_dodoma"');
+    const productById = new Map<string, any>();
     (productsData || []).forEach((p: any) => {
-        productLookup.set(p.name.toLowerCase().trim(), {
-            unitPrice: Number(p.unitPrice),
-            unit: p.unit,
-        });
+        productById.set(p.id, p);
     });
+    const priceKey = BRANCH_KEYS[branch].price;
 
     // 6. Compute scaling factor and efficiency
     const { factor: efficiencyFactor, status: efficiencyStatus } = getEfficiencyInfo(selectedPeople, menu.base_people);
@@ -463,43 +453,62 @@ export const calculateMenuCost = async (
     // Total combined scaling per item
     const totalItemScaling = scalingFactor * wastageFactor * efficiencyFactor;
 
-    // 7. Aggregate ingredients across all recipes
+    // 7. Aggregate ingredients across all recipes. Lines that cannot be
+    // priced are collected in missingPrices and never added at zero.
     const aggregated = new Map<string, IngredientSummaryItem>();
+    const missing = new Set<string>();
 
     for (const recipe of recipes) {
         const recipeIngredients = recipe.ingredients || [];
         for (const ing of recipeIngredients) {
-            // Resolve ingredient name
-            const ingredientName = ingredientLookup.get(ing.ingredientId) || ing.ingredientId;
+            const ingredient = ingredientById.get(ing.ingredientId);
+            const ingredientName = ingredient?.itemDescription || ing.ingredientId;
 
-            // Scale quantity with efficiency factor
+            const product = ingredient?.product_id ? productById.get(ingredient.product_id) : undefined;
+            if (!product) {
+                missing.add(ingredientName);
+                continue;
+            }
+
+            const unitCost = Number(product[priceKey]);
+            if (!(unitCost > 0)) {
+                missing.add(ingredientName);
+                continue;
+            }
+
+            const priceUnit = String(product.base_unit || product.unit || '').trim().toLowerCase();
             const scaledQty = ing.quantity * totalItemScaling;
+            let quantity: number;
+            try {
+                quantity = toPriceUnit(scaledQty, ing.unit, priceUnit, ingredient?.grams_per_item);
+            } catch (error) {
+                if (error instanceof UnitError) {
+                    missing.add(`${ingredientName} (unit)`);
+                    continue;
+                }
+                throw error;
+            }
 
-            // Normalize units
-            const normalized = normalizeUnit(scaledQty, ing.unit);
-
-            // Look up pricing from products
-            const productMatch = productLookup.get(ingredientName.toLowerCase().trim());
-            const unitCost = productMatch ? productMatch.unitPrice : 0;
-
-            // Aggregate
-            const key = `${ingredientName.toLowerCase().trim()}__${normalized.unit}`;
+            // Aggregate per ingredient name and product (same as before:
+            // the planned comparison matches on the ingredient name).
+            const key = `${ingredientName.toLowerCase().trim()}__${product.id}`;
             const existing = aggregated.get(key);
 
             if (existing) {
-                existing.totalQuantity += normalized.quantity;
+                existing.totalQuantity += quantity;
                 existing.totalCost = existing.totalQuantity * existing.unitCost;
             } else {
                 aggregated.set(key, {
                     ingredient: ingredientName,
-                    totalQuantity: normalized.quantity,
-                    unit: normalized.unit,
+                    totalQuantity: quantity,
+                    unit: priceUnit,
                     unitCost,
-                    totalCost: normalized.quantity * unitCost,
+                    totalCost: quantity * unitCost,
                 });
             }
         }
     }
+    const missingPrices = Array.from(missing).sort((a, b) => a.localeCompare(b));
 
     // 8. Compute totals
     const ingredientsSummary = Array.from(aggregated.values()).sort((a, b) =>
@@ -585,5 +594,7 @@ export const calculateMenuCost = async (
         efficiencyFactor,
         efficiencyStatus,
         plannedComparison,
+        missingPrices,
+        branch,
     };
 };
