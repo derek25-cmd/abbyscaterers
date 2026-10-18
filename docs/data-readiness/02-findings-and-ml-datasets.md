@@ -215,6 +215,70 @@ Limits: Dar es Salaam only for now; about 1,300 events; dish names need the
 canonical-dish mapping (e.g. "fruits" / "fruits cuts", three fresh-juice
 recipes, "pumpikns").
 
+### `50_ml_daily_dish_plates.sql` → `ml-data/ml_daily_dish_plates.csv` (plates per dish, per day and branch)
+
+This file links daily **Stock Out** to the menus served, by date. Stock Out
+is not recorded per event: 5,704 of the 5,710 Stock Out rows are "Internal
+Use", one issue to the kitchen per product and day. So the link is the date
+and the branch.
+
+| Columns | Meaning |
+| --- | --- |
+| `menu_date`, `weekday_iso`, `month`, `branch` | Day and branch. `branch` is NULL for events with no region. |
+| `meal_section`, `dish_key`, `recipe_id`, `recipe_name` | The dish, keyed as in the dishes file. |
+| `events`, `plates` | Events that served the dish that day, and the sum of their pax. |
+
+Menus attach to events as in the event-menus file. Cancelled and test
+orders are left out. Join this file to `ml_stock_movements.csv`
+(`type = 'Stock Out'`) on date + branch. In Stock Out, `quantity` ×
+`actual_unit_price` = `price` (5,707 of 5,710 rows); `actual_quantity` is
+mostly empty.
+
+#### What the link shows (Dar es Salaam, Apr–Oct 2026, staging)
+
+- **Ingredients are issued on the day of the event.** Correlation between
+  the daily Stock Out value and the plates served:
+
+  | Plates served | Correlation |
+  | --- | --- |
+  | the same day | 0.73 |
+  | the next day | 0.34 |
+  | the previous day | −0.03 |
+
+  So the date is the right key, and there is no shift to apply.
+- **Food cost.** On the 143 days with Stock Out, the value issued was about
+  **33% of revenue ex VAT**, about **TZS 3,500 per plate** (69,000 plates).
+  Counting events with no region as Dar es Salaam, it is 26% and
+  TZS 2,800.
+- **The menu explains which ingredients go out**, beyond the number of
+  plates. Correlation of a product's daily quantity with plates of matching
+  dishes, against all plates:
+
+  | Product | Plates of matching dishes | All plates | Quantity per plate |
+  | --- | --- | --- | --- |
+  | fish | 0.75 | 0.12 | ≈ 0.12 kg |
+  | beans | 0.54 | 0.37 | ≈ 0.05 kg |
+  | eggs | 0.45 | 0.34 | ≈ 1 egg |
+  | chicken | 0.41 | 0.23 | mixed kg / pieces |
+  | beef | 0.47 | 0.43 | |
+  | rice | 0.33 | 0.45 | goes with many dishes |
+  | bananas | no signal | | logged in buckets, packs and pieces |
+
+  Regressing each product's daily quantity on the plates of every dish
+  (non-negative least squares) estimates the **observed recipe**: the
+  quantity per plate the kitchen really uses. It can check the recipes the
+  kitchen enters in Phase 2, or stand in for missing ones.
+- **Limits:**
+  - 51 Dar es Salaam event days (23,500 plates) have no Stock Out logged.
+  - Mixed units per product (chicken in kg and pieces, eggs in buckets and
+    pieces) blur the signal until the unit clean-up (`unit_gaps.csv`) is
+    done.
+  - Branch on stock logs is reliable only from 2026-09-01. Almost all rows
+    are Dar es Salaam anyway.
+  - Dishes served together on the same days (e.g. tea and fruits at every
+    breakfast) cannot be told apart. Group them, or use the kitchen's
+    recipes for those.
+
 ## 5. Fixes for the business (no code needed)
 
 In order of value for the ML work:
@@ -243,7 +307,7 @@ In order of value for the ML work:
 
 ## 6. Next steps
 
-1. Run the four exports and save the CSVs in `ml-data/`.
+1. Run the five exports and save the CSVs in `ml-data/`.
 2. Analysis on the PC (next stage):
    - **forecasting baseline**: daily events / pax / revenue per branch, with
      weekday effects;
