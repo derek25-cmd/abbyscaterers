@@ -15,6 +15,8 @@ import { getLatestProformaNumber } from "@/services/proformaInvoiceService";
 import { getLatestInvoiceNumber } from "@/services/invoiceService";
 // getLatestOrderNumber removed — order IDs are now managed by the DB counter (claim_ids).
 import { Slider } from "@/components/ui/slider";
+import Link from "next/link";
+import { useStaffRole } from "@/hooks/use-staff-role";
 
 type ImageKey = 'loginImageUrl' | 'headerUrl' | 'footerUrl' | 'signatureUrl' | 'proformaStampUrl' | 'invoiceStampUrl';
 type SequenceKey = 'nextOrderNumber' | 'nextProformaNumber' | 'nextInvoiceNumber';
@@ -22,6 +24,7 @@ type SequenceKey = 'nextOrderNumber' | 'nextProformaNumber' | 'nextInvoiceNumber
 export function SettingsPageComponent() {
     const { settings, updateSettings, isLoading: settingsLoading } = useSettingsStorage();
     const { toast } = useToast();
+    const { canManageSettings } = useStaffRole();
     const [uploading, setUploading] = useState<Partial<Record<ImageKey, boolean>>>({});
     const [syncing, setSyncing] = useState<Partial<Record<SequenceKey, boolean>>>({});
     const [localSettings, setLocalSettings] = useState<AppSettings>({});
@@ -217,6 +220,20 @@ export function SettingsPageComponent() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 Application Settings
             </h1>
+
+            {canManageSettings && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Data Quality</CardTitle>
+                        <CardDescription>Admins only. Events with missing or inconsistent data (price, pax, menu, dates), with suggested fixes and a CSV export.</CardDescription>
+                    </CardHeader>
+                    <CardFooter>
+                        <Button asChild variant="outline">
+                            <Link href="/data-quality">Open Data Quality</Link>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>
