@@ -84,3 +84,5 @@ docs/data-readiness/audit-output/
 supabase/.temp/
 # Mapping sheets for operations / the kitchen (business data) — keep out of git.
 docs/data-readiness/mappings/
+# ML dataset exports (supabase/exports) — business data, never commit.
+ml-data/
