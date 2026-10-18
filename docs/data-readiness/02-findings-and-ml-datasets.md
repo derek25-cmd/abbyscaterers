@@ -130,6 +130,91 @@ small mapping of `recipe_id → canonical dish`, to be agreed with the kitchen.
 
 Rows with no `date` are left out.
 
+### `40_ml_event_menus.sql` → `ml-data/ml_event_menus.csv` (one row per event with a posted menu)
+
+The price per plate and the menu served for that event, side by side.
+`daily_menus.event_id` links to the event's id in `orders."clientEvents"`.
+A menu whose `event_id` matches no event (e.g. `EVT-00000`, an order number)
+is **recovered** when its order has exactly one event on the menu date.
+Otherwise it is left out.
+
+| Columns | Meaning |
+| --- | --- |
+| `event_id`, `order_id`, `events_in_order`, `client_id`, `client_type` | Keys and client type, as in the events file. |
+| `event_date`, `weekday_iso`, `month`, `region`, `branch` | As in the events file. |
+| `meal_type`, `particular_type`, `event_type`, `pax`, `unit_price`, `vat_type` | As entered on the event. |
+| `price_per_plate_ex_vat` | `unit_price`, divided by 1.18 when VAT-inclusive. |
+| `menu_days`, `first_menu_date`, `last_menu_date` | Menus posted for the event (1, or 2 for a few). |
+| `dishes_total`, `dishes_per_day`, `n_breakfast` … `n_cocktail`, `n_unknown_section` | Dishes on the menu, by section (same row-index rule as the dishes file). |
+| `meal_sections` | Sections present, e.g. `Breakfast+Lunch`. |
+| `recipe_ids`, `dish_keys` | `\|`-separated, distinct, sorted. One-hot them for a model. |
+| `n_no_recipe_id` | Dishes typed without a recipe link. |
+| `flag_*` | As in the events file, plus `flag_link_recovered`, `flag_menu_date_differs` (menu not on the event date) and `flag_meal_type_mismatch` (the meal type names none of the menu's sections, e.g. "Lunch only" with breakfast dishes). |
+
+#### What the link shows (staging = production copy, 2026-10-18)
+
+- **The link is clean.** All 1,362 posted menus carry an `event_id`. 1,307
+  match an event directly, and 17 more are recovered through order and date,
+  giving **1,301 events with a menu**. On 1,306 of the 1,307 direct links the
+  menu's `order_id` agrees with the event's. 1,285 menus are dated on the event
+  day, and 22 are 1–2 days off (flagged). No event has two menus on the same
+  day.
+- **Coverage: about half of past events have a menu, and it depends on the
+  branch.** From April to October 2026, Dar es Salaam has a menu for 1,253 of
+  1,717 events (73%). Dodoma has 6 of 179, Arusha 2 of 31, and events with no
+  region 17 of 554. So this dataset is **effectively Dar es Salaam**.
+  Recording menus at Dodoma and Arusha (and the region on every event) is
+  what would widen it.
+- **Meal type agrees with the menu.** For example, "Lunch only" → Lunch
+  sections 557 / 567, "Breakfast only" → Breakfast 315 / 328, "Breakfast and
+  lunch" → both 319 / 321. Only 9 events are flagged as mismatches.
+- **Price per plate rises with the menu.** Ex VAT, Dar es Salaam:
+
+  | Menu | Events | Price per plate (10th / median / 90th pct) | corr(dishes per day, price) |
+  | --- | --- | --- | --- |
+  | Breakfast | 324 | 3,644 / 6,780 / 11,441 | 0.29 |
+  | Lunch | 576 | 8,475 / 10,169 / 16,949 | 0.36 |
+  | Breakfast + lunch | 330 | 16,949 / 25,424 / 29,661 | 0.29 |
+
+  Specific dishes separate the price tiers, beyond the dish count. The table
+  shows how often each dish appears in the most expensive third of events
+  against the cheapest third:
+
+  | Menu | Dish | Most expensive third | Cheapest third |
+  | --- | --- | --- | --- |
+  | Lunch | fresh juice | 73% | 27% |
+  | Lunch | braised beef | 15% | 5% |
+  | Lunch | peas | 14% | 1% |
+  | Lunch | ugali | 10% | 31% |
+  | Breakfast | fruits cuts | 78% | 4% |
+  | Breakfast | black & milk tea | 74% | 2% |
+  | Breakfast | vegetable | 64% | 6% |
+
+  Cheap breakfasts are snacks only (bagia, kachori, mini doughnuts).
+- **Prices are list prices.** The 10 most common prices (12,000; 8,000;
+  35,000; 10,000 …) cover 89% of events. A model should treat the price as a
+  tier (classification) rather than a continuous target.
+- **Few clients, many events.** 44 clients with 3 or more linked events
+  account for 1,237 of the events. Only 14% of them always pay one price, so
+  price is not fixed per client. **Split train and test by client** (grouped
+  folds), or a model will learn the client instead of the menu.
+
+#### What it can train
+
+1. **Price tier from the menu** (quote check): given the meal sections and
+   the dishes, predict the price tier. This is useful to flag quotes that are
+   low for the menu.
+2. **Menu from the price** (menu recommendation): given the meal type, price
+   tier, pax and client type, rank the dishes to propose. This is the
+   recommendation baseline in section 6, now conditioned on price.
+3. **Food cost per plate**, once recipes have ingredients (Phase 2): cost
+   each posted menu and compare with `price_per_plate_ex_vat`, which gives the
+   margin per event.
+
+Limits: Dar es Salaam only for now; about 1,300 events; dish names need the
+canonical-dish mapping (e.g. "fruits" / "fruits cuts", three fresh-juice
+recipes, "pumpikns").
+
 ## 5. Fixes for the business (no code needed)
 
 In order of value for the ML work:
@@ -151,12 +236,14 @@ In order of value for the ML work:
 6. **Explain the food-cost ratio** (section 1): is everything issued to the
    kitchen logged as Stock Out, at current prices?
 7. **Correct the 17 zero-price events** and the one with an unreadable date.
-8. **Enter the menu every day** (June looks incomplete), and avoid saving the
+8. **Enter the menu for every event, at every branch** (Dodoma and Arusha
+   post almost none; see `40_ml_event_menus.sql`), and set the region on
+   every event. **Enter the menu every day** (June looks incomplete), and avoid saving the
    daily and special menus for the same event and day from both pages.
 
 ## 6. Next steps
 
-1. Run the three exports and save the CSVs in `ml-data/`.
+1. Run the four exports and save the CSVs in `ml-data/`.
 2. Analysis on the PC (next stage):
    - **forecasting baseline**: daily events / pax / revenue per branch, with
      weekday effects;
