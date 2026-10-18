@@ -13,9 +13,11 @@
 --     1000x too low. Until the kitchen confirms these (and any other unknown
 --     unit) in docs/data-readiness/mappings/unit_gaps.csv, costing falls back
 --     to products.unit, which converts correctly.
---   * ingredients.grams_per_item: weight of one piece, used only to convert
---     between pieces and kilograms (e.g. a recipe asks for 3 eggs, the
---     product is priced per kg). NULL until the kitchen enters it.
+--   * products.grams_per_item: weight of one piece of the product, used only
+--     to convert between pieces and kilograms (e.g. a recipe asks for 3 eggs,
+--     eggs are priced per kg). NULL until the kitchen enters it. Recipes link
+--     to products directly (recipe lines carry productId), so the weight
+--     belongs to the product.
 --
 -- Idempotent: columns and constraints are only added if missing, and the
 -- backfill only fills NULL base_unit values.
@@ -25,11 +27,11 @@
 -- backfilled product gets an audit_log row and a new "updatedAt".
 --
 -- Rollback (see docs/data-readiness/PROD-RUNBOOK-phase-2.md):
---   ALTER TABLE public.products    DROP COLUMN IF EXISTS base_unit;
---   ALTER TABLE public.ingredients DROP COLUMN IF EXISTS grams_per_item;
+--   ALTER TABLE public.products DROP COLUMN IF EXISTS base_unit;
+--   ALTER TABLE public.products DROP COLUMN IF EXISTS grams_per_item;
 
-ALTER TABLE public.products    ADD COLUMN IF NOT EXISTS base_unit text;
-ALTER TABLE public.ingredients ADD COLUMN IF NOT EXISTS grams_per_item numeric(10,2);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS base_unit text;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS grams_per_item numeric(10,2);
 
 DO $$
 BEGIN
@@ -44,10 +46,10 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'public.ingredients'::regclass AND conname = 'ingredients_grams_per_item_check'
+    WHERE conrelid = 'public.products'::regclass AND conname = 'products_grams_per_item_check'
   ) THEN
-    ALTER TABLE public.ingredients
-      ADD CONSTRAINT ingredients_grams_per_item_check
+    ALTER TABLE public.products
+      ADD CONSTRAINT products_grams_per_item_check
       CHECK (grams_per_item IS NULL OR grams_per_item > 0);
   END IF;
 END $$;
