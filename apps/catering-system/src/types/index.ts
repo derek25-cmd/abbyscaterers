@@ -150,6 +150,8 @@ export interface Order {
   region?: Region | null;
   status?: OrderStatus; // defaults to 'confirmed' in the DB for pre-existing rows; new orders set it explicitly
   clientEvents: ClientEvent[];
+  /** Test / demo order, left out of analytics (orders.is_test). */
+  isTest?: boolean;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
