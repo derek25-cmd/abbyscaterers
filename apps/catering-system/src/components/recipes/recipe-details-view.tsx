@@ -10,6 +10,7 @@ import { ClipboardSignature, Info, CalendarClock, ShoppingBasket, FileText, Squa
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "../../lib/utils";
 import { useIngredientStorage } from "../../hooks/use-ingredient-storage";
+import { useProductStorage } from "../../hooks/use-product-storage";
 import { Skeleton } from "../ui/skeleton";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -23,6 +24,7 @@ interface RecipeDetailsViewProps {
 
 export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
   const { getIngredientById, isLoading: ingredientsLoading } = useIngredientStorage();
+  const { products, isLoading: productsLoading } = useProductStorage();
   const printRef = React.useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -57,6 +59,16 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
     if (ingredientsLoading) return "Loading...";
     const ingredient = getIngredientById(ingredientId);
     return ingredient ? ingredient.itemDescription : "Unknown Ingredient";
+  };
+
+  // Lines link to the product catalog (productId); older lines may still
+  // point at the ingredients table.
+  const getLineName = (item: { productId?: string; ingredientId?: string }): string => {
+    if (item.productId) {
+      const product = products.find(p => p.id === item.productId);
+      return product?.name || `Unknown product (${item.productId})`;
+    }
+    return item.ingredientId ? getIngredientName(item.ingredientId) : "Unknown Ingredient";
   };
   
   const handlePdfExport = async () => {
@@ -157,7 +169,7 @@ export function RecipeDetailsView({ recipe }: RecipeDetailsViewProps) {
                     {recipe.ingredients.map((item, index) => (
                     <li key={index} className="flex justify-between items-center py-2">
                         <span className="text-sm text-foreground">
-                        {ingredientsLoading ? <Skeleton className="h-5 w-32 inline-block" /> : getIngredientName(item.ingredientId)}
+                        {ingredientsLoading || productsLoading ? <Skeleton className="h-5 w-32 inline-block" /> : getLineName(item)}
                         </span>
                         <span className="text-sm text-muted-foreground font-mono">{`${item.quantity} ${item.unit}`}</span>
                     </li>

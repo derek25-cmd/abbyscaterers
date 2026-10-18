@@ -64,7 +64,7 @@ export const ITEM_CLASSIFICATIONS = [
 
 export type ItemClassification = (typeof ITEM_CLASSIFICATIONS)[number];
 
-export const UNITS_OF_MEASURE = ["kg", "gms", "bunch", "item"] as const;
+export const UNITS_OF_MEASURE = ["kg", "gms", "liters", "ml", "bunch", "item"] as const;
 export type UnitOfMeasure = (typeof UNITS_OF_MEASURE)[number];
 
 export interface UnitAndPrice {
@@ -84,7 +84,10 @@ export interface Ingredient {
 }
 
 export interface RecipeIngredientItem {
-  ingredientId: string; // References Ingredient.itemNumber
+  /** products.id: the catalog product this line is made from. Costing prices it at the branch's price. */
+  productId?: string;
+  /** Legacy link to ingredients.itemNumber, from before recipes used the product catalog. */
+  ingredientId?: string;
   quantity: number;
   unit: UnitOfMeasure;
 }
@@ -500,6 +503,10 @@ export interface Product {
     unitPrice_dar: number;
     unitPrice_arusha: number;
     unitPrice_dodoma: number;
+    /** Unit the prices are per: kg, liters, pcs or bunch (data-readiness Phase 2). NULL = use `unit`. */
+    base_unit?: string | null;
+    /** Weight of one piece in grams, to convert pieces <-> kg in costing. */
+    grams_per_item?: number | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -697,6 +704,10 @@ export interface MenuCalculationResult {
     efficiencyFactor: number; // Dynamic scaling multiplier (1.0 = neutral)
     efficiencyStatus: string; // e.g., "Bulk Efficiency" or "Small Group Inefficiency"
     plannedComparison?: PlannedVsCalculated[];
+    /** Ingredients left out of totalCost: no product, no price at the branch, or " (unit)" when units cannot be converted. */
+    missingPrices: string[];
+    /** Branch whose prices were used. */
+    branch: Branch;
 }
 
 export interface PlannedVsCalculated {

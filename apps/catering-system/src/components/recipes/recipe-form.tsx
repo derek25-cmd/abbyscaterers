@@ -22,7 +22,7 @@ import { Separator } from "../ui/separator";
 import { RecipeSchema, type RecipeFormData } from "@/lib/schemas";
 import type { Recipe } from "@/types";
 import { useRecipeStorage } from "@/hooks/use-recipe-storage";
-import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
+import { useProductStorage } from "@/hooks/use-product-storage";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import React, { useState, useEffect } from "react";
@@ -46,7 +46,7 @@ interface RecipeFormProps {
 export function RecipeForm({ recipe }: RecipeFormProps) {
   const router = useRouter();
   const { addRecipe, updateRecipe } = useRecipeStorage();
-  const { ingredients: availableIngredients, isLoading: ingredientsLoading } = useIngredientStorage();
+  const { products, isLoading: productsLoading } = useProductStorage();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -171,7 +171,8 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
 
             <Separator />
             <div>
-              <h3 className="text-lg font-medium mb-4">Ingredients (Optional)</h3>
+              <h3 className="text-lg font-medium mb-1">Ingredients (Optional)</h3>
+              <p className="text-sm text-muted-foreground mb-4">Pick each ingredient from the product catalog. Menu costing prices it at the branch&apos;s price for that product.</p>
               <div className="space-y-4">
               {fields.map((item, index) => (
                 <div key={item.id} className="border rounded-md p-4 relative">
@@ -190,10 +191,10 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                     <FormField
                       control={form.control}
-                      name={`ingredients.${index}.ingredientId`}
+                      name={`ingredients.${index}.productId`}
                       render={({ field }) => (
                           <FormItem className="flex flex-col">
-                            <FormLabel>Ingredient</FormLabel>
+                            <FormLabel>Product</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -204,12 +205,13 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                       "w-full justify-between",
                                       !field.value && "text-muted-foreground"
                                     )}
-                                    disabled={ingredientsLoading}
+                                    disabled={productsLoading}
                                   >
                                     {(() => {
-                                      if (ingredientsLoading) return "Loading...";
-                                      const selected = availableIngredients.find(ing => ing.itemNumber === field.value);
-                                      return selected ? `${selected.itemNumber} - ${selected.itemDescription}` : "Select ingredient";
+                                      if (productsLoading) return "Loading...";
+                                      const selected = products.find(p => p.id === field.value);
+                                      if (selected) return `${selected.name}${selected.sku ? ` (${selected.sku})` : ""}`;
+                                      return field.value ? `${field.value} (not in catalog)` : "Select product";
                                     })()}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                   </Button>
@@ -218,28 +220,31 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command>
                                   <CommandInput
-                                    placeholder="Search ingredient..."
+                                    placeholder="Search product name or SKU..."
                                   />
                                   <CommandList>
-                                    <CommandEmpty>No ingredient found.</CommandEmpty>
+                                    <CommandEmpty>No product found.</CommandEmpty>
                                     <CommandGroup>
-                                      {availableIngredients.map((ing) => (
+                                      {products.map((p) => (
                                         <CommandItem
-                                          key={ing.itemNumber}
-                                          value={`${ing.itemNumber} - ${ing.itemDescription}`}
+                                          key={p.id}
+                                          value={`${p.name ?? ""} ${p.sku ?? ""} ${p.id}`}
                                           onSelect={() => {
-                                            form.setValue(`ingredients.${index}.ingredientId`, ing.itemNumber);
+                                            form.setValue(`ingredients.${index}.productId`, p.id, { shouldValidate: true });
                                           }}
                                         >
                                           <Check
                                             className={cn(
                                               "mr-2 h-4 w-4",
-                                              field.value === ing.itemNumber
+                                              field.value === p.id
                                                 ? "opacity-100"
                                                 : "opacity-0"
                                             )}
                                           />
-                                          {ing.itemNumber} - {ing.itemDescription}
+                                          <span className="flex-1">{p.name}</span>
+                                          <span className="ml-2 text-xs text-muted-foreground">
+                                            {[p.sku, p.base_unit || p.unit].filter(Boolean).join(" · ")}
+                                          </span>
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -247,6 +252,13 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                                 </Command>
                               </PopoverContent>
                             </Popover>
+                            {(() => {
+                              const selected = products.find(p => p.id === field.value);
+                              const priceUnit = selected ? (selected.base_unit || selected.unit) : null;
+                              return priceUnit ? (
+                                <FormDescription>Priced per {priceUnit}</FormDescription>
+                              ) : null;
+                            })()}
                             <FormMessage />
                           </FormItem>
                         )
@@ -303,7 +315,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                 variant="outline"
                 size="sm"
                 className="mt-4"
-                onClick={() => append({ ingredientId: "", quantity: 1, unit: "kg" })}
+                onClick={() => append({ productId: "", quantity: 1, unit: "kg" })}
                 disabled={isSubmitting}
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Ingredient
@@ -316,8 +328,8 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
           <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || ingredientsLoading}>
-            {(isSubmitting || ingredientsLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" disabled={isSubmitting || productsLoading}>
+            {(isSubmitting || productsLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {recipe ? "Save Changes" : "Add Recipe"}
           </Button>
         </div>

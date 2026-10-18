@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { CateringMenu, MenuCalculationResult } from '@/types';
+import { incompleteCostLabel } from '@/lib/costing/missing';
 
 /**
  * Exports a Menu Costing calculation result as a PDF document.
@@ -48,6 +49,7 @@ export function exportMenuCostingPdf(
         ['Scaling Factor', `${(people / menu.base_people).toFixed(2)}×`],
         ['Efficiency Mode', `${result.efficiencyStatus} (${Math.round(result.efficiencyFactor * 100)}%)`],
         ['Wastage Buffer', useWastage ? 'Yes (+10%)' : 'No'],
+        ['Branch Prices', result.branch],
     ];
 
     if (menu.notes) {
@@ -76,7 +78,9 @@ export function exportMenuCostingPdf(
 
     const financialData = [
         ['Planned Ingredient Cost (TZS)', result.plannedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })],
-        ['Estimated Ingredient Cost (TZS)', result.totalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+        ['Estimated Ingredient Cost (TZS)',
+            result.totalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })
+            + (result.missingPrices.length > 0 ? ` (${incompleteCostLabel(result.missingPrices.length)})` : '')],
         ['Revenue (Set Price) (TZS)', result.revenue.toLocaleString(undefined, { maximumFractionDigits: 2 })],
         ['Planned Profit (TZS)', result.plannedProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })],
         ['Estimated Profit (TZS)', result.profit.toLocaleString(undefined, { maximumFractionDigits: 2 })],
@@ -99,6 +103,26 @@ export function exportMenuCostingPdf(
     });
 
     y = (doc as any).lastAutoTable.finalY + 8;
+
+    // ─── Ingredients without a price ─────────────────────────
+    if (result.missingPrices.length > 0) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Not included in the estimate: ${incompleteCostLabel(result.missingPrices.length)}`, margin, y);
+        y += 6;
+
+        autoTable(doc, {
+            startY: y,
+            head: [[`Left out (no product or no ${result.branch} price; "(unit)" = unit cannot be converted; recipes with no ingredients or not found)`]],
+            body: result.missingPrices.map(name => [name]),
+            theme: 'striped',
+            styles: { fontSize: 9, cellPadding: 2 },
+            headStyles: { fillColor: [180, 120, 20], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 8;
+    }
 
     // ─── Planned vs Calculated Comparison ────────────────────
     if (result.plannedComparison && result.plannedComparison.length > 0) {

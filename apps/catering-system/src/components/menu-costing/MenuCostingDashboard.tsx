@@ -12,7 +12,7 @@ import {
     Check, ChevronsUpDown, Wand2, Users
 } from "lucide-react";
 import { format } from "date-fns";
-import type { CateringMenu, MenuType, CateringMenuRecipe, MenuCalculationResult, PlannedIngredient, Product } from "@/types";
+import type { Branch, CateringMenu, MenuType, CateringMenuRecipe, MenuCalculationResult, PlannedIngredient, Product } from "@/types";
 import { 
     getMenuRecipes, 
     getPlannedIngredients, 
@@ -216,10 +216,10 @@ export default function MenuCostingDashboard() {
         }
     };
 
-    const runCalculation = async (people: number, useWastage: boolean) => {
+    const runCalculation = async (people: number, useWastage: boolean, branch: Branch) => {
         if (!selectedMenuId) return null;
         try {
-            return await hookRunCalculation(people, useWastage);
+            return await hookRunCalculation(people, useWastage, branch);
         } catch (error: any) {
             toast({ variant: "destructive", title: "Calculation Failed", description: error.message });
             return null;
