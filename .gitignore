@@ -89,3 +89,7 @@ docs/data-readiness/mappings/
 main
 # ML dataset exports (supabase/exports) — business data, never commit.
 ml-data/
+# ML baseline (ml/): local Python environment and caches
+ml/.venv/
+__pycache__/
+.pytest_cache/
