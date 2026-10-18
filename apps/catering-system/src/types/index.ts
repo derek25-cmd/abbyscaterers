@@ -81,6 +81,10 @@ export interface Ingredient {
   updatedAt: string; // ISO date string
   quantityUsed?: number; // Ephemeral property for costing
   user_id?: string;
+  /** products.id this ingredient is bought as (Phase 2). Costing prices the ingredient from it. */
+  product_id?: string | null;
+  /** Weight of one piece, to convert pieces <-> kg (Phase 2). */
+  grams_per_item?: number | null;
 }
 
 export interface RecipeIngredientItem {
