@@ -24,8 +24,8 @@ by re-running the same queries once the migrations and mappings are applied.
 | Daily-menu dishes without a recipe link | **160 of 14,503 (1.1%)** | March 49.6%, then under 1% every month (table below) | |
 | Stock In rows (price history) | 650 | Dar 509 rows / 9 months; Arusha 61 / 2; Dodoma 80 / 3. 7 rows without a unit price. Gaps: July 1 row and September 2 rows across all branches. Pack-size outliers up to 143× (e.g. ndizi moshi 350–50,000) | |
 | 3a. Duplicate product names | *to run* | `03_phase2_checks.sql` 3a. Duplicates are never auto-linked. | |
-| 3b. Ingredients with no exact product name match | **0 of 0** | The `ingredients` table is empty | |
-| 3c. Recipe lines whose unit family differs from the product's | **0 of 0 lines** | No recipe lines exist | |
+| 3b. Recipe lines linked to a catalog product | **0 of 0 lines** | Recipes now link to the product catalog directly (line `productId`), not through `ingredients`. 404 recipes, all without lines. | |
+| 3c. Recipe lines whose unit family differs from their product's | **0 of 0 lines** | No recipe lines exist | |
 
 ## Events by month (check A)
 
@@ -78,10 +78,10 @@ ndizi bukoba 15×, eggplant 15×, yeast 14×, coriander 13×, yam 13×, lime 10�
 
 ## What this means for Phase 2
 
-Recipes, not code, are the binding constraint. The Phase 2 code (product
-link, units, branch prices, never pricing at zero) is in place, but until the
-kitchen enters ingredients for the most-served recipes, every menu costs
-**TZS 0**. With Phase 2 that is now shown as incomplete ("… (no ingredients)")
+Recipes, not code, are the binding constraint. The Phase 2 code (recipe lines
+picked from the product catalog, units, branch prices, never pricing at zero)
+is in place, but until the kitchen enters ingredients for the most-served
+recipes, every menu costs **TZS 0**. With Phase 2 that is now shown as incomplete ("… (no ingredients)")
 instead of passing for a real total. The top 40 dishes cover 73% of
 servings (`02-findings-and-ml-datasets.md` on branch
 `feature/data-readiness-step-2`).
