@@ -216,10 +216,10 @@ export default function MenuCostingDashboard() {
         }
     };
 
-    const runCalculation = async (people: number, useWastage: boolean, branch: Branch) => {
+    const runCalculation = async (people: number, useWastage: boolean, branch: Branch, asOfDate?: string) => {
         if (!selectedMenuId) return null;
         try {
-            return await hookRunCalculation(people, useWastage, branch);
+            return await hookRunCalculation(people, useWastage, branch, asOfDate);
         } catch (error: any) {
             toast({ variant: "destructive", title: "Calculation Failed", description: error.message });
             return null;

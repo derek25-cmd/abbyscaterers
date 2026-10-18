@@ -175,11 +175,11 @@ export function useMenuCostingStorage() {
     }, [selectedMenu, refreshPlannedIngredients]);
 
     // ─── Calculation ─────────────────────────────────────────
-    const runCalculation = useCallback(async (people: number, useWastage: boolean, branch: Branch = 'Dar es Salaam') => {
+    const runCalculation = useCallback(async (people: number, useWastage: boolean, branch: Branch = 'Dar es Salaam', asOfDate?: string) => {
         if (!selectedMenu) return null;
         setIsCalculating(true);
         try {
-            const result = await calculate(selectedMenu.id, people, useWastage, branch);
+            const result = await calculate(selectedMenu.id, people, useWastage, branch, asOfDate);
             setCalculationResult(result);
             return result;
         } catch (error) {

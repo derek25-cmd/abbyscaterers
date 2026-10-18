@@ -90,6 +90,7 @@ export const getPurchases = async (): Promise<Purchase[]> => {
             event_id: p.event_id || p.eventid || local?.event_id || '',
             supplier_tin: p.supplier_tin || p.suppliertin || local?.supplier_tin || '',
             efd_receipt: p.efd_receipt || p.efdreceipt || local?.efd_receipt || '',
+            product_id: p.product_id ?? local?.product_id ?? null,
             user_id: p.user_id,
             createdAt: p.createdat || p.created_at,
             updatedAt: p.updatedat || p.updated_at,
@@ -136,6 +137,7 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
         event_id: purchase.event_id,
         supplier_tin: purchase.supplier_tin,
         efd_receipt: purchase.efd_receipt,
+        product_id: purchase.product_id || null,
         user_id: userId
     };
 
@@ -146,13 +148,14 @@ export const addPurchase = async (purchase: Omit<Purchase, 'id' | 'createdAt' | 
         console.warn('Could not insert purchase into Supabase. Creating in localStorage fallback:', error.message);
         
         // Strip out columns if database errors on optional fields
-        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt') || error.message.includes('amount_paid') || error.message.includes('supplier_id')) {
+        if (error.message.includes('event_id') || error.message.includes('supplier_tin') || error.message.includes('efd_receipt') || error.message.includes('amount_paid') || error.message.includes('supplier_id') || error.message.includes('product_id')) {
             const strippedDbPurchase = { ...dbPurchase };
             delete (strippedDbPurchase as any).event_id;
             delete (strippedDbPurchase as any).supplier_tin;
             delete (strippedDbPurchase as any).efd_receipt;
             delete (strippedDbPurchase as any).amount_paid;
             delete (strippedDbPurchase as any).supplier_id;
+            delete (strippedDbPurchase as any).product_id;
             
             const { data: strippedData, error: strippedError } = await supabase.from('purchases').insert([strippedDbPurchase]).select().single();
             if (!strippedError && strippedData) {
@@ -222,6 +225,7 @@ export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<P
     if (updatedPurchase.event_id !== undefined) dbUpdate.event_id = updatedPurchase.event_id;
     if (updatedPurchase.supplier_tin !== undefined) dbUpdate.supplier_tin = updatedPurchase.supplier_tin;
     if (updatedPurchase.efd_receipt !== undefined) dbUpdate.efd_receipt = updatedPurchase.efd_receipt;
+    if (updatedPurchase.product_id !== undefined) dbUpdate.product_id = updatedPurchase.product_id || null;
 
     const { error } = await supabase.from('purchases').update({ ...dbUpdate, updatedat: new Date().toISOString() }).eq('id', id);
 
@@ -236,6 +240,7 @@ export const updatePurchase = async (id: string, updatedPurchase: Partial<Omit<P
             supplier_tin: 'supplier_tin',
             efd_receipt: 'efd_receipt',
             supplier_id: 'supplier_id',
+            product_id: 'product_id',
             payment_date: 'payment_date',
             amount_paid: 'amount_paid',
         };

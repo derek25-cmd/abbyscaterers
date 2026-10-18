@@ -87,9 +87,52 @@ instead of passing for a real total. The top 40 dishes cover 73% of
 servings (`02-findings-and-ml-datasets.md` on branch
 `feature/data-readiness-step-2`).
 
+## Phase 3 — events
+
+`event_quality_issues()` (migration `20261018150100`) run on staging on
+2026-10-18, as an admin. It leaves out test orders (none flagged yet) and
+cancelled orders. **1,418 events** have at least one issue:
+
+| Issue | Events | Notes |
+| --- | --- | --- |
+| no menu | 1,394 | past events with no daily menu with dishes (by `event_id`, or order + date for mistyped ids) |
+| unit price = 0 | 17 | Apr 1, May 7, Jul 2, Oct 7 |
+| recipe id not found | 9 | Mar 2, Apr 7: dishes whose recipeId is not a recipe |
+| no date | 1 | EVT-01287 |
+| date outside order dates | 1 | EVT-03105 (2026-10-05) |
+| pax <= 0 | 0 | |
+| no meal type | 0 | |
+| duplicate event id | 0 | see `05-duplicate-events.md` |
+
+**Against baseline check A** (2,713 events):
+
+- *zero price* 17 = 17, *bad pax* 0 = 0, *unreadable date* 1 = 1. They agree:
+  the one cancelled event (July) has a price, pax and date, so excluding it
+  changes nothing.
+- *no recipes* (A) 2,713 vs *no menu* 1,394. Check A counts
+  `clientEvents[].recipes`, which is empty on every event (the dishes are
+  recorded in `daily_menus`), so the function checks the menu instead:
+  2,713 events − 1,301 with a menu (as in `ml_event_menus.csv`) − 1 cancelled
+  − 17 still in the future = 1,394. Menus saved with no dishes (193 rows)
+  do not count as a menu.
+
+## After phase 3 (staging, 2026-10-18)
+
+| Check | Before | After phase 3 | Notes |
+| --- | --- | --- | --- |
+| Dated price history (`ingredient_prices`) | none | **1,161 rows**: Dar es Salaam 889 (504 Stock In, 385 catalog), Dodoma 174 (77 / 97), Arusha 98 (58 / 40) | Stock In history Nov 2025 – Sep 2026; catalog prices dated 2026-10-18. 386 of 387 products have a price at some branch; 140 have Stock In history |
+| Stock In rows (check E) | 650 | 650 (unchanged) | 639 of the 643 priced Stock In rows went into the history; the rest point to products no longer in the catalog |
+| Recipe products without price history | n/a | **0 of 0** | no recipe has ingredient lines yet |
+| Events with an issue | not measured | **1,418** (table above) | |
+| Daily-menu dishes without a recipe (check D) | 160 of 14,503 (1.1%) | 160 (unchanged) | **76 distinct dish names**, in `mappings/dish_name_mapping.csv` for the kitchen. Unchanged until `apply-dish-mapping.sh` runs with their choices |
+| Dishes whose recipeId is not a recipe (check D) | 9 | 9 | the 9 "recipe id not found" events |
+
 ## How to re-measure
 
 ```bash
 psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/audit/02_baseline_quality.sql
 psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/audit/03_phase2_checks.sql
 ```
+
+`event_quality_issues()` needs a signed-in staff user: open the Data
+Quality page (Settings → Data Quality) and read the counts at the top.

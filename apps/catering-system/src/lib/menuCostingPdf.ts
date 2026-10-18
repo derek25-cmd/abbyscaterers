@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { CateringMenu, MenuCalculationResult } from '@/types';
 import { incompleteCostLabel } from '@/lib/costing/missing';
+import { todayInDar } from '@/lib/costing/price-date';
 
 /**
  * Exports a Menu Costing calculation result as a PDF document.
@@ -50,6 +51,7 @@ export function exportMenuCostingPdf(
         ['Efficiency Mode', `${result.efficiencyStatus} (${Math.round(result.efficiencyFactor * 100)}%)`],
         ['Wastage Buffer', useWastage ? 'Yes (+10%)' : 'No'],
         ['Branch Prices', result.branch],
+        ['Price Date', result.priceDate ?? `${todayInDar()} (current catalog prices)`],
     ];
 
     if (menu.notes) {

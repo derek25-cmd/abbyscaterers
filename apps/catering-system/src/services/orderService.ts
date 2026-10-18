@@ -17,6 +17,7 @@ const mapDbToOrder = (dbOrder: any): Order => {
     region: dbOrder.region,
     status: dbOrder.status || 'confirmed',
     clientEvents: dbOrder.clientEvents || [], // Database column is camelCase
+    isTest: dbOrder.is_test === true,
     createdAt: dbOrder.createdAt,
     updatedAt: dbOrder.updatedAt,
   };
@@ -180,6 +181,16 @@ export const updateOrder = async (id: string, updates: Partial<OrderFormData>): 
         console.error('Unexpected error updating order:', err);
         return null;
     }
+};
+
+/** Marks an order as a test order (or not). Admins only (enforced in the database). */
+export const setOrderIsTest = async (id: string, isTest: boolean): Promise<boolean> => {
+    const { error } = await supabase.from('orders').update({ is_test: isTest }).eq('id', id);
+    if (error) {
+        console.error('Error updating is_test:', error.message);
+        return false;
+    }
+    return true;
 };
 
 export const confirmOrder = (id: string): Promise<Order | null> =>

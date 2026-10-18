@@ -9,6 +9,7 @@ import type { Order } from "@/types";
 import { Button } from '@/components/ui/button';
 import Link from "next/link";
 import { LoadingPage } from "@/components/layout/loading-page";
+import { ExcludeFromAnalyticsCard } from "@/components/orders/exclude-from-analytics-card";
 
 export function OrderEditPageComponent() {
   const [isMounted, setIsMounted] = useState(false);
@@ -94,6 +95,7 @@ export function OrderEditPageComponent() {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      <ExcludeFromAnalyticsCard orderId={order.id} isTest={order.isTest === true} />
       <OrderForm order={order} />
     </div>
   );

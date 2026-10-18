@@ -28,6 +28,7 @@ import { getAssets, addAsset, updateAsset } from "@/services/assetService";
 import { addStockLog } from "@/services/stockLogService";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { ProductPicker, productPriceUnit } from "@/components/products/product-picker";
 import { BRANCH_KEYS } from "@/types";
 import type { Purchase, Supplier, Product, Asset } from "@/types";
 
@@ -217,6 +218,9 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
   const [assetItems, setAssetItems] = useState<AssetItem[]>([]);
   const [openAssetPickerId, setOpenAssetPickerId] = useState<string | null>(null);
 
+  // Optional catalog product for a general purchase (records a dated price)
+  const [productId, setProductId] = useState('');
+
   // Remote data
   const { data: suppliers = [] } = useQuery<Supplier[]>({ queryKey: ['suppliers'], queryFn: getSuppliers, staleTime: 5 * 60 * 1000 });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ['products'], queryFn: getProducts, staleTime: 5 * 60 * 1000 });
@@ -265,7 +269,7 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
   useEffect(() => {
     if (!isOpen) {
       setStockItems([]); setAssetItems([]);
-      setSelectedSupplierId(''); setPurchaseType('general');
+      setSelectedSupplierId(''); setPurchaseType('general'); setProductId('');
       return;
     }
     if (purchase) {
@@ -286,9 +290,10 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
         expenseCategory: purchase.expenseCategory || 'General',
       });
       setSelectedSupplierId(purchase.supplierId || '');
+      setProductId(purchase.product_id || '');
     } else {
       form.reset({ date: new Date(), supplier: '', supplier_tin: '', invoiceNumber: '', efd_receipt: '', description: '', quantity: 1, unitCost: 0, taxAmount: 0, amountPaid: 0, paymentMethod: 'credit', expenseCategory: 'Food Ingredients' });
-      setSelectedSupplierId(''); setPurchaseType('general');
+      setSelectedSupplierId(''); setPurchaseType('general'); setProductId('');
     }
   }, [purchase, isOpen, form]);
 
@@ -370,6 +375,9 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
       supplier_tin: values.supplier_tin || '',
       efd_receipt: values.efd_receipt || '',
       expenseCategory: finalCategory,
+      // Only a general purchase is one product line; stock-in purchases
+      // already record their prices through their Stock In logs.
+      product_id: purchaseType === 'general' ? (productId || null) : null,
     };
 
     if (purchase) {
@@ -585,6 +593,19 @@ export function AddPurchaseDialog({ isOpen, setIsOpen, onSave, purchase }: AddPu
                   <FormMessage />
                 </FormItem>
               )} />
+
+              {/* ── Catalog product — General only, optional ── */}
+              {purchaseType === 'general' && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium leading-none">
+                    Product <span className="text-muted-foreground font-normal text-xs">(opt — records the unit cost as this product&apos;s price)</span>
+                  </p>
+                  <ProductPicker products={products} value={productId} onChange={setProductId} allowClear placeholder="No product" />
+                  {productId && productPriceUnit(products.find(p => p.id === productId)) && (
+                    <p className="text-xs text-muted-foreground">Enter the unit cost per {productPriceUnit(products.find(p => p.id === productId))}.</p>
+                  )}
+                </div>
+              )}
 
               {/* ── Qty + Unit Cost — General only ───────────── */}
               {purchaseType === 'general' && (

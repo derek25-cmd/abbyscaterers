@@ -150,6 +150,8 @@ export interface Order {
   region?: Region | null;
   status?: OrderStatus; // defaults to 'confirmed' in the DB for pre-existing rows; new orders set it explicitly
   clientEvents: ClientEvent[];
+  /** Test / demo order, left out of analytics (orders.is_test). */
+  isTest?: boolean;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
@@ -539,7 +541,8 @@ export interface DailyMenu {
     order_id: string; // References Order.id
     event_id: string; // References ClientEvent.id
     menu_date: string; // YYYY-MM-DD
-    recipes: { rowIndex: number; recipeId?: string; name: string }[];
+    /** Dishes on the menu. note = optional free text next to the recipe (e.g. "no chilli"). */
+    recipes: { rowIndex: number; recipeId?: string; name: string; note?: string }[];
     created_at: string;
     updated_at: string;
     region?: Region;
@@ -579,6 +582,8 @@ export interface Purchase {
     paymentMethod: 'cash' | 'bank' | 'credit';
     paymentStatus: 'paid' | 'unpaid' | 'partial';
     expenseCategory: string;
+    /** Catalog product bought (general purchases); records a dated price (ingredient_prices). */
+    product_id?: string | null;
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
     user_id: string;
@@ -708,6 +713,8 @@ export interface MenuCalculationResult {
     missingPrices: string[];
     /** Branch whose prices were used. */
     branch: Branch;
+    /** Date the prices were taken from (YYYY-MM-DD); undefined = current catalog prices. */
+    priceDate?: string;
 }
 
 export interface PlannedVsCalculated {

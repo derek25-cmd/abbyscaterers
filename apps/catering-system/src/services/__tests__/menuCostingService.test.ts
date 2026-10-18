@@ -7,9 +7,13 @@ import { mockQueryResult } from './test-utils';
 // what cannot be priced goes to missingPrices.
 
 const fromMock = vi.fn();
+const rpcMock = vi.fn();
 
 vi.mock('@/lib/supabase-client', () => ({
-  supabase: { from: (...args: any[]) => fromMock(...args) },
+  supabase: {
+    from: (...args: any[]) => fromMock(...args),
+    rpc: (...args: any[]) => rpcMock(...args),
+  },
 }));
 
 const MENU = { id: 'M1', name: 'Test lunch', base_people: 10, price_per_person: 10000, menu_types: { name: 'lunch' } };
@@ -42,6 +46,7 @@ const baseProducts = () => [
 
 beforeEach(() => {
   fromMock.mockReset();
+  rpcMock.mockReset();
   recipe = baseRecipe();
   products = baseProducts();
   menuRecipes = [{ id: 'MR1', menu_id: 'M1', recipe_number: 'RN-1', recipes: { recipeName: 'Pilau plate', recipeType: 'Lunch' } }];
@@ -177,5 +182,66 @@ describe('syncPlannedIngredientsFromRecipes', () => {
     expect(byName['Salt']).toMatchObject({ planned_quantity: 0.5, unit: 'kg', unit_cost: 2000 });
     // Unit cannot be converted: kept as entered, cost left for the user.
     expect(byName['Eggs']).toMatchObject({ planned_quantity: 6, unit: 'item', unit_cost: 0 });
+  });
+});
+
+// Dated costing (data-readiness Phase 3, Step 6). The mocked prices_on applies
+// the same rule as the SQL function: per product, the latest row at the branch
+// with valid_from <= p_date.
+describe('calculateMenuCost with a price date', () => {
+  const history = [
+    { product_id: 'P-RICE', branch: 'Dar es Salaam', unit: 'kg', unit_price: 2500, valid_from: '2026-03-01' },
+    { product_id: 'P-RICE', branch: 'Dar es Salaam', unit: 'kg', unit_price: 9999, valid_from: '2026-09-01' }, // after the date
+    { product_id: 'P-OIL', branch: 'Dar es Salaam', unit: 'liters', unit_price: 4000, valid_from: '2026-05-10' },
+    { product_id: 'P-SALT', branch: 'Dar es Salaam', unit: 'kg', unit_price: 1500, valid_from: '2026-07-01' }, // after the date
+  ];
+
+  beforeEach(() => {
+    rpcMock.mockImplementation((fn: string, args: { p_branch: string; p_date: string }) => {
+      expect(fn).toBe('prices_on');
+      const latest = new Map<string, any>();
+      for (const row of history) {
+        if (row.branch !== args.p_branch || row.valid_from > args.p_date) continue;
+        const prev = latest.get(row.product_id);
+        if (!prev || row.valid_from > prev.valid_from) latest.set(row.product_id, row);
+      }
+      return Promise.resolve({ data: Array.from(latest.values()), error: null });
+    });
+  });
+
+  it('uses the latest price on or before the date, not the catalog price', async () => {
+    const { calculateMenuCost } = await import('../menuCostingService');
+    const res = await calculateMenuCost('M1', 10, false, 'Dar es Salaam', '2026-06-15');
+
+    expect(rpcMock).toHaveBeenCalledWith('prices_on', { p_branch: 'Dar es Salaam', p_date: '2026-06-15' });
+    expect(res.priceDate).toBe('2026-06-15');
+    const byName = Object.fromEntries(res.ingredientsSummary.map(i => [i.ingredient, i]));
+    expect(byName['Rice']).toMatchObject({ unitCost: 2500, totalCost: 5000 });
+    expect(byName['Cooking oil']).toMatchObject({ unitCost: 4000, totalCost: 4000 });
+  });
+
+  it('ignores a price dated after the date', async () => {
+    const { calculateMenuCost } = await import('../menuCostingService');
+    const res = await calculateMenuCost('M1', 10, false, 'Dar es Salaam', '2026-06-15');
+    const rice = res.ingredientsSummary.find(i => i.ingredient === 'Rice');
+    expect(rice?.unitCost).not.toBe(9999);
+    expect(res.ingredientsSummary.map(i => i.ingredient)).not.toContain('Salt');
+  });
+
+  it('sends a product with no price on that date to missingPrices', async () => {
+    const { calculateMenuCost } = await import('../menuCostingService');
+    const res = await calculateMenuCost('M1', 10, false, 'Dar es Salaam', '2026-06-15');
+    // Salt is only priced from July; spice never; eggs cannot be converted.
+    expect(res.missingPrices).toEqual(['Eggs', 'Mystery spice', 'Salt']);
+    // rice 2 kg x 2500 + oil 1 l x 4000
+    expect(res.totalCost).toBe(9000);
+  });
+
+  it('keeps the catalog prices when no date is given', async () => {
+    const { calculateMenuCost } = await import('../menuCostingService');
+    const res = await calculateMenuCost('M1', 10, false);
+    expect(rpcMock).not.toHaveBeenCalled();
+    expect(res.priceDate).toBeUndefined();
+    expect(res.totalCost).toBe(12000);
   });
 });
