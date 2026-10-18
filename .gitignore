@@ -82,7 +82,10 @@ storage-backup/
 docs/data-readiness/audit-output/
 # Written by `supabase link` (project ref, pooler URL); keep it local.
 supabase/.temp/
+feature/data-readiness-phase-2
 # Mapping sheets for operations / the kitchen (business data) — keep out of git.
 docs/data-readiness/mappings/
+
+main
 # ML dataset exports (supabase/exports) — business data, never commit.
 ml-data/
