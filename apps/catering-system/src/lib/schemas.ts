@@ -82,7 +82,7 @@ export const ITEM_CLASSIFICATIONS = [
 export const ItemClassificationSchema = z.enum(ITEM_CLASSIFICATIONS);
 
 // UnitOfMeasure enum values
-export const UNITS_OF_MEASURE = ["kg", "gms", "bunch", "item"] as const;
+export const UNITS_OF_MEASURE = ["kg", "gms", "liters", "ml", "bunch", "item"] as const; // keep in step with types/index.ts
 export const UnitOfMeasureSchema = z.enum(UNITS_OF_MEASURE);
 
 // UnitAndPrice schema
@@ -106,7 +106,9 @@ export type IngredientFormData = z.infer<typeof IngredientSchema>;
 
 // RecipeIngredientItem schema
 export const RecipeIngredientItemSchema = z.object({
-  ingredientId: z.string().min(1, "Ingredient must be selected"),
+  productId: z.string().min(1, "Product must be selected"),
+  // Legacy link to the ingredients table; kept so old lines survive an edit.
+  ingredientId: z.string().optional(),
   quantity: z.number().gt(0, "Quantity must be greater than 0"),
   unit: UnitOfMeasureSchema,
 });

@@ -11,7 +11,6 @@ import type {
     IngredientSummaryItem,
     PlannedIngredient,
     PlannedVsCalculated,
-    Ingredient,
     Product,
     Recipe,
 } from '@/types';
@@ -252,59 +251,57 @@ export const syncPlannedIngredientsFromRecipes = async (menuId: string): Promise
 
     const recipes = (recipesData || []) as Recipe[];
 
-    // 3. Aggregate 1:1 (base headcount)
-    const aggregated = new Map<string, { quantity: number; unit: string }>();
+    // 3. Products: recipe lines link to them directly (line.productId).
+    const { data: productsData } = await supabase
+        .from('products')
+        .select('id, name, unit, base_unit, grams_per_item, "unitPrice_dar"');
+    const productById = new Map<string, any>();
+    (productsData || []).forEach((p: any) => productById.set(p.id, p));
+
+    // 4. Aggregate 1:1 (base headcount) per product, in the product's price
+    // unit so planned quantity x unit cost is right. Lines without a product,
+    // or whose unit cannot be converted, keep their own quantity and unit with
+    // unit cost 0 for the user to complete in the planned list (as before).
+    // TODO(data-readiness Step 9): the sync has no branch context, so it uses
+    // the Dar es Salaam price; use the menu's branch once the region-to-branch
+    // map exists.
+    const aggregated = new Map<string, { name: string; quantity: number; unit: string; unitCost: number }>();
 
     for (const recipe of recipes) {
-        const recipeIngredients = recipe.ingredients || [];
-        for (const ing of recipeIngredients) {
-            const key = ing.ingredientId; // Using ingredientId (itemNumber) for aggregation
+        const recipeLines = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+        for (const line of recipeLines) {
+            const product = line.productId ? productById.get(line.productId) : undefined;
+            const priceUnit = product ? String(product.base_unit || product.unit || '').trim().toLowerCase() : '';
+            let quantity = line.quantity;
+            let unit: string = line.unit;
+            let unitCost = 0;
+            if (product) {
+                try {
+                    quantity = toPriceUnit(line.quantity, line.unit, priceUnit, product.grams_per_item);
+                    unit = priceUnit;
+                    unitCost = Number(product.unitPrice_dar) > 0 ? Number(product.unitPrice_dar) : 0;
+                } catch (error) {
+                    if (!(error instanceof UnitError)) throw error;
+                }
+            }
+            const name = product ? String(product.name || product.id).trim() : (line.ingredientId || 'Unnamed line');
+            const key = `${product ? product.id : name}__${unit}`;
             const existing = aggregated.get(key);
             if (existing) {
-                // Simplified: just assuming same units for now (normalization happens in billing usually)
-                existing.quantity += ing.quantity;
+                existing.quantity += quantity;
             } else {
-                aggregated.set(key, { quantity: ing.quantity, unit: ing.unit });
+                aggregated.set(key, { name, quantity, unit, unitCost });
             }
         }
     }
 
-    // 4. Resolve Names & Prices from Products catalog
-    const { data: productsData } = await supabase
-        .from('products')
-        .select('name, "unitPrice", unit');
-    
-    // We need to match ingredientId (itemNumber) or name.
-    // In our system, ingredients table maps itemNumber -> itemDescription (which matches product name)
-    const { data: ingredientsData } = await supabase
-        .from('ingredients')
-        .select('"itemNumber", "itemDescription"');
-    
-    const ingredientLookup = new Map<string, string>();
-    (ingredientsData || []).forEach((ing: any) => {
-        ingredientLookup.set(ing.itemNumber, ing.itemDescription);
-    });
-
-    const productLookup = new Map<string, { unitPrice: number; unit: string }>();
-    (productsData || []).forEach((p: any) => {
-        productLookup.set(p.name.toLowerCase().trim(), {
-            unitPrice: Number(p.unitPrice),
-            unit: p.unit,
-        });
-    });
-
-    const toInsert = Array.from(aggregated.entries()).map(([itemNumber, data]) => {
-        const name = ingredientLookup.get(itemNumber) || itemNumber;
-        const product = productLookup.get(name.toLowerCase().trim());
-        
-        return {
-            menu_id: menuId,
-            ingredient_name: name,
-            planned_quantity: data.quantity,
-            unit: product?.unit || data.unit || 'kg',
-            unit_cost: product?.unitPrice || 0,
-        };
-    });
+    const toInsert = Array.from(aggregated.values()).map(item => ({
+        menu_id: menuId,
+        ingredient_name: item.name,
+        planned_quantity: Math.round(item.quantity * 1000) / 1000,
+        unit: item.unit || 'kg',
+        unit_cost: item.unitCost,
+    }));
 
     if (toInsert.length === 0) return true;
 
@@ -426,26 +423,18 @@ export const calculateMenuCost = async (
 
     const recipes = (recipesData || []) as Recipe[];
 
-    // 4. Fetch ingredients: name, linked product and piece weight.
-    const { data: ingredientsData } = await supabase
-        .from('ingredients')
-        .select('"itemNumber", "itemDescription", product_id, grams_per_item');
-    const ingredientById = new Map<string, Pick<Ingredient, 'itemNumber' | 'itemDescription' | 'product_id' | 'grams_per_item'>>();
-    (ingredientsData || []).forEach((ing: any) => {
-        ingredientById.set(ing.itemNumber, ing);
-    });
-
-    // 5. Fetch products: price unit and the per-branch prices.
+    // 4. Fetch products: name, price unit, piece weight and per-branch prices.
+    // Recipe lines link to products directly (line.productId).
     const { data: productsData } = await supabase
         .from('products')
-        .select('id, name, unit, base_unit, "unitPrice_dar", "unitPrice_arusha", "unitPrice_dodoma"');
+        .select('id, name, unit, base_unit, grams_per_item, "unitPrice_dar", "unitPrice_arusha", "unitPrice_dodoma"');
     const productById = new Map<string, any>();
     (productsData || []).forEach((p: any) => {
         productById.set(p.id, p);
     });
     const priceKey = BRANCH_KEYS[branch].price;
 
-    // 6. Compute scaling factor and efficiency
+    // 5. Compute scaling factor and efficiency
     const { factor: efficiencyFactor, status: efficiencyStatus } = getEfficiencyInfo(selectedPeople, menu.base_people);
     const scalingFactor = selectedPeople / menu.base_people;
     const wastageFactor = useWastage ? 1.1 : 1.0;
@@ -453,7 +442,7 @@ export const calculateMenuCost = async (
     // Total combined scaling per item
     const totalItemScaling = scalingFactor * wastageFactor * efficiencyFactor;
 
-    // 7. Aggregate ingredients across all recipes. Lines that cannot be
+    // 6. Aggregate ingredients across all recipes. Lines that cannot be
     // priced are collected in missingPrices and never added at zero.
     const aggregated = new Map<string, IngredientSummaryItem>();
     const missing = new Set<string>();
@@ -475,38 +464,40 @@ export const calculateMenuCost = async (
             missing.add(`${recipe.recipeName || recipe.recipeNumber} (no ingredients)`);
             continue;
         }
-        for (const ing of recipeIngredients) {
-            const ingredient = ingredientById.get(ing.ingredientId);
-            const ingredientName = ingredient?.itemDescription || ing.ingredientId;
-
-            const product = ingredient?.product_id ? productById.get(ingredient.product_id) : undefined;
+        for (const line of recipeIngredients) {
+            const product = line.productId ? productById.get(line.productId) : undefined;
             if (!product) {
-                missing.add(ingredientName);
+                // No catalog product: a line saved before recipes used products
+                // (ingredientId only), or a product that has since been deleted.
+                missing.add(line.productId
+                    ? `${line.productId} (product not found)`
+                    : `${line.ingredientId || 'Unnamed line'} (no product)`);
                 continue;
             }
+            const productName = String(product.name || product.id).trim();
 
             const unitCost = Number(product[priceKey]);
             if (!(unitCost > 0)) {
-                missing.add(ingredientName);
+                missing.add(productName);
                 continue;
             }
 
             const priceUnit = String(product.base_unit || product.unit || '').trim().toLowerCase();
-            const scaledQty = ing.quantity * totalItemScaling;
+            const scaledQty = line.quantity * totalItemScaling;
             let quantity: number;
             try {
-                quantity = toPriceUnit(scaledQty, ing.unit, priceUnit, ingredient?.grams_per_item);
+                quantity = toPriceUnit(scaledQty, line.unit, priceUnit, product.grams_per_item);
             } catch (error) {
                 if (error instanceof UnitError) {
-                    missing.add(`${ingredientName} (unit)`);
+                    missing.add(`${productName} (unit)`);
                     continue;
                 }
                 throw error;
             }
 
-            // Aggregate per ingredient name and product (same as before:
-            // the planned comparison matches on the ingredient name).
-            const key = `${ingredientName.toLowerCase().trim()}__${product.id}`;
+            // One line per product across all recipes. The planned comparison
+            // matches on this name (planned rows synced from recipes use it too).
+            const key = product.id;
             const existing = aggregated.get(key);
 
             if (existing) {
@@ -514,7 +505,7 @@ export const calculateMenuCost = async (
                 existing.totalCost = existing.totalQuantity * existing.unitCost;
             } else {
                 aggregated.set(key, {
-                    ingredient: ingredientName,
+                    ingredient: productName,
                     totalQuantity: quantity,
                     unit: priceUnit,
                     unitCost,
@@ -525,7 +516,7 @@ export const calculateMenuCost = async (
     }
     const missingPrices = Array.from(missing).sort((a, b) => a.localeCompare(b));
 
-    // 8. Compute totals
+    // 7. Compute totals
     const ingredientsSummary = Array.from(aggregated.values()).sort((a, b) =>
         a.ingredient.localeCompare(b.ingredient)
     );
