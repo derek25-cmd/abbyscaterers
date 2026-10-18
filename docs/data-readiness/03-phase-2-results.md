@@ -1,7 +1,7 @@
 # Data readiness 03: Phase 2 results (make costing correct)
 
-Status on 2026-10-18: **code done and tested; migration applied to staging
-only** (project `vpxiyxrnrhiukaazztol`, restored from the 2026-10-18 backup).
+Status on 2026-10-18: **code done and tested; both migrations applied to
+staging only** (project `vpxiyxrnrhiukaazztol`, restored from the 2026-10-18 backup).
 Production is untouched. The live recipes still have no ingredient lines, so
 costing real menus waits for the kitchen (see "Still to do").
 
@@ -93,9 +93,16 @@ Facts the kitchen work depends on:
   recipe quantities by guests ÷ 40, so recipe quantities must be **for 40
   people**. Lunch and dinner dishes (most of the top 40) are only costed once
   lunch/dinner catering menus exist.
-- **Recipes are owner-only, and 399 of 404 belong to one admin account; 5 have
-  no owner** (invisible to everyone). The kitchen must enter recipes signed in
-  as that admin account, or recipe access must be widened first.
+- **Recipe access (resolved, option b, 2026-10-18).** Recipes were owner-only:
+  399 of 404 belonged to one admin account, and 5 had no owner, so nobody
+  could see those 5. `20261018130000_shared_recipe_access.sql` lets any
+  active staff member read, add and edit recipes, catering menus, menu recipes
+  and planned ingredients. Deleting needs `can_manage_ops()`. The 5 ownerless
+  recipes now record the admin as their creator. On staging, before: admin 404
+  / hr_manager 0 recipes. After: both see 404 recipes, 11 menus and 93 menu
+  recipes. 16 policies are in place and 0 recipes are ownerless. A second run
+  changed nothing. The runbook's rollback SQL was tested in a rolled-back
+  transaction: it restores owner-only access (hr_manager back to 0).
 - **Branch prices:** Dar es Salaam has a price for 385 of 387 products,
   Arusha 40, Dodoma 97. Costing at Arusha / Dodoma will list most products as
   "no price" until those prices are filled in.
@@ -105,9 +112,9 @@ Facts the kitchen work depends on:
 1. **Operations: catalog cleanup** with `docs/data-readiness/mappings/catalog_review.csv`
    (gitignored): merge or retire duplicates, fix pack-size prices, mark
    non-food items. Edits go into **production** through the Products page.
-2. **Decide recipe access** (owner-only vs shared) and the 5 ownerless recipes.
-3. **Production rollout**: `PROD-RUNBOOK-phase-2.md` (backup, migration,
-   deploy).
+2. ~~Decide recipe access~~: shared by all staff (option b), see above.
+3. **Production rollout**: `PROD-RUNBOOK-phase-2.md` (backup, both
+   migrations, deploy).
 4. **Kitchen**: enter the top 40 recipes for 40 people, in production, picking
    products; fill `unit_gaps.csv`.
 5. **Cost one real menu at each branch** and record old vs new totals here.
@@ -122,10 +129,8 @@ Facts the kitchen work depends on:
 - **Product catalog quality now matters for recipes**: duplicate names
   (check 3a), pack-size prices (e.g. cooking oil per litre vs per 20 L) and
   non-food items in the catalog will show up in the recipe picker.
-- **Recipes and catering menus are owner-only** under RLS
-  (`auth.uid() = user_id`). A menu costed by a user who did not create its
-  recipes shows "… (recipe not found)" instead of a silent zero. Products are
-  readable by all staff, so pricing is not affected. Who should see whose
-  recipes is a separate decision.
+- **Deleting recipes and menus** uses `can_manage_ops()`, which today is the
+  same as any active staff. To limit deletion to managers, tighten that one
+  function.
 - The planned-ingredients sync uses Dar es Salaam prices; marked
   `TODO(data-readiness Step 9)` for the region-to-branch map.

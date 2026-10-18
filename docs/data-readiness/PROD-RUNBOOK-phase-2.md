@@ -4,10 +4,13 @@ The exact order for applying Phase 2 (make costing correct) to production.
 Do it only after the same steps have worked on staging
 (`03-phase-2-results.md`, "Still to do").
 
-Phase 2 has **one migration**. It only **adds** two columns and their CHECK
-constraints to `products`, and fills `base_unit` where it is NULL. It never
-changes or deletes existing data. The app reads the new columns, so **the
-migration must reach production before the app is deployed.** Recipes link to
+Phase 2 has **two migrations**. The first only **adds** two columns and their
+CHECK constraints to `products`, and fills `base_unit` where it is NULL. The
+second replaces the owner-only access policies on recipes and catering menus
+with "any active staff member", and records a creator for the 5 recipes that
+have none. Neither changes or deletes any recipe, menu or product data. The
+app reads the new columns, so **the
+migrations must reach production before the app is deployed.** Recipes link to
 the product catalog directly, so there is no mapping sheet to load.
 
 ## 0. Before you start
@@ -29,10 +32,13 @@ unset DB_URL
 Check that it ends with file sizes, a COPY count above 0 and "Checksums
 written", then move the folder to `C:\Users\Admin\SecureBackups\`.
 
-## 2. Migration (SQL Editor, production)
+## 2. Migrations (SQL Editor, production, in this order)
 
-Paste `supabase/migrations/20261018120100_units.sql` whole into the SQL
-Editor and run it. It is idempotent: running it twice is harmless.
+Paste each file whole into the SQL Editor and run it. Both are idempotent:
+running one twice is harmless.
+
+1. `supabase/migrations/20261018120100_units.sql`
+2. `supabase/migrations/20261018130000_shared_recipe_access.sql`
 
 Check it (read-only):
 
@@ -43,9 +49,48 @@ WHERE table_schema = 'public' AND table_name = 'products'
 -- expect 2 rows: base_unit text, grams_per_item numeric
 
 SELECT base_unit, count(*) FROM public.products GROUP BY base_unit ORDER BY 2 DESC;
+
+SELECT tablename, count(*) AS policies FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename IN ('recipes', 'catering_menus', 'catering_menu_recipes', 'menu_planned_ingredients')
+GROUP BY tablename;
+-- expect 4 policies on each of the 4 tables
 ```
 
-**Rollback** (only if needed; it removes any units entered since):
+Then sign in to the catering system with a staff account that is **not** the
+admin who created the recipes: Recipes should list all 404 recipes, and Menu
+Costing all 11 menus.
+
+**Rollback, `20261018130000_shared_recipe_access.sql`** (restores owner-only
+access exactly as it was; the creator recorded for the 5 ownerless recipes is
+kept, which is harmless):
+
+```sql
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['recipes', 'catering_menus', 'catering_menu_recipes', 'menu_planned_ingredients'] LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_staff_select', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_staff_insert', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_staff_update', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_staff_delete', t);
+  END LOOP;
+END $$;
+CREATE POLICY "Authenticated users can perform all operations on their own rec" ON public.recipes
+  TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Owner access to recipes" ON public.recipes TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Allow all access for authenticated users" ON public.catering_menus
+  TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Allow all access for authenticated users" ON public.catering_menu_recipes
+  TO authenticated USING (EXISTS (SELECT 1 FROM public.catering_menus
+    WHERE catering_menus.id = catering_menu_recipes.menu_id AND catering_menus.user_id = auth.uid()));
+CREATE POLICY "Allow all access for authenticated users" ON public.menu_planned_ingredients
+  TO authenticated USING (EXISTS (SELECT 1 FROM public.catering_menus
+    WHERE catering_menus.id = menu_planned_ingredients.menu_id AND catering_menus.user_id = auth.uid()));
+```
+
+**Rollback, `20261018120100_units.sql`** (only if needed; it removes any units
+entered since):
 
 ```sql
 ALTER TABLE public.products DROP COLUMN IF EXISTS base_unit;
