@@ -2,6 +2,61 @@
 import { supabase } from '@/lib/supabase-client';
 import { DailyMenu } from '@/types';
 
+type MenuToSave = Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>;
+type Dish = DailyMenu['recipes'][number];
+
+/**
+ * A dish must be a recipe (data-readiness Phase 3, Step 8). A dish without a
+ * recipeId is only accepted when the same unlinked dish (same name and note)
+ * is already stored for that event and date, i.e. an old free-text entry
+ * saved again unchanged. Editing one, or adding a new dish, needs a recipe.
+ */
+export class UnlinkedDishError extends Error {
+    constructor(public readonly dishes: { event_id: string; menu_date: string; name: string }[]) {
+        super(`${dishes.length} dish(es) have no recipe: pick a recipe for ${dishes.map(d => `"${d.name}"`).join(', ')}.`);
+        this.name = 'UnlinkedDishError';
+    }
+}
+
+const hasRecipe = (d: Dish) => typeof d.recipeId === 'string' && d.recipeId.trim() !== '';
+const unlinkedKey = (d: Dish) => `${String(d.name || '').trim().toLowerCase()}|${String(d.note || '').trim()}`;
+
+/** Dishes in `menus` that have no recipe and are not an unchanged copy of a stored unlinked dish. */
+export function findNewUnlinkedDishes(menus: MenuToSave[], stored: Pick<DailyMenu, 'event_id' | 'menu_date' | 'recipes'>[]) {
+    const available = new Map<string, Map<string, number>>();
+    for (const s of stored) {
+        const counts = available.get(`${s.event_id}|${s.menu_date}`) || new Map<string, number>();
+        for (const d of Array.isArray(s.recipes) ? s.recipes : []) {
+            if (d && !hasRecipe(d)) counts.set(unlinkedKey(d), (counts.get(unlinkedKey(d)) || 0) + 1);
+        }
+        available.set(`${s.event_id}|${s.menu_date}`, counts);
+    }
+    const bad: { event_id: string; menu_date: string; name: string }[] = [];
+    for (const m of menus) {
+        const counts = available.get(`${m.event_id}|${m.menu_date}`) || new Map<string, number>();
+        for (const d of m.recipes || []) {
+            if (hasRecipe(d)) continue;
+            const left = counts.get(unlinkedKey(d)) || 0;
+            if (left > 0) counts.set(unlinkedKey(d), left - 1);
+            else bad.push({ event_id: m.event_id, menu_date: m.menu_date, name: d.name });
+        }
+    }
+    return bad;
+}
+
+async function assertDishesLinked(menus: MenuToSave[]): Promise<void> {
+    const needCheck = menus.filter(m => (m.recipes || []).some(d => !hasRecipe(d)));
+    if (needCheck.length === 0) return;
+    const eventIds = Array.from(new Set(needCheck.map(m => m.event_id)));
+    const { data, error } = await supabase
+        .from('daily_menus')
+        .select('event_id, menu_date, recipes')
+        .in('event_id', eventIds);
+    if (error) throw new Error(`Could not check the stored menus: ${error.message}`);
+    const bad = findNewUnlinkedDishes(needCheck, (data || []) as Pick<DailyMenu, 'event_id' | 'menu_date' | 'recipes'>[]);
+    if (bad.length > 0) throw new UnlinkedDishError(bad);
+}
+
 export const getMenusByDate = async (date: string): Promise<DailyMenu[]> => {
     const { data, error } = await supabase
         .from('daily_menus')
@@ -15,7 +70,9 @@ export const getMenusByDate = async (date: string): Promise<DailyMenu[]> => {
     return data as DailyMenu[];
 };
 
+/** Throws UnlinkedDishError if a new or edited dish has no recipe. */
 export const upsertDailyMenu = async (menuData: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>): Promise<DailyMenu | null> => {
+    await assertDishesLinked([menuData]);
     try {
         const { order_id, event_id, menu_date, recipes, region } = menuData;
         
@@ -46,8 +103,10 @@ export const upsertDailyMenu = async (menuData: Omit<DailyMenu, 'id' | 'created_
     }
 }
 
+/** Throws UnlinkedDishError if a new or edited dish has no recipe. */
 export const bulkUpsertDailyMenus = async (menus: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>[]): Promise<boolean> => {
     if (menus.length === 0) return true;
+    await assertDishesLinked(menus);
 
     try {
         const uniqueMenus = new Map();

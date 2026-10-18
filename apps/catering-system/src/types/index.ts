@@ -541,7 +541,8 @@ export interface DailyMenu {
     order_id: string; // References Order.id
     event_id: string; // References ClientEvent.id
     menu_date: string; // YYYY-MM-DD
-    recipes: { rowIndex: number; recipeId?: string; name: string }[];
+    /** Dishes on the menu. note = optional free text next to the recipe (e.g. "no chilli"). */
+    recipes: { rowIndex: number; recipeId?: string; name: string; note?: string }[];
     created_at: string;
     updated_at: string;
     region?: Region;

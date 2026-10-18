@@ -15,14 +15,20 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import { getMenusByDate, bulkUpsertDailyMenus } from '@/services/dailyMenuService';
+import { getMenusByDate, bulkUpsertDailyMenus, UnlinkedDishError } from '@/services/dailyMenuService';
 import { DailyMenu, REGIONS, Region } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ConsistencyCheckerDialog } from '@/components/daily-menu/ConsistencyCheckerDialog';
 
-type MenuCell = { content: string; mealType: string };
+// recipeId: the recipe picked for the dish. legacy: a dish loaded from the
+// database without a recipe (old free text); it can be saved unchanged, but
+// once edited (or pasted elsewhere) it needs a recipe.
+type MenuCell = { content: string; mealType: string; recipeId?: string; note?: string; legacy?: boolean };
+
+const needsRecipe = (cell: MenuCell | undefined) =>
+  !!cell && cell.mealType !== 'header' && !!cell.content?.trim() && !cell.recipeId && !cell.legacy;
 type EventMenu = {
   eventId: string;
   orderId: string;
@@ -108,7 +114,13 @@ export default function DailyMenuPlannerPage() {
           if (savedMenu) {
             savedMenu.recipes.forEach(r => {
               if (menu[r.rowIndex]) {
-                menu[r.rowIndex].content = r.name;
+                menu[r.rowIndex] = {
+                  ...menu[r.rowIndex],
+                  content: r.name,
+                  recipeId: r.recipeId || undefined,
+                  note: r.note || '',
+                  legacy: !r.recipeId,
+                };
               }
             });
           }
@@ -134,18 +146,18 @@ export default function DailyMenuPlannerPage() {
                   const recipe = availableRecipes.find(dbRecipe => dbRecipe.recipeNumber === recipeId);
                   const isMatch = (mealType === 'Breakfast' && recipe?.recipeType === 'Breakfast') ||
                     (mealType === 'Lunch' && recipe?.recipeType === 'Lunch');
-                  return isMatch ? recipe?.recipeName : null;
+                  return isMatch && recipe ? { name: recipe.recipeName, recipeId: recipe.recipeNumber } : null;
                 })
-                .filter((name): name is string => name !== null);
+                .filter((r): r is { name: string; recipeId: string } => r !== null);
             };
 
-            const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: string[]) => {
-              recipes.forEach((recipeName, i) => {
+            const addRecipesToMenu = (section: keyof typeof MEAL_SECTIONS, recipes: { name: string; recipeId: string }[]) => {
+              recipes.forEach((recipe, i) => {
                 const rowIndex = MEAL_SECTIONS[section].start + i;
                 if (rowIndex < MEAL_SECTIONS[section].end) {
                   // Only add if the cell is currently empty
                   if (!newEventMenu.menu[rowIndex].content) {
-                    newEventMenu.menu[rowIndex] = { content: recipeName, mealType: MEAL_SECTIONS[section].title };
+                    newEventMenu.menu[rowIndex] = { content: recipe.name, mealType: MEAL_SECTIONS[section].title, recipeId: recipe.recipeId };
                   }
                 }
               })
@@ -177,26 +189,51 @@ export default function DailyMenuPlannerPage() {
     }
   }, [selectedDate, regionFilter, initializeMenuData, isDirty, isInitialLoad]);
 
-  const handleMenuChange = (orderIndex: number, rowIndex: number, value: string) => {
+  const updateCell = (orderIndex: number, rowIndex: number, patch: Partial<MenuCell>) => {
     const newMenuData = [...menuData];
-    // Find the actual order in the unfiltered list
-    // (Note: we use filteredMenuData in the UI, but menuData is our point of truth)
-    newMenuData[orderIndex].menu[rowIndex].content = value;
+    // menuData is the point of truth for the grid
+    newMenuData[orderIndex].menu[rowIndex] = { ...newMenuData[orderIndex].menu[rowIndex], ...patch };
     setMenuData(newMenuData);
     setIsDirty(true);
   };
 
+  const handleSelectRecipe = (orderIndex: number, rowIndex: number, recipe: { recipeName: string; recipeNumber: string }) =>
+    updateCell(orderIndex, rowIndex, { content: recipe.recipeName, recipeId: recipe.recipeNumber, legacy: false });
+
+  // Editing an old free-text dish (even only its note) means it needs a recipe.
+  const handleNoteChange = (orderIndex: number, rowIndex: number, note: string) =>
+    updateCell(orderIndex, rowIndex, { note, legacy: false });
+
+  const handleClearCell = (orderIndex: number, rowIndex: number) =>
+    updateCell(orderIndex, rowIndex, { content: '', recipeId: undefined, note: '', legacy: false });
+
+  const missingRecipeCount = useMemo(
+    () => menuData.reduce((n, order) => n + order.menu.filter(needsRecipe).length, 0),
+    [menuData]
+  );
+
   const handleSaveMenus = async () => {
+    if (missingRecipeCount > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Pick a recipe',
+        description: `${missingRecipeCount} dish(es) marked in red have no recipe. Pick one from the list (add a note for any variation).`,
+      });
+      return;
+    }
     setIsSaving(true);
     try {
       const menusToSave: Omit<DailyMenu, 'id' | 'created_at' | 'updated_at'>[] = menuData.map(orderMenu => {
         const recipesToSave = orderMenu.menu.flatMap((cell, index) => {
           if (!cell.content || cell.content.trim() === '' || cell.mealType === 'header') return [];
-          const recipeId = availableRecipes.find(r => r.recipeName === cell.content)?.recipeNumber;
+          // An unchanged old free-text dish keeps its name; link it if the name is exactly a recipe's.
+          const recipeId = cell.recipeId || availableRecipes.find(r => r.recipeName === cell.content)?.recipeNumber;
+          const note = cell.note?.trim();
           return [{
             rowIndex: index,
             name: cell.content,
-            recipeId: recipeId
+            recipeId: recipeId,
+            ...(note ? { note } : {}),
           }];
         });
 
@@ -218,7 +255,11 @@ export default function DailyMenuPlannerPage() {
       }
     } catch (e) {
       console.error(e);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save menus.' });
+      toast({
+        variant: 'destructive',
+        title: e instanceof UnlinkedDishError ? 'Pick a recipe' : 'Error',
+        description: e instanceof UnlinkedDishError ? e.message : 'Failed to save menus.',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -391,11 +432,12 @@ export default function DailyMenuPlannerPage() {
         const isBreakfastSection = row >= MEAL_SECTIONS.BREAKFAST.start && row < MEAL_SECTIONS.LUNCH.start;
         const isLunchSection = row >= MEAL_SECTIONS.LUNCH.start;
 
+        // A pasted dish is a new entry: an old free-text one then needs a recipe.
         if (isBreakfastSection && targetMealType.includes('breakfast')) {
-          return { ...copiedCell };
+          return { ...copiedCell, legacy: false };
         }
         if (isLunchSection && targetMealType.includes('lunch')) {
-          return { ...copiedCell };
+          return { ...copiedCell, legacy: false };
         }
         return cell;
       });
@@ -591,33 +633,44 @@ export default function DailyMenuPlannerPage() {
                             (isLunchSection && !mealType.includes('lunch'))
                           );
 
+                          const cell = order.menu[rowIndex];
+
                           return (
                             <td key={orderIndex} className={cn(
                               "border-r border-b p-0 align-top transition-colors",
                               isHeaderRow && 'bg-primary/5',
                               isDisabled && 'bg-muted/20 opacity-40 grayscale-[50%]'
                             )}>
+                              {isHeaderRow ? (
+                                <div className="w-full h-full min-h-[40px] p-2.5 text-center font-black text-xs uppercase tracking-widest text-primary/70">
+                                  {cell?.content || ''}
+                                </div>
+                              ) : (
                               <Popover>
                                 <PopoverTrigger asChild disabled={isDisabled}>
-                                  <div className="w-full h-full min-h-[56px] flex flex-col group relative">
-                                    <input
-                                      type="text"
-                                      value={order.menu[rowIndex]?.content || ''}
-                                      onChange={(e) => handleMenuChange(orderIndex, rowIndex, e.target.value)}
-                                      className={cn(
-                                        "w-full h-full p-2.5 bg-transparent border-none focus:ring-1 focus:ring-primary/40 outline-none transition-all text-center",
-                                        isHeaderRow ? 'font-black text-xs uppercase tracking-widest text-primary/70' : 'text-sm font-bold',
-                                        isDisabled && 'cursor-not-allowed pointer-events-none'
-                                      )}
-                                      placeholder={isHeaderRow ? '' : isDisabled ? '' : '...'}
-                                      disabled={isDisabled || isHeaderRow}
-                                    />
-                                    {!isDisabled && !isHeaderRow && (
+                                  <button
+                                    type="button"
+                                    disabled={isDisabled}
+                                    title={cell?.content && !cell.recipeId ? 'No recipe linked: pick one from the list' : undefined}
+                                    className={cn(
+                                      "w-full min-h-[40px] flex items-center justify-center group relative p-2.5 text-center text-sm font-bold outline-none focus:ring-1 focus:ring-primary/40 transition-all",
+                                      isDisabled && 'cursor-not-allowed pointer-events-none',
+                                      cell?.legacy && !cell.recipeId && 'bg-amber-50 dark:bg-amber-950/30',
+                                      needsRecipe(cell) && 'ring-2 ring-inset ring-destructive/70 bg-destructive/5'
+                                    )}
+                                  >
+                                    <span className={cn(!cell?.content && 'text-muted-foreground/50 font-normal')}>
+                                      {cell?.content || (isDisabled ? '' : '...')}
+                                    </span>
+                                    {cell?.content && !cell.recipeId && (
+                                      <Badge variant="outline" className="ml-1 h-4 px-1 text-[8px] border-amber-400 text-amber-700">no recipe</Badge>
+                                    )}
+                                    {!isDisabled && (
                                       <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Utensils className="h-3 w-3 text-muted-foreground/40" />
                                       </div>
                                     )}
-                                  </div>
+                                  </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/20" side="bottom" align="start">
                                   <Command className="rounded-lg border-none shadow-none">
@@ -628,15 +681,24 @@ export default function DailyMenuPlannerPage() {
                                     <CommandInput placeholder="Type to search..." className="h-9 border-none focus:ring-0 shadow-none" />
                                     <CommandList className="max-h-[300px]">
                                       <CommandEmpty className="py-6 text-xs text-muted-foreground text-center">No recipes found.</CommandEmpty>
+                                      {cell?.content && (
+                                        <CommandGroup>
+                                          <CommandItem
+                                            value="__clear__ remove dish"
+                                            className="text-xs py-2 px-3 text-destructive cursor-pointer"
+                                            onSelect={() => handleClearCell(orderIndex, rowIndex)}
+                                          >
+                                            <X className="mr-2 h-3 w-3" /> Remove dish
+                                          </CommandItem>
+                                        </CommandGroup>
+                                      )}
                                       <CommandGroup heading="Available Recipes">
                                         {availableRecipes.map((recipe) => (
                                           <CommandItem
                                             key={recipe.recipeNumber}
-                                            value={recipe.recipeName}
+                                            value={`${recipe.recipeName} ${recipe.recipeNumber}`}
                                             className="text-xs py-2 px-3 aria-selected:bg-primary/10 aria-selected:text-primary cursor-pointer"
-                                            onSelect={() => {
-                                              handleMenuChange(orderIndex, rowIndex, recipe.recipeName);
-                                            }}
+                                            onSelect={() => handleSelectRecipe(orderIndex, rowIndex, recipe)}
                                           >
                                             <div className="flex flex-col">
                                               <span className="font-semibold">{recipe.recipeName}</span>
@@ -649,6 +711,17 @@ export default function DailyMenuPlannerPage() {
                                   </Command>
                                 </PopoverContent>
                               </Popover>
+                              )}
+                              {!isHeaderRow && !isDisabled && cell?.content && (
+                                <input
+                                  type="text"
+                                  value={cell.note || ''}
+                                  onChange={(e) => handleNoteChange(orderIndex, rowIndex, e.target.value)}
+                                  placeholder="note (optional)"
+                                  aria-label="Dish note"
+                                  className="w-full px-2 pb-1.5 bg-transparent border-none outline-none text-center text-[10px] text-muted-foreground placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-primary/30"
+                                />
+                              )}
                             </td>
                           )
                         })}
