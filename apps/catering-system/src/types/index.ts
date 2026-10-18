@@ -579,6 +579,8 @@ export interface Purchase {
     paymentMethod: 'cash' | 'bank' | 'credit';
     paymentStatus: 'paid' | 'unpaid' | 'partial';
     expenseCategory: string;
+    /** Catalog product bought (general purchases); records a dated price (ingredient_prices). */
+    product_id?: string | null;
     createdAt: string; // ISO date string
     updatedAt: string; // ISO date string
     user_id: string;
