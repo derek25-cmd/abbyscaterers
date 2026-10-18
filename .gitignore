@@ -82,3 +82,5 @@ storage-backup/
 docs/data-readiness/audit-output/
 # Written by `supabase link` (project ref, pooler URL); keep it local.
 supabase/.temp/
+# Mapping sheets for operations / the kitchen (business data) — keep out of git.
+docs/data-readiness/mappings/
