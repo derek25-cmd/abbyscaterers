@@ -2,12 +2,11 @@
 
 The baseline Phase 2 (make costing correct) is measured against. The
 "Before" numbers come from the **read-only audit run on production on
-2026-10-18** (`supabase/audit/01_schema_audit.sql`, `02_baseline_quality.sql`
-and the follow-up queries). The plan asked for them to be measured on
-staging, but no staging project exists yet. Staging would be a copy of the
-same data, so the numbers are the same. Checks 3a–3c are new and still need
-running (`supabase/audit/03_phase2_checks.sql`). Fill in **After phase 2**
-by re-running the same queries once the migrations and mappings are applied.
+2026-10-18**, and were **re-measured on staging** (project
+`vpxiyxrnrhiukaazztol`, restored from the 2026-10-18 backup) with
+`supabase/audit/02_baseline_quality.sql` and `03_phase2_checks.sql`. Every
+number matched. Fill in **After phase 2** by re-running the same queries once
+the kitchen has entered recipes.
 
 ## Summary
 
@@ -23,7 +22,9 @@ by re-running the same queries once the migrations and mappings are applied.
 | Unpriced recipe ingredients (check C) | **0 lines** | Not because costing works: **all 404 recipes have no ingredient lines, and `ingredients` has 0 rows.** There is nothing to price yet. | |
 | Daily-menu dishes without a recipe link | **160 of 14,503 (1.1%)** | March 49.6%, then under 1% every month (table below) | |
 | Stock In rows (price history) | 650 | Dar 509 rows / 9 months; Arusha 61 / 2; Dodoma 80 / 3. 7 rows without a unit price. Gaps: July 1 row and September 2 rows across all branches. Pack-size outliers up to 143× (e.g. ndizi moshi 350–50,000) | |
-| 3a. Duplicate product names | *to run* | `03_phase2_checks.sql` 3a. Duplicates are never auto-linked. | |
+| 3a. Duplicate product names | **4 names, 8 products** | Exact (case/space-insensitive): ndizi mbivu, nyanya chungu, prawns, raha cocoa. Counting near-duplicates as well (`catalog_review.csv`): 9 groups, 23 products, e.g. Cashewnuts / CASHEWNUTS KG, six chicken weight classes, Maize flour / MAIZE FLOUR 25 KG | |
+| Products with a price, by branch | **Dar 385, Arusha 40, Dodoma 97 of 387** | Costing outside Dar is mostly "no price" until branch prices are filled | |
+| Products whose unit is not a base unit | **82 of 387** | buckets, packs, packets, bottles, bags, cartons, tins, gallons, drum, piece; listed in `unit_gaps.csv` | |
 | 3b. Recipe lines linked to a catalog product | **0 of 0 lines** | Recipes now link to the product catalog directly (line `productId`), not through `ingredients`. 404 recipes, all without lines. | |
 | 3c. Recipe lines whose unit family differs from their product's | **0 of 0 lines** | No recipe lines exist | |
 

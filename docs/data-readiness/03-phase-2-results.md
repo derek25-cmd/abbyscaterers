@@ -1,9 +1,9 @@
 # Data readiness 03: Phase 2 results (make costing correct)
 
-Status on 2026-10-18: **code done and tested; nothing applied to any database
-yet.** No staging project exists, and the live recipes have no ingredient
-lines, so the parts of the plan that need either are listed under "Still to
-do" with the exact commands.
+Status on 2026-10-18: **code done and tested; migration applied to staging
+only** (project `vpxiyxrnrhiukaazztol`, restored from the 2026-10-18 backup).
+Production is untouched. The live recipes still have no ingredient lines, so
+costing real menus waits for the kitchen (see "Still to do").
 
 ## Design change: recipes use the product catalog
 
@@ -68,29 +68,50 @@ salt in grams, eggs in pieces, one product with no price):
 | Dar es Salaam | 12,000 | Eggs (unit), Mystery spice | priced by product **name** at the single legacy price; the unpriced spice and the eggs at **0**; "6 item" of eggs multiplied by a per-kg price as if 6 kg |
 | Arusha | 8,000 | Cooking oil, Eggs (unit), Mystery spice | the same Dar price, whatever the branch |
 
-## Still to do (needs staging, then the kitchen)
+## Staging run (2026-10-18)
 
-1. **Create staging and set the environment**: a free Supabase project,
-   restored with `scripts/db/restore-to-staging.sh`. Install the PostgreSQL
-   client, then `export STAGING_DB_URL=…` and
-   `export PROD_PROJECT_REF=enpcjcesyvjqugnxdslp`.
-2. **Measure on staging** (Part A):
-   `psql "$STAGING_DB_URL" -f supabase/audit/02_baseline_quality.sql` and
-   `-f supabase/audit/03_phase2_checks.sql`, then fill the 3a row in
-   `02-baseline.md`.
-3. **Apply the migration to staging**: `psql "$STAGING_DB_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261018120100_units.sql`,
-   then re-run 3a–3c.
-4. **Export the gap list**: `export-unit-gaps.sql` → `mappings/unit_gaps.csv`.
-   Expect one `product_base_unit` row for every product whose `unit` is not
-   exactly kg, l, liters, item, pcs or bunch.
-5. **Clean the catalog before the kitchen starts** (3a): merge or rename
-   duplicate product names, so the recipe picker has one obvious choice per
-   item.
-6. **Kitchen**: enter the top 40 recipes by picking products in the recipe
-   form, and fill `unit_gaps.csv`.
-7. **Cost one real menu at each branch** in the app against staging, and
-   record old vs new totals here.
-8. Fill the **After phase 2** column of `02-baseline.md`.
+Restore: the backup's Supabase-internal storage tables (`storage.*`,
+`supabase_functions.*`) cannot be written in a new project, so staging was
+restored from a filtered copy without them
+(`C:/Users/Admin/SecureBackups/staging-restore/`). All 86 public tables and
+the auth tables loaded. Counts match production (orders 2,051, products 387,
+recipes 404, daily menus 1,555, stock logs 6,360).
+
+| Step | Result |
+| --- | --- |
+| Baseline checks A–E on staging | identical to the production audit (`02-baseline.md`) |
+| Checks 3a–3c before | 3a: 4 duplicate names (8 products); 3b/3c: 0 recipe lines |
+| `20261018120100_units.sql` | applied; `base_unit` set for 305 products (kg 222, pcs 76, liters 7), 82 left NULL; second run changed nothing; both CHECKs in place |
+| Checks 3a–3c after | unchanged (no recipe lines yet) |
+| `unit_gaps.csv` | 82 rows, all "price is per …" for products in pack units |
+| `catalog_review.csv` (new: `scripts/db/export-catalog-review.sql`) | 387 rows; 111 to look at: 9 duplicate / near-duplicate groups (23 products), 82 non-base units, 19 with Stock In prices varying > 5×; 125 never in stock logs |
+| Cost a real menu per branch | not meaningful yet: all 11 catering menus' recipes are empty, so every branch gives TZS 0 marked "Incomplete", each recipe listed "(no ingredients)" |
+
+Facts the kitchen work depends on:
+
+- **All 11 catering menus are Breakfast menus for 40 people.** Costing scales
+  recipe quantities by guests ÷ 40, so recipe quantities must be **for 40
+  people**. Lunch and dinner dishes (most of the top 40) are only costed once
+  lunch/dinner catering menus exist.
+- **Recipes are owner-only, and 399 of 404 belong to one admin account; 5 have
+  no owner** (invisible to everyone). The kitchen must enter recipes signed in
+  as that admin account, or recipe access must be widened first.
+- **Branch prices:** Dar es Salaam has a price for 385 of 387 products,
+  Arusha 40, Dodoma 97. Costing at Arusha / Dodoma will list most products as
+  "no price" until those prices are filled in.
+
+## Still to do
+
+1. **Operations: catalog cleanup** with `docs/data-readiness/mappings/catalog_review.csv`
+   (gitignored): merge or retire duplicates, fix pack-size prices, mark
+   non-food items. Edits go into **production** through the Products page.
+2. **Decide recipe access** (owner-only vs shared) and the 5 ownerless recipes.
+3. **Production rollout**: `PROD-RUNBOOK-phase-2.md` (backup, migration,
+   deploy).
+4. **Kitchen**: enter the top 40 recipes for 40 people, in production, picking
+   products; fill `unit_gaps.csv`.
+5. **Cost one real menu at each branch** and record old vs new totals here.
+6. Fill the **After phase 2** column of `02-baseline.md`.
 
 ## Open points
 
