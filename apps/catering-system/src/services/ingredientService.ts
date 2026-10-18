@@ -3,10 +3,6 @@ import { supabase } from '@/lib/supabase-client';
 import type { Ingredient } from '@/types';
 import type { IngredientFormData } from '@/lib/schemas';
 
-// An empty picker value means "no product"; store NULL, never ''.
-const withProductLink = <T extends { product_id?: string | null }>(data: T): T =>
-    data.product_id === undefined ? data : { ...data, product_id: data.product_id || null };
-
 export const getIngredients = async (): Promise<Ingredient[]> => {
     const { data, error } = await supabase.from('ingredients').select('*');
     if (error) {
@@ -32,8 +28,8 @@ export const addIngredient = async (ingredientData: IngredientFormData): Promise
         return null;
     }
     const now = new Date().toISOString();
-    const newIngredientData = {
-        ...withProductLink(ingredientData),
+    const newIngredientData = { 
+        ...ingredientData,
         user_id: user.id,
         createdAt: now, 
         updatedAt: now,
@@ -55,7 +51,7 @@ export const addBulkIngredients = async (ingredientDataList: IngredientFormData[
     }
     const now = new Date().toISOString();
     const newIngredients = ingredientDataList.map(ing => ({
-        ...withProductLink(ing),
+        ...ing,
         user_id: user.id,
         createdAt: now,
         updatedAt: now,
@@ -70,7 +66,7 @@ export const addBulkIngredients = async (ingredientDataList: IngredientFormData[
 }
 
 export const updateIngredient = async (itemNumber: string, updates: Partial<IngredientFormData>): Promise<boolean> => {
-    const { error } = await supabase.from('ingredients').update({ ...withProductLink(updates), updatedAt: new Date().toISOString() }).eq('itemNumber', itemNumber);
+    const { error } = await supabase.from('ingredients').update({ ...updates, updatedAt: new Date().toISOString() }).eq('itemNumber', itemNumber);
     if (error) {
         console.error('Error updating ingredient:', error);
     }

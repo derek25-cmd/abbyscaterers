@@ -100,8 +100,6 @@ export const IngredientSchema = z.object({
     .array(UnitAndPriceSchema)
     .min(1, "At least one unit of measure is required"),
   quantityUsed: z.number().optional(),
-  // Optional for now; becomes required in Phase 4 of the data-readiness plan.
-  product_id: z.string().nullable().optional(),
 });
 export type IngredientFormData = z.infer<typeof IngredientSchema>;
 

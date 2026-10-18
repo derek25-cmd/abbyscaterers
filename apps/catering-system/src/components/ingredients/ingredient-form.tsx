@@ -22,13 +22,9 @@ import type { Ingredient } from "@/types";
 import { ITEM_CLASSIFICATIONS, UNITS_OF_MEASURE } from "@/types";
 import { useIngredientStorage } from "@/hooks/use-ingredient-storage";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, PlusCircle, Trash2, Check, ChevronsUpDown } from "lucide-react";
+import { Loader2, Info, PlusCircle, Trash2 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { Separator } from "../ui/separator";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { useProductStorage } from "@/hooks/use-product-storage";
-import { cn } from "@/lib/utils";
 
 interface IngredientFormProps {
   ingredient?: Ingredient; 
@@ -38,9 +34,7 @@ export function IngredientForm({ ingredient }: IngredientFormProps) {
   const router = useRouter();
   const { addIngredient, updateIngredient } = useIngredientStorage();
   const { toast } = useToast();
-  const { products } = useProductStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const form = useForm<IngredientFormData>({
     resolver: zodResolver(IngredientSchema),
@@ -51,7 +45,6 @@ export function IngredientForm({ ingredient }: IngredientFormProps) {
           itemDescription: "",
           itemClassification: undefined,
           units: [{ unit: "kg", price: 0 }],
-          product_id: null,
         },
   });
   
@@ -165,72 +158,7 @@ export function IngredientForm({ ingredient }: IngredientFormProps) {
                 </FormItem>
               )}
             />
-
-            <FormField
-              control={form.control}
-              name="product_id"
-              render={({ field }) => {
-                const selected = products.find(p => p.id === field.value);
-                return (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Product (optional)</FormLabel>
-                    <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            role="combobox"
-                            className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                            disabled={isSubmitting}
-                          >
-                            {selected
-                              ? `${selected.name}${selected.sku ? ` (${selected.sku})` : ""}`
-                              : field.value
-                                ? field.value
-                                : "Select the product this ingredient is bought as..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                          <CommandInput placeholder="Search by product name or SKU..." />
-                          <CommandList>
-                            <CommandEmpty>No product found.</CommandEmpty>
-                            <CommandGroup>
-                              <CommandItem
-                                value="__none__ no product"
-                                onSelect={() => { field.onChange(null); setProductPickerOpen(false); }}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4", !field.value ? "opacity-100" : "opacity-0")} />
-                                <span className="text-muted-foreground">No product</span>
-                              </CommandItem>
-                              {products.map(p => (
-                                <CommandItem
-                                  key={p.id}
-                                  value={`${p.name ?? ""} ${p.sku ?? ""} ${p.id}`}
-                                  onSelect={() => { field.onChange(p.id); setProductPickerOpen(false); }}
-                                >
-                                  <Check className={cn("mr-2 h-4 w-4", p.id === field.value ? "opacity-100" : "opacity-0")} />
-                                  <span className="flex-1">{p.name}</span>
-                                  {p.sku && <span className="ml-2 text-xs text-muted-foreground">{p.sku}</span>}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription className="flex items-center gap-1">
-                      <Info className="h-3 w-3" /> Menu costing prices this ingredient from the product&apos;s branch price.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
+            
             <Separator />
             
             <div>
