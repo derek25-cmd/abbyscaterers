@@ -7,12 +7,56 @@ a comment box, saved in `ai_feedback`.
 | Tab | Who | What it does | Where the answer comes from |
 | --- | --- | --- | --- |
 | **Quote check** | all active staff | Is this price per plate in line with what this client usually pays for this meal? Flags quotes 10% or more below. | `abby_ai_quote_check()`: live orders. The client's last price for the same meal, else their usual level on other meals × the market price, else the market price. Back-tested on 2,675 events: band exact 87%, error ~9% (market price alone: 41%, 28%). |
-| **Menu ideas** | all active staff | The dishes most served for this meal, weighted toward events at the same price band. | `abby_ai_menu_ideas()`: live daily menus. |
+| **Menu builder** | all active staff | Builds a full menu that follows the company rules, sized and varied by price; "Another option" rotates through the wider pool. | `abby_ai_menu_ideas()` (live daily menus, up to 150 dishes per section) + `ai_menu_rules` + `src/lib/abbys-ai-menu.ts`. |
 | **Cost estimate** | admin, general manager, finance | Ingredient cost per plate of a menu, food cost % and margin. | `ai_dish_costs`: published from a trained run of `ml/train.py` (daily Stock Out vs plates per dish, Dar es Salaam). |
 
 Meal types are read as meals: "Lunch only" = lunch, "Breakfast and lunch" =
 breakfast + lunch, and so on. Test and cancelled orders, prices under 1,000
 and events with no date or pax are left out, as in `ml/`.
+
+## Menu rules (decision 2026-10-19)
+
+Every menu the builder makes follows these rules (table `ai_menu_rules`):
+
+| Section | Required | Default recipe | Met by |
+| --- | --- | --- | --- |
+| Lunch, Dinner | Salad | RN-00344 salad | any salad (not fruit salad) |
+| Lunch, Dinner | Fruits | RN-00266 Fruits cuts | any fruit dish |
+| Lunch, Dinner | Peri-peri sauce | RN-00229 Peri-peri sauce | peri-peri / piri-piri |
+| Lunch, Dinner, price above TZS 10,000 | Mineral drinking water | RN-00227 Mineral drinking water (500ml) | mineral water |
+| Breakfast | Tea masala ("black tea masala") | RN-00175 Tea Masala | tea masala only (milk tea masala does not count) |
+
+The menu history rarely has some of these (peri-peri sauce on 1% of
+lunches, water on 3%), so they are enforced as rules rather than learnt.
+
+**Variety and flexibility.** Menus are drawn from the dishes served before:
+up to 150 per section (Lunch 150, Breakfast 115). Dinner, with only 26 dinner
+dishes, is topped up with lunch dishes, so every main menu draws on more
+than 70. "Another option" picks again from the whole pool. Over 20 options,
+a 35,000 lunch used 95 different dishes on staging.
+
+**Price brings variety.** Dishes per section, required dishes included:
+
+| Price per plate | < 6k | 6–11k | 11–15k | 15–22k | 22–30k | 30k+ |
+| --- | --- | --- | --- | --- | --- | --- |
+| Lunch / Dinner | 7 | 9 | 11 | 13 | 15 | 17 |
+| Breakfast | 5 | 7 | 8 | 9 | 10 | 11 |
+| Brunch, Evening Tea, Cocktail | 4 | 5 | 6 | 7 | 8 | 9 |
+
+Each added dish favours a food type the menu does not have yet (starch,
+meat, fish, beans, vegetables, eggs, snacks, soups, drinks, sauces …), so a
+higher price brings more types. On staging, a lunch had 6–9 food types at
+8,000 and 8–11 at 35,000. The sizes are in `MENU_SIZE` in
+`src/lib/abbys-ai-menu.ts`.
+
+**Changing a rule** (admins, SQL Editor), e.g. to make water required above
+15,000 instead:
+
+```sql
+UPDATE public.ai_menu_rules SET min_price_exclusive = 15000
+WHERE label = 'Mineral drinking water';
+-- switch a rule off: UPDATE public.ai_menu_rules SET active = false WHERE section = 'Dinner' AND label = 'Peri-peri sauce';
+```
 
 ## Roll out to production
 
@@ -22,8 +66,9 @@ and events with no date or pax are left out, as in `ml/`.
    scripts/db/backup.sh
    unset DB_URL
    ```
-2. **Migration**: run `supabase/migrations/20261018170000_abbys_ai.sql` in
-   the production SQL Editor. It is idempotent. Check:
+2. **Migrations**: run `supabase/migrations/20261018170000_abbys_ai.sql`,
+   then `20261019090000_abbys_ai_menu_rules.sql`, in the production SQL
+   Editor. Both are idempotent. Check:
    ```sql
    SELECT to_regprocedure('public.abby_ai_quote_check(text,text,numeric,date)') IS NOT NULL AS quote_fn,
           to_regprocedure('public.abby_ai_menu_ideas(text,numeric,integer)') IS NOT NULL AS menu_fn,
