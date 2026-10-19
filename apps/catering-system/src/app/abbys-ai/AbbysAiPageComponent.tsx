@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Calculator, Check, CheckCircle2, ChevronsUpDown, Info, Loader2, Plus, Sparkles, Trash2, UtensilsCrossed, BadgeDollarSign } from 'lucide-react';
+import { AlertTriangle, Calculator, Check, CheckCircle2, ChevronsUpDown, Info, Loader2, Plus, RefreshCw, Sparkles, Trash2, UtensilsCrossed, BadgeDollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,11 +28,15 @@ import {
   type MenuIdea,
   type QuoteCheckResult,
 } from '@/lib/abbys-ai';
-import { checkQuote, getCurrentModelRun, getDishCosts, getMenuIdeas } from '@/services/abbysAiService';
+import { checkQuote, getCurrentModelRun, getDishCosts, getMenuPools, getMenuRules } from '@/services/abbysAiService';
+import { FOOD_TYPE_LABELS, buildMenu, foodType, foodTypeCount, mealSections, type BuiltMenu, type MenuRule } from '@/lib/abbys-ai-menu';
 import { AiFeedback } from '@/components/abbys-ai/ai-feedback';
 
 const tzs = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `TZS ${Math.round(n).toLocaleString()}`);
 const pct = (n: number | null | undefined) => (n === null || n === undefined ? '—' : `${Math.round(n * 100)}%`);
+// Same bands as the database (abby_ai_price_band) and ml/abby_ml/data.py.
+const priceBand = (p: number | null): string | null =>
+  p === null ? null : p < 6000 ? 'A <6k' : p < 11000 ? 'B 6-11k' : p < 15000 ? 'C 11-15k' : p < 22000 ? 'D 15-22k' : p < 30000 ? 'E 22-30k' : 'F 30k+';
 const num = (s: string) => {
   const n = Number(String(s).replace(/,/g, ''));
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -88,7 +92,7 @@ export function AbbysAiPageComponent() {
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="quote"><BadgeDollarSign className="mr-1.5 h-4 w-4" /> Quote check</TabsTrigger>
-          <TabsTrigger value="menu"><UtensilsCrossed className="mr-1.5 h-4 w-4" /> Menu ideas</TabsTrigger>
+          <TabsTrigger value="menu"><UtensilsCrossed className="mr-1.5 h-4 w-4" /> Menu builder</TabsTrigger>
           {canSeeCosts && <TabsTrigger value="cost"><Calculator className="mr-1.5 h-4 w-4" /> Cost estimate</TabsTrigger>}
         </TabsList>
         <TabsContent value="quote"><QuoteCheckTab modelRun={modelRun} /></TabsContent>
@@ -244,36 +248,64 @@ function MenuIdeasTab({ modelRun, canSeeCosts, onEstimate }: {
   const [mealType, setMealType] = useState<string>('Lunch only');
   const [price, setPrice] = useState('');
   const [pax, setPax] = useState('');
-  const [ideas, setIdeas] = useState<MenuIdea[] | null>(null);
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [pools, setPools] = useState<Record<string, MenuIdea[]> | null>(null);
+  const [rules, setRules] = useState<MenuRule[] | null>(null);
+  const [option, setOption] = useState(0);
+  const [menu, setMenu] = useState<BuiltMenu | null>(null);
+  const [asked, setAsked] = useState<{ mealType: string; price: number | null } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [addOpen, setAddOpen] = useState<string | null>(null);
+
+  const build = (p: Record<string, MenuIdea[]>, r: MenuRule[], meal: string, priceNum: number | null, opt: number) =>
+    buildMenu({ sections: mealSections(meal), pools: p, rules: r, price: priceNum, band: priceBand(priceNum), option: opt });
 
   const run = async () => {
+    const priceNum = num(price);
     setLoading(true);
     try {
-      const rows = await getMenuIdeas(mealType, num(price), 10);
-      setIdeas(rows);
-      setPicked(new Set(rows.filter(r => r.score >= 0.4).map(r => `${r.section}|${r.dish_key}`)));
+      const [p, r] = await Promise.all([getMenuPools(mealType, priceNum), rules ? Promise.resolve(rules) : getMenuRules()]);
+      setPools(p);
+      setRules(r);
+      setOption(0);
+      setAsked({ mealType, price: priceNum });
+      setMenu(build(p, r, mealType, priceNum, 0));
     } catch (e) {
-      toast({ variant: 'destructive', title: 'Menu ideas failed', description: e instanceof Error ? e.message : String(e) });
+      toast({ variant: 'destructive', title: 'Menu builder failed', description: e instanceof Error ? e.message : String(e) });
     } finally {
       setLoading(false);
     }
   };
 
-  const sections = useMemo(() => Array.from(new Set((ideas || []).map(i => i.section))), [ideas]);
-  const toggle = (k: string) => setPicked(prev => {
-    const n = new Set(prev);
-    if (n.has(k)) n.delete(k); else n.add(k);
-    return n;
-  });
+  const another = () => {
+    if (!pools || !rules || !asked) return;
+    const next = option + 1;
+    setOption(next);
+    setMenu(build(pools, rules, asked.mealType, asked.price, next));
+  };
+
+  const removeDish = (section: string, key: string) => setMenu(m => m && ({
+    sections: m.sections.map(s => s.section === section ? { ...s, dishes: s.dishes.filter(d => d.dish_key !== key) } : s),
+  }));
+
+  const addDish = (section: string, idea: MenuIdea) => setMenu(m => m && ({
+    sections: m.sections.map(s => s.section === section ? {
+      ...s,
+      dishes: [...s.dishes, { section, dish_key: idea.dish_key, recipe_id: idea.recipe_id, recipe_name: idea.recipe_name,
+                              food_type: foodType(idea.dish_key), reason: { kind: 'pool' as const, share: idea.band_share ?? idea.share } }],
+    } : s),
+  }));
+
+  const allDishes = menu ? menu.sections.flatMap(s => s.dishes) : [];
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,380px)_1fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Suggest a menu</CardTitle>
-          <CardDescription>The dishes served most often for this meal, weighted toward events at the same price.</CardDescription>
+          <CardTitle className="text-lg">Create a menu</CardTitle>
+          <CardDescription>
+            Built from the dishes served before (more than 70 where the history has them), following the company rules.
+            A higher price gives more dishes and more food types.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <MealTypeSelect value={mealType} onChange={setMealType} />
@@ -288,54 +320,92 @@ function MenuIdeasTab({ modelRun, canSeeCosts, onEstimate }: {
             </div>
           </div>
           <Button onClick={run} disabled={loading} className="w-full">
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Suggest dishes
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />} Create menu
           </Button>
+          {rules && (
+            <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1">
+              <p className="font-semibold">Company rules</p>
+              {rules.map(r => (
+                <p key={`${r.section}-${r.label}`}>
+                  {r.section}: {r.label}{r.min_price_exclusive !== null ? ` (above TZS ${Number(r.min_price_exclusive).toLocaleString()})` : ''}
+                </p>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {ideas && (
+      {menu && asked && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Suggested dishes</CardTitle>
-            <CardDescription>
-              &quot;Served at&quot; = share of past {mealType.toLowerCase()} events with this dish{num(price) ? ' (at this price band, where there are enough events)' : ''}. Tick the dishes you would serve.
-            </CardDescription>
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 space-y-0">
+            <div>
+              <CardTitle className="text-lg">{asked.mealType}{asked.price ? ` · TZS ${asked.price.toLocaleString()}` : ''}</CardTitle>
+              <CardDescription>Option {option + 1}. Remove or add dishes as you like; required dishes keep the menu within the rules.</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={another}><RefreshCw className="mr-2 h-4 w-4" /> Another option</Button>
           </CardHeader>
           <CardContent className="space-y-5">
-            {ideas.length === 0 && <p className="text-sm text-muted-foreground">No menus recorded yet for this meal.</p>}
-            {sections.map(section => (
-              <div key={section} className="space-y-2">
-                <p className="text-sm font-semibold">{section}</p>
-                <div className="space-y-1.5">
-                  {ideas.filter(i => i.section === section).map(i => {
-                    const k = `${i.section}|${i.dish_key}`;
-                    const share = i.band_share ?? i.share;
-                    return (
-                      <label key={k} className="flex items-center gap-3 rounded-md border px-3 py-2 cursor-pointer hover:bg-muted/40">
-                        <input type="checkbox" checked={picked.has(k)} onChange={() => toggle(k)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-                        <span className="flex-1 text-sm">{i.recipe_name || i.dish_key}{i.recipe_id && <span className="ml-2 text-[10px] text-muted-foreground font-mono">{i.recipe_id}</span>}</span>
-                        <div className="w-28 h-2 rounded bg-muted overflow-hidden" aria-hidden><div className="h-full bg-primary/70" style={{ width: `${Math.round(share * 100)}%` }} /></div>
-                        <span className="w-20 text-right text-xs text-muted-foreground">served at {pct(share)}</span>
-                      </label>
-                    );
-                  })}
+            {menu.sections.length === 0 && <p className="text-sm text-muted-foreground">No menus recorded yet for this meal.</p>}
+            {menu.sections.map(s => {
+              const pool = pools?.[s.section] ?? [];
+              const addable = pool.filter(p => !s.dishes.some(d => d.dish_key === p.dish_key));
+              return (
+                <div key={s.section} className="space-y-2">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="text-sm font-semibold">{s.section} <span className="font-normal text-muted-foreground">· {s.dishes.length} dishes, {foodTypeCount(s.dishes)} food types</span></p>
+                    <p className="text-xs text-muted-foreground">chosen from {s.poolSize} dishes</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {s.dishes.map(d => (
+                      <div key={d.dish_key} className={cn('flex items-center gap-2 rounded-md border px-3 py-2', d.reason.kind === 'rule' && 'border-primary/40 bg-primary/5')}>
+                        <span className="flex-1 text-sm">
+                          {d.recipe_name?.trim() || d.dish_key}
+                          {d.recipe_id && <span className="ml-2 text-[10px] text-muted-foreground font-mono">{d.recipe_id}</span>}
+                        </span>
+                        {d.reason.kind === 'rule'
+                          ? <Badge className="text-[10px]">Required: {d.reason.label}</Badge>
+                          : <span className="text-[11px] text-muted-foreground">served at {pct(d.reason.share)}</span>}
+                        <Badge variant="outline" className="text-[10px]">{FOOD_TYPE_LABELS[d.food_type]}</Badge>
+                        {d.reason.kind !== 'rule' && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeDish(s.section, d.dish_key)} aria-label={`Remove ${d.dish_key}`}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Popover open={addOpen === s.section} onOpenChange={(o) => setAddOpen(o ? s.section : null)}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8"><Plus className="mr-1 h-4 w-4" /> Add a {s.section.toLowerCase()} dish</Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[360px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search dishes…" />
+                        <CommandList>
+                          <CommandEmpty>No dish found.</CommandEmpty>
+                          <CommandGroup>
+                            {addable.map(p => (
+                              <CommandItem key={p.dish_key} value={`${p.dish_key} ${p.recipe_id ?? ''}`} onSelect={() => { addDish(s.section, p); setAddOpen(null); }}>
+                                <span className="flex-1">{p.recipe_name?.trim() || p.dish_key}</span>
+                                <span className="text-[10px] text-muted-foreground">{FOOD_TYPE_LABELS[foodType(p.dish_key)]} · {pct(p.band_share ?? p.share)}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
-              </div>
-            ))}
-            {ideas.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {canSeeCosts && (
-                  <Button variant="outline" onClick={() => onEstimate(
-                    ideas.filter(i => picked.has(`${i.section}|${i.dish_key}`)).map(i => ({ dish: i.dish_key, section: i.section })), price, pax)}
-                    disabled={picked.size === 0}>
-                    <Calculator className="mr-2 h-4 w-4" /> Estimate cost of the ticked dishes
-                  </Button>
-                )}
-              </div>
+              );
+            })}
+            {canSeeCosts && allDishes.length > 0 && (
+              <Button variant="outline" onClick={() => onEstimate(allDishes.map(d => ({ dish: d.dish_key, section: d.section })), price, pax)}>
+                <Calculator className="mr-2 h-4 w-4" /> Estimate the cost of this menu
+              </Button>
             )}
-            <AiFeedback key={`${mealType}-${price}`} tool="menu" modelRun={modelRun}
-              input={{ meal_type: mealType, price: num(price), pax: num(pax) }}
-              output={{ suggested: ideas.map(i => `${i.section}: ${i.dish_key}`), picked: Array.from(picked) }} />
+            <AiFeedback key={`${asked.mealType}-${asked.price}-${option}`} tool="menu" modelRun={modelRun}
+              input={{ meal_type: asked.mealType, price: asked.price, pax: num(pax), option }}
+              output={{ menu: menu.sections.map(s => ({ section: s.section, dishes: s.dishes.map(d => d.dish_key) })) }} />
           </CardContent>
         </Card>
       )}
@@ -415,7 +485,7 @@ function CostTab({ modelRun, dishes, setDishes, context, setContext }: {
               </Command>
             </PopoverContent>
           </Popover>
-          <p className="text-xs text-muted-foreground">Tip: pick dishes in Menu ideas and press &quot;Estimate cost&quot;.</p>
+          <p className="text-xs text-muted-foreground">Tip: create a menu in Menu builder and press &quot;Estimate the cost of this menu&quot;.</p>
         </CardContent>
       </Card>
 
