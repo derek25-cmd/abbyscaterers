@@ -3,12 +3,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PlusCircle, MoreHorizontal, Search, Package, ListFilter, TrendingDown, PackageX, CreditCard, Loader2 } from "lucide-react";
+import { PlusCircle, MoreHorizontal, Search, Package, ListFilter, TrendingDown, PackageX, CreditCard, Loader2, Trash2 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { AddProductDialog } from "@/components/hr/add-product-dialog";
 import { EditProductDialog } from "@/components/hr/edit-product-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ViewProductDialog } from "@/components/hr/view-product-dialog";
+import { DeleteAllProductsDialog } from "@/components/hr/delete-all-products-dialog";
+import { useStaffRole } from "@/hooks/use-staff-role";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { getProducts, addProduct, updateProduct } from "@/services/productService";
 import type { Product, Branch } from "@/types";
@@ -27,6 +30,10 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("name");
   const [selectedBranch, setSelectedBranch] = useState<BranchFilter>('Dar es Salaam');
+  // Admin only: delete the whole catalog (the Stock Logs stay).
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
+  const { can } = useStaffRole();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -144,6 +151,12 @@ export default function InventoryPage() {
                   {BRANCHES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {can('settings.manage') && stock.length > 0 && (
+                <Button variant="outline" size="sm" className="h-9 gap-1 text-destructive hover:text-destructive" onClick={() => setIsDeleteAllOpen(true)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Delete all products</span>
+                </Button>
+              )}
             </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -308,6 +321,18 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
       
+      <DeleteAllProductsDialog
+        isOpen={isDeleteAllOpen}
+        setIsOpen={setIsDeleteAllOpen}
+        productCount={stock.length}
+        onDeleted={(result) => {
+          setStock([]);
+          toast({
+            title: 'Product Catalog deleted',
+            description: `${result.products_deleted} products removed. All ${result.stock_logs_kept} Stock Logs were kept.`,
+          });
+        }}
+      />
       <AddProductDialog
         isOpen={isAddProductDialogOpen}
         setIsOpen={setIsAddProductDialogOpen}

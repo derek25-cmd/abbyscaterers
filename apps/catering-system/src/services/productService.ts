@@ -86,3 +86,51 @@ export const updateProduct = async (id: string, updatedProduct: Partial<Product>
     }
     return !error;
 };
+
+// ── Deleting the whole catalog (Admin) ─────────────────────────────────────
+
+/** The phrase the Admin types to confirm; the database checks it too. */
+export const DELETE_ALL_PRODUCTS_PHRASE = 'DELETE ALL PRODUCTS';
+
+const csvCell = (v: unknown): string => {
+    if (v === null || v === undefined) return '';
+    const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+/** Rows as CSV, every column of every row, in a stable column order. */
+export const rowsToCsv = (rows: Record<string, unknown>[]): string => {
+    const columns = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+    const lines = [columns.map(csvCell).join(','), ...rows.map((r) => columns.map((c) => csvCell(r[c])).join(','))];
+    return lines.join('\r\n') + '\r\n';
+};
+
+/** Every product with every column, read page by page, for the backup taken before deleting. */
+export const productsBackupCsv = async (): Promise<{ csv: string; count: number }> => {
+    const rows: Record<string, unknown>[] = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase.from('products').select('*').order('id').range(from, from + PAGE - 1);
+        if (error) throw new Error(`Could not read the catalog for the backup: ${error.message}`);
+        rows.push(...(data ?? []));
+        if (!data || data.length < PAGE) break;
+    }
+    return { csv: rowsToCsv(rows), count: rows.length };
+};
+
+export interface DeleteAllProductsResult { products_deleted: number; stock_logs_kept: number }
+
+/**
+ * Deletes every product (Admin only). The Stock Logs stay as they are; the
+ * database refuses and changes nothing if they would be touched.
+ */
+export const deleteAllProducts = async (confirmPhrase: string): Promise<DeleteAllProductsResult> => {
+    if (confirmPhrase !== DELETE_ALL_PRODUCTS_PHRASE) throw new Error(`Type ${DELETE_ALL_PRODUCTS_PHRASE} to confirm.`);
+    const { data, error } = await supabase.rpc('delete_all_products', { p_confirm: confirmPhrase });
+    if (error) {
+        throw new Error(error.code === '42501' && !/^Only/.test(error.message)
+            ? 'Only an Admin can delete the whole Product Catalog.'
+            : error.message || 'Could not delete the products.');
+    }
+    return data as DeleteAllProductsResult;
+};
