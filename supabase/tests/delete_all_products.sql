@@ -1,4 +1,4 @@
--- Tests for delete_all_products() (20261028000000): only an Admin, only with
+-- Tests for delete_all_products() (20261028000000, 000100): only an Admin, only with
 -- the phrase, every product removed, and the Stock Logs, price history and
 -- audit trail kept.
 --
@@ -14,7 +14,7 @@ DECLARE
   u jsonb := '{}'::jsonb;
   nm text; uid uuid; res text;
   logs_before bigint; prices_before bigint; products_before bigint;
-  failures integer; checks integer;
+  failures integer; checks integer; guard_note text := '';
 BEGIN
   CREATE TEMP TABLE rls_results (who text, tbl text, op text, expected boolean, actual boolean) ON COMMIT DROP;
 
@@ -83,6 +83,15 @@ BEGIN
     (SELECT count(*) FROM public.products) = products_before);
 
   -- ── C. The Admin deletes the catalog ─────────────────────────────────────
+  -- With Supabase's safeupdate guard on, as it is for requests from the app
+  -- (the SQL editor runs without it): a DELETE without WHERE would fail here.
+  BEGIN
+    EXECUTE 'LOAD ''safeupdate''';
+    PERFORM set_config('safeupdate.enabled', '1', true);
+    guard_note := ' (with the safeupdate guard on, as in the app)';
+  EXCEPTION WHEN OTHERS THEN
+    guard_note := ' (safeupdate guard could not be loaded here: ' || SQLERRM || ')';
+  END;
   res := public._dap_as((u ->> 'adm')::uuid, 'SELECT public.delete_all_products(''DELETE ALL PRODUCTS'')');
   INSERT INTO rls_results VALUES ('adm', 'delete_all_products', 'the Admin deletes the catalog (' || res || ')', true, res = 'ok');
   INSERT INTO rls_results VALUES ('adm', 'products', 'every product is gone', true, NOT EXISTS (SELECT 1 FROM public.products));
@@ -108,6 +117,6 @@ BEGIN
       (SELECT string_agg(who || '/' || tbl || '/' || op || ': expected ' || expected || ' got ' || actual, E'
 ' ORDER BY tbl, who, op) FROM rls_results WHERE expected IS DISTINCT FROM actual);
   END IF;
-  RAISE EXCEPTION 'PASS: all % delete-all-products checks passed. This error is intentional: it rolls everything back, so no product was really deleted.', checks;
+  RAISE EXCEPTION 'PASS: all % delete-all-products checks passed%. This error is intentional: it rolls everything back, so no product was really deleted.', checks, guard_note;
 END
 $test$;
